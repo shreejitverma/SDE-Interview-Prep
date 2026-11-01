@@ -2,7 +2,7 @@
 type: playbook
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.vldb.org/pvldb/vol8/p1792-Akidau.pdf"
@@ -21,6 +21,21 @@ sources:
   - "https://docs.cloud.google.com/bigtable/docs/performance"
   - "https://docs.cloud.google.com/bigtable/docs/editions-overview"
   - "https://docs.cloud.google.com/vertex-ai/docs/release-notes"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Constraints.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/read-write-operations.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_HowItWorks.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/howitworks-ttl.html"
+  - "https://aws.amazon.com/dynamodb/pricing/on-demand/"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-dynamo-db-reduces-prices-on-demand-throughput-global-tables/"
+  - "https://docs.aws.amazon.com/streams/latest/dev/service-sizes-and-limits.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/feature-store-offline.html"
+  - "https://docs.aws.amazon.com/glue/latest/dg/schema-registry.html"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSDataTransfer/current/us-east-1/index.json"
+  - "https://cloud.google.com/bigtable/pricing"
+  - "https://docs.cloud.google.com/vertex-ai/docs/deprecations"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
 ---
 
 # System Design: Global Real-Time Feature Store
@@ -157,7 +172,7 @@ To add a feature: register the schema on both clouds, deploy readers that tolera
 To remove a feature: stop the readers, then stop the writers, then tombstone the ID.
 Every log record carries a schema fingerprint in its header.
 A consumer that sees an unknown fingerprint sends the record to a dead-letter queue instead of guessing, because silently decoding a reused field with the wrong type is the worst failure in this system.
-Registry-level compatibility checks such as Glue's BACKWARD or FULL modes (UNVERIFIED this session) catch structural breaks.
+Registry-level compatibility checks such as Glue's BACKWARD or FULL modes (two of its eight modes, AWS Glue docs, as of 2026-10) catch structural breaks.
 They do not catch semantic breaks such as a unit change from seconds to milliseconds, so CI also runs distribution checks on a shadow sample, in the spirit of TFX data validation.
 
 ### Managed products and where they fit
@@ -166,11 +181,11 @@ SageMaker Feature Store offers three online store types: Standard, Standard_V2, 
 The Standard tier is backed by DynamoDB and the InMemory tier by ElastiCache (Redis OSS) (AWS ML blog, as of 2026-10).
 The new `UpdateRecord` API writes only the changed features, and it works on Standard_V2 and on all InMemory feature groups (AWS ML blog, as of 2026-10).
 The InMemory tier supports list, set, and vector collection types (AWS docs, as of 2026-10).
-According to a third-party summary of the AWS docs, an InMemory feature group cannot also have an offline store, which matters if you rely on managed online-to-offline sync (as of 2026-10, confirm against the primary docs).
-The offline store buffers `PutRecord` data and writes it to S3 as Parquet within 15 minutes, in either the Glue or the Iceberg table format, and the console recommends Iceberg for most use cases (AWS docs, as of 2026-10).
+The InMemory tier supports online-only feature groups, not online+offline ones, so there is no managed online-to-offline replication for it, which matters if you rely on managed online-to-offline sync (AWS docs, as of 2026-10).
+The offline store buffers `PutRecord` data and writes it to S3 as Parquet within 15 minutes, in either the Glue or the Iceberg table format; Glue is the default, and the docs recommend Iceberg (AWS docs, as of 2026-10).
 On Google Cloud, Vertex AI Feature Store uses BigQuery as the offline source and serves through Bigtable online serving, organized as online store instances and feature views (Google Cloud release notes, as of 2026-10).
 On 2026-02-17 Google deprecated both Vertex AI Feature Store Optimized online serving and Vertex AI Feature Store (Legacy) (Google Cloud release notes, as of 2026-10).
-A secondary source puts the Legacy sunset at 2027-02-17 (as of 2026-10).
+Both are fully sunset on 2027-02-17, with only critical patches after 2026-05-17 (Vertex AI deprecations page, as of 2026-10).
 So on Google Cloud today, the managed path is BigQuery plus Bigtable online serving, and freshness is limited by how feature views sync from BigQuery.
 For sub-second streaming freshness, Dataflow writing directly to Bigtable is the mechanism you control.
 The design in this chapter uses the raw stores directly and treats the managed feature stores as optional catalog and serving layers on top, a pattern also discussed in [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_05_Feature_Stores_and_Real_Time_Data_Serving|Feature Stores and Real-Time Data Serving]].
@@ -193,24 +208,24 @@ See [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_07_Multi_
 | SageMaker FS online store types | Standard, Standard_V2, InMemory | (AWS docs, as of 2026-10) |
 | SageMaker FS Standard backing store | DynamoDB; InMemory backed by ElastiCache (Redis OSS) | (AWS ML blog, as of 2026-10) |
 | SageMaker FS offline write delay | buffered and written to S3 within 15 minutes, Parquet only | (AWS docs, as of 2026-10) |
-| DynamoDB per-partition ceiling | 3,000 RCU, 1,000 WCU, 10 GB | (third-party summary of AWS docs, as of 2026-10) |
-| DynamoDB RCU / WCU size unit | 4 KB per strongly consistent read (eventual is half), 1 KB per write | (third-party summary of AWS docs, as of 2026-10) |
-| DynamoDB on-demand price, us-east-1 | $0.125 per million RRU, $0.625 per million WRU | (third-party summary of AWS pricing after the 2024-11-14 cut, as of 2026-10) |
-| DynamoDB 2024-11 price change | on-demand throughput down 50%, global tables down up to 67% | (AWS announcement, as of 2026-10) |
-| DynamoDB global table design availability | 99.999% | (AWS docs, as of 2026-10) |
-| DynamoDB max item size | 400 KB | UNVERIFIED |
+| DynamoDB per-partition ceiling | 3,000 RCU, 1,000 WCU, 10 GB | (AWS docs, as of 2026-10) |
+| DynamoDB RCU / WCU size unit | 4 KB per strongly consistent read (eventual is half), 1 KB per write | (AWS docs, as of 2026-10) |
+| DynamoDB on-demand price, us-east-1 | $0.125 per million RRU, $0.625 per million WRU | (AWS DynamoDB pricing page, as of 2026-10) |
+| DynamoDB 2024-11 price change | on-demand throughput down 50%, global tables down up to 67%, effective 2024-11-01 | (AWS announcement 2024-11-14, as of 2026-10) |
+| DynamoDB global table availability SLA | 99.999% (single-Region tables 99.99%) | (AWS docs, as of 2026-10) |
+| DynamoDB max item size | 400 KB, attribute names included | (AWS docs, as of 2026-10) |
 | Bigtable SSD node throughput | up to 17,000 reads/s or 14,000 writes/s (1 KB rows), or 220 MBps scans | (Google Cloud docs, as of 2026-10) |
 | Bigtable SSD node latency | under 5 ms | (Google Cloud docs, as of 2026-10) |
-| Bigtable 10-node SSD cluster | about 140,000 rows/s; up to 1.2M read rows/s with in-memory tier | (Google Cloud docs, as of 2026-10) |
-| Bigtable Enterprise Plus in-memory tier | sub-ms reads, 40,000 rows/s increments, up to 120,000 rows/s per node | (Google Cloud docs, as of 2026-10) |
-| Bigtable in-memory tier price | from $0.20 per 40,000 rows/s capacity (billing time unit UNVERIFIED) | (Google Cloud pricing page, as of 2026-10) |
-| Bigtable SSD storage price | from $0.17 per GB-month, billed per replica | (Google Cloud pricing page, as of 2026-10) |
-| Bigtable tiered storage per node | up to 32 TB Enterprise, 64 TB Enterprise Plus | (Google Cloud docs, as of 2026-10) |
-| Bigtable SSD node-hour price | about $0.65 in us-central1 | UNVERIFIED |
+| Bigtable 10-node SSD cluster | about 140,000 rows/s; up to 1.2M read rows/s with the in-memory tier (Preview) | (Google Cloud docs, as of 2026-10) |
+| Bigtable Enterprise Plus in-memory tier (Preview) | sub-ms reads, 40,000 rows/s increments, up to 120,000 rows/s per node | (Google Cloud docs, as of 2026-10) |
+| Bigtable in-memory tier price | about $0.20 per hour per extra 40,000 QPS bundle in us-central1, billed as a multiplier on the Enterprise Plus node SKU (1.235x at 80k, 1.471x at 120k) | (Google Cloud pricing page, as of 2026-10) |
+| Bigtable SSD storage price | from $0.17 per GiB-month, billed per replica | (Google Cloud pricing page, as of 2026-10) |
+| Bigtable tiered storage per node (Preview) | up to 32 TB Enterprise, 64 TB Enterprise Plus | (Google Cloud docs, as of 2026-10) |
+| Bigtable SSD node-hour price | $0.65 Enterprise, $0.85 Enterprise Plus, in us-central1 | (Google Cloud pricing page, as of 2026-10) |
 | Vertex AI FS Optimized online serving | deprecated 2026-02-17 | (Google Cloud release notes, as of 2026-10) |
-| Vertex AI FS Legacy | deprecated 2026-02-17; sunset 2027-02-17 | (release notes; sunset date from secondary source, as of 2026-10) |
-| Kinesis shard write limit | 1 MB/s or 1,000 records/s per shard | UNVERIFIED |
-| Internet egress, first tier | about $0.09/GB from AWS | UNVERIFIED |
+| Vertex AI FS Legacy | deprecated 2026-02-17; sunset 2027-02-17 (same sunset for Optimized online serving) | (Vertex AI release notes and deprecations page, as of 2026-10) |
+| Kinesis shard write limit | 1 MB/s or 1,000 records/s per shard (provisioned mode) | (AWS docs, as of 2026-10) |
+| Internet egress, first tier | $0.09/GB for the first 10 TB/month from AWS us-east-1, then $0.085/GB for the next 40 TB | (AWS Price List API, as of 2026-10) |
 | Tail amplification | P(all N calls under single-call p99) = 0.99^N; 0.97 at N=3, 0.74 at N=30 | arithmetic |
 
 ## AWS vs GCP Mechanism Parity
@@ -222,7 +237,7 @@ See [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_07_Multi_
 | Online store | DynamoDB, or SageMaker FS Standard (DynamoDB) and InMemory (ElastiCache) | Bigtable, or Vertex AI FS Bigtable online serving | DynamoDB bills per request unit and has no per-cell versions; Bigtable bills per node and has a native timestamp per cell |
 | Versioned upsert | Conditional `PutItem` or `UpdateItem`; failed conditions still consume WCU | Blind mutation with explicit cell timestamp plus a read filter of 1 cell per column | Bigtable needs no read or condition for LWW-by-version; DynamoDB pays for every rejected stale write |
 | Partial update cost | `UpdateItem` billed on the larger of the before and after item sizes | Mutation writes only the named cells | Wide items on DynamoDB inflate write cost; wide rows on Bigtable mainly inflate read size |
-| Hot key behavior | Adaptive capacity can isolate a hot item, but one key cannot exceed per-partition limits | One row lives in one tablet; Enterprise Plus adds hotspot mitigation via the in-memory tier | Neither lets you exceed one key's physical limit; you must split or cache hot keys |
+| Hot key behavior | Adaptive capacity can isolate a hot item, but one key cannot exceed per-partition limits | One row lives in one tablet; Enterprise Plus adds hotspot mitigation via the in-memory tier (Preview) | Neither lets you exceed one key's physical limit; you must split or cache hot keys |
 | Multi-region replication | Global tables, MREC (LWW) or MRSC | Bigtable multi-cluster replication, eventually consistent | Neither cloud replicates across the cloud boundary; you own that link |
 | Offline store | Iceberg on S3 (SageMaker FS writes Glue or Iceberg tables) | BigQuery (Vertex AI FS reads BigQuery directly) | On GCP the offline store is the source and the online store syncs from it; on AWS the managed flow runs from online to offline |
 | Schema registry | AWS Glue Schema Registry | Pub/Sub schemas (Avro or Protobuf) with revisions | Different compatibility semantics; compile both from one source |
@@ -439,7 +454,7 @@ aws budgets delete-budget --account-id "$ACCOUNT_ID" --budget-name fs-lab
 ### Lab cost estimate
 
 DynamoDB on-demand for a few dozen requests costs well under one cent at $0.625 per million WRU (as of 2026-10).
-The one-node Bigtable instance dominates, at roughly $0.65 per node-hour (UNVERIFIED), so delete it the same day.
+The one-node Bigtable instance dominates, at $0.65 per node-hour for the Enterprise edition in us-central1 (Google Cloud pricing page, as of 2026-10), so delete it the same day.
 
 ### Production capacity sizing, step by step
 
@@ -453,10 +468,10 @@ Splitting the high-churn tiles into a narrow item of 1KB or less halves that to 
 Without coalescing (100,000 updates/s at 2 WRU) the bill would be about $328,500, so the coalescing window is the biggest single cost lever and costs at most 1s of freshness.
 On Bigtable, the docs rate an SSD node at 17,000 reads/s for 1KB rows (as of 2026-10).
 Assume about 10,000/s at 2KB, which gives 30 nodes for reads, plus about 6 for 40,000 writes/s, for roughly 36 nodes at full load.
-At a 70% CPU target (UNVERIFIED recommendation) that is about 52 nodes, roughly 52 x 730 x $0.65, or about $24,700 per month (node price UNVERIFIED), with storage negligible at 1TB x $0.17.
+At the 60% maximum CPU utilization that Google recommends for latency-optimized clusters (90% for throughput-optimized; Google Cloud docs, as of 2026-10), that is 60 nodes, roughly 60 x 730 x $0.65, or about $28,500 per month (Google Cloud pricing page, as of 2026-10), with storage negligible at 1TB x $0.17.
 The structural conclusion: request-unit pricing punishes write-heavy streaming features, and node pricing rewards sustained throughput but makes you own headroom and autoscaling.
-DynamoDB provisioned capacity with reserved capacity would narrow the gap, but those prices were not verified this session.
-Cross-cloud replication of 20,000 updates/s per direction at about 600 bytes is 12 MB/s, or about 31.5 TB per month per direction, roughly $2,800 per month at $0.09/GB (UNVERIFIED), against about 4x that for raw-event replication.
+DynamoDB provisioned capacity with reserved capacity would narrow the gap, but this comparison does not price it.
+Cross-cloud replication of 20,000 updates/s per direction at about 600 bytes is 12 MB/s, or about 31.5 TB per month per direction, roughly $2,700 per month on AWS us-east-1 internet egress tiers ($0.09/GB for the first 10 TB, $0.085/GB for the next 40 TB; AWS Price List API, as of 2026-10), against about 4x that for raw-event replication.
 See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]].
 
 ## Failure Modes and Pitfalls
@@ -464,7 +479,7 @@ See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Ne
 ### The null entity hot key
 
 Anonymous traffic often collapses to an entity ID like "0", "unknown", or the empty string, which turns the busiest key in the system into one partition.
-DynamoDB adaptive capacity can isolate a hot item, but one key cannot exceed the per-partition limits of 3,000 RCU and 1,000 WCU (third-party summary of AWS docs, as of 2026-10).
+DynamoDB adaptive capacity can isolate a hot item, but one key cannot exceed the per-partition limits of 3,000 RCU and 1,000 WCU (AWS docs, as of 2026-10).
 In Bigtable, one row lives in one tablet on one node.
 Mitigation: reject null keys at ingestion, serve population-default features from the in-process manifest, and for real celebrity keys, write N salted replicas and read one at random.
 
@@ -491,14 +506,14 @@ Mitigation: immutable numeric IDs, tombstones, a fingerprint in every record hea
 
 ### TTL is not a read-time filter
 
-DynamoDB TTL deletes expired items in the background rather than at the moment of expiry, so a read can return an item past its TTL.
+DynamoDB TTL deletes expired items in the background, typically within a few days of expiry rather than at the moment of expiry, so a read can return an item past its TTL (AWS docs, as of 2026-10).
 Readers must compare the stored expiry against the current time themselves.
 
 ### Control-plane and DNS dependencies on the read path
 
-In the October 2025 us-east-1 event, AWS described a race condition in DynamoDB's DNS management automation that left the regional endpoint without valid DNS records, and that cascaded into many dependent services ([AWS post-event summary](https://aws.amazon.com/message/101925/), details recalled, UNVERIFIED this session).
+In the 2025-10-19/20 us-east-1 event, AWS described a latent race condition in DynamoDB's DNS management automation that left the regional endpoint with an empty DNS record for about 3 hours, and that cascaded into many dependent services for roughly 14.5 hours in total ([AWS post-event summary](https://aws.amazon.com/message/101925/), as of 2026-10).
 A feature store whose model servers resolve only the regional DynamoDB endpoint in one region fails closed in that scenario, while a design that serves defaults or a peer cell fails soft.
-In June 2025, Google Cloud reported a global outage triggered by a Service Control policy change with blank fields hitting an unguarded code path, which affected API access across many products ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), details recalled, UNVERIFIED this session).
+On 2025-06-12, Google Cloud reported a global outage triggered by a quota policy change with blank fields hitting an unhandled null pointer in new Service Control code that had no feature flag, which affected API access across many products ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-10).
 The lesson for this design is that dual-cloud only pays off if each cell's request path has no runtime dependency on the other cloud or on any global control plane.
 That includes no synchronous registry lookups and no cross-cloud token exchange on the request path.
 See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].

@@ -21,16 +21,38 @@ sources:
   - "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/"
   - "https://sre.google/sre-book/handling-overload/"
   - "https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues"
+  - "https://platform.claude.com/docs/en/build-with-claude/claude-platform-on-aws"
+  - "https://platform.claude.com/docs/en/build-with-claude/claude-models-on-google-cloud/google-managed"
+  - "https://platform.claude.com/docs/en/build-with-claude/claude-models-on-google-cloud/overview"
+  - "https://platform.claude.com/docs/en/build-with-claude/prompt-caching"
+  - "https://platform.claude.com/docs/en/about-claude/pricing"
+  - "https://platform.claude.com/docs/en/build-with-claude/streaming"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/quotas"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/vpc-interface-endpoints.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/geographic-cross-region-inference.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/security-iam-awsmanpol.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_iam-condition-keys.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ConverseStream.html"
+  - "https://docs.aws.amazon.com/transcribe/latest/dg/streaming-setting-up.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/application-load-balancers.html"
+  - "https://aws.amazon.com/privatelink/pricing/"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/08/amazon-bedrock-fms-batch-inference-50-price/"
+  - "https://docs.cloud.google.com/vpc/docs/configure-private-service-connect-apis"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/supported-products"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://aws.amazon.com/message/101925/"
 ---
 
 # Claude on Bedrock and Vertex AI
 
 ## TL;DR
 
-You can reach Claude through four separate control planes: the legacy Bedrock integration (InvokeModel and Converse, for Opus 4.6 and earlier), the newer Bedrock integration that uses the Messages API shape (Opus 4.7 and later), Claude Platform on AWS (Anthropic model IDs and Anthropic's lifecycle), and Vertex AI publisher endpoints (Anthropic docs, as of 2026-10).
-Bedrock admits a request by reserving input tokens plus `max_tokens` against a per-model, per-Region token quota, then settles at input plus cache writes plus output times a burndown multiplier of 5x or 15x, so an oversized `max_tokens` cuts the concurrency you get even though it costs nothing extra (AWS docs, as of 2026-10).
+You can reach Claude through four separate control planes covered here: the legacy Bedrock integration (InvokeModel and Converse, for Opus 4.6 and earlier), the newer Bedrock integration that uses the Messages API shape on the `bedrock-mantle` endpoint (Opus 4.7 and later), Claude Platform on AWS (Anthropic model IDs and Anthropic's lifecycle), and Vertex AI publisher endpoints, plus an Anthropic-managed Google Cloud offering this chapter only touches on (Anthropic docs, as of 2026-10).
+Bedrock's `bedrock-runtime` endpoint admits a request by reserving input tokens plus `max_tokens` against a per-model, per-Region token quota, then settles at input plus cache writes plus output times a burndown multiplier of 5x, 10x, or 15x, so an oversized `max_tokens` cuts the concurrency you get even though it costs nothing extra; `bedrock-mantle` instead uses separate input and output quotas with no burndown (AWS docs, as of 2026-10).
 Prompt caching reuses an exact prefix and is scoped per account and per Region on Bedrock, so a router that spreads requests across Regions can turn caching into a net cost: the break-even warm-hit probability is 21.7% with the 5-minute TTL and 52.6% with the 1-hour TTL (derived below).
-Streaming uses different wire framing on each cloud: Bedrock sends binary AWS event-stream messages with CRC checks, and Vertex sends Server-Sent Events. On both, once the first byte arrives, an error comes in-band under an HTTP 200, and a retry replays and re-bills the whole generation.
+Streaming uses different wire framing per surface: the legacy Bedrock InvokeModel and Converse paths send binary AWS event-stream messages with CRC checks, while the `bedrock-mantle` Messages endpoint and Vertex send Server-Sent Events (Anthropic docs, as of 2026-10). On all of them, once the first byte arrives, an error comes in-band under an HTTP 200, and a retry replays and re-bills the whole generation.
 For private routing, AWS uses interface VPC endpoints plus endpoint policies plus SCP carve-outs for cross-Region profiles, and GCP uses Private Service Connect plus a VPC Service Controls perimeter. Global or cross-Region routing buys capacity at the cost of residency guarantees and cache locality.
 
 ## Mental Model
@@ -71,72 +93,85 @@ The real decision is which admission, routing, and cache-locality semantics you 
 
 Anthropic now documents two separate Bedrock integrations.
 The legacy integration covers Claude Opus 4.6 and earlier and uses InvokeModel and Converse with ARN-versioned model identifiers such as `anthropic.claude-haiku-4-5-20251001-v1:0`. Haiku 4.5 is also offered through a global cross-Region profile (Anthropic docs, as of 2026-10).
-The newer integration, "Claude in Amazon Bedrock", covers Opus 4.7 and later and uses unversioned IDs with an `anthropic.` prefix, for example `anthropic.claude-opus-5` (Anthropic docs, as of 2026-10).
+Newer models (Opus 4.7 and later, Sonnet 5 and 5.5, Haiku 5.5, Fable 5 and 5.1) are also reachable through `InvokeModel` on `bedrock-runtime`, served by the same infrastructure as the newer integration, but they have no ARN-versioned IDs (Anthropic docs, as of 2026-10).
+The newer integration, "Claude in Amazon Bedrock", covers Opus 4.7 and later and uses unversioned IDs with an `anthropic.` prefix, for example `anthropic.claude-opus-5-5` or `anthropic.claude-sonnet-5-5` (Anthropic docs, as of 2026-10).
+It is served at `https://bedrock-mantle.{region}.api.aws/anthropic/v1/messages`, streams standard SSE, and authorizes the IAM action `bedrock-mantle:CreateInference` (Anthropic docs and AWS docs, as of 2026-10).
 Anthropic says this newer integration runs on AWS-managed infrastructure with zero operator access, meaning Anthropic staff cannot reach the inference infrastructure, and that it accepts the same Messages API request shape as Anthropic's first-party API (Anthropic docs, as of 2026-10).
 Its recommended authentication is a Bedrock service role: an administrator provisions the role and grants developers `iam:PassRole` on its ARN (Anthropic docs, as of 2026-10).
 Access is gated per model. Anthropic lists Claude Fable 5.1, Fable 5, Opus 4.8, Sonnet 5, Opus 4.7, and Haiku 4.5 as open to all Bedrock customers, while Claude Mythos Preview requires an invitation through Project Glasswing and a dedicated, allowlisted AWS account (Anthropic docs, as of 2026-10).
-Claude Platform on AWS is a third surface. It uses Anthropic's first-party model IDs such as `claude-opus-4-6`, and its model lifecycle follows Anthropic's deprecation schedule rather than Bedrock's (Anthropic docs, as of 2026-10).
-On Vertex AI, Claude is a publisher model. The model is named in the URL path (`publishers/anthropic/models/{model}`) and called through `:rawPredict` or `:streamRawPredict`; the request body carries `anthropic_version: "vertex-2023-10-16"` instead of a `model` field; the location is either a region or `global` (UNVERIFIED as of 2026-10).
-On the legacy Bedrock InvokeModel path, the body carries `anthropic_version: "bedrock-2023-05-31"` and the model is named in the `modelId` path parameter (UNVERIFIED as of 2026-10).
+Opus 5.5, Sonnet 5.5, and Haiku 5.5 follow per-model Bedrock access criteria, and Mythos 5 and 5.1 are limited-availability models that require verification (Anthropic docs, as of 2026-10).
+Claude Platform on AWS is a third surface, operated by Anthropic rather than AWS, at `https://aws-external-anthropic.{region}.api.aws/v1/{endpoint}` with AWS Marketplace billing (Anthropic docs, as of 2026-10).
+It uses Anthropic's first-party model IDs such as `claude-opus-4-6` or `claude-opus-5-5`, with no `anthropic.` prefix (Anthropic docs, as of 2026-10). Because Anthropic operates it, its model lifecycle follows Anthropic's deprecation schedule rather than Bedrock's (inferred: Anthropic docs say partner-operated platforms set their own lifecycle dates, as of 2026-10).
+On Vertex AI, Claude is a publisher model. The model is named in the URL path (`publishers/anthropic/models/{model}`) and called through `:rawPredict` or `:streamRawPredict`; the request body carries `anthropic_version: "vertex-2023-10-16"` (or API version `2026-10-21`) instead of a `model` field; the location is `global`, a multi-region (`us` or `eu`), or a single region (Anthropic docs, as of 2026-10).
+Multi-region and regional endpoints cost 10 percent more than global, and regional endpoints serve only Sonnet 4.6 and earlier models (Anthropic docs, as of 2026-10).
+Google's current documentation presents this surface as part of the Gemini Enterprise Agent Platform, still served by `aiplatform.googleapis.com`, and Anthropic now calls it "Claude Models on Google Cloud (Google managed)" (Google Cloud and Anthropic docs, as of 2026-10).
+A separate "Claude Models on Google Cloud (Anthropic managed)" offering serves the native Claude API at `claude.googleapis.com` with Google Cloud Marketplace billing and Anthropic-managed rate limits; this chapter does not cover it in depth (Anthropic docs, as of 2026-10).
+On the legacy Bedrock InvokeModel path, the body carries `anthropic_version: "bedrock-2023-05-31"` and the model is named in the `modelId` path parameter (Anthropic docs and AWS docs, as of 2026-10).
 
-The operational consequence is that "Claude on AWS" is three products, each with its own ID scheme, lifecycle, and possibly its own endpoint surface.
+The operational consequence is that "Claude on AWS" is three products, each with its own ID scheme, lifecycle, and endpoint host (`bedrock-runtime`, `bedrock-mantle`, and `aws-external-anthropic`).
 AWS's scaling guide notes that Bedrock now exposes two endpoint surfaces that share one inference engine but apply quotas differently (AWS docs, as of 2026-10).
-This chapter documents the quota behavior of the `bedrock-runtime` surface only. I could not verify the name and quota semantics of the second surface, so check them before you migrate (UNVERIFIED as of 2026-10).
+The second surface is `bedrock-mantle.{region}.api.aws`. It enforces no RPM quota, uses separate per-model, per-Region input-token and output-token quotas with no burndown, checks input tokens plus `max_tokens` against the input quota at admission, and keeps its allocations independent of `bedrock-runtime` (AWS docs, as of 2026-10).
+Anthropic lists the Claude default on this surface as 2 million input tokens per minute, raisable to 5 million input and 500,000 output tokens per minute without Anthropic approval (Anthropic docs, as of 2026-10).
+The rest of this chapter's quota math describes `bedrock-runtime`, so re-derive it before you migrate.
 
 ### Control plane versus data plane
 
 Model access grants, quota increases, inference profile discovery, and provisioned capacity purchases all belong to the control plane.
 Invoke, Converse, rawPredict, and their streaming variants belong to the data plane.
 The static-stability rule from [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]] applies directly here. Never call `ListFoundationModels`, `GetInferenceProfile`, or Model Garden listing APIs on the request path. Resolve model IDs at deploy time and ship them as configuration.
-GCP's June 2025 global incident is the cautionary case. A bad policy change crashed Service Control, the component that authorizes and quota-checks Google API calls, and it took down API surfaces including Vertex AI. That shows the admission check is a shared dependency that sits on the data path, not off to the side ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMB9yLsU), UNVERIFIED link as of 2026-10).
+GCP's June 12, 2025 global incident is the cautionary case. A policy change with blank fields hit an unhandled code path in a new Service Control feature, the component that authorizes and quota-checks Google API calls, and the resulting null-pointer crash loop took down API surfaces including Vertex AI Online Prediction. That shows the admission check is a shared dependency that sits on the data path, not off to the side ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-10).
 
 ### Quota admission: reservation, adjustment, settlement
 
 AWS documents a three-stage token accounting model for `bedrock-runtime` (AWS docs and AWS ML blog, as of 2026-10):
 
-1. At admission, the request is debited its total input tokens plus `max_tokens`.
+1. At admission, the request is debited its uncached input and cache-write tokens plus `max_tokens`.
 2. While it runs, the debit is adjusted periodically to reflect the output tokens actually generated.
 3. At completion, the final charge is `InputTokenCount + CacheWriteInputTokens + OutputTokenCount x burndown_rate`, and unused reservation is returned.
 
-`CacheReadInputTokens` do not count toward the quota at all (AWS ML blog, as of 2026-10).
-The burndown rate for Claude 4.8-version models is 15x on output tokens, and the AWS page lists other current Claude models at 5x (AWS docs, as of 2026-10). The exact membership of the 5x list was truncated in my source and is UNVERIFIED.
+`CacheReadInputTokens` do not count toward the quota at all (AWS docs and AWS ML blog, as of 2026-10).
+The burndown rate on output tokens is 15x for Claude version 4.8 models, 10x for Claude Opus 5.5, Sonnet 5, Opus 5, and Fable 5.1, and 5x for all other Anthropic models at version 4.7 and below (AWS docs, as of 2026-10). The AWS page does not name a rate for Sonnet 5.5, Haiku 5.5, or Fable 5, so check their model cards.
+Burndown applies only on `bedrock-runtime`; models served on `bedrock-mantle` have separate input and output quotas instead (AWS docs, as of 2026-10).
 Quotas are per model and per Region and count input and output together. Some models also have a requests-per-minute quota, and others are governed only by tokens (AWS docs, as of 2026-10).
 
 Three mechanisms follow from this, and none of them appears in a getting-started guide.
 
 First, burst admission is limited by reservation, while steady-state throughput is limited by settlement.
-With a per-minute bucket Q, a burst that arrives before any refunds can admit about `floor(Q / (I + M))` requests, where I is input tokens and M is `max_tokens`.
+With a per-minute bucket Q, a burst that arrives before any refunds can admit about `floor(Q / (I + M))` requests, where I is uncached input plus cache-write tokens and M is `max_tokens`.
 Sustained throughput instead approaches `Q / (I_uncached + C_w + b x O)` requests per minute, where O is actual output tokens and b is the burndown rate.
 Take a hypothetical Q of 2,000,000 tokens per minute, 8,000 input tokens, `max_tokens` of 32,000, and 1,000 actual output tokens at 5x. Burst admission is 50 requests, while settled cost is 13,000 tokens per request, about 153 requests per minute sustained.
 Cutting `max_tokens` to 2,000 raises the burst ceiling to 200 without changing the bill at all, because `max_tokens` affects quota, not cost.
 
-Second, caching helps settlement more than admission.
-Cache-read tokens are free at settlement, but at admission the provider cannot yet know whether a prefix will hit, and AWS describes the admission debit as total input tokens. So a cached prefix most likely still counts against burst headroom (inference from the documented stages; UNVERIFIED as of 2026-10).
+Second, caching helps admission as well as settlement, at least by AWS's own arithmetic.
+Cache-read tokens are free at settlement, and AWS's worked example computes the admission debit as 3,000 uncached input + 1,000 cache-write + 32,000 `max_tokens` = 36,000, leaving its 4,000 cache-read tokens out (AWS docs, as of 2026-10).
+So a warm prefix appears not to count against burst headroom either; how the front end knows at admission that a prefix will hit is not documented, so treat a cold or scattered cache as the worst case.
 
 Third, settlement can exceed reservation.
 If output burns down at 5x and the reservation is `input + max_tokens` at 1x, a request that uses most of its `max_tokens` settles above what was reserved. That is why the adjustment stage exists, and it is also why a long, verbose stream can start throttling its neighbors partway through.
-The source I read does not say whether the admission debit applies the burndown multiplier to `max_tokens` (UNVERIFIED as of 2026-10).
+AWS's examples confirm both points: the admission debit counts `max_tokens` at 1x, and with `max_tokens` of 1,250 a request reserves 5,250 tokens but settles at 9,000 (AWS docs, as of 2026-10).
 
 This is the reservation-style admission control described in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control|Load Shedding, Backpressure, and Admission Control]], and it matches the per-tenant fairness approach in the AWS Builders' Library article [Fairness in multi-tenant systems](https://aws.amazon.com/builders-library/fairness-in-multi-tenant-systems/).
 Your gateway should copy the provider's algorithm: keep a local token bucket per model and Region that debits `I + M` at admission and refunds at settlement, so it sheds load before the provider returns a 429.
-On Vertex AI, Claude quotas are likewise per model and per location, covering requests and tokens per minute, with the `global` location counted separately from regional locations. I could not verify the exact quota names or whether Vertex uses a burndown multiplier (UNVERIFIED as of 2026-10).
+On Vertex AI, Claude quotas are likewise per model and per location, covering requests and tokens per minute, and the `global` endpoint and each multi-region endpoint are independent buckets (Google Cloud docs, as of 2026-10).
+Quota names follow the pattern `online_prediction_requests_per_base_model` (with `global_` and `us_multi_region_` or `eu_multi_region_` variants), and token quotas are either combined or split into input and output; current models count uncached and cache-write input tokens but not cache reads, and models launched after May 26, 2026 share one quota per model lineage (Google Cloud docs, as of 2026-10).
+Google's quota page documents no burndown multiplier and does not say whether `max_tokens` is reserved at admission.
 
 ### Prompt caching: what the API promises and why
 
-The contract, verified for Bedrock: up to four cache checkpoints per request, TTLs of 5 minutes or 1 hour, and checkpoints allowed in system prompts, message content, and tool definitions. Converse marks checkpoints with a `cachePoint` block, and cache entries are scoped to an individual AWS account and Region (AWS ML blog, as of 2026-10).
-The default 5-minute TTL is refreshed on every hit. The 1-hour TTL costs 2x the base input price to write (Anthropic cookbook, as of 2026-10).
-A 5-minute write costs 1.25x base input and a read costs about 0.1x (third-party summaries consistent with Anthropic pricing, as of 2026-10).
+The contract, verified for Bedrock: up to four cache checkpoints per request, TTLs of 5 minutes or 1 hour, and checkpoints allowed in system prompts, message content, and tool definitions. Converse marks checkpoints with a `cachePoint` block, and cache entries are scoped to an individual AWS account and Region (AWS docs for the checkpoint contract; AWS ML blog for the scope, as of 2026-10).
+The default 5-minute TTL is refreshed on every hit, and Anthropic measures the lifetime from the start of the request that writes or reads the entry. The 1-hour TTL costs 2x the base input price to write (Anthropic docs, as of 2026-10).
+A 5-minute write costs 1.25x base input and a read costs 0.1x on most models, but 0.05x on Opus 5.5 and Sonnet 5.5 and 0.025x on Fable 5.1 and Mythos 5.1 ([Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing), as of 2026-10).
 The minimum cacheable prefix is set per model version and is not monotonic across versions:
 
-- Sonnet 4.5 and Sonnet 4.6 need at least 1,024 tokens per checkpoint, and the 4.x Opus models AWS describes need at least 4,096 (AWS ML blog, as of 2026-10).
-- Haiku 4.5 needs 4,096 (Anthropic cookbook, as of 2026-10).
-- Some newer models accept a cumulative prefix as short as 512 tokens (AWS ML blog, as of 2026-10), and a third-party table assigns 512 to Opus 5 (UNVERIFIED as of 2026-10).
+- Sonnet 4.5, Sonnet 4.6, Sonnet 5, and Opus 4.8 need at least 1,024 tokens per checkpoint, and AWS lists Opus 4.5, 4.6, and 4.7 at 4,096 (AWS docs, as of 2026-10). Anthropic's own table lists Opus 4.7 at 2,048, so measure on the surface you use.
+- Haiku 4.5 needs 4,096 (AWS docs and Anthropic docs, as of 2026-10).
+- Opus 5, Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5, and Fable 5.1 accept a cumulative prefix as short as 512 tokens (AWS docs and Anthropic docs, as of 2026-10).
 
-If a prefix is below the minimum, the request succeeds without caching and without any error. The only evidence is that the cache-read counter stays at zero (third-party docs, as of 2026-10).
+If a prefix is below the minimum, the request succeeds without caching and without any error. The only evidence is that both cache counters stay at zero (Anthropic docs and AWS docs, as of 2026-10).
 
 Why the match has to be exact: in a causal transformer, the key and value vectors at position t are functions of every token at positions up to t.
 Change one byte at position k and the KV state for every position from k onward is invalid. So the only reusable unit is a prefix, and the cache key has to be a hash over everything up to the breakpoint.
-This is why the documented processing order is tools, then system, then messages (UNVERIFIED as of 2026-10). Editing a tool definition invalidates everything cached after it, while appending a conversation turn invalidates nothing upstream.
+This is why the documented processing order is tools, then system, then messages (AWS docs and Anthropic docs, as of 2026-10). Editing a tool definition invalidates everything cached after it, while appending a conversation turn invalidates nothing upstream.
 The research behind this mechanism is public, even though Anthropic's own implementation is not.
 
 - PagedAttention ([Kwon et al., SOSP 2023](https://arxiv.org/abs/2309.06180)) stores KV in fixed-size blocks that requests can share copy-on-write, which makes prefix sharing cheap in memory. See [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_03_KV_Cache_Management_and_PagedAttention|KV-Cache Management and PagedAttention]].
@@ -154,6 +189,7 @@ If every request goes to the one Region that holds the entry, the probability th
 If a cross-Region or global router spreads requests uniformly over k Regions, and each Region keeps its own entry (which AWS's account-and-Region scoping implies), each Region sees a rate of lambda/k and `p = 1 - exp(-(lambda/k) x T)`.
 The expected cost per prefix token, as a multiple of base input price, is then `p x 0.1 + (1 - p) x w`, where w is 1.25 for the 5-minute TTL and 2.0 for the 1-hour TTL.
 Setting that equal to 1.0, the cost without caching, gives break-even values of `p* = (w - 1) / (w - 0.1)`, which is 0.217 for the 5-minute TTL and 0.526 for the 1-hour TTL.
+On Opus 5.5 and Sonnet 5.5, where a read costs 0.05x, the same formula gives 0.208 and 0.513, so the conclusions below barely move.
 
 | Prefix arrival rate | Regions in rotation (k) | Warm-hit probability (5m TTL) | Cost multiplier vs uncached |
 | --- | --- | --- | --- |
@@ -165,10 +201,10 @@ Setting that equal to 1.0, the cost without caching, gives break-even values of 
 | 0.2 per minute | 4 | 0.221 | 1.00 |
 
 The last row is the trap. A prefix used about once every five minutes is a solid saving when pinned to one Region, and it breaks exactly even once a global profile spreads it across four.
-As I recall, AWS documentation warns that cross-Region inference can produce more cache writes during periods of high demand. That is the same effect seen from the provider's side (UNVERIFIED as of 2026-10).
+AWS documentation warns that with cross-Region inference, "at times of high demand, these optimizations may lead to increased cache writes." That is the same effect seen from the provider's side (AWS docs, as of 2026-10).
 Inside a single Region, the provider's router must also send your request to a replica, or a shared KV tier, that holds the entry. That layer is not visible to you, so treat measured `cache_read_input_tokens` as the only real hit rate.
 
-A second mechanism hurts fan-out workloads. When N parallel requests share a new prefix, they all miss and all pay the write premium, because an entry is not readable until it has been created. Anthropic has historically documented this as "after the first response begins" (UNVERIFIED as of 2026-10).
+A second mechanism hurts fan-out workloads. When N parallel requests share a new prefix, they all miss and all pay the write premium, because an entry is not readable until it has been created. Anthropic documents that a cache entry only becomes available after the first response starts (Anthropic docs, as of 2026-10).
 The fix is a warm-up request: send one request, wait for its first streamed token, then fan out the other N-1.
 
 ### Streaming wire formats and failure semantics
@@ -180,25 +216,25 @@ Bedrock `InvokeModelWithResponseStream` and `ConverseStream` return `application
 - a 4-byte CRC32 over that prelude,
 - typed headers such as `:event-type` and `:message-type`,
 - the payload,
-- a 4-byte CRC32 over the whole message (UNVERIFIED as of 2026-10).
+- a 4-byte CRC32 over the whole message, for 16 bytes of fixed overhead per message ([AWS event stream encoding](https://docs.aws.amazon.com/transcribe/latest/dg/streaming-setting-up.html#streaming-event-stream), as of 2026-10).
 
-On InvokeModel streams, each payload chunk wraps one Anthropic event as JSON bytes. Converse streams instead emit Bedrock-normalized events such as `messageStart`, `contentBlockDelta`, `messageStop`, and a final `metadata` event that carries usage and latency (UNVERIFIED as of 2026-10).
-Vertex `streamRawPredict` returns `text/event-stream` SSE with Anthropic's native event types: `message_start`, `content_block_start`, `content_block_delta`, `content_block_stop`, `message_delta`, `message_stop`, plus `ping` keepalives and `error` (UNVERIFIED as of 2026-10).
+On InvokeModel streams, each payload chunk wraps one Anthropic event as JSON bytes (UNVERIFIED as of 2026-10: inferred from the SDK parsing, not stated in the pages read). Converse streams instead emit Bedrock-normalized events `messageStart`, `contentBlockStart`, `contentBlockDelta`, `contentBlockStop`, `messageStop`, and a final `metadata` event that carries usage and `latencyMs`, plus in-band exception events such as `throttlingException` and `modelStreamErrorException` ([ConverseStream API reference](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ConverseStream.html), as of 2026-10).
+Vertex `streamRawPredict` and the `bedrock-mantle` Messages endpoint return `text/event-stream` SSE with Anthropic's native event types: `message_start`, `content_block_start`, `content_block_delta`, `content_block_stop`, `message_delta`, `message_stop`, plus `ping` keepalives and `error` ([Anthropic streaming docs](https://platform.claude.com/docs/en/build-with-claude/streaming), as of 2026-10).
 
 Four engineering consequences follow.
 First, any middlebox that buffers or compresses responses (a misconfigured reverse proxy, a gzip filter, a non-streaming API gateway integration) collapses time to first token into total latency, and every server-side metric still looks healthy.
-Second, long gaps between tokens, for example during extended reasoning or tool-heavy turns, run into idle timeouts. An ALB's default idle timeout is 60 seconds (UNVERIFIED as of 2026-10), and the SSE `ping` events exist for exactly this reason.
-Third, once headers are sent the HTTP status is fixed at 200, so throttling or overload mid-stream arrives as an in-band exception event, and a client that checks only status codes records a truncated answer as a success.
+Second, long gaps between tokens, for example during extended reasoning or tool-heavy turns, run into idle timeouts. An ALB's default idle timeout is 60 seconds (AWS ELB docs, as of 2026-10), and the SSE `ping` events exist for exactly this reason.
+Third, once headers are sent the HTTP status is fixed at 200, so throttling or overload mid-stream arrives as an in-band exception event (Anthropic documents an in-stream `overloaded_error` that would be an HTTP 529 outside a stream, as of 2026-10), and a client that checks only status codes records a truncated answer as a success.
 Fourth, there is no transparent retry. Retrying replays the prompt (at least it may hit the cache), regenerates from the beginning, and bills the partial output twice. Agents should therefore checkpoint at tool-call boundaries and retry only from the last completed turn. This applies the deadline and retry-budget discipline from [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Resilient Communication: Retries, Jitter, and Circuit Breakers]].
 
 ### Private endpoint routing and cross-Region paths
 
-On AWS, an interface VPC endpoint for `com.amazonaws.<region>.bedrock-runtime` places ENIs in your subnets. With private DNS enabled, the public hostname resolves to those private IPs, so SDKs need no code change (UNVERIFIED as of 2026-10). See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_03_VPC_Networking_Internals|VPC Networking Internals]] for how PrivateLink carries that traffic.
+On AWS, an interface VPC endpoint for `com.amazonaws.<region>.bedrock-runtime` places ENIs in your subnets. With private DNS enabled, the public hostname resolves to those private IPs, so SDKs need no code change (AWS docs, as of 2026-10). The newer integration needs its own endpoint service, `com.amazonaws.<region>.bedrock-mantle`, whose endpoint policies name the `bedrock-mantle:CreateInference` action (AWS docs, as of 2026-10). See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_03_VPC_Networking_Internals|VPC Networking Internals]] for how PrivateLink carries that traffic.
 The endpoint policy is a second, independent authorization layer, and an `aws:SourceVpce` condition in identity or resource policies can require that calls come through the endpoint.
 With a cross-Region or global inference profile, traffic still enters through your source Region's endpoint. Bedrock then forwards it to a destination Region on the provider side, so private connectivity is decided by the source Region and residency is decided by the profile's geography.
-IAM must allow both the inference profile ARN and the underlying foundation-model ARNs in every destination Region, and an SCP that denies "all Regions except X" silently breaks the profile (UNVERIFIED as of 2026-10). This interaction is covered under [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]].
-On GCP, a Private Service Connect endpoint for Google APIs gives you an internal IP that fronts `*.googleapis.com`, paired with a private DNS zone. A VPC Service Controls perimeter that includes `aiplatform.googleapis.com` then turns IAM-authorized calls from outside the perimeter into denials (UNVERIFIED as of 2026-10). See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls: Security Perimeters]].
-Regional Vertex locations use `{region}-aiplatform.googleapis.com`, and the `global` location uses `aiplatform.googleapis.com`. Your DNS overrides must cover both if you use both (UNVERIFIED as of 2026-10).
+IAM must allow both the inference profile ARN and the underlying foundation-model ARNs in the source Region and every destination Region, and an SCP that denies "all Regions except X" makes the profile fail when it routes to a blocked Region unless you add an exception keyed on `bedrock:InferenceProfileArn`; global profiles additionally need `aws:RequestedRegion` of `unspecified` allowed (AWS docs, as of 2026-10). This interaction is covered under [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]].
+On GCP, a Private Service Connect endpoint for Google APIs gives you an internal IP that fronts `*.googleapis.com`, paired with a private DNS zone. A VPC Service Controls perimeter that includes `aiplatform.googleapis.com`, which VPC-SC supports at GA, then turns IAM-authorized calls from outside the perimeter into denials (Google Cloud docs, as of 2026-10). See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls: Security Perimeters]].
+Regional Vertex locations use `{region}-aiplatform.googleapis.com`, the `global` location uses `aiplatform.googleapis.com`, and the `us` and `eu` multi-regions use `aiplatform.us.rep.googleapis.com` and `aiplatform.eu.rep.googleapis.com` (Anthropic docs, as of 2026-10). Your DNS overrides must cover every host you use, and Google documents regional API endpoints separately from the global PSC-for-APIs endpoint, so check coverage of the `rep` hosts.
 
 ### Failure domain boundaries
 
@@ -210,46 +246,47 @@ Model lifecycle forms a third failure domain. A model ID can be retired on one s
 
 | Quantity | Value | Source |
 | --- | --- | --- |
-| Max cache checkpoints per request (Bedrock) | 4 | (AWS ML blog, as of 2026-10) |
-| Cache TTL options | 5 min (refreshed on hit) or 1 h | (AWS ML blog; Anthropic cookbook, as of 2026-10) |
-| Cache write price, 5-min TTL | 1.25x base input | (third-party summaries of Anthropic pricing, as of 2026-10) |
-| Cache write price, 1-h TTL | 2x base input | (Anthropic cookbook, as of 2026-10) |
-| Cache read price | about 0.1x base input | (third-party summaries of Anthropic pricing, as of 2026-10) |
-| Min cache prefix, Sonnet 4.5 and 4.6 | 1,024 tokens per checkpoint | (AWS ML blog, as of 2026-10) |
-| Min cache prefix, Haiku 4.5 | 4,096 tokens | (Anthropic cookbook, as of 2026-10) |
-| Min cache prefix, Opus 4.x as described by AWS | 4,096 tokens | (AWS ML blog, as of 2026-10) |
-| Min cumulative cache prefix, newest listed models | 512 tokens | (AWS ML blog, as of 2026-10) |
+| Max cache checkpoints per request (Bedrock) | 4 | (AWS docs, as of 2026-10) |
+| Cache TTL options | 5 min (refreshed on hit) or 1 h | (AWS docs; Anthropic docs, as of 2026-10) |
+| Cache write price, 5-min TTL | 1.25x base input | (Anthropic pricing docs, as of 2026-10) |
+| Cache write price, 1-h TTL | 2x base input | (Anthropic pricing docs, as of 2026-10) |
+| Cache read price | 0.1x base input; 0.05x on Opus 5.5 and Sonnet 5.5; 0.025x on Fable 5.1 and Mythos 5.1 | (Anthropic pricing docs, as of 2026-10) |
+| Min cache prefix, Sonnet 4.5, 4.6, and 5, Opus 4.8 | 1,024 tokens per checkpoint | (AWS docs, as of 2026-10) |
+| Min cache prefix, Haiku 4.5 | 4,096 tokens | (AWS docs; Anthropic docs, as of 2026-10) |
+| Min cache prefix, Opus 4.5, 4.6, and 4.7 as listed by AWS | 4,096 tokens (Anthropic lists Opus 4.7 at 2,048) | (AWS docs; Anthropic docs, as of 2026-10) |
+| Min cumulative cache prefix, Opus 5 and 5.5, Sonnet 5.5, Haiku 5.5, Fable 5 and 5.1 | 512 tokens | (AWS docs; Anthropic docs, as of 2026-10) |
 | Cache scope on Bedrock | per AWS account and Region | (AWS ML blog, as of 2026-10) |
 | Output burndown, Claude 4.8-version models | 15x | (AWS docs, as of 2026-10) |
-| Output burndown, other listed Claude models | 5x | (AWS docs, as of 2026-10; exact model list UNVERIFIED) |
-| Cache-read tokens counted against Bedrock TPM | no | (AWS ML blog, as of 2026-10) |
-| Bedrock token quota scope | per model, per Region, input and output combined | (AWS docs, as of 2026-10) |
+| Output burndown, other listed Claude models | 10x for Opus 5.5, Sonnet 5, Opus 5, Fable 5.1; 5x for version 4.7 and below; `bedrock-runtime` only | (AWS docs, as of 2026-10) |
+| Cache-read tokens counted against Bedrock TPM | no | (AWS docs; AWS ML blog, as of 2026-10) |
+| Bedrock token quota scope | `bedrock-runtime`: per model, per Region, input and output combined; `bedrock-mantle`: separate input and output TPM, no RPM | (AWS docs, as of 2026-10) |
+| Claude in Amazon Bedrock default quota | 2M input TPM; up to 5M input and 500k output TPM without Anthropic approval | (Anthropic docs, as of 2026-10) |
 | Legacy and new Bedrock integration boundary | Opus 4.6 and earlier vs Opus 4.7 and later | (Anthropic docs, as of 2026-10) |
 | Haiku 4.5 legacy Bedrock base ID | `anthropic.claude-haiku-4-5-20251001-v1:0`, global profile available | (Anthropic docs, as of 2026-10) |
 | Mythos Preview account allowlisting | typically within 24 hours | (Anthropic docs, as of 2026-10) |
 | Break-even warm-hit probability, 5-min TTL | 21.7% | derived from the multipliers above |
 | Break-even warm-hit probability, 1-h TTL | 52.6% | derived from the multipliers above |
 | 1-h TTL beats 5-min TTL when gaps exceed 5 min and reuse is | at least 2 per hour | derived: 1.25n > 2 + 0.1(n-1) |
-| Per-token list prices for any Claude model on either cloud | check the Bedrock and Vertex pricing pages | UNVERIFIED as of 2026-10 |
-| Vertex regional-endpoint price premium over global | UNVERIFIED | UNVERIFIED as of 2026-10 |
-| Default ALB idle timeout | 60 s | UNVERIFIED as of 2026-10 |
+| Per-token list prices | Anthropic list: Haiku 4.5 1/5 USD, Sonnet 4.6 3/15 USD, Opus 5.5 4/20 USD per MTok input/output; check the Bedrock and Vertex pricing pages for each cloud | (Anthropic pricing docs, as of 2026-10) |
+| Regional-endpoint price premium over global (Bedrock and Vertex; Vertex multi-region too) | 10 percent, Sonnet 4.5, Haiku 4.5, Opus 4.5 and later | (Anthropic docs, as of 2026-10) |
+| Default ALB idle timeout | 60 s | (AWS ELB docs, as of 2026-10) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | AWS (Bedrock and Claude Platform on AWS) | GCP (Vertex AI) | Critical difference |
 | --- | --- | --- | --- |
-| Integration surfaces | Legacy Bedrock (InvokeModel and Converse, Opus 4.6 and earlier), new Claude in Amazon Bedrock (Messages API shape, Opus 4.7 and later), and Claude Platform on AWS (Anthropic IDs) (Anthropic docs, as of 2026-10) | One publisher-model surface through rawPredict and streamRawPredict (UNVERIFIED as of 2026-10) | AWS gives you three lifecycles to track, GCP gives you one |
-| Model ID format | ARN-versioned (`...-20251001-v1:0`) on legacy, unversioned `anthropic.claude-opus-5` on new, first-party IDs on Claude Platform on AWS | `model@version` style in the URL path (UNVERIFIED as of 2026-10) | ID strings do not carry over between surfaces, so abstract them in config |
-| Request body | `anthropic_version: bedrock-2023-05-31` on InvokeModel, normalized schema on Converse (UNVERIFIED as of 2026-10) | `anthropic_version: vertex-2023-10-16`, no `model` field (UNVERIFIED as of 2026-10) | Converse is AWS-specific, and Messages-shape payloads move most easily |
+| Integration surfaces | Legacy Bedrock (InvokeModel and Converse, Opus 4.6 and earlier), new Claude in Amazon Bedrock (Messages API shape, Opus 4.7 and later), and Claude Platform on AWS (Anthropic IDs) (Anthropic docs, as of 2026-10) | The Google-managed publisher-model surface through rawPredict and streamRawPredict, plus the Anthropic-managed Claude API at `claude.googleapis.com` (Anthropic docs, as of 2026-10) | AWS gives you three lifecycles to track, GCP gives you two |
+| Model ID format | ARN-versioned (`...-20251001-v1:0`) on legacy, unversioned `anthropic.claude-opus-5-5` on new, first-party IDs on Claude Platform on AWS | `model@version` (for example `claude-haiku-4-5@20251001`) in the URL path for models before Claude 4.6, bare Claude API IDs such as `claude-opus-5-5` for 4.6 and later (Anthropic docs, as of 2026-10) | ID strings do not carry over between surfaces, so abstract them in config |
+| Request body | `anthropic_version: bedrock-2023-05-31` on InvokeModel, normalized schema on Converse, native Messages body with `model` on `bedrock-mantle` (Anthropic docs and AWS docs, as of 2026-10) | `anthropic_version: vertex-2023-10-16`, no `model` field (Anthropic docs, as of 2026-10) | Converse is AWS-specific, and Messages-shape payloads move most easily |
 | Authentication | SigV4 with IAM, plus a service role and `iam:PassRole` on the new integration (Anthropic docs, as of 2026-10) | OAuth2 access token from a service account or Workload Identity | Different identity primitives, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation\|Workload Identity Federation]] |
-| Streaming framing | Binary AWS event-stream with per-message CRC32 (UNVERIFIED as of 2026-10) | SSE text frames with `ping` keepalives (UNVERIFIED as of 2026-10) | A shared gateway must parse two framings and normalize the errors |
-| Cache syntax | `cache_control` on InvokeModel and Messages shape, `cachePoint` on Converse (AWS ML blog, as of 2026-10) | `cache_control` as in the Anthropic API (UNVERIFIED as of 2026-10) | Same semantics, different markup on Converse |
-| Cache scope | Account and Region (AWS ML blog, as of 2026-10) | Project and location assumed (UNVERIFIED as of 2026-10) | Cross-Region routing splits the cache on both clouds |
-| Quota model | Per-model, per-Region tokens per minute with reservation of `max_tokens` and output burndown (AWS docs, as of 2026-10) | Per-model, per-location requests and tokens per minute (UNVERIFIED as of 2026-10) | AWS's output burndown makes verbose output cost 5x to 15x more quota |
-| Cross-Region routing | Geographic and global inference profiles, entering through the source Region (Anthropic docs show a global profile for Haiku 4.5, as of 2026-10) | `global` location versus regional locations (UNVERIFIED as of 2026-10) | AWS routes per request behind one ID, while GCP makes you pick the location per call |
-| Private connectivity | Interface VPC endpoint for `bedrock-runtime` with endpoint policy (UNVERIFIED as of 2026-10) | PSC endpoint for the Google APIs bundle (UNVERIFIED as of 2026-10) | The AWS endpoint is per service and per Region, while GCP's PSC fronts many APIs from one IP |
+| Streaming framing | Binary AWS event-stream with per-message CRC32 on InvokeModel and Converse, SSE on the `bedrock-mantle` Messages endpoint (AWS docs; Anthropic docs, as of 2026-10) | SSE text frames with `ping` keepalives (Anthropic docs, as of 2026-10) | A shared gateway must parse two framings and normalize the errors |
+| Cache syntax | `cache_control` on InvokeModel and Messages shape, `cachePoint` on Converse (AWS docs, as of 2026-10) | `cache_control` as in the Anthropic API, with prompt caching listed as supported (Anthropic docs, as of 2026-10) | Same semantics, different markup on Converse |
+| Cache scope | Account and Region (AWS ML blog, as of 2026-10) | Organization-level isolation per Anthropic; per-location scope not documented (UNVERIFIED as of 2026-10) | Cross-Region routing splits the cache on AWS and probably on GCP |
+| Quota model | `bedrock-runtime`: per-model, per-Region tokens per minute with reservation of `max_tokens` and output burndown; `bedrock-mantle`: separate input and output TPM (AWS docs, as of 2026-10) | Per-model requests and tokens per minute per regional, multi-region, or global bucket, with cache reads excluded for current models (Google Cloud docs, as of 2026-10) | AWS's output burndown makes verbose output cost 5x to 15x more quota on `bedrock-runtime` |
+| Cross-Region routing | Geographic and global inference profiles, entering through the source Region (Anthropic docs show a global profile for Haiku 4.5, as of 2026-10) | `global`, `us` or `eu` multi-region, or a single region, where single regions serve only Sonnet 4.6 and earlier (Anthropic docs, as of 2026-10) | AWS routes per request behind one ID, while GCP makes you pick the location per call |
+| Private connectivity | Interface VPC endpoints for `bedrock-runtime` and `bedrock-mantle` with endpoint policies (AWS docs, as of 2026-10) | PSC endpoint for the Google APIs bundle (`all-apis` or `vpc-sc`) (Google Cloud docs, as of 2026-10) | The AWS endpoint is per service and per Region, while GCP's PSC fronts many APIs from one IP |
 | Exfiltration perimeter | SCPs, `aws:SourceVpce` conditions, endpoint policies | VPC Service Controls perimeter around `aiplatform.googleapis.com` | VPC-SC is a single perimeter primitive, while AWS composes several, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter\|Data Perimeter]] |
-| Operator access | Zero operator access stated for the new Bedrock integration (Anthropic docs, as of 2026-10) | Governed by Vertex AI data governance terms (UNVERIFIED as of 2026-10) | Check the claim per surface, because it is documented per surface |
+| Operator access | Zero operator access stated for the new Bedrock integration (Anthropic docs, as of 2026-10) | Governed by Google Cloud's data-governance and zero-data-retention terms (Anthropic docs, as of 2026-10) | Check the claim per surface, because it is documented per surface |
 
 ## Worked Example: Measuring Cache Economics, Quota Headroom, and TTFT on Both Clouds
 
@@ -268,8 +305,8 @@ It creates no persistent cloud resources. You pay only per-token usage, plus the
 ### Prerequisites
 
 On AWS, enable access to the Haiku 4.5 model, then use credentials allowed to call `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` on the inference profile and on the foundation-model ARNs it routes to.
-On GCP, run `gcloud services enable aiplatform.googleapis.com`, enable the Claude model in Model Garden, set up Application Default Credentials (`gcloud auth application-default login`), and install `pip install boto3 "anthropic[vertex]"`.
-The Vertex model string and the global profile ID below follow naming patterns I could not verify for 2026-10, so check them in your console first.
+On GCP, run `gcloud services enable aiplatform.googleapis.com`, enable the Claude model in Model Garden, grant a role with `aiplatform.endpoints.predict` such as `roles/aiplatform.user`, set up Application Default Credentials (`gcloud auth application-default login`), and install `pip install boto3 "anthropic[vertex]"`.
+The Vertex model string `claude-haiku-4-5@20251001` and the Bedrock global profile ID `global.anthropic.claude-haiku-4-5-20251001-v1:0` match Anthropic's model tables (Anthropic docs, as of 2026-10), but confirm availability in your Region or location first.
 
 ### Code
 
@@ -311,7 +348,7 @@ def account(u: dict, max_tokens: int, burndown: float, p_in: float, p_out: float
     cw = u.get("cache_creation_input_tokens", 0) or 0
     cr = u.get("cache_read_input_tokens", 0) or 0
     out = u.get("output_tokens", 0) or 0
-    reserve = inp + cw + cr + max_tokens
+    reserve = inp + cw + max_tokens  # AWS's worked example leaves cache reads out of admission
     settled = inp + cw + out * burndown
     usd = (inp * p_in + cw * p_in * 1.25 + cr * p_in * 0.10 + out * p_out) / 1e6
     return {"input": inp, "cache_write": cw, "cache_read": cr, "output": out,
@@ -413,7 +450,7 @@ When you run against a global profile, repeating the cold and warm pair several 
 
 ### Lab cost estimate
 
-At illustrative Haiku-class prices of 1 USD per million input tokens and 5 USD per million output tokens (UNVERIFIED as of 2026-10), one full run comes to roughly 6,000 x 1.25 write + 2 x 6,000 x 0.1 read + 6,000 x 1.25 write again, plus 4 x 256 output tokens at most, or about 0.02 USD.
+At Haiku 4.5 prices of 1 USD per million input tokens and 5 USD per million output tokens (Anthropic list price, as of 2026-10), one full run comes to roughly 6,000 x 1.25 write + 2 x 6,000 x 0.1 read + 6,000 x 1.25 write again, plus 4 x 256 output tokens at most, or about 0.02 USD.
 Even with an order-of-magnitude pricing error, ten runs stay under 1 USD.
 
 ### Budget alarms
@@ -438,7 +475,7 @@ For a hard stop, use the quota itself as the limiter: request a low quota for th
 ### Optional private path
 
 ```bash
-# AWS: interface endpoint for the runtime API in two subnets (hourly per-AZ and per-GB charges apply, UNVERIFIED as of 2026-10).
+# AWS: interface endpoint for the runtime API in two subnets (hourly per-AZ and per-GB charges apply, AWS PrivateLink pricing as of 2026-10).
 VPCE_ID=$(aws ec2 create-vpc-endpoint --vpc-id "$VPC_ID" --vpc-endpoint-type Interface \
   --service-name "com.amazonaws.us-east-1.bedrock-runtime" \
   --subnet-ids "$SUBNET_A" "$SUBNET_B" --security-group-ids "$SG_ID" --private-dns-enabled \
@@ -473,10 +510,11 @@ Inputs:
 - A measured warm-hit probability of 0.95.
 
 Step 1, reservation per request: 12,000 + 1,500 + 1,024 = 14,524 tokens.
-Step 2, in-flight reservation: with about 0.8 s TTFT plus 400 tokens at an assumed 60 tokens per second, each request lasts about 7.5 s. By Little's law that is about 150 requests in flight, holding about 2.2 million reserved tokens at any moment.
+Step 2, in-flight reservation: with about 0.8 s TTFT plus 400 tokens at an assumed 60 tokens per second, each request lasts about 7.5 s. By Little's law that is about 150 requests in flight, holding about 2.2 million reserved tokens at any moment with a cold cache.
+Because AWS's example leaves cache reads out of the admission debit, warm requests reserve only 1,500 + 1,024 = 2,524 tokens, so at p = 0.95 the expected reservation is about 3,124 tokens and in-flight reservation about 0.47 million; the 2.2 million figure is the cold-cache case that returns right after a failover.
 Step 3, settled quota without caching: 12,000 + 1,500 + 400 x 5 = 15,500 tokens per request, which at 1,200 per minute needs 18.6 million tokens per minute.
 Step 4, settled quota with caching at p = 0.95: 1,500 + 0.05 x 12,000 written + 2,000 = 4,100 tokens per request, which needs 4.9 million tokens per minute, a 3.8x reduction in quota requirement.
-Step 5, cost at illustrative Sonnet-class prices of 3 USD input and 15 USD output per million tokens (UNVERIFIED as of 2026-10): uncached is 0.0465 USD per request, and cached is 0.0162 USD per request, so 46,500 USD versus 16,170 USD per million requests.
+Step 5, cost at Sonnet 4.6-class prices of 3 USD input and 15 USD output per million tokens (Anthropic list price, as of 2026-10; Bedrock and Vertex regional endpoints add 10 percent): uncached is 0.0465 USD per request, and cached is 0.0162 USD per request, so 46,500 USD versus 16,170 USD per million requests.
 Step 6, failover sizing: the standby Region starts cold, so its quota must cover the uncached 18.6 million tokens per minute for at least one TTL window, plus the reservation burst from every client reconnecting at once.
 Step 7, sensitivity: if a global profile drops p from 0.95 to 0.47, the cost per request rises by about 123% (from 0.01617 USD to 0.03604 USD), and the quota requirement more than doubles.
 The full cost model continues in [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_11_End_to_End_Latency_Throughput_and_Cost_Modeling|End-to-End Latency, Throughput, and Cost Modeling]].
@@ -508,7 +546,7 @@ The fix has four parts:
 
 ### Silent cache loss on model upgrade
 
-Minimum cacheable lengths change between model versions in both directions. For example, Haiku 4.5 needs 4,096 tokens while Sonnet 4.5 needs 1,024 (Anthropic cookbook and AWS ML blog, as of 2026-10).
+Minimum cacheable lengths change between model versions in both directions. For example, Haiku 4.5 needs 4,096 tokens while Sonnet 4.5 needs 1,024 (AWS docs and Anthropic docs, as of 2026-10).
 Upgrading from a 1,024-minimum model to a 4,096-minimum model with a 3,000-token prefix disables caching without any error, and input cost and quota consumption jump by up to 10x on that prefix.
 Make a cache-hit canary part of every model rollout gate in [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_06_Progressive_Delivery_and_Deployment_Pipelines|Progressive Delivery and Deployment Pipelines]].
 
@@ -529,20 +567,22 @@ Use token-bucket retry budgets and full jitter, as in the AWS Builders' Library 
 
 ### SCPs and residency conflicts with cross-Region profiles
 
-An organization-wide SCP that denies all Regions except two causes intermittent `AccessDenied` errors from a geographic profile whose destination set includes a third Region. It is intermittent because only some requests route there (UNVERIFIED as of 2026-10).
-The fix is to carve out the inference profile and model ARNs explicitly, or to use in-Region IDs where residency must be exact.
+An organization-wide SCP that denies all Regions except two causes `AccessDenied` errors from a geographic profile whose destination set includes a third Region. AWS documents that cross-Region inference "will fail when trying to route to" a Region the SCP blocks (AWS docs, as of 2026-10).
+Expect the failure on every call rather than only on the calls routed to the blocked Region: AWS says the request "will fail even if other Regions remain allowed" ([AWS inference profile docs](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html), as of 2026-11) and that it evaluates authorization for each candidate destination Region (AWS docs, as of 2026-11).
+That reading comes from the AWS wording; it was not tested against a live account.
+The fix is to carve out the inference profile and model ARNs explicitly, for example with a `bedrock:InferenceProfileArn` exception in the Region-deny SCP, or to use in-Region IDs where residency must be exact (AWS docs, as of 2026-10).
 
 ### Integration and lifecycle drift
 
-Moving from the legacy Bedrock integration to the new one changes model ID format and request schema, and may change the endpoint surface and quota bucket. Check VPC endpoint coverage and quotas before you cut over (UNVERIFIED as of 2026-10).
+Moving from the legacy Bedrock integration to the new one changes model ID format and request schema, and also the endpoint host (`bedrock-mantle`), the VPC endpoint service, the IAM action (`bedrock-mantle:CreateInference`), and the quota bucket, whose allocations are independent of `bedrock-runtime` (AWS docs, as of 2026-10). Check VPC endpoint coverage, IAM, and quotas before you cut over.
 A model that is retired on one surface while still live on another breaks a multi-cloud failover plan that assumed the same model on both sides.
 
 ### Public post-incident reviews
 
-Anthropic's September 2025 postmortem described three overlapping infrastructure bugs that degraded output quality: requests misrouted to servers configured for a different context window, a misconfiguration that corrupted output on some servers, and a compiler issue on TPU in approximate top-k sampling. The impact differed by serving platform, which shows that "the same model" on different clouds runs on different hardware and different routing code ([Anthropic engineering postmortem](https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues), UNVERIFIED link and per-platform details as of 2026-10).
+Anthropic's September 17, 2025 postmortem described three overlapping infrastructure bugs that degraded output quality between August and early September 2025: Sonnet 4 requests misrouted to servers configured for the upcoming 1M-token context window, a TPU misconfiguration that corrupted output on some servers, and an XLA:TPU miscompilation in approximate top-k sampling. The impact differed by serving platform: the routing bug hit the first-party API hardest, peaked at 0.18% of Sonnet 4 requests on Amazon Bedrock, and stayed under 0.0004% on Vertex AI, while the other two bugs affected only the first-party API. That shows "the same model" on different clouds runs on different hardware and different routing code ([Anthropic engineering postmortem](https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues), as of 2026-10).
 The lesson for operators is to run continuous quality canaries on each surface, not just availability probes. An HTTP 200 with degraded output is invisible to SLOs based on success rate. See [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_06_Model_Evaluation_Monitoring_and_Drift_Detection|Model Evaluation, Monitoring, and Drift Detection]].
-AWS's October 2025 us-east-1 event began with a DNS automation race in DynamoDB and cascaded into dependent services ([AWS summary](https://aws.amazon.com/message/101925/), UNVERIFIED link as of 2026-10). The lesson is that an inference stack pinned to one Region inherits that Region's foundational dependencies, whatever the model provider's own availability.
-Google's June 2025 Service Control incident showed that a global admission and policy layer can take out every regional Vertex AI endpoint at once ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMB9yLsU), UNVERIFIED link as of 2026-10). Choosing between regional and global locations does not escape that shared dependency.
+AWS's October 19-20, 2025 us-east-1 event began with a latent race condition in DynamoDB's DNS management system that left the regional endpoint with an empty DNS record, and cascaded into dependent services ([AWS summary](https://aws.amazon.com/message/101925/), as of 2026-10). The lesson is that an inference stack pinned to one Region inherits that Region's foundational dependencies, whatever the model provider's own availability.
+Google's June 12, 2025 Service Control incident showed that a global admission and policy layer can take out every regional Vertex AI endpoint at once ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-10). Choosing between regional and global locations does not escape that shared dependency.
 [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]] dissects these patterns in depth.
 
 ## Security and Cost Angles
@@ -550,9 +590,10 @@ Google's June 2025 Service Control incident showed that a global admission and p
 ### IAM scoping
 
 On the legacy Bedrock integration, grant `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` only on the specific inference-profile ARNs and foundation-model ARNs your workload uses, never on `*`.
-On the new integration, the documented pattern is a service role that developers pass with `iam:PassRole` (Anthropic docs, as of 2026-10). Constrain `iam:PassRole` with an `iam:PassedToService` condition so the role can only be handed to Bedrock (UNVERIFIED as of 2026-10).
+On the new integration, the documented pattern is a service role that developers pass with `iam:PassRole` (Anthropic docs, as of 2026-10). Constrain `iam:PassRole` with an `iam:PassedToService` condition so the role can only be handed to the service you name; AWS documents the key for this purpose and warns that some services do not support it ([IAM condition keys](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_iam-condition-keys.html), as of 2026-11), and `AmazonBedrockFullAccess` sets it to `bedrock.amazonaws.com` ([AWS managed policies for Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/security-iam-awsmanpol.html), as of 2026-11).
+That `bedrock.amazonaws.com` is also the right value for the `bedrock-mantle` service role is UNVERIFIED as of 2026-11: the Anthropic and AWS pages read do not name the service principal for that role, so test the condition before relying on it.
 Add an SCP that denies invocation of any model ARN outside an approved list. This is how you enforce model governance across an organization, because model access grants are made per account. See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_02_AWS_Organizations_and_Account_Governance|AWS Organizations and Account Governance]].
-On GCP, bind the narrowest predefined Vertex AI role that grants prediction to a dedicated service account, and use Workload Identity instead of keys (UNVERIFIED role names as of 2026-10).
+On GCP, bind the narrowest predefined Vertex AI role that grants prediction, such as `roles/aiplatform.user` with `aiplatform.endpoints.predict` (Anthropic docs, as of 2026-10), or a custom role carrying only that permission, to a dedicated service account, and use Workload Identity instead of keys.
 
 ### Network boundaries
 
@@ -572,8 +613,8 @@ The zero-operator-access property is documented for the new Bedrock integration 
 2. Model tiering. Route classification and extraction to Haiku-class models and reserve Opus-class models for multi-step reasoning, enforced in the gateway rather than left to caller discretion.
 3. Choosing the TTL. Use the 1-hour TTL only when the same prefix recurs at least twice per hour with gaps longer than 5 minutes; otherwise the 5-minute TTL with refresh-on-hit is cheaper.
 4. Right-sizing `max_tokens`. It costs nothing in dollars but directly buys quota headroom, which delays the need for quota increases or provisioned capacity.
-5. Output length discipline. On Bedrock, each output token consumes 5x or 15x quota (AWS docs, as of 2026-10), so instructing terse output pays twice: once in price and again in admitted concurrency.
-6. Batch interfaces for offline work, which both clouds offer at a discount (discount levels UNVERIFIED as of 2026-10).
+5. Output length discipline. On Bedrock's `bedrock-runtime` endpoint, each output token consumes 5x, 10x, or 15x quota (AWS docs, as of 2026-10), so instructing terse output pays twice: once in price and again in admitted concurrency.
+6. Batch interfaces for offline work. Bedrock batch inference, available only on `bedrock-runtime`, is priced at 50% of on-demand for select models including Anthropic's (AWS announcement and AWS docs, as of 2026-10), and Anthropic's own Batch API is 50% off (Anthropic pricing docs, as of 2026-10); the Vertex discount for Claude is UNVERIFIED as of 2026-11: the text of Google's Claude batch page and generative AI pricing page, as fetched, states no Claude batch discount, and only third-party guides report 50%.
 
 Cost allocation and showback for these levers belong in [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cloud_Billing_Models_and_Unit_Cost_Allocation|Cloud Billing Models and Unit Cost Allocation]].
 
@@ -585,11 +626,11 @@ Your Bedrock application returns `ThrottlingException` at 30% of its tokens-per-
 
 #### Model Answer
 
-CloudWatch shows settled consumption, but admission is decided on reservation. Bedrock debits input tokens plus `max_tokens` when a request starts and settles later at input plus cache writes plus output times the burndown rate (AWS docs, as of 2026-10).
+CloudWatch shows settled consumption, but admission is decided on reservation. Bedrock debits uncached input and cache-write tokens plus `max_tokens` when a request starts and settles later at input plus cache writes plus output times the burndown rate (AWS docs, as of 2026-10).
 If the code sets `max_tokens` to something like 32,000 while typical output is 500 tokens, each request reserves about 64 times what it actually uses for output, so a burst exhausts the bucket while settled usage looks low.
 I would first confirm this by logging input tokens, `max_tokens`, output tokens, and stop reason per request, then computing peak in-flight reservation with Little's law (arrival rate times duration times reservation per request).
 The same-day fix is to set `max_tokens` per route from a high percentile of observed output, plus a small margin, and to treat a max-tokens stop reason as a signal to re-issue with a larger limit only for that request.
-Next, I would move shared context behind cache checkpoints, because cache-read tokens do not count at settlement, even though they probably still count toward the admission reservation.
+Next, I would move shared context behind cache checkpoints, because cache-read tokens do not count at settlement, and AWS's own worked example leaves them out of the admission debit too (AWS docs, as of 2026-10).
 Finally, I would add a client-side token bucket in the gateway that copies the reserve-and-refund semantics, so overload is shed at our edge with a clean 429 and a retry-after hint instead of being amplified by SDK retries.
 The trade-off with a tight `max_tokens` is a small rate of re-issued requests, which costs some latency on those requests in exchange for several times more admitted concurrency.
 
@@ -603,8 +644,8 @@ Design the cache breakpoint layout for an agent that has 40 tool definitions, a 
 
 #### Model Answer
 
-The cache key is an exact prefix, because KV state at any position depends on every earlier token, and the documented processing order is tools, then system, then messages (UNVERIFIED as of 2026-10).
-I would place breakpoints at four layers, matching the four-checkpoint limit (AWS ML blog, as of 2026-10):
+The cache key is an exact prefix, because KV state at any position depends on every earlier token, and the documented processing order is tools, then system, then messages (AWS docs and Anthropic docs, as of 2026-10).
+I would place breakpoints at four layers, matching the four-checkpoint limit (AWS docs, as of 2026-10):
 
 1. After the tools, which change only on deploy.
 2. After the system prompt, which changes on prompt releases.
@@ -612,7 +653,7 @@ I would place breakpoints at four layers, matching the four-checkpoint limit (AW
 4. At the end of the latest assistant turn, which moves forward every turn.
 
 Changing a tool definition invalidates all four layers. Changing the system prompt invalidates layers 2 to 4. A new session invalidates layers 3 and 4. A new turn invalidates nothing upstream and adds only the new turn's tokens as a write.
-For stability I would serialize tools with sorted keys and a frozen order, keep timestamps and user identifiers out of the system prompt by moving them into the latest user message, and check every layer against the model's minimum. On a Haiku 4.5-class model, for example, the tools-plus-system layer has to reach 4,096 tokens or it caches nothing (Anthropic cookbook, as of 2026-10).
+For stability I would serialize tools with sorted keys and a frozen order, keep timestamps and user identifiers out of the system prompt by moving them into the latest user message, and check every layer against the model's minimum. On a Haiku 4.5-class model, for example, the tools-plus-system layer has to reach 4,096 tokens or it caches nothing (AWS docs and Anthropic docs, as of 2026-10).
 I would verify the layout with per-turn assertions on `cache_read_input_tokens` in CI, because a silent miss here produces no error.
 The trade-off is that very fine-grained breakpoints pay several write premiums per turn, so I would drop the per-session document breakpoint if sessions average fewer than two turns.
 
@@ -645,7 +686,7 @@ Design a single streaming gateway that fronts Claude on both Bedrock and Vertex 
 
 #### Model Answer
 
-The first hard part is framing. Bedrock streams arrive as binary event-stream messages with per-message CRC32 checks, and Vertex streams arrive as SSE text events (UNVERIFIED as of 2026-10).
+The first hard part is framing. Legacy Bedrock streams (InvokeModel and Converse) arrive as binary event-stream messages with per-message CRC32 checks, while the `bedrock-mantle` Messages endpoint and Vertex stream SSE text events (AWS docs and Anthropic docs, as of 2026-10).
 I would terminate both upstream inside the gateway, decode them into one internal event model (start, delta, tool-use, stop with reason, usage, error), and re-emit SSE downstream, so clients see one protocol.
 The second hard part is truthful latency measurement. I would record TTFT at three points (upstream first delta, gateway emit, client receipt), because buffering anywhere on the path, a gzip filter for example, quietly turns TTFT into total latency.
 The third is failure semantics after the first byte. Errors arrive in-band under HTTP 200, so the gateway counts a stream as successful only if it saw a terminal stop event and usage. Retries are allowed only before the first token, or at an application checkpoint such as a completed tool call, because replaying a stream re-bills its output and duplicates text.
@@ -665,9 +706,9 @@ A regulated tenant requires that prompts never cross the public internet, never 
 #### Model Answer
 
 On AWS, the transport control is an interface VPC endpoint for `bedrock-runtime` in an EU Region with private DNS. The authorization controls are an endpoint policy that lists approved EU model and profile ARNs, identity policies conditioned on `aws:SourceVpce`, and an SCP that denies Bedrock invocation outside approved ARNs and approved Regions.
-For residency, I would use in-Region IDs or an EU geographic profile, never a global profile. I would also verify that the SCP's Region restriction includes every destination Region of the EU profile, because a destination Region missing from the SCP produces intermittent denials, not a clean failure (UNVERIFIED as of 2026-10).
-If the tenant needs models served only through the new Claude in Amazon Bedrock integration, I would confirm that its endpoint surface is covered by the same VPC endpoint service before migrating (UNVERIFIED as of 2026-10). Its documented zero-operator-access property is useful evidence for the tenant's risk review (Anthropic docs, as of 2026-10).
-On GCP, the transport control is a PSC endpoint for Google APIs with private DNS for `aiplatform.googleapis.com` and regional hosts. The exfiltration control is a VPC-SC perimeter around the inference project and its logging destinations. Residency means calling a regional EU location, never `global`.
+For residency, I would use in-Region IDs or an EU geographic profile, never a global profile. I would also verify that the SCP's Region restriction includes every destination Region of the EU profile, because AWS documents that routing to a destination Region missing from the SCP fails (AWS docs, as of 2026-10), and I would expect that failure on every call rather than only on calls routed to the missing Region, because AWS says the request fails even if other Regions remain allowed ([AWS inference profile docs](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html), as of 2026-11), unless I add a `bedrock:InferenceProfileArn` exception.
+If the tenant needs models served only through the new Claude in Amazon Bedrock integration, I would add a second interface endpoint, because it runs on `bedrock-mantle`, a separate VPC endpoint service from `bedrock-runtime` (AWS docs, as of 2026-10). Its documented zero-operator-access property is useful evidence for the tenant's risk review (Anthropic docs, as of 2026-10).
+On GCP, the transport control is a PSC endpoint for Google APIs with private DNS for `aiplatform.googleapis.com` and regional hosts. The exfiltration control is a VPC-SC perimeter around the inference project and its logging destinations. Residency means calling a regional EU location or the `eu` multi-region endpoint, never `global`; for models newer than Sonnet 4.6, `eu` is the only option because regional endpoints serve only Sonnet 4.6 and earlier (Anthropic docs, as of 2026-10).
 On both clouds, the persisted prompt surface (invocation logs, request-response logs, application traces) sits under customer-managed keys, with retention limits and separate reader roles, because that is where a compromised credential would actually find the data.
 To defeat a compromised developer credential, I rely on the network condition (source endpoint or perimeter) combined with short-lived federated credentials. A stolen token used from outside the VPC or perimeter then fails even though IAM allows it.
 The trade-off is availability. Without global profiles, the tenant gets the EU's capacity only, so I would pre-negotiate quota in two EU Regions and accept that failover between them starts with a cold cache.

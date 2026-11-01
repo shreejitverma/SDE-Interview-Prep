@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://focus.finops.org/"
@@ -10,6 +10,41 @@ sources:
   - "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-allocation-backfill.html"
   - "https://cloud.google.com/billing/docs/how-to/export-data-bigquery"
   - "https://wellarchitectedlabs.com/cost/"
+  - "https://docs.aws.amazon.com/general/latest/gr/billing.html"
+  - "https://docs.aws.amazon.com/cur/latest/userguide/dataexports-create.html"
+  - "https://docs.aws.amazon.com/cur/latest/userguide/dataexports-create-standard.html"
+  - "https://docs.aws.amazon.com/cur/latest/userguide/dataexports-data-query.html"
+  - "https://docs.aws.amazon.com/cur/latest/userguide/dataexports-s3-bucket.html"
+  - "https://docs.aws.amazon.com/cur/latest/userguide/dataexports-migrate.html"
+  - "https://docs.aws.amazon.com/cur/latest/userguide/data-protection.html"
+  - "https://docs.aws.amazon.com/cur/latest/userguide/table-dictionary-cur2.html"
+  - "https://docs.aws.amazon.com/cur/latest/userguide/table-dictionary-cur2-line-item.html"
+  - "https://docs.aws.amazon.com/cur/latest/userguide/table-dictionary-cur2-savings-plan.html"
+  - "https://docs.aws.amazon.com/cur/latest/userguide/table-dictionary-cur2-reservation.html"
+  - "https://docs.aws.amazon.com/cur/latest/userguide/table-dictionary-focus-1-2-aws.html"
+  - "https://docs.aws.amazon.com/cur/latest/userguide/split-cost-allocation-data.html"
+  - "https://docs.aws.amazon.com/cur/latest/userguide/example-split-cost-allocation-data.html"
+  - "https://docs.aws.amazon.com/cur/latest/userguide/example-accelerated-instances.html"
+  - "https://docs.aws.amazon.com/cli/latest/reference/bcm-data-exports/create-export.html"
+  - "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/activating-tags.html"
+  - "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/con-bill-blended-rates.html"
+  - "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/configurecostallocreport.html"
+  - "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/account-tags-cost-allocation.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_Tags.html"
+  - "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html"
+  - "https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/"
+  - "https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/"
+  - "https://aws.amazon.com/ec2/pricing/on-demand/"
+  - "https://aws.amazon.com/athena/pricing/"
+  - "https://docs.cloud.google.com/billing/docs/how-to/export-data-bigquery-setup"
+  - "https://docs.cloud.google.com/billing/docs/how-to/export-data-bigquery-tables/detailed-usage"
+  - "https://docs.cloud.google.com/billing/docs/how-to/reports"
+  - "https://docs.cloud.google.com/billing/docs/how-to/cud-analysis-spend-based"
+  - "https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-caps"
+  - "https://docs.cloud.google.com/billing/docs/release-notes"
+  - "https://docs.cloud.google.com/compute/docs/labeling-resources"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/cost-allocations"
+  - "https://cloud.google.com/compute/vm-instance-pricing"
 ---
 
 # Cloud Billing Models and Unit Cost Allocation
@@ -18,7 +53,7 @@ sources:
 
 - A bill is the output of a pipeline (meter, aggregate, attribute, rate, allocate discounts, invoice), and each stage has its own latency and restatement rules. Cost data is a time-varying, restatable dataset, not an append-only ledger.
 - Tags and labels are join keys applied at attribution time, not properties of the resource. AWS requires activation in the management account, and backfill reaches at most 12 months. The account or project boundary is the only allocation key that is always present.
-- "Cost" is not one number. Unblended, amortized, net, and list cost differ by who pays for commitments, credits, and negotiated discounts. Pick the semantic per audience and compute it explicitly, because AWS expresses discounts as extra line items and GCP expresses them as nested `credits` rows.
+- "Cost" is not one number. Unblended, amortized, net, and list cost differ by who pays for commitments, credits, and negotiated discounts. Pick the semantic per audience and compute it explicitly, because AWS expresses discounts as extra line items and GCP expresses most of them as nested `credits` rows, with migrated spend-based CUDs billed directly at a discounted price.
 - Per-pod allocation on accelerator nodes is wrong if you weight CPU and RAM only. Weight by the price components of the node (the GCE Core, RAM, and GPU SKU lines) and bill the greater of request and usage. Idle capacity gets a named owner.
 - A unit metric is a fully loaded numerator divided by a goodput denominator at an SLO, for example dollars per 1M output tokens. Detection latency multiplied by burn rate is your exposure, so runaway-spend guardrails must use control-plane signals and quotas, not billing exports.
 
@@ -66,13 +101,13 @@ AWS offers a bounded repair path (backfill), and no tool repairs a resource that
 ### Control plane, data plane, and failure domains
 
 The Data Exports and Cost Explorer APIs are control-plane surfaces.
-As I recall, they are served from the us-east-1 endpoint regardless of where your workloads run (UNVERIFIED).
-If that holds, any automation that queries them in the middle of an incident has an implicit dependency on that region.
+Both APIs list only a us-east-1 endpoint, regardless of where your workloads run ([AWS endpoints reference](https://docs.aws.amazon.com/general/latest/gr/billing.html), as of 2026-11).
+Any automation that queries them in the middle of an incident therefore has an implicit dependency on that region.
 This matters for guardrails: a "stop the spend" automation that reads cost data from a control-plane API violates the static-stability rule in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]] and the separation argument in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
 Guardrails should read data-plane signals (instance counts, accelerator-hours from metrics, quota consumption) and act through quotas and reservations, with billing data used only for after-the-fact reconciliation.
 
 The partitioning keys of the exports are the billing period and the billing account (AWS payer or management account, GCP Cloud Billing account).
-AWS delivers one partition per billing period, and its manifest is updated on each refresh (AWS docs, as of 2026-10).
+AWS delivers one partition per billing period, and its manifest is updated on each refresh (AWS docs, as of 2026-11).
 There is no consensus protocol exposed to you.
 The effective consistency model is "eventually consistent, last refresh wins", so a downstream loader must be idempotent with respect to a partition being rewritten.
 
@@ -84,9 +119,10 @@ Three clocks matter.
 - Billing period: which invoice the charge lands on. AWS `bill_billing_period_start_date`, GCP `invoice.month`.
 - Export time: when the row was last written. GCP exposes `export_time`. For AWS you infer it from the manifest and object timestamps.
 
-AWS refreshes CUR 2.0 at least once a day, keeps refreshing the current billing period partition until the period ends, and may still update the previous period within the first two weeks after it ends ([AWS Data Exports delivery docs](https://docs.aws.amazon.com/cur/latest/userguide/dataexports-export-delivery.html), as of 2026-10).
-The first delivery after creating an export can take up to 24 hours (AWS Data Exports user guide, as of 2026-10).
-An export can be configured to overwrite existing files on each refresh or to create new files (AWS docs, as of 2026-10).
+AWS refreshes CUR 2.0 at least once a day, keeps refreshing the current billing period partition until the period ends, and may still update the previous period within the first two weeks after it ends ([AWS Data Exports delivery docs](https://docs.aws.amazon.com/cur/latest/userguide/dataexports-export-delivery.html), as of 2026-11).
+Credits and refunds can also update reports after they are finalized ([AWS line item columns](https://docs.aws.amazon.com/cur/latest/userguide/table-dictionary-cur2-line-item.html), as of 2026-11).
+The first delivery after creating an export can take up to 24 hours ([AWS Data Exports user guide](https://docs.aws.amazon.com/cur/latest/userguide/dataexports-create.html), as of 2026-11).
+An export can be configured to overwrite existing files on each refresh or to create new files (AWS docs, as of 2026-11).
 
 Mechanism implications:
 
@@ -94,8 +130,12 @@ Mechanism implications:
 - A dashboard that reports month-to-date cost on day 3 of the next month is reading a partition that can still move.
 - Any alert or chargeback process should define a "close" rule, for example finalize chargeback on day 15 plus a reconciliation tolerance, and handle later restatements as explicit adjustments in the next period.
 
-GCP boundaries are subtler. Invoice months and billing-day boundaries are, as I recall, aligned to Pacific Time while `usage_start_time` is a UTC timestamp (UNVERIFIED).
-If that holds, a UTC daily rollup will not reconcile to the invoice on the first and last day of a month, so reconcile on `invoice.month`, never on calendar-month truncation of `usage_start_time`.
+GCP boundaries are subtler.
+Billing report days start at midnight US and Canadian Pacific Time and observe daylight saving shifts ([Cloud Billing reports docs](https://docs.cloud.google.com/billing/docs/how-to/reports), as of 2026-11), and customer invoices are created on Pacific month boundaries ([Google Cloud Marketplace partner docs](https://docs.cloud.google.com/marketplace/docs/partners/receive-payments), as of 2026-11).
+`usage_start_time` is a BigQuery `TIMESTAMP`, so Google's example queries pass `'US/Pacific'` explicitly when truncating it to a day ([Cloud Billing example queries](https://docs.cloud.google.com/billing/docs/how-to/bq-examples), as of 2026-11).
+A UTC daily rollup will therefore not reconcile to the invoice on the first and last day of a month.
+Timestamp filters can also pull in late-reported usage from another invoice, so Google's docs say to query on `invoice.month` to map to an invoice ([detailed export docs](https://docs.cloud.google.com/billing/docs/how-to/export-data-bigquery-tables/detailed-usage), as of 2026-11).
+Reconcile on `invoice.month`, never on calendar-month truncation of `usage_start_time`.
 
 ### The AWS cost semantics stack
 
@@ -108,13 +148,14 @@ AWS exposes several cost columns because a single "cost" cannot serve finance, e
 | Amortized | Upfront and recurring commitment fees spread over the term and attached to the usage they covered, with unused commitment shown separately | Engineering showback, unit economics |
 | Net unblended or net amortized | The above after discounts such as private pricing or EDP-style percentage discounts | Margin and true-cost modeling |
 
-Blended cost exists because tiered pricing and commitment benefits are computed at the consolidated-billing level, so otherwise-identical usage in two linked accounts can land at different unblended rates depending on where in the tier it fell (UNVERIFIED as to exact ordering behavior).
+Blended cost exists because tiered pricing and commitment benefits are computed at the consolidated-billing level, so otherwise-identical usage in two linked accounts can land at different unblended rates depending on where in the tier it fell.
+AWS treats all accounts as one for tier thresholds, and its EC2 allocation applies Reserved Instance hours first, then free tier hours, then On-Demand rates, starting Reserved Instance assignment with the purchasing account ([AWS consolidated billing docs](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/con-bill-blended-rates.html), as of 2026-11).
 For this reason, never use unblended cost to compare two teams' efficiency.
 
 #### Where commitments live in the line items
 
 A Savings Plan or Reserved Instance does not discount individual rows.
-In the CUR it appears as several line item types (names from the CUR data dictionary as I recall them, UNVERIFIED for CUR 2.0 naming):
+In the CUR it appears as several line item types, which CUR 2.0 carries in `line_item_line_item_type` ([CUR 2.0 line item](https://docs.aws.amazon.com/cur/latest/userguide/table-dictionary-cur2-line-item.html), [Savings Plan](https://docs.aws.amazon.com/cur/latest/userguide/table-dictionary-cur2-savings-plan.html), and [reservation](https://docs.aws.amazon.com/cur/latest/userguide/table-dictionary-cur2-reservation.html) column docs, as of 2026-11):
 
 - `SavingsPlanCoveredUsage` rows show the usage covered by the plan.
 - `SavingsPlanNegation` rows are negative offsets that zero out the on-demand charge.
@@ -141,42 +182,47 @@ Attribution has two tiers with very different reliability.
 
 AWS specifics:
 
-- A tag key must be activated as a cost allocation tag from the management account (or a standalone account) before it appears in billing data (AWS billing docs, as of 2026-10).
-- Third-party summaries of the AWS docs give up to 24 hours for a key to become activatable and up to 24 more to take effect. Verify against the primary doc before relying on the exact figures (UNVERIFIED).
-- You can request a backfill of up to 12 months. The tag must have been historically assigned to the resource, you can run one backfill request per 24 hours, and a new request cannot start while one is in progress ([AWS backfill docs](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-allocation-backfill.html), as of 2026-10).
-- Tags live in a `resource_tags` map in CUR 2.0, whereas legacy CUR flattened each tag into a column. The key normalization differs between the two, so always discover keys with `map_keys` instead of hardcoding them.
+- A tag key must be activated as a cost allocation tag from the management account (or a standalone account) before it appears in billing data (AWS billing docs, as of 2026-11).
+- After you apply a tag, it can take up to 24 hours for the key to appear for activation, and up to 24 more for it to activate ([AWS activation docs](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/activating-tags.html), as of 2026-11).
+- You can request a backfill of up to 12 months. The tag must have been historically assigned to the resource, you can run one backfill request per 24 hours, and a new request cannot start while one is in progress ([AWS backfill docs](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-allocation-backfill.html), as of 2026-11).
+- Tags live in a `resource_tags` map in CUR 2.0, whereas legacy CUR flattened each tag into a column. CUR 2.0 normalizes `resource_tags` keys by removing special characters and spaces, keeps only one value if two keys then collide, and offers a separate unnormalized `tags` column, while legacy CUR normalizes only in Parquet ([AWS CUR 2.0 migration docs](https://docs.aws.amazon.com/cur/latest/userguide/dataexports-migrate.html), as of 2026-11). Always discover keys with `map_keys` instead of hardcoding them.
 
 The attribution join happens per usage record.
 A retag affects subsequent records and not earlier ones, except via backfill.
 It follows that the "tag coverage" metric should be computed per day as the fraction of cost carrying the required key, not as the fraction of resources tagged.
 Resource-count coverage routinely reads 95 percent while cost coverage reads 70 percent, because the untagged 5 percent are often the largest accelerator nodes.
 
-Some charges cannot carry user tags: taxes, support fees, some data-transfer lines, and marketplace charges are typical examples (UNVERIFIED for the exact list per service).
+Some charges cannot carry user tags.
+AWS lists services without tag support, subscription charges such as AWS Support and Marketplace monthly fees, and one-time fees such as Reserved Instance upfront charges as unallocated in its cost allocation report ([AWS cost allocation report docs](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/configurecostallocreport.html), as of 2026-11).
+`line_item_resource_id` is also blank for data transfer, API requests, discounts, credits, and taxes ([CUR 2.0 line item docs](https://docs.aws.amazon.com/cur/latest/userguide/table-dictionary-cur2-line-item.html), as of 2026-11).
+Account tags from AWS Organizations reach some of this, because they apply to all metered usage in an account and cover refunds, credits, and certain untaggable service charges ([AWS account tags docs](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/account-tags-cost-allocation.html), as of 2026-11).
 Plan an explicit residual bucket and a documented policy for spreading it.
 
 GCP specifics:
 
 - Labels are exported on each row in `labels`, `system_labels`, and `project.labels`.
-- Labels attach to usage from the point they are applied forward (UNVERIFIED), which mirrors the AWS non-retroactivity rule.
+- Cost data for a label shows usage only from the date the label was applied to the resource ([standard export docs](https://docs.cloud.google.com/billing/docs/how-to/export-data-bigquery-tables/standard-usage), as of 2026-11), which mirrors the AWS non-retroactivity rule.
 - Enforcement of mandatory labels is weaker than on AWS. You mostly enforce by policy-as-code at plan time ([[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_04_Policy_as_Code_OPA_Sentinel_and_Guardrails|Policy as Code: OPA, Sentinel, and Guardrails]]) and with periodic detection.
 
 ### GCP export: tables, nested credits, and the fan-out bug
 
-Cloud Billing export to BigQuery has three tables as I recall (UNVERIFIED for current naming and availability):
+Cloud Billing export to BigQuery offers five export types, with a sixth Rebilling export for resellers ([Cloud Billing export docs](https://docs.cloud.google.com/billing/docs/how-to/export-data-bigquery), as of 2026-11):
 
-- Standard usage cost: SKU-level cost per project, with labels.
-- Detailed usage cost: adds resource-level identifiers (`resource.name`, `resource.global_name`).
-- Pricing: list and tiered prices, and contracted prices where applicable, so you can compute effective rates.
+- Standard usage cost (`gcp_billing_export_v1_<BILLING_ACCOUNT_ID>`): SKU-level cost per project, with labels.
+- Detailed usage cost (`gcp_billing_export_resource_v1_<BILLING_ACCOUNT_ID>`): adds resource-level identifiers (`resource.name`, `resource.global_name`).
+- Pricing (`cloud_pricing_export`): list and tiered prices, and contracted prices where applicable, so you can compute effective rates.
+- FOCUS usage cost, Preview (`gcp_billing_export_focus_<BILLING_ACCOUNT_ID>`): a Google-provided immutable dataset.
+- Committed use discount metadata, Preview (`cud_subscriptions_export`): a daily export of CUD metadata.
 
 Enablement is a console step on the billing account.
-I could not verify a public API or CLI to enable it, so assume it is not manageable by Terraform until you check (UNVERIFIED).
-The destination dataset location is fixed at creation in practice, so choose the multi-region or region before enabling.
-Data is exported only from the time of enablement forward (UNVERIFIED for any backfill offering).
-Enable it on day zero of a new billing account, because history you did not export is gone.
+The [setup guide](https://docs.cloud.google.com/billing/docs/how-to/export-data-bigquery-setup) documents only the console and names no API, gcloud, or Terraform path (as of 2026-11), so plan for a manual step.
+A dataset's location cannot be changed after creation, so choose the multi-region or region before enabling (Google Cloud docs, as of 2026-11).
+Location also controls history: a US or EU multi-region dataset backfills from the start of the previous month, which can take up to five days to catch up, while a regional dataset gets data only from enablement forward and pricing data is never backfilled (Google Cloud docs, as of 2026-11).
+Enable it on day zero of a new billing account, because history older than that backfill window is gone.
 
 The schema is a nested, repeated model of the kind described in the Dremel paper (Melnik et al., VLDB 2010; see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_10_Dremel_Interactive_Analysis|Dremel: Interactive Analysis of Web-Scale Datasets]]).
-Discounts are stored as a repeated `credits` field on each cost row, with entries for categories such as sustained-use, committed-use, promotions, and free tier (UNVERIFIED for the current enum).
-Credit amounts are negative.
+Discounts are stored as a repeated `credits` field on each cost row, and `credits.type` takes `FEE_UTILIZATION_OFFSET`, `COMMITTED_USAGE_DISCOUNT_DOLLAR_BASE`, `COMMITTED_USAGE_DISCOUNT`, `DISCOUNT`, `FREE_TIER`, `PROMOTION`, `RESELLER_MARGIN`, `SUBSCRIPTION_BENEFIT`, or `SUSTAINED_USAGE_DISCOUNT` ([detailed export docs](https://docs.cloud.google.com/billing/docs/how-to/export-data-bigquery-tables/detailed-usage), as of 2026-11).
+Credit amounts are negative in Google's example output.
 Net cost for a row is therefore `cost + SUM(credits.amount)`.
 
 The fan-out bug: `FROM t, UNNEST(t.credits)` is an inner join against the repeated field.
@@ -185,13 +231,18 @@ Both errors are silent and both bias the result.
 The fix is to aggregate credits in a scalar subquery per row, as the worked example shows.
 
 Compared with AWS, GCP attaches discounts to the row that consumed them, so per-project net cost is a direct sum.
+The exception is spend-based CUDs on the newer model: eligible usage is billed at the discounted rate with no usage credit, identified by `consumption_pricing_type`, and underutilization appears as a net cost on the CUD fee SKU ([spend-based CUD analysis docs](https://docs.cloud.google.com/billing/docs/how-to/cud-analysis-spend-based), as of 2026-11).
+CUDs bought before migration can stay on the legacy credit model until their term expires, so queries must handle both.
 AWS exposes commitment benefits through separate lines and effective-cost columns, so the same computation needs the `CASE` expression.
 In both clouds the allocation of commitment benefit to consumers is the provider's algorithm, not your policy, so your showback should re-derive an internal rate if you need to override it.
 
 On a VM, the GCE export splits cost into per-resource SKUs such as instance core and instance RAM (and accelerator SKUs where applicable).
 That split is the empirical price ratio between CPU and memory for that machine family and region.
 You can use it directly as allocation weights, which the next section depends on.
-AWS bills one instance price, so weights must be assumed (AWS split cost allocation data for ECS and EKS uses a fixed CPU-to-memory weighting, which I recall as 9:1, UNVERIFIED) or derived from your own price model.
+AWS bills one instance price, so weights must be assumed or derived from your own price model.
+AWS split cost allocation data for ECS and EKS assumes them: CPU-to-memory unit weights of 9:1 derived from Fargate prices ([AWS split cost example](https://docs.aws.amazon.com/cur/latest/userguide/example-split-cost-allocation-data.html), as of 2026-11).
+For accelerated instances on EKS it adds a GPU unit weight of 9 against 0.9 per vCPU and 0.1 per GB ([AWS accelerated example](https://docs.aws.amazon.com/cur/latest/userguide/example-accelerated-instances.html), as of 2026-11).
+Those are fixed unit weights, not price components: on this chapter's 8-GPU, 192-vCPU, 2,048-GiB example node they would put 72 / 449.6 = 16 percent of node cost on the GPUs (derived), against the 85 percent assumed below.
 
 ### Container and accelerator allocation
 
@@ -260,8 +311,9 @@ Three traps:
 ### Normalizing with FOCUS
 
 The FinOps Open Cost and Usage Specification (FOCUS) defines a vendor-neutral column set so AWS and GCP data can share one model.
-AWS Data Exports offers FOCUS 1.2 and FOCUS 1.0 tables with AWS-specific columns (AWS docs, as of 2026-10).
-I could not verify whether a GCP-native FOCUS export is generally available (UNVERIFIED), so plan to normalize GCP in a BigQuery view.
+AWS Data Exports offers FOCUS 1.2 (`FOCUS_1_2_AWS`) and FOCUS 1.0 (`FOCUS_1_0_AWS`) tables with AWS-specific columns ([AWS FOCUS 1.2 table docs](https://docs.aws.amazon.com/cur/latest/userguide/table-dictionary-focus-1-2-aws.html), as of 2026-11).
+GCP's native FOCUS export to BigQuery, with columns up to FOCUS 1.2, entered Preview on 2026-06-08, and the release notes show no GA entry ([Cloud Billing release notes](https://docs.cloud.google.com/billing/docs/release-notes), as of 2026-11).
+Because it is Preview, plan to normalize GCP in a BigQuery view for production use.
 The columns that carry the cost-semantics decisions are `BilledCost` (invoice view), `EffectiveCost` (amortized view), `ListCost`, and `ContractedCost`.
 Map them deliberately. AWS amortized cost approximates `EffectiveCost`, and for GCP `cost + SUM(credits)` is the closest equivalent to the net view.
 Document the mapping and test it against the invoice each month.
@@ -270,22 +322,23 @@ Document the mapping and test it against the invoice each month.
 
 | Quantity | Value | Source |
 |---|---|---|
-| AWS CUR 2.0 refresh cadence | At least once a day; current billing-period partition refreshed until period end | AWS docs, as of 2026-10 |
-| Prior-period restatement window | May update the previous billing period within the first two weeks after it ends | AWS docs, as of 2026-10 |
-| First delivery after creating an export | Up to 24 hours | AWS Data Exports user guide, as of 2026-10 |
-| Console refresh option for billing exports | Daily, refreshed up to one time per day | AWS docs, as of 2026-10 |
-| AWS FOCUS tables | FOCUS 1.2 and FOCUS 1.0, each with AWS columns | AWS docs, as of 2026-10 |
-| Cost allocation tag backfill | Up to 12 months, one request per 24 hours, none concurrent, tag must have been assigned historically | AWS docs, as of 2026-10 |
-| Tag activation latency | Up to 24 hours to become activatable plus up to 24 hours to take effect | Third-party summary of AWS docs, UNVERIFIED against primary |
-| AWS tags per resource, key and value length | 50 user tags, 128-char key, 256-char value | UNVERIFIED |
-| GCP labels per resource, key and value length | 64 labels, 63-char key and value | UNVERIFIED |
-| Instance billing granularity | Per second with a 60-second minimum on EC2 Linux and on Compute Engine | UNVERIFIED |
-| Cost Explorer API price | USD 0.01 per paginated request | UNVERIFIED |
-| AWS Budgets evaluation cadence | Up to about three times per day | UNVERIFIED |
+| AWS CUR 2.0 refresh cadence | At least once a day; current billing-period partition refreshed until period end | AWS docs, as of 2026-11 |
+| Prior-period restatement window | May update the previous billing period within the first two weeks after it ends; credits and refunds can update finalized reports | AWS docs, as of 2026-11 |
+| First delivery after creating an export | Up to 24 hours | AWS Data Exports user guide, as of 2026-11 |
+| Console refresh option for billing exports | Daily, refreshed up to one time per day (API value `SYNCHRONOUS`) | AWS docs, as of 2026-11 |
+| AWS FOCUS tables | FOCUS 1.2 and FOCUS 1.0, each with AWS columns, two exports per table | AWS docs, as of 2026-11 |
+| Cost allocation tag backfill | Up to 12 months, one request per 24 hours, none concurrent, tag must have been assigned historically | AWS docs, as of 2026-11 |
+| Tag activation latency | Up to 24 hours to become activatable plus up to 24 hours to take effect | AWS docs, as of 2026-11 |
+| AWS tags per resource, key and value length | 50 user tags (`aws:` tags do not count), 128-char key, 256-char value | Amazon EC2 docs, as of 2026-11 |
+| GCP labels per resource, key and value length | 64 labels, 1 to 63-char key, up to 63-char value | Compute Engine docs, as of 2026-11 |
+| Instance billing granularity | Per second with a 60-second minimum on EC2 Linux and Windows (SUSE bills a full hour) and with a 1-minute minimum on Compute Engine | AWS EC2 and Google Cloud pricing pages, as of 2026-11 |
+| Cost Explorer API price | USD 0.01 per request on the primary billing view, USD 0.01 per source on a custom billing view | AWS pricing page, as of 2026-11 |
+| AWS Budgets evaluation cadence | Up to three times a day, typically 8 to 12 hours apart | AWS docs, as of 2026-11 |
+| GCP spend cap enforcement scope | One project and one eligible service, monthly, not instant, overages still billed | Google Cloud docs, as of 2026-11 |
 | Derived: export size for 5,000 resources | 5,000 x 730 h x 2.5 line items = 9.1M rows per month, about 1.4 GB Parquet at 150 B per row | Derived, assumption stated |
 | Derived: runaway exposure | burn rate x detection latency, for example USD 4,000/h x 24 h = USD 96,000 | Derived, illustrative price |
 
-The only prices in the chapter are illustrative parameters, not list prices.
+The S3 storage, Athena scan, and Cost Explorer figures are list prices; the accelerator node price is an illustrative parameter, not a list price.
 Verify current list prices from the AWS and Google Cloud pricing pages before using any figure in a decision.
 
 ## AWS vs GCP Mechanism Parity
@@ -295,16 +348,16 @@ Verify current list prices from the AWS and Google Cloud pricing pages before us
 | Billing entity | Payer (management) account in an Organization, consolidated billing across linked accounts | Cloud Billing account that projects link to, independent of the resource hierarchy |
 | Structural allocation key | Account ID on every line item | Project ID on every row |
 | Detailed export | CUR 2.0 via Data Exports to S3, Parquet or CSV | Detailed usage cost table in BigQuery |
-| Export refresh | At least daily, previous period may be restated for about two weeks | Continuous load into BigQuery, `export_time` per row (cadence UNVERIFIED) |
-| Normalized schema | FOCUS 1.2 or 1.0 with AWS columns | Build FOCUS view in BigQuery (native FOCUS export UNVERIFIED) |
+| Export refresh | At least daily, previous period may be restated for about two weeks | Loaded at regular intervals through the day with no delivery or latency guarantee, `export_time` per row |
+| Normalized schema | FOCUS 1.2 or 1.0 with AWS columns | Build FOCUS view in BigQuery, or use the native FOCUS export (Preview) |
 | Tag and label model | Tags, plus activation step, map column in CUR 2.0 | Labels, `system_labels`, and `project.labels` on each row |
-| Retroactivity | Backfill up to 12 months | Forward only (UNVERIFIED) |
-| Discount representation | Separate line item types and effective-cost columns, needs `CASE` for amortized view | Negative `credits` entries nested on each row |
-| Commitment evaluation | Hourly commitment rate, benefit applied across linked accounts by the provider | Resource-based and spend-based commitments, credits per row (details in the next chapter) |
-| Container allocation | Split cost allocation data for ECS and EKS, fixed CPU-memory weighting (UNVERIFIED) | GKE cost allocation plus Core and RAM SKU split in export (UNVERIFIED for GKE feature specifics) |
+| Retroactivity | Tag backfill up to 12 months | Labels forward only; export backfills from the start of the previous month on multi-region datasets |
+| Discount representation | Separate line item types and effective-cost columns, needs `CASE` for amortized view | Negative `credits` entries nested on each row, except migrated spend-based CUDs billed at a direct discounted rate |
+| Commitment evaluation | Hourly commitment rate, benefit applied across linked accounts by the provider | Resource-based commitments with credits per row, spend-based commitments with direct discounted rates or legacy credits (details in the next chapter) |
+| Container allocation | Split cost allocation data for ECS and EKS, greater of reserved and used, fixed 9:1 CPU-memory weights, plus fixed accelerator weights on EKS | GKE cost allocation labels in the export, based on requests, covering vCPU, RAM, GPU, Persistent Disk, and Cloud TPU SKUs but not A4 or A4X VMs, plus Core and RAM SKU split in export |
 | Price book | Price List API, plus private pricing in the export | Pricing export table |
-| Budgets | AWS Budgets with alerts and actions, multiple evaluations per day | Cloud Billing budgets with Pub/Sub notifications |
-| Consistency model | Eventually consistent derived export, overwrite or versioned delivery | Append-style rows with adjustments (UNVERIFIED), partitioned BigQuery tables |
+| Budgets | AWS Budgets with alerts and actions, updated up to three times a day | Cloud Billing budgets with Pub/Sub notifications, plus spend cap budgets (GA 2026-10-13) that pause Gemini API, Agent Platform, Cloud Run, and Cloud Run functions |
+| Consistency model | Eventually consistent derived export, overwrite or versioned delivery | Append-style rows, with corrections as new rows that negate source SKUs, partitioned BigQuery tables |
 | Major pitfall | Double counting versioned exports, missing the amortization `CASE` | Credits fan-out, Pacific-time invoice boundary, missed day-zero export enablement |
 
 Neither provider offers a transactional view of cost, and neither guarantees a maximum restatement window beyond what its documentation states.
@@ -317,13 +370,13 @@ Everything billable here is small; the only potentially material cost is the dat
 
 ### Capacity and cost estimate
 
-All unit prices below are assumptions (UNVERIFIED); replace them with current list prices.
+The S3 and Athena prices below are list prices (AWS Price List API for us-east-1 and the [Athena pricing page](https://aws.amazon.com/athena/pricing/), as of 2026-11); replace them with current prices for your region.
 
 1. Export volume: 5,000 resources x 730 hours x 2.5 line items per resource-hour = 9.1M rows per month. At 150 bytes per row in Parquet, that is about 1.4 GB per month.
-2. Storage: 24 months retained = about 33 GB. At an assumed USD 0.023 per GB-month for S3 standard, that is about USD 0.76 per month.
-3. Query cost: a monthly Athena query that reads about 15 percent of columns scans about 0.2 GB. At an assumed USD 5 per TB scanned, that is about USD 0.001 per query. Dashboards that run hundreds of times a day still stay in the single-digit dollars per month if tables are partitioned by billing period.
+2. Storage: 24 months retained = about 33 GB. At USD 0.023 per GB-month for S3 Standard (first 50 TB), that is about USD 0.76 per month.
+3. Query cost: a monthly Athena query that reads about 15 percent of columns scans about 0.2 GB. At USD 5 per TB scanned, that is about USD 0.001 per query. Dashboards that run hundreds of times a day still stay in the single-digit dollars per month if tables are partitioned by billing period.
 4. BigQuery: assume the same row count and a few GB of logical storage. Storage is a few cents per month, and on-demand query cost depends on bytes billed, so always filter on the partition column.
-5. Budget alarms are free on both clouds for the first few budgets (AWS charges per budget beyond a free allotment, UNVERIFIED).
+5. Budget alarms are free on both clouds. AWS charges only for action-enabled budgets beyond the first two (USD 0.10 per day each) and for budget reports (USD 0.01 per report) ([AWS Budgets pricing](https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/), as of 2026-11). GCP budgets and alerts are free, and Pub/Sub notifications are charged at standard Pub/Sub prices ([Cloud Billing pricing](https://cloud.google.com/billing/v1/pricing), as of 2026-11).
 
 Exposure example for why budgets are not enough: 100 accelerator nodes at an assumed USD 40 per node-hour burn USD 4,000 per hour.
 If cost data and budget evaluation lag by up to 24 hours, the worst-case exposure before an alert is USD 96,000.
@@ -332,7 +385,8 @@ The remedy is a quota and capacity guardrail, not a smaller budget threshold.
 
 ### Step 1 - AWS: bucket policy, export, and budget
 
-The Data Exports API shape below was written from memory and must be checked with `aws bcm-data-exports create-export help` before use (UNVERIFIED).
+The Data Exports shape below matches the [`create-export` CLI reference](https://docs.aws.amazon.com/cli/latest/reference/bcm-data-exports/create-export.html), the [bucket policy docs](https://docs.aws.amazon.com/cur/latest/userguide/dataexports-s3-bucket.html), and the [data query docs](https://docs.aws.amazon.com/cur/latest/userguide/dataexports-data-query.html) (as of 2026-11), but this lab was not run against a live account.
+`QueryStatement` names columns explicitly because the documented syntax is a column list; the list covers the Step 3 query, so extend it for your own needs.
 
 ```bash
 export ACCT=$(aws sts get-caller-identity --query Account --output text)
@@ -346,14 +400,14 @@ cat > policy.json <<EOF
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "AllowBillingDelivery",
+      "Sid": "EnableAWSDataExportsToWriteToS3",
       "Effect": "Allow",
-      "Principal": {"Service": ["billingreports.amazonaws.com", "bcm-data-exports.amazonaws.com"]},
-      "Action": ["s3:GetBucketAcl", "s3:GetBucketPolicy", "s3:PutObject"],
-      "Resource": ["arn:aws:s3:::$BUCKET", "arn:aws:s3:::$BUCKET/*"],
+      "Principal": {"Service": ["bcm-data-exports.amazonaws.com"]},
+      "Action": ["s3:PutObject"],
+      "Resource": "arn:aws:s3:::$BUCKET/*",
       "Condition": {
         "StringEquals": {"aws:SourceAccount": "$ACCT"},
-        "ArnLike": {"aws:SourceArn": ["arn:aws:cur:us-east-1:$ACCT:definition/*", "arn:aws:bcm-data-exports:us-east-1:$ACCT:export/*"]}
+        "ArnLike": {"aws:SourceArn": "arn:aws:bcm-data-exports:us-east-1:$ACCT:export/*"}
       }
     }
   ]
@@ -366,7 +420,7 @@ cat > export.json <<EOF
   "Export": {
     "Name": "finops-lab-cur2",
     "DataQuery": {
-      "QueryStatement": "SELECT * FROM COST_AND_USAGE_REPORT",
+      "QueryStatement": "SELECT bill_payer_account_id, bill_billing_period_start_date, bill_billing_period_end_date, line_item_usage_account_id, line_item_line_item_type, line_item_usage_start_date, line_item_usage_end_date, line_item_product_code, line_item_usage_type, line_item_operation, line_item_resource_id, line_item_usage_amount, line_item_unblended_cost, reservation_reservation_a_r_n, reservation_effective_cost, reservation_unused_amortized_upfront_fee_for_billing_period, reservation_unused_recurring_fee, savings_plan_savings_plan_a_r_n, savings_plan_savings_plan_effective_cost, savings_plan_total_commitment_to_date, savings_plan_used_commitment, resource_tags FROM COST_AND_USAGE_REPORT",
       "TableConfigurations": {
         "COST_AND_USAGE_REPORT": {
           "TIME_GRANULARITY": "HOURLY",
@@ -407,7 +461,9 @@ Activate your cost allocation tag keys in the management account separately, the
 
 ### Step 2 - GCP: dataset and budget
 
-Enabling the export is a console action on the billing account (Billing, then Billing export, then BigQuery export). I could not verify an API to automate it (UNVERIFIED).
+Enabling the export is a console action on the billing account (Billing, then Billing export, then BigQuery export).
+Google's setup guide documents no API, gcloud, or Terraform path for it (as of 2026-11).
+The `gcloud billing budgets create` flags below match the [gcloud reference](https://docs.cloud.google.com/sdk/gcloud/reference/billing/budgets/create) (as of 2026-11).
 
 ```bash
 export PROJECT=my-finops-project
@@ -423,11 +479,14 @@ gcloud billing budgets create --billing-account="$BA" \
   --filter-projects="projects/$PROJECT"
 ```
 
-Budgets alert and optionally notify Pub/Sub. They do not cap spend.
+Alerts-only budgets like this one notify email and optionally Pub/Sub, and they do not cap spend.
+Spend cap budgets are the exception: they went GA on 2026-10-13 ([release notes](https://docs.cloud.google.com/billing/docs/release-notes)) and pause Gemini API, Agent Platform, Cloud Run, or Cloud Run functions when costs exceed the target.
+Each cap covers one project and one service monthly, enforcement is not instant, and overages are still billed ([spend cap docs](https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-caps), as of 2026-11).
 
 ### Step 3 - Queries
 
-AWS amortized cost by team tag in Athena. The reservation and Savings Plan column names follow the CUR data dictionary as I recall it and must be validated against your table (UNVERIFIED for CUR 2.0).
+AWS amortized cost by team tag in Athena.
+The reservation and Savings Plan column names match the CUR 2.0 table dictionary (AWS docs, as of 2026-11); the `user_team` key is an example, so confirm yours with the discovery query in the first comment.
 
 ```sql
 -- Discover tag keys first: SELECT DISTINCT map_keys(resource_tags) FROM cur2 LIMIT 100;
@@ -597,7 +656,7 @@ For incidents that change spend through retry storms and failover traffic, see [
 1. **Tag activation gap.** Teams tag in week 1, the key is activated in week 3, and the first two weeks are untagged in every report. Mitigation: pre-activate the keys, request backfill (one request per 24 hours, 12 months maximum), and report tagged-cost coverage per day.
 2. **Double counting from versioned exports.** Querying every versioned file of a billing period triples cost. Mitigation: use overwrite delivery, or select only the manifest's latest execution, and add a reconciliation test that compares your monthly total to the invoice within a tolerance.
 3. **Credit fan-out on GCP.** An inner `UNNEST` on `credits` silently drops and duplicates rows. Mitigation: aggregate credits in a scalar subquery, and add a test asserting that `SUM(cost)` from the fact table equals `SUM(cost)` from the raw export for the same window.
-4. **Window mismatch against the invoice.** UTC calendar dashboards disagree with invoice totals on month boundaries. Mitigation: join on `invoice.month` (GCP) or the billing period column (AWS), and treat the Pacific-time boundary as UNVERIFIED until you confirm it against your own invoice.
+4. **Window mismatch against the invoice.** UTC calendar dashboards disagree with invoice totals on month boundaries. Mitigation: join on `invoice.month` (GCP) or the billing period column (AWS), and treat Pacific Time as the day and invoice boundary on GCP (Google Cloud docs, as of 2026-11).
 5. **Commitment waste charged to the wrong team.** If unused Savings Plan or CUD value follows the account that bought it, a team that buys capacity is punished for the portfolio's slack. Mitigation: a `commitment-owner` bucket and a published coverage SLO.
 6. **Mispriced accelerators.** CPU:RAM-only allocators distort tenant bills by an order of magnitude on GPU nodes, as the worked example shows. Mitigation: derive weights from SKU lines and re-derive them when instance generations change.
 7. **Idle with no owner.** Allocating idle pro rata to tenants removes the incentive for the platform to improve packing, and retaining it centrally with no reporting hides the problem. Mitigation: report idle as a first-class line, with a utilization target and an owner.
@@ -612,10 +671,10 @@ For incidents that change spend through retry storms and failover traffic, see [
 ### Access and encryption
 
 - Billing data discloses negotiated discounts, commitment portfolios, and which projects run which accelerators. Treat it as confidential data, not as an open internal dashboard source.
-- AWS: scope the export bucket policy to the billing service principals with `aws:SourceAccount` and `aws:SourceArn` conditions, as in Step 1, to prevent a confused-deputy write from another account. Grant read access through a role used by the query engine, not through IAM users.
-- Verify SSE-KMS support for your specific export type before mandating a customer-managed key on the export bucket (UNVERIFIED), and review the key hierarchy in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
+- AWS: scope the export bucket policy to the Data Exports service principal with `aws:SourceAccount` and `aws:SourceArn` conditions, as in Step 1, to prevent a confused-deputy write from another account. Grant read access through a role used by the query engine, not through IAM users.
+- Exports are encrypted with SSE-S3 by default, and AWS says SSE-KMS must be triggered after the export has been delivered ([Data Exports data protection docs](https://docs.aws.amazon.com/cur/latest/userguide/data-protection.html), as of 2026-11), so test delivery before mandating a customer-managed key on the export bucket, and review the key hierarchy in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 - GCP: grant dataset-level read to a small group, and expose tenant views through authorized views or row-level security keyed on `project.id`, so each tenant sees only its own rows. Restrict the pricing table, because it can contain contract rates.
-- Put the cost data store inside the perimeter described in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]], and test that the export delivery path still works after the perimeter is applied (UNVERIFIED for GCP VPC Service Controls specifics).
+- Put the cost data store inside the perimeter described in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]], and test that the export delivery path still works after the perimeter is applied, because Google requires ingress and egress rules for CUD metadata exports under VPC Service Controls ([setup guide](https://docs.cloud.google.com/billing/docs/how-to/export-data-bigquery-setup), as of 2026-11).
 
 ### Unit-economics levers
 
@@ -637,7 +696,7 @@ The gap is almost always one of five things, and I check them in order of how me
 
 First, cost semantics. Finance reads the invoice, which is unblended cost plus tax, support, and fees. The dashboard probably shows amortized cost, which spreads upfront commitment fees across the term. Those two differ legitimately, and I would reconcile through a bridge: unblended, minus upfront fee timing, plus tax and support, equals invoice.
 Second, line item types the dashboard filters out. Tax, support, marketplace, refunds, and credits are commonly excluded from engineering views.
-Third, time. The CUR partition for the billing period may have been refreshed after the dashboard job last ran. AWS refreshes at least daily and can restate the prior period for about two weeks after it ends, so a dashboard that snapshots on day 2 of the month will be stale (AWS docs, as of 2026-10).
+Third, time. The CUR partition for the billing period may have been refreshed after the dashboard job last ran. AWS refreshes at least daily and can restate the prior period for about two weeks after it ends, so a dashboard that snapshots on day 2 of the month will be stale (AWS docs, as of 2026-11).
 Fourth, duplicated or missing files: a versioned export unioned twice inflates the dashboard, while a partially loaded partition deflates it.
 Fifth, scope: linked accounts excluded from the query, or the dashboard reading a single payer when there are two.
 
@@ -673,7 +732,7 @@ You run a shared 64-GPU Kubernetes cluster for six tenants. How do you allocate 
 
 I start from the node price and decompose it into resource components, then bill each tenant on the greater of requested and used amount per component, with a named owner for the remainder.
 The default approach in many cost tools weights CPU and memory only, using a fixed ratio. On GPU nodes that is wrong by an order of magnitude, because most of the node price is the accelerator. A CPU-heavy ETL pod gets billed for the GPU price it never touches, and GPU tenants look nearly free. My worked numbers on an 8-GPU node show a 14.5x overcharge for the CPU-only tenant.
-So weights come from price components. On GCE I can read the Core, RAM, and GPU SKU lines from the detailed export and compute the ratio empirically. On AWS the instance has one price, so I calibrate weights from a price model, such as comparing the instance with and without an accelerator at equal CPU and memory, and I document the assumption.
+So weights come from price components. On GCE I can read the Core, RAM, and GPU SKU lines from the detailed export and compute the ratio empirically. On AWS the instance has one price, so I calibrate weights from a price model, such as comparing the instance with and without an accelerator at equal CPU and memory, and I document the assumption. AWS split cost allocation data now emits accelerator lines on EKS, but with fixed unit weights rather than price components, so I check its GPU share against my model before adopting it.
 For the basis, requests rather than usage, because a reservation denies capacity to others; this follows the Borg reservation model. For the greater-of rule, a tenant that bursts above its request pays for the burst.
 Fractional GPUs need a stated unit: whole devices through the default plugin, slice count for MIG, declared share for time-slicing. Gang-scheduled jobs that hold devices while waiting for the full gang create held-but-idle time, which I report as a scheduler inefficiency metric instead of billing it to the tenant.
 For idle, I split it into two lines. Headroom the platform deliberately keeps for SLO or burst is a platform cost, reported with a target. Unintended idle is waste, allocated to the platform until packing improves, so the platform team owns the improvement.

@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: solid
+status: draft
 last_reviewed:
 sources:
   - "RFC 8446: The Transport Layer Security (TLS) Protocol Version 1.3"

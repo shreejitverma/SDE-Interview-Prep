@@ -24,6 +24,27 @@ sources:
   - "https://sre.google/sre-book/embracing-risk/"
   - "https://aws.amazon.com/compute/sla/"
   - "https://cloud.google.com/compute/sla"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ena-express.html"
+  - "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resolver-availability-scaling.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/provisioned-iops.html"
+  - "https://docs.aws.amazon.com/ec2/latest/instancetypes/ac.html"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/arch/neuron-hardware/trainium2.html"
+  - "https://aws.amazon.com/network-firewall/pricing/"
+  - "https://docs.cloud.google.com/tpu/docs/tpu7x"
+  - "https://docs.cloud.google.com/tpu/docs/v5p"
+  - "https://docs.cloud.google.com/tpu/docs/v5e"
+  - "https://docs.cloud.google.com/tpu/docs/v6e"
+  - "https://docs.cloud.google.com/tpu/docs/release-notes"
+  - "https://cloud.google.com/tpu/pricing"
+  - "https://docs.cloud.google.com/compute/docs/instances/spot"
+  - "https://docs.cloud.google.com/compute/docs/gpus/gpu-network-bandwidth"
+  - "https://docs.cloud.google.com/storage/docs/anywhere-cache"
+  - "https://docs.cloud.google.com/storage/docs/release-notes"
+  - "https://docs.cloud.google.com/managed-lustre/docs/release-notes"
+  - "https://cloud.google.com/vpc/network-pricing"
+  - "https://platform.claude.com/docs/en/about-claude/pricing"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
 ---
 
 # Cloud AI Numbers Every Staff Engineer Must Know
@@ -33,16 +54,16 @@ sources:
 Every cloud AI system has three ceilings: bandwidth (bytes per second), latency (seconds per operation), and concurrency (operations in flight); Little's Law (`throughput = concurrency / latency`) links all three, and most "slow cloud" tickets trace back to one of them.
 LLM decode is limited by HBM bandwidth, not FLOPs: the most tokens per second one sequence can get is roughly aggregate HBM bandwidth divided by the bytes read per step (weights plus KV-cache).
 Each step outward in the bandwidth ladder costs about an order of magnitude: HBM (3.35-8 TB/s per chip), scale-up fabric (0.9-1.8 TB/s per GPU), scale-out NIC (about 50 GB/s per GPU on a 3.2 Tbps node), then object storage at 100-200 ms time to first byte.
-Cloud networks do not give you "the" bandwidth; they enforce several separate limiters (aggregate, per-flow, packets per second, connection tracking, link-local), and each one drops packets silently when you exceed it.
+Cloud networks do not give you "the" bandwidth; they enforce several separate limiters (aggregate, per-flow, packets per second, connection tracking, link-local), and each one silently queues and then drops packets when you exceed it.
 An SLA is a refund schedule, not a design target: when services are chained in series, their availabilities multiply, the credit is capped at the bill for the failed service, and the business loss is uncapped.
 
 ## Mental Model
 
 ```mermaid
 flowchart LR
-  HBM["HBM per chip: 0.8-8 TB/s"] --> SU["Scale-up: NVLink / NeuronLink / ICI: 0.6-1.8 TB/s per chip"]
+  HBM["HBM per chip: 0.8-8 TB/s"] --> SU["Scale-up: NVLink / NeuronLink / ICI: 0.4-1.8 TB/s per chip"]
   SU --> PCIE["PCIe Gen5 x16: ~63 GB/s per direction"]
-  PCIE --> NIC["Scale-out NIC: EFA / RoCE / TCPXO: 3.2 Tbps per node = 400 GB/s"]
+  PCIE --> NIC["Scale-out NIC: EFA / RoCE / TCPXO: up to 3.2 Tbps per node = 400 GB/s"]
   NIC --> AZ["Intra-AZ fabric: tens to hundreds of us RTT"]
   AZ --> XAZ["Inter-AZ: single-digit ms RTT, billed per GB"]
   XAZ --> XR["Inter-region: ~1 ms RTT per 100 km of fiber, billed per GB"]
@@ -53,7 +74,7 @@ flowchart LR
 Read the diagram as a ladder of decreasing bandwidth and increasing latency.
 Every hop away from the HBM generally gives up about 10x bandwidth and adds 10x or more latency.
 Every AI-infrastructure design choice is a decision about which rung each byte lives on.
-Tensor parallelism stays inside the scale-up domain because NVLink delivers about 18x the per-GPU bandwidth of the scale-out NIC.
+Tensor parallelism stays inside the scale-up domain because NVLink delivers about 18x the per-GPU bandwidth of the scale-out NIC on the quoted figures, or about 9x per direction.
 Checkpoints go to object storage because only that rung is durable and cheap at terabyte scale, and that rung's request-rate limits then become your problem.
 Billing and SLAs attach at specific rungs: data crossing AZ, region, or internet boundaries is metered, while HBM and NVLink traffic is free once you pay for the instance-hour.
 A staff engineer can name the rung, its ceiling, and its price for any byte in the system.
@@ -84,8 +105,9 @@ That asymmetry is why [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Infere
 ### The interconnect hierarchy and why parallelism maps onto it
 
 On a p5.48xlarge, each H100 has 900 GB/s of NVLink bandwidth through NVSwitch, while the node's 3,200 Gbps of EFA works out to 400 GB/s per node, or 50 GB/s per GPU.
+The 900 GB/s figure sums both directions (18 links at 25 GB/s each way, so 450 GB/s per direction), while the EC2 figure applies to inbound and outbound separately, so the like-for-like ratio is 9:1 and the 18:1 headline is the quoted-number ratio (AWS EC2 docs, as of 2026-11; NVLink split per secondary hardware references, not an NVIDIA datasheet).
 That 18:1 ratio explains the standard layout: tensor parallelism (an all-reduce on every layer) stays inside the NVLink domain, and pipeline and data parallelism (less frequent, larger, overlappable transfers) cross the NIC.
-TPU pods flatten this hierarchy: v5p chips connect over ICI at 4,800 Gbps per chip in a 3D torus that scales to 8,960 chips, and optical circuit switches rewire the torus between slices (Jouppi et al., ISCA 2023).
+TPU pods flatten this hierarchy: v5p chips connect over ICI at 1,200 GB/s bidirectional per chip in a 3D torus with 8,960 chips per pod and a largest schedulable job of 6,144 chips ([Google Cloud TPU docs](https://docs.cloud.google.com/tpu/docs/v5p), as of 2026-11), and optical circuit switches rewire the torus between slices (Jouppi et al., ISCA 2023).
 The NVL72-class rack designs (GB200) extend NVLink to 72 GPUs, which moves the 18:1 cliff from the 8-GPU boundary to the 72-GPU boundary.
 The mechanism to internalize is NCCL's distinction between algorithm bandwidth and bus bandwidth.
 NCCL defines `busbw = algbw x 2(n-1)/n` for all-reduce, because a ring all-reduce moves `2(n-1)/n` times the buffer size over each link.
@@ -101,45 +123,45 @@ SRD gives up in-order delivery and hands out-of-order packets upward; reordering
 Retransmission happens in the Nitro hardware at microsecond timescales, far below the millisecond-scale retransmission timeouts of kernel TCP.
 Packet spraying makes tail latency depend on the fabric as a whole rather than on the worst single link.
 That property is what lets a synchronous all-reduce across thousands of GPUs avoid being gated by one hot ECMP path.
-Google takes a different path for GPUs: A3 Mega uses GPUDirect-TCPXO, which DMAs payloads directly into GPU memory over eight 200 Gbps NICs, while A3 Ultra and A4 use RDMA over Converged Ethernet with 3.2 Tbps of GPU NICs per VM (Google Cloud docs, as of 2025-06).
+Google takes a different path for GPUs: A3 Mega uses GPUDirect-TCPXO, which DMAs payloads directly into GPU memory over eight 200 Gbps NICs, while A3 Ultra and A4 use RDMA over Converged Ethernet with 3.2 Tbps of GPU NICs per VM ([Google Cloud docs](https://docs.cloud.google.com/compute/docs/gpus/gpu-network-bandwidth), as of 2026-11).
 
 ### The mechanism the guides skip: EC2 bandwidth is a stack of independent policers
 
 The instance-type table says "Up to 12.5 Gbps" or "50 Gbps," but that figure is only one of at least five limiters the Nitro card enforces at the same time.
 First, aggregate bandwidth: instances labeled "up to" have a lower baseline and spend network I/O credits to burst, so a sustained transfer falls back to baseline after the credits run out.
-Second, per-flow bandwidth: a single 5-tuple flow is limited to 5 Gbps outside a cluster placement group and 10 Gbps inside one (AWS EC2 docs, as of 2025-06).
+Second, per-flow bandwidth: a single 5-tuple flow is limited to 5 Gbps outside a cluster placement group and 10 Gbps inside one (AWS EC2 docs, as of 2026-11).
 The physical reason is ECMP: the fabric hashes the 5-tuple to a single path, so one flow cannot use more than one path's share.
-ENA Express removes this limit by running SRD underneath TCP, which raises single-flow bandwidth to 25 Gbps between supported instances in the same AZ (AWS EC2 docs, as of 2025-06).
+ENA Express relaxes this limit by running SRD underneath TCP, which raises single-flow bandwidth to 25 Gbps between supported instances in the same Region, including across AZs in most Regions, and never above the instance's aggregate limit ([AWS ENA Express docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ena-express.html), as of 2026-11).
 Third, a packets-per-second allowance, which small-packet workloads such as RPC fan-out or DNS hit long before any bandwidth limit.
 Fourth, a connection-tracking allowance for tracked flows, which security group rules can trigger; an untracked rule (allow all from 0.0.0.0/0 in both directions) bypasses tracking.
-Fifth, a link-local allowance of 1,024 packets per second per ENI, shared across traffic to the Amazon-provided DNS resolver, the instance metadata service, and the Time Sync service (AWS EC2 docs, as of 2025-06).
-Traffic to the internet or to another region is limited to 50% of instance bandwidth for instances with 32 or more vCPUs, and to 5 Gbps below that (AWS EC2 docs, as of 2025-06).
-None of these limiters emits a CloudWatch alarm by default; each one drops packets silently and increments an ENA driver counter.
+Fifth, a link-local allowance of 1,024 packets per second per ENI, shared across traffic to the Amazon-provided DNS resolver, the instance metadata service, and the Time Sync service ([Route 53 VPC Resolver docs](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resolver-availability-scaling.html), as of 2026-11).
+Traffic through an internet gateway or local gateway is limited to 50% of instance bandwidth for instances with more than 32 vCPUs and to 5 Gbps for instances with fewer than 32, while families such as C8in and M8in get their full baseline (AWS EC2 docs, as of 2026-11).
+None of these limiters emits a CloudWatch alarm by default; each one silently queues and then drops packets and increments an ENA driver counter.
 The counters are visible with `ethtool -S eth0`: `bw_in_allowance_exceeded`, `bw_out_allowance_exceeded`, `pps_allowance_exceeded`, `conntrack_allowance_exceeded`, and `linklocal_allowance_exceeded`.
 A staff engineer debugging a p99 regression on EC2 reads these counters before blaming the application.
-Google Compute Engine enforces a per-VM egress cap that scales at about 2 Gbps per vCPU up to a per-series maximum, and Tier_1 networking raises that cap on supported series (Google Cloud docs, as of 2025-06).
+Google Compute Engine enforces a per-VM egress cap that scales at about 2 Gbps per vCPU up to a per-series maximum, and Tier_1 networking raises that cap on supported series (Google Cloud docs, as of 2026-11).
 
 ### Storage: what you provision versus what you can actually get
 
 Delivered EBS performance is the minimum of four terms: the volume's provisioned IOPS and throughput, the instance's EBS IOPS and bandwidth limits, `queue_depth / latency`, and I/O-size accounting.
-EBS SSD volumes count each I/O up to 256 KiB as one operation and may merge small sequential I/Os, so I/O-size assumptions change the IOPS you actually observe (AWS EBS docs, as of 2025-06).
-Smaller EBS-optimized instances can burst to their maximum EBS performance for 30 minutes at least once every 24 hours and then fall back to baseline, a trap during model-weight loads (AWS EC2 docs, as of 2025-06).
-S3 scales request capacity per partitioned prefix: each prefix supports at least 3,500 PUT/COPY/POST/DELETE and 5,500 GET/HEAD requests per second, and S3 splits partitions in the background as load grows (AWS S3 docs, as of 2025-06).
+EBS SSD volumes count each I/O up to 256 KiB as one operation and may merge small sequential I/Os, so I/O-size assumptions change the IOPS you actually observe (AWS EBS docs, as of 2026-11).
+Smaller EBS-optimized instances can burst to their maximum EBS performance for 30 minutes at least once every 24 hours and then fall back to baseline, a trap during model-weight loads (AWS EC2 docs, as of 2026-11).
+S3 scales request capacity per partitioned prefix: each prefix supports at least 3,500 PUT/COPY/POST/DELETE and 5,500 GET/HEAD requests per second, and S3 splits partitions in the background as load grows (AWS S3 docs, as of 2026-11).
 Because splits lag the load, a checkpoint storm against a cold prefix gets `503 Slow Down` until the partitions catch up.
-GCS starts each bucket at about 1,000 object writes and 5,000 object reads per second and autoscales by splitting index ranges; Google advises doubling request rate no faster than every 20 minutes and avoiding sequential key names (Google Cloud docs, as of 2025-06).
+GCS starts each bucket at about 1,000 object writes and 5,000 object reads per second and autoscales by splitting index ranges; Google advises doubling request rate no faster than every 20 minutes and avoiding sequential key names (Google Cloud docs, as of 2026-11).
 S3 Express One Zone directory buckets trade multi-AZ durability for single-digit-millisecond latency and use a session-based authorization model (`CreateSession`) that amortizes request-signing cost (AWS S3 docs, as of 2025-06).
 
 ### Pricing: why unit prices compound
 
 GPU instance-hours dominate training and self-hosted serving bills, while network transfer and request charges dominate data pipelines.
-The levers that matter are well known: commitments (Savings Plans, CUDs), preemptible capacity (Spot, with a 2-minute notice on AWS and a 30-second notice on GCP), and reservations (Capacity Blocks, reservations, Dynamic Workload Scheduler).
+The levers that matter are well known: commitments (Savings Plans, CUDs), preemptible capacity (Spot, with a 2-minute notice on AWS, and on GCP a configurable 120-second or 0-second notice, 0 by default, followed by a best-effort shutdown period of up to 30 seconds), and reservations (Capacity Blocks, reservations, Dynamic Workload Scheduler).
 The trap is usually not the instance price but bytes crossing a billed boundary inside a training loop, such as a data cache in the wrong AZ or a cross-region replica.
 See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics]] and [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics|GPU and TPU Unit Economics]].
 
 ### SLAs: the contract, the math, and correlation
 
-The EC2 region-level SLA is 99.99% monthly uptime for instances spread across two or more AZs, and the instance-level SLA is 99.5% (AWS Compute SLA, as of 2025-06).
-Credits are a percentage of the affected service's monthly charge: 10%, 30%, or 100% as uptime falls through the 99.99%/99.0%/95.0% tiers for the region-level SLA (AWS Compute SLA, as of 2025-06).
+The EC2 region-level SLA is 99.99% monthly uptime for instances spread across two or more AZs, and the instance-level SLA is 99.5% (AWS Compute SLA, as of 2026-11).
+Credits are a percentage of the affected service's monthly charge: 10%, 30%, or 100% as uptime falls through the 99.99%/99.0%/95.0% tiers for the region-level SLA (AWS Compute SLA, as of 2026-11).
 For dependencies in series, availabilities multiply, so `A_total = product(A_i)`.
 For independent redundant copies in parallel, `A_total = 1 - product(1 - A_i)`, but real failures are correlated through shared control planes, global configuration pushes, and simultaneous deploys.
 The Google SRE book's error-budget framing turns those percentages into minutes: 99.9% allows 43.2 minutes per 30 days, 99.99% allows 4.32 minutes, and 99.999% allows about 26 seconds.
@@ -147,9 +169,9 @@ See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_01_SLIs_SLOs
 
 ## Numbers to Know
 
-Verification note: live re-checking against the 2026-10 docs and price sheets was not possible in this drafting pass.
-The date shown on each row is the date the figure was last verified against the named primary source.
-Rows marked UNVERIFIED are volatile and must be re-checked before anyone quotes them in a design review.
+Verification note: rows dated 2026-11 were re-checked against the named docs and price sheets in that month.
+The date shown on each row is the date the figure was last verified against the named primary source, so older dates were not re-checked in that pass.
+Rows marked UNVERIFIED could not be confirmed and must be re-checked before anyone quotes them in a design review.
 Vendor silicon specifications (HBM capacity and bandwidth, peak FLOPs) are fixed per SKU and do not drift.
 
 ### Physics and latency ladder
@@ -157,28 +179,28 @@ Vendor silicon specifications (HBM capacity and bandwidth, peak FLOPs) are fixed
 | Quantity | Value | Source (date) | Status |
 |---|---|---|---|
 | Light in fiber | ~200,000 km/s, ~1 ms RTT per 100 km | Physics (refractive index ~1.47) | Stable |
-| AZ separation (AWS) | AZs within ~100 km (60 miles) of each other | AWS Regions and AZs page (as of 2025-06) | Stable |
+| AZ separation (AWS) | AZs within ~100 km (60 miles) of each other | AWS Regions and AZs page (as of 2026-11) | Stable |
 | Inter-AZ RTT | Single-digit milliseconds | AWS Regions and AZs page (as of 2025-06) | Stable |
-| S3 small-object first-byte latency | ~100-200 ms | AWS S3 performance guidelines (as of 2025-06) | Stable |
+| S3 small-object first-byte latency | ~100-200 ms | AWS S3 performance guidelines (as of 2026-11) | Stable |
 | S3 Express One Zone latency | Single-digit ms | AWS S3 docs (as of 2025-06) | Stable |
-| io2 Block Express latency | Sub-millisecond | AWS EBS docs (as of 2025-06) | Stable |
-| gp3 latency | Single-digit ms | AWS EBS docs (as of 2025-06) | Stable |
-| Spot interruption notice | AWS 2 min, GCP 30 s | AWS EC2 docs, Google Cloud docs (as of 2025-06) | Stable |
+| io2 Block Express latency | Sub-millisecond (average under 500 us for 16 KiB I/O) | AWS EBS docs (as of 2026-11) | Stable |
+| gp3 latency | Single-digit ms | AWS EBS docs (as of 2026-11) | Stable |
+| Spot interruption notice | AWS 2 min; GCP configurable 120 s or 0 s (default 0), then best-effort shutdown of up to 30 s | AWS EC2 docs (as of 2025-06), Google Cloud docs (as of 2026-11) | Stable |
 
 ### Accelerator memory and compute
 
 | Accelerator | HBM capacity | HBM bandwidth | Dense peak | Ridge (FLOP/B) | Source (date) |
 |---|---|---|---|---|---|
 | NVIDIA A100 80GB SXM | 80 GB HBM2e | 2.04 TB/s | 312 TFLOPS BF16 | ~153 | NVIDIA datasheet (stable) |
-| NVIDIA H100 SXM | 80 GB HBM3 | 3.35 TB/s | 989 TFLOPS BF16, 1,979 FP8 | ~295 BF16 | NVIDIA datasheet (stable) |
+| NVIDIA H100 SXM | 80 GB HBM3 | 3.35 TB/s | 989 TFLOPS BF16, 1,979 FP8 (dense, half the datasheet's with-sparsity 1,979 and 3,958) | ~295 BF16 | NVIDIA datasheet (stable) |
 | NVIDIA H200 | 141 GB HBM3e | 4.8 TB/s | Same as H100 | ~206 BF16 | NVIDIA datasheet (stable) |
-| NVIDIA B200 (as in DGX/HGX B200) | 180 GB HBM3e | 8 TB/s | ~2.25 PFLOPS BF16 dense (UNVERIFIED) | ~281 | NVIDIA DGX B200 spec (as of 2025-06) |
-| AWS Trainium2 | 96 GiB HBM | 2.9 TB/s | 1.3 PFLOPS FP8 dense, ~667 TFLOPS BF16 | ~230 BF16 | AWS Trn2 launch (as of 2024-12) |
-| AWS Inferentia2 | 32 GB HBM | ~0.82 TB/s | - | - | AWS Inf2 docs (as of 2025-06) |
-| Google TPU v5e | 16 GB HBM2 | 819 GB/s | 197 TFLOPS BF16 | ~240 | Google Cloud TPU docs (as of 2025-06) |
-| Google TPU v5p | 95 GB HBM2e | 2,765 GB/s | 459 TFLOPS BF16 | ~166 | Google Cloud TPU docs (as of 2025-06) |
-| Google TPU v6e (Trillium) | 32 GB HBM | 1,640 GB/s | 918 TFLOPS BF16 | ~560 | Google Cloud TPU docs (as of 2025-06) |
-| Google TPU7x (Ironwood) | 192 GB HBM3e | 7.37 TB/s | 4,614 TFLOPS FP8 | ~626 FP8 | Google announcement (as of 2025-04); GA status UNVERIFIED |
+| NVIDIA B200 (as in DGX/HGX B200) | 180 GB HBM3e | 8 TB/s | ~2.25 PFLOPS BF16 dense (UNVERIFIED: derived by scaling DGX B200's 144/72 PFLOPS Tensor figure, NVIDIA publishes no per-GPU dense BF16) | ~281 | NVIDIA DGX B200 datasheet, Google Cloud docs for memory (as of 2026-11) |
+| AWS Trainium2 | 96 GiB HBM | 2.9 TB/s | 1,299 TFLOPS FP8 dense, 667 TFLOPS BF16 | ~230 BF16 | AWS Neuron docs (as of 2026-11) |
+| AWS Inferentia2 | 32 GiB HBM | 820 GiB/s | - | - | AWS Neuron docs (as of 2026-11) |
+| Google TPU v5e | 16 GB HBM2 | 800 GiB/s (~859 GB/s) | 197 TFLOPS BF16 | ~229 | Google Cloud TPU docs (as of 2026-11) |
+| Google TPU v5p | 95 GiB usable HBM2e | 2,765 GB/s | 459 TFLOPS BF16 and FP8 | ~166 | Google Cloud TPU docs (as of 2026-11) |
+| Google TPU v6e (Trillium) | 32 GB HBM | 1,638 GB/s | 918 TFLOPS BF16 | ~560 | Google Cloud TPU docs (as of 2026-11) |
+| Google TPU7x (Ironwood) | 192 GiB HBM3e | 7.38 TB/s | 2,307 TFLOPS BF16, 4,614 FP8 | ~313 BF16, ~625 FP8 | Google Cloud TPU docs (as of 2026-11); GA since 2026-03-31 per TPU release notes |
 
 ### Scale-up and scale-out fabrics
 
@@ -187,82 +209,82 @@ Vendor silicon specifications (HBM capacity and bandwidth, peak FLOPs) are fixed
 | NVLink 4 (H100/H200) | 900 GB/s per GPU | 8 GPUs per HGX node | NVIDIA datasheet | Stable |
 | NVLink 5 (B200) | 1.8 TB/s per GPU | 8 (HGX) or 72 (NVL72) | NVIDIA datasheet | Stable |
 | PCIe Gen5 x16 | ~63 GB/s per direction | Host-device | PCI-SIG spec arithmetic | Stable |
-| EC2 p5.48xlarge EFA | 3,200 Gbps per node (EFAv2) | UltraCluster | AWS EC2 docs (as of 2025-06) | Stable |
-| EC2 p5en.48xlarge EFA | 3,200 Gbps (EFAv3), H200 | UltraCluster | AWS EC2 docs (as of 2025-06) | Stable |
-| EC2 p6-b200.48xlarge EFA | 3,200 Gbps (EFAv4), 8x B200 | UltraCluster | AWS launch (as of 2025-05) | Stable |
-| EC2 trn2.48xlarge EFA | 3.2 Tbps (EFAv3), 16 chips | UltraServer of 64 chips via NeuronLink | AWS Trn2 launch (as of 2024-12) | Stable |
-| GCE A3 Mega | 8 x 200 Gbps GPU NICs (GPUDirect-TCPXO) | Cluster | Google Cloud docs (as of 2025-06) | Stable |
-| GCE A3 Ultra / A4 | 3.2 Tbps GPU NICs (RoCE) | Cluster | Google Cloud docs (as of 2025-06) | Stable |
-| TPU v5e ICI | 1,600 Gbps per chip | 256-chip pod | Google Cloud TPU docs (as of 2025-06) | Stable |
-| TPU v5p ICI | 4,800 Gbps per chip, 3D torus | 8,960-chip pod | Google Cloud TPU docs (as of 2025-06) | Stable |
-| TPU7x ICI | 1.2 TB/s bidirectional per chip | 9,216-chip pod | Google announcement (as of 2025-04) | UNVERIFIED |
+| EC2 p5.48xlarge EFA | 3,200 Gbps per node (EFAv2) | UltraCluster | AWS EC2 docs (as of 2026-11) | Stable |
+| EC2 p5en.48xlarge EFA | 3,200 Gbps (EFAv3), H200 | UltraCluster | AWS EC2 docs (as of 2026-11) | Stable |
+| EC2 p6-b200.48xlarge EFA | 3,200 Gbps (EFAv4), 8x B200 | UltraCluster | AWS EC2 docs (as of 2026-11) | Stable |
+| EC2 trn2.48xlarge EFA | 16 x 200 Gbps = 3.2 Tbps (EFAv3), 16 chips | UltraServer of 64 chips via NeuronLink | AWS EC2 docs (as of 2026-11), AWS Trn2 launch (as of 2024-12) | Stable |
+| GCE A3 Mega | 8 x 200 Gbps GPU NICs (GPUDirect-TCPXO), 1,800 Gbps machine maximum across 9 NICs | Cluster | Google Cloud docs (as of 2026-11) | Stable |
+| GCE A3 Ultra / A4 | 3.2 Tbps GPU NICs (RoCE), 3,600 Gbps machine maximum across 10 NICs | Cluster | Google Cloud docs (as of 2026-11) | Stable |
+| TPU v5e ICI | 400 GB/s bidirectional per chip, 2D torus | 256-chip pod | Google Cloud TPU docs (as of 2026-11) | Stable |
+| TPU v5p ICI | 1,200 GB/s bidirectional per chip, 3D torus | 8,960-chip pod, largest job 6,144 chips | Google Cloud TPU docs (as of 2026-11) | Stable |
+| TPU7x ICI | 1.2 TB/s bidirectional per chip | 9,216-chip pod | Google Cloud TPU docs (as of 2026-11) | Stable |
 
 ### General-purpose instance networking
 
 | Limiter | Value | Source (date) | Status |
 |---|---|---|---|
-| EC2 single flow, outside cluster placement group | 5 Gbps | AWS EC2 docs (as of 2025-06) | Stable |
-| EC2 single flow, inside cluster placement group | 10 Gbps | AWS EC2 docs (as of 2025-06) | Stable |
-| EC2 single flow with ENA Express (same AZ) | 25 Gbps | AWS EC2 docs (as of 2025-06) | Stable |
-| EC2 to internet or other region | 50% of instance bandwidth if >= 32 vCPU, else 5 Gbps | AWS EC2 docs (as of 2025-06) | Stable |
-| EC2 link-local (DNS, IMDS, NTP) | 1,024 pps per ENI | AWS EC2 docs (as of 2025-06) | Stable |
-| GCE per-VM egress default | ~2 Gbps per vCPU up to series cap | Google Cloud docs (as of 2025-06) | Stable |
-| GCE Tier_1 per-VM egress | Up to 200 Gbps on select series | Google Cloud docs (as of 2025-06) | UNVERIFIED |
-| AWS Direct Connect dedicated ports | 1, 10, 100, 400 Gbps | AWS Direct Connect docs (as of 2025-06) | Stable |
-| GCP Dedicated Interconnect circuits | 10, 100 Gbps | Google Cloud docs (as of 2025-06) | Stable |
+| EC2 single flow, outside cluster placement group | 5 Gbps | AWS EC2 docs (as of 2026-11) | Stable |
+| EC2 single flow, inside cluster placement group | 10 Gbps | AWS EC2 docs (as of 2026-11) | Stable |
+| EC2 single flow with ENA Express (same Region) | 25 Gbps, capped by the instance's aggregate limit | AWS ENA Express docs (as of 2026-11) | Stable |
+| EC2 through an internet or local gateway | 50% of instance bandwidth if > 32 vCPU, 5 Gbps if < 32 vCPU, full baseline on C8in-class families | AWS EC2 docs (as of 2026-11) | Stable |
+| EC2 link-local (DNS, IMDS, NTP) | 1,024 pps per ENI | AWS Route 53 VPC Resolver docs (as of 2026-11) | Stable |
+| GCE per-VM egress default | ~2 Gbps per vCPU up to series cap | Google Cloud docs (as of 2026-11) | Stable |
+| GCE Tier_1 per-VM egress | Up to 200 Gbps on C3, C3D, C4, C4D; 100 Gbps on C4A, C2, C2D | Google Cloud docs (as of 2026-11) | Stable |
+| AWS Direct Connect dedicated ports | 1, 10, 100, 400 Gbps | AWS Direct Connect docs (as of 2026-11) | Stable |
+| GCP Dedicated Interconnect circuits | 10, 100, 400 Gbps | Google Cloud docs (as of 2026-11) | Stable |
 
 ### Block, file, and object storage
 
 | Resource | Limit | Source (date) | Status |
 |---|---|---|---|
-| gp3 baseline (included) | 3,000 IOPS, 125 MiB/s | AWS EBS docs (as of 2025-06) | Stable |
-| gp3 maximum | 16,000 IOPS, 1,000 MiB/s, 16 TiB; later raised to 80,000 IOPS, 2,000 MiB/s, 64 TiB | AWS EBS docs (as of 2025-06) | Raised limits UNVERIFIED |
-| io2 Block Express maximum | 256,000 IOPS, 4,000 MiB/s, 64 TiB, 99.999% durability | AWS EBS docs (as of 2025-06) | Stable |
-| io2 Multi-Attach | Up to 16 Nitro instances, same AZ | AWS EBS docs (as of 2025-06) | Stable |
-| Hyperdisk Extreme maximum | 350,000 IOPS | Google Cloud docs (as of 2025-06) | Stable |
-| Hyperdisk Balanced maximum | 160,000 IOPS, 2,400 MiB/s | Google Cloud docs (as of 2025-06) | UNVERIFIED |
-| Hyperdisk ML aggregate read throughput | Up to 1,200,000 MiB/s across attached VMs | Google Cloud docs (as of 2025-06) | UNVERIFIED |
-| FSx for Lustre Persistent_2 throughput tiers | 125, 250, 500, 1,000 MB/s per TiB | AWS FSx docs (as of 2025-06) | Stable |
-| S3 per partitioned prefix | 3,500 writes/s, 5,500 reads/s | AWS S3 docs (as of 2025-06) | Stable |
+| gp3 baseline (included) | 3,000 IOPS, 125 MiB/s | AWS EBS docs (as of 2026-11) | Stable |
+| gp3 maximum | 80,000 IOPS, 2,000 MiB/s, 64 TiB (on Outposts 16,000 IOPS, 1,000 MiB/s, 16 TiB) | AWS EBS docs (as of 2026-11) | Stable |
+| io2 Block Express maximum | 256,000 IOPS, 4,000 MiB/s, 64 TiB, 99.999% durability | AWS EBS docs (as of 2026-11) | Stable |
+| io2 Multi-Attach | Up to 16 Nitro instances, same AZ | AWS EBS docs (as of 2026-11) | Stable |
+| Hyperdisk Extreme maximum | 350,000 IOPS, 5,000 MiB/s | Google Cloud docs (as of 2026-11) | Stable |
+| Hyperdisk Balanced maximum | 160,000 IOPS, 2,400 MiB/s | Google Cloud docs (as of 2026-11) | Stable |
+| Hyperdisk ML maximum per volume | 2,097,152 MiB/s, read-only attach to up to 2,500 instances | Google Cloud docs (as of 2026-11) | Stable |
+| FSx for Lustre Persistent_2 throughput tiers | 125, 250, 500, 1,000 MB/s per TiB | AWS FSx docs (as of 2026-11) | Stable |
+| S3 per partitioned prefix | 3,500 writes/s, 5,500 reads/s | AWS S3 docs (as of 2026-11) | Stable |
 | S3 durability design | 99.999999999% (11 nines) | AWS S3 docs (as of 2025-06) | Stable |
-| GCS initial per-bucket rate | ~1,000 writes/s, ~5,000 reads/s, then autoscale | Google Cloud docs (as of 2025-06) | Stable |
-| GCS ramp guidance | Double request rate no faster than every 20 min | Google Cloud docs (as of 2025-06) | Stable |
+| GCS initial per-bucket rate | ~1,000 writes/s, ~5,000 reads/s, then autoscale | Google Cloud docs (as of 2026-11) | Stable |
+| GCS ramp guidance | Double request rate no faster than every 20 min | Google Cloud docs (as of 2026-11) | Stable |
 
 ### Price anchors (us-east-1 / us-central1, on-demand list)
 
 | Item | Price | Source (date) | Status |
 |---|---|---|---|
-| p5.48xlarge on-demand | ~$55/hr after the 2025 P5 price reduction (~$6.9 per GPU-hr) | AWS EC2 pricing (as of 2025-06) | UNVERIFIED |
-| TPU v5e / v6e / v5p on-demand | ~$1.20 / $2.70 / $4.20 per chip-hr | Google Cloud TPU pricing (as of 2025-06) | UNVERIFIED |
-| S3 Standard storage | $0.023/GB-month (first 50 TB) | AWS S3 pricing (as of 2025-06) | UNVERIFIED |
-| S3 PUT / GET requests | $0.005 / $0.0004 per 1,000 | AWS S3 pricing (as of 2025-06) | UNVERIFIED |
-| GCS Standard regional storage | ~$0.020/GB-month | Google Cloud pricing (as of 2025-06) | UNVERIFIED |
-| gp3 storage | $0.08/GB-month | AWS EBS pricing (as of 2025-06) | UNVERIFIED |
-| AWS inter-AZ transfer | $0.01/GB in each direction | AWS EC2 pricing (as of 2025-06) | UNVERIFIED |
-| AWS inter-region transfer (US) | ~$0.02/GB | AWS EC2 pricing (as of 2025-06) | UNVERIFIED |
-| AWS internet egress (first 10 TB/month) | $0.09/GB | AWS EC2 pricing (as of 2025-06) | UNVERIFIED |
-| GCP inter-zone transfer (same region) | $0.01/GB | Google Cloud VPC pricing (as of 2025-06) | UNVERIFIED |
-| AWS NAT Gateway | $0.045/hr + $0.045/GB processed | AWS VPC pricing (as of 2025-06) | UNVERIFIED |
-| AWS Interface VPC endpoint | ~$0.01/hr per AZ + $0.01/GB | AWS PrivateLink pricing (as of 2025-06) | UNVERIFIED |
-| S3 Gateway endpoint | No charge | AWS VPC docs (as of 2025-06) | Stable |
-| Claude Sonnet-class on Bedrock/Vertex | $3 input / $15 output per million tokens | Anthropic and cloud pricing pages (as of 2025-10) | UNVERIFIED |
+| p5.48xlarge on-demand | $55.04/hr (~$6.88 per GPU-hr) | AWS public EC2 price list, us-east-1 Linux (as of 2026-11) | Volatile |
+| TPU v5e / v6e / v5p / TPU7x on-demand | $1.20 / $2.70 / $4.20 / $12.00 per chip-hr (v6e and v5p in us-east regions) | Google Cloud TPU pricing (as of 2026-11) | Volatile |
+| S3 Standard storage | $0.023/GB-month (first 50 TB) | AWS public S3 price list (as of 2026-11) | Volatile |
+| S3 PUT / GET requests | $0.005 / $0.0004 per 1,000 | AWS public S3 price list (as of 2026-11) | Volatile |
+| GCS Standard regional storage | ~$0.020/GB-month (us-central1, listed as $0.000027397 per GiB-hour) | Google Cloud Storage pricing (as of 2026-11) | Volatile |
+| gp3 storage | $0.08/GB-month | AWS public EBS price list (as of 2026-11) | Volatile |
+| AWS inter-AZ transfer | $0.01/GB in each direction | AWS NLB data-transfer guidance (as of 2026-11) | Volatile |
+| AWS inter-region transfer (US) | ~$0.02/GB ($0.01/GB us-east-1 to us-east-2) | AWS public data-transfer price list (as of 2026-11) | Volatile |
+| AWS internet egress (first 10 TB/month) | $0.09/GB, then $0.085, $0.07, and $0.05 above 150 TB | AWS public data-transfer price list (as of 2026-11) | Volatile |
+| GCP inter-zone transfer (same region) | $0.01/GiB | Google Cloud VPC pricing (as of 2026-11) | Volatile |
+| AWS NAT Gateway | $0.045/hr + $0.045/GB processed | AWS Network Firewall pricing page, us-east-1 example (as of 2026-11) | Volatile |
+| AWS Interface VPC endpoint | $0.01/hr per AZ + $0.01/GB for the first 1 PB | AWS PrivateLink pricing (as of 2026-11) | Volatile |
+| S3 Gateway endpoint | No charge | AWS VPC pricing (as of 2026-11) | Stable |
+| Claude Sonnet-class list price | Sonnet 5.5 and 5: $2 input / $10 output; Sonnet 4.6 and 4.5: $3 / $15 per million tokens | Anthropic pricing, first-party API; Bedrock and Vertex list their own rates (as of 2026-11) | Volatile |
 
 ### Availability SLAs (monthly uptime commitments)
 
 | Service | SLA | Source (date) | Status |
 |---|---|---|---|
-| EC2 region-level (multi-AZ) | 99.99% | AWS Compute SLA (as of 2025-06) | Stable |
-| EC2 instance-level | 99.5% | AWS Compute SLA (as of 2025-06) | Stable |
-| GCE instances in multiple zones | 99.99% | GCE SLA (as of 2025-06) | Stable |
-| GCE single instance | 99.9% | GCE SLA (as of 2025-06) | UNVERIFIED |
-| S3 Standard | 99.9% | S3 SLA (as of 2025-06) | Stable |
-| GCS Standard multi-region / regional | 99.95% / 99.9% | GCS SLA (as of 2025-06) | Stable |
-| DynamoDB standard / global tables | 99.99% / 99.999% | DynamoDB SLA (as of 2025-06) | Stable |
-| Spanner regional / multi-region | 99.99% / 99.999% | Spanner SLA (as of 2025-06) | Stable |
-| EKS control plane | 99.95% | EKS SLA (as of 2025-06) | Stable |
-| GKE regional / zonal control plane | 99.95% / 99.5% | GKE SLA (as of 2025-06) | Stable |
-| Lambda | 99.95% | Lambda SLA (as of 2025-06) | Stable |
-| Amazon Bedrock | 99.9% | Bedrock SLA (as of 2025-06) | Stable |
+| EC2 region-level (multi-AZ) | 99.99% | AWS Compute SLA (as of 2026-11) | Stable |
+| EC2 instance-level | 99.5% | AWS Compute SLA (as of 2026-11) | Stable |
+| GCE instances in multiple zones | 99.99% (Premium Tier, most regions) | GCE SLA (as of 2026-11) | Stable |
+| GCE single instance | 99.9%; 99.95% for memory-optimized | GCE SLA (as of 2026-11) | Stable |
+| S3 Standard | 99.9% | S3 SLA (as of 2026-11) | Stable |
+| GCS Standard multi-region / regional | 99.95% / 99.9% | GCS SLA (as of 2026-11) | Stable |
+| DynamoDB standard / global tables | 99.99% / 99.999% | DynamoDB SLA (as of 2026-11) | Stable |
+| Spanner regional / multi-region | 99.99% / 99.999% | Spanner SLA (as of 2026-11) | Stable |
+| EKS control plane | 99.95% standard; 99.99% Provisioned Control Plane | EKS SLA (as of 2026-11) | Stable |
+| GKE regional / zonal control plane | 99.95% / 99.5% | GKE SLA (as of 2026-11) | Stable |
+| Lambda | 99.95% | Lambda SLA (as of 2026-11) | Stable |
+| Amazon Bedrock | 99.9% | Bedrock SLA (as of 2026-11) | Stable |
 
 ### Error budgets per 30-day month
 
@@ -279,18 +301,18 @@ Vendor silicon specifications (HBM capacity and bandwidth, peak FLOPs) are fixed
 | Concern | AWS mechanism | GCP mechanism | Critical difference |
 |---|---|---|---|
 | Per-VM bandwidth enforcement | Nitro enforces aggregate baseline/burst credits plus pps, conntrack, and link-local allowances; exposed as ENA `*_allowance_exceeded` counters | Per-VM egress cap scaled by vCPU count; Tier_1 raises the cap on supported series | AWS has more separate limiters and per-limiter counters; on GCP the egress cap is usually the binding term |
-| Single-flow bandwidth | 5 Gbps (10 Gbps in a cluster placement group, 25 Gbps with ENA Express SRD) | Not documented in the same per-flow form | Plan multi-flow transfers (parallel TCP streams, multipart) on both clouds |
+| Single-flow bandwidth | 5 Gbps (10 Gbps in a cluster placement group, 25 Gbps with ENA Express SRD) | 3 Gbps per flow to destinations outside the VPC network; C4N up to 50 Gbps single-flow within a VPC network; no general in-VPC per-flow figure in the bandwidth docs (as of 2026-11) | Plan multi-flow transfers (parallel TCP streams, multipart) on both clouds |
 | GPU scale-out transport | EFA with SRD: multipath spraying, out-of-order delivery, Nitro-offloaded retransmit | A3 Mega GPUDirect-TCPXO; A3 Ultra and A4 use RoCE at 3.2 Tbps | Different NCCL plugins and tuning knobs; bus bandwidth must be benchmarked per fabric, not assumed |
 | Scale-up domain | 8-GPU NVLink nodes; P6e-GB200 UltraServers extend NVLink to 72 GPUs; Trn2 UltraServer joins 64 chips with NeuronLink | 8-GPU NVLink nodes; TPU pods of 256 (v5e, v6e) to 8,960 (v5p) chips on ICI with OCS | TPU ICI gives a far larger scale-up domain, so tensor and expert parallelism can span many more chips |
 | Block storage provisioning | gp3 decouples IOPS and throughput from size; io2 Block Express for sub-ms latency | Hyperdisk Balanced and Extreme provision IOPS and throughput separately | Both are also capped by per-VM storage limits, which are often the real ceiling |
 | Read-many model weights | io2 Multi-Attach (up to 16 instances, same AZ); usually S3 plus local NVMe | Hyperdisk ML read-only multi-attach to many VMs | GCP has a purpose-built block primitive for weight fan-out; AWS designs lean on object storage plus caching |
 | Object request scaling | Per-prefix partitions split under load; 503 Slow Down during the lag | Per-bucket autoscaling by index-range splits; ramp guidance of doubling every 20 min | Both punish sudden cold-start storms; key design (hashed prefixes, non-sequential names) matters on both |
-| Low-latency object tier | S3 Express One Zone directory buckets with `CreateSession` auth | Anywhere Cache (zonal SSD cache); Rapid Storage zonal buckets (status UNVERIFIED) | Express is a separate bucket type with its own API semantics; Anywhere Cache sits in front of existing buckets |
-| Parallel file system | FSx for Lustre, throughput priced per TiB tier | Google Cloud Managed Lustre (GA status UNVERIFIED) | Check tier names, minimum capacity, and S3/GCS sync semantics separately |
+| Low-latency object tier | S3 Express One Zone directory buckets with `CreateSession` auth | Rapid Cache (formerly Anywhere Cache, zonal SSD read cache); Rapid Bucket zonal buckets (GA 2026-03-10 per Cloud Storage release notes) | Express is a separate bucket type with its own API semantics; Rapid Cache sits in front of existing buckets |
+| Parallel file system | FSx for Lustre, throughput priced per TiB tier | Google Cloud Managed Lustre (GA 2025-06-30 per its release notes) | Check tier names, minimum capacity, and S3/GCS sync semantics separately |
 | Accelerator capacity assurance | On-Demand Capacity Reservations; EC2 Capacity Blocks for ML | Reservations; Dynamic Workload Scheduler Flex-start and Calendar modes | Quota is not capacity on either cloud; only reservations guarantee placement |
-| Preemptible capacity | Spot, 2-minute notice | Spot VMs, 30-second notice | GCP's shorter notice requires checkpoints that complete or can be abandoned within 30 s |
+| Preemptible capacity | Spot, 2-minute notice | Spot VMs, configurable 120 s or 0 s notice (default 0), then a best-effort shutdown of up to 30 s | GCP's default leaves only the best-effort 30 s window, so set the 120 s notice or use checkpoints that can be abandoned |
 | Same-region storage-to-compute | S3 to EC2 in the same region: no transfer charge | GCS to GCE in the same location: no transfer charge | Cross-AZ caches you run yourself (NFS, Lustre, Redis) do incur inter-zone charges |
-| Compute SLA | 99.99% region-level, 99.5% instance-level | 99.99% multi-zone, higher single-instance tier (UNVERIFIED) | Both pay only service credits; neither covers accelerator performance degradation |
+| Compute SLA | 99.99% region-level, 99.5% instance-level | 99.99% multi-zone, 99.9% single instance (99.95% memory-optimized) | Both pay only service credits; neither covers accelerator performance degradation |
 | Managed LLM capacity | Bedrock per-model TPM/RPM quotas, cross-region inference profiles, Provisioned Throughput model units | Vertex AI quotas, global endpoint, Provisioned Throughput in GSUs | Cross-region routing changes data-residency posture; verify per model |
 
 ## Worked Example: A Staff-Level Numbers Calculator and a Little's Law Lab
@@ -404,7 +426,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--live-aws", action="store_true")
     ap.add_argument("--live-gcp", action="store_true")
-    ap.add_argument("--p5-usd-hr", type=float, default=55.0)  # UNVERIFIED anchor
+    ap.add_argument("--p5-usd-hr", type=float, default=55.0)  # AWS price list: $55.04/hr us-east-1 (as of 2026-11)
     args = ap.parse_args()
 
     # 1. 70B-class GQA model, FP8 weights, BF16 KV, TP=8 on 8x H100 (3.35 TB/s each).
@@ -467,7 +489,7 @@ Step 3, KV capacity: 640 GB of HBM, minus 10% for activations and workspace, min
 Step 4, batched step: at batch 256 and 4,096 context, the KV read is about 344 GB per step, five times the weight read, so the step takes about 15.4 ms.
 Step 5, compute check: about 38 TFLOP per step at an FP8 peak near 15.8 PFLOP/s is about 2.4 ms, so the step remains memory-bound by more than 6x.
 Step 6, throughput ceiling: 256 / 15.4 ms is about 16,600 output tokens per second per node.
-Step 7, unit cost: at a $55/hr anchor (UNVERIFIED), that is about $0.92 per million output tokens at the roofline, and about $1.84 at a realistic 50% efficiency.
+Step 7, unit cost: at a $55/hr anchor (AWS price list, as of 2026-11), that is about $0.92 per million output tokens at the roofline, and about $1.84 at a realistic 50% efficiency.
 Step 8, the levers in order of impact: FP8 KV-cache halves the dominant term, prefix caching removes repeated KV, and moving to H200 (4.8 TB/s, 141 GB) speeds up both the bandwidth term and the batch-capacity term.
 Step 9, checkpoint: 70B parameters with mixed-precision Adam is 16 bytes per parameter, about 1.12 TB, which is about 16,700 PUTs of 64 MiB each.
 On a single cold prefix the 3,500 PUT/s floor makes the request rate, not bandwidth, the bottleneck at about 4.8 s, and real cold prefixes return 503 Slow Down before they split.
@@ -475,7 +497,7 @@ On a single cold prefix the 3,500 PUT/s floor makes the request rate, not bandwi
 ### Part B: Optional billable lab - Little's Law on gp3
 
 The lab launches one m7i.large with a blank 100 GiB gp3 volume, runs fio at queue depths 1 and 32, and prints the results to the console output, so no SSH is needed.
-Cost estimate: about $0.10 per hour for the instance plus about $0.01 per hour for the volume in us-east-1 (UNVERIFIED), so under $0.50 if you tear down within the hour.
+Cost estimate: about $0.10 per hour for the instance plus about $0.01 per hour for the volume in us-east-1 (m7i.large $0.1008/hr and gp3 $0.08/GB-month, AWS price list, as of 2026-11), so under $0.50 if you tear down within the hour.
 Expected result: QD1 lands near 1,000-2,000 IOPS, set by latency, and QD32 flattens at the 3,000 IOPS gp3 baseline, set by provisioning.
 
 Create a budget alarm first:
@@ -567,7 +589,7 @@ Only reservations (ODCRs, Capacity Blocks, GCP reservations, DWS Calendar mode) 
 The AWS us-east-1 event on 2025-10-19/20 began with a race condition in DynamoDB's automated DNS management that left the regional endpoint without DNS records; the impact then spread to services that depend on DynamoDB, including EC2 instance launches ([AWS post-event summary](https://aws.amazon.com/message/101925/)).
 The Kinesis event on 2020-11-25 started when a capacity addition pushed front-end servers past an OS thread limit, and it cascaded into Cognito, CloudWatch, and other services ([AWS PES](https://aws.amazon.com/message/11201/)).
 The 2021-12-07 us-east-1 event came from congestion between the internal and main networks, which impaired monitoring and control-plane APIs during recovery ([AWS PES](https://aws.amazon.com/message/12721/)).
-Google Cloud's 2025-06-12 incident started when a policy change reached Service Control and triggered a crashing null-pointer path that was not behind a feature flag, so API calls failed across many regions ([Google Cloud status history](https://status.cloud.google.com/summary)).
+Google Cloud's 2025-06-12 incident started when a policy change reached Service Control and triggered a crashing null-pointer path that was not behind a feature flag, so API calls failed across many regions ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
 The lesson for SLA math: multiplying per-service SLAs assumes independence, and these PIRs show dependency graphs that break that assumption.
 See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
@@ -594,7 +616,7 @@ See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter
 
 ### Private boundaries are also cost boundaries
 
-Routing S3 traffic through a NAT Gateway costs about $0.045 per GB processed, while an S3 Gateway endpoint costs nothing, so a 1 PB per month data loader on NAT wastes about $45,000 per month (UNVERIFIED price anchor).
+Routing S3 traffic through a NAT Gateway costs about $0.045 per GB processed, while an S3 Gateway endpoint costs nothing, so a 1 PB per month data loader on NAT wastes about $45,000 per month (AWS pricing, as of 2026-11).
 Interface endpoints for Bedrock or other APIs cost about $0.01 per GB plus hourly per-AZ charges, and they also enable `aws:SourceVpce` conditions in data-perimeter policies.
 On GCP, Private Google Access and VPC Service Controls perimeters enclose GCS and Vertex AI without any per-GB NAT processing charge for Google APIs.
 See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
@@ -603,7 +625,7 @@ See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter
 
 First, utilization: a GPU at 30% MFU costs about twice as much per useful FLOP as one at 60%, and no discount program closes that gap.
 Second, bytes per token: FP8 weights and KV-cache, prefix caching, and speculative decoding cut cost per token directly, because decode is bandwidth-bound.
-Third, the commitment mix: Savings Plans or CUDs for the steady baseline, reservations for training windows, and Spot only for work that tolerates a 2-minute or 30-second notice.
+Third, the commitment mix: Savings Plans or CUDs for the steady baseline, reservations for training windows, and Spot only for work that tolerates a 2-minute notice on AWS or, on GCP, a 120-second notice or the default best-effort 30-second shutdown.
 Fourth, data locality: keep training data, caches, and accelerators in the same AZ, and use same-region object storage, whose reads do not incur transfer charges.
 
 ## Interview Questions and Model Answers
@@ -639,7 +661,7 @@ The mechanism is ECMP: the fabric hashes each flow's 5-tuple onto one path, so o
 There are three fixes, each with a cost.
 Running parallel streams (`-P 8`) spreads the transfer across paths and approaches instance bandwidth, but the application must be able to shard its transfers.
 A cluster placement group raises the per-flow cap to 10 Gbps, but concentrates instances on a small set of racks and raises correlated-failure risk and capacity-error risk.
-ENA Express runs SRD underneath TCP for up to 25 Gbps per flow between supported instances in the same AZ, at the cost of slightly higher latency for small packets and a same-AZ requirement.
+ENA Express runs SRD underneath TCP for up to 25 Gbps per flow between supported instances in the same Region, at the cost of a slight median latency increase (tens of microseconds) under light load and the need to enable it on both ends (AWS ENA Express docs, as of 2026-11).
 To verify, read `bw_out_allowance_exceeded` and `pps_allowance_exceeded` in `ethtool -S` and confirm that no limiter is dropping packets.
 For S3 transfers the same logic applies: parallel byte-range GETs and multipart uploads exist because a single connection is per-flow-limited.
 
@@ -666,7 +688,7 @@ S3 Express One Zone can serve as the hot tier for lower latency, at the cost of 
 
 #### Follow-up Interviewer Question
 
-How does the design change on GCP with 30-second Spot notices, and what is the smallest checkpoint you could finish inside that window?
+How does the design change on GCP Spot with its default best-effort 30-second shutdown window, and what is the smallest checkpoint you could finish inside that window?
 
 ### Question 4 (L6 - Staff)
 
@@ -696,7 +718,7 @@ Choose between gp3, io2 Block Express, instance-store NVMe, and memory.
 #### Model Answer
 
 The required IOPS is 20,000 x 40 = 800,000 random reads per second, before any cache hits.
-gp3 is out on throughput and latency: even the raised per-volume limits (UNVERIFIED) are an order of magnitude short, and single-digit-ms latency times about 40 sequential dependent hops in a graph walk breaks the 10 ms p99.
+gp3 is out on throughput and latency: even the raised 80,000 IOPS per-volume limit (AWS EBS docs, as of 2026-11) is an order of magnitude short, and single-digit-ms latency times about 40 sequential dependent hops in a graph walk breaks the 10 ms p99.
 HNSW traversal is pointer-chasing, so the hops within one query are dependent and their latencies add; Little's Law applies to concurrency across queries, not within one.
 io2 Block Express gives sub-ms latency but tops out at 256,000 IOPS per volume and is also capped by instance EBS limits, so striping would be needed and the p99 would still sum dozens of network round trips.
 Local NVMe gives tens of microseconds per read and millions of IOPS per instance, but its data disappears on stop or host failure, so the index must be rebuildable from a durable source such as S3 snapshots.
@@ -717,7 +739,7 @@ Decide between self-hosted GPUs on AWS, TPUs on GCP, and a managed API, and defe
 
 10B tokens per day averages about 116,000 tokens per second; with a diurnal peak-to-average ratio of about 2.5, size for about 290,000 tokens per second at peak.
 At about 8,000 tokens per second per p5 node (half the roofline computed earlier, for a 4K average context), the peak needs about 36 nodes, and about 45 with N+20% headroom.
-At a $55/hr anchor (UNVERIFIED), 45 nodes cost about $59,000 per day, roughly $5.9 per million tokens at average load; committed pricing and autoscaling the trough can bring that to about $2-3 per million.
+At a $55/hr anchor (AWS price list, as of 2026-11), 45 nodes cost about $59,000 per day, roughly $5.9 per million tokens at average load; committed pricing and autoscaling the trough can bring that to about $2-3 per million.
 Utilization dominates this model, not list price: a fleet sized for the peak runs at about 40% average, so autoscaling with warm pools, or filling troughs with batch work, cuts cost per token far more than any discount.
 TPU v6e has a higher ridge point but only 32 GB of HBM per chip, so a 70B model needs many chips per replica, and the comparison has to be measured per replica at the SLO, not per chip-hour.
 A managed API turns all of this into a per-token price with no utilization risk, which wins below the break-even volume and for spiky or uncertain demand.
@@ -736,7 +758,7 @@ Lay out the options with numbers.
 
 #### Model Answer
 
-Moving 1 PB out of AWS to the internet at tiered rates of about $0.05-0.09 per GB costs about $50,000-90,000 per full copy (UNVERIFIED anchors), plus GCS storage of about $20,000 per month.
+Moving 1 PB out of AWS to the internet in one month at the published tiered rates of $0.09 falling to $0.05 per GB costs about $54,000 per full copy, and volumes above 500 TB per month are quoted by AWS directly (AWS price list, as of 2026-11), plus GCS storage of about $20,000 per month.
 Streaming the corpus each epoch from S3 multiplies that egress by the epoch count, so a one-time copy wins after the first epoch.
 Bandwidth sets the timeline: 1 PB over a 100 Gbps interconnect at 80% efficiency takes about 28 hours, and over a 10 Gbps path about 12 days, so data movement can delay the start more than the training does.
 Dedicated cross-cloud interconnect lowers per-GB cost compared with internet egress and makes throughput predictable, but it adds port fees and a provisioning lead time of weeks.

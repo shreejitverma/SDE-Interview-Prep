@@ -15,6 +15,35 @@ sources:
   - "https://docs.vllm.ai/en/latest/features/quantization/"
   - "https://github.com/vllm-project/llm-compressor"
   - "https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues"
+  - "https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf"
+  - "https://developer.nvidia.com/blog/introducing-nvfp4-for-efficient-and-accurate-low-precision-inference/"
+  - "https://docs.nvidia.com/cutlass/4.4.2/media/docs/cpp/blackwell_functionality.html"
+  - "https://www.nvidia.com/en-us/data-center/h100/"
+  - "https://www.nvidia.com/en-us/data-center/h200/"
+  - "https://www.nvidia.com/en-us/data-center/l4/"
+  - "https://www.nvidia.com/en-us/data-center/l40s/"
+  - "https://docs.vllm.ai/en/latest/features/quantization/llm_compressor/fp8/"
+  - "https://docs.vllm.ai/en/latest/features/quantization/llm_compressor/int4/"
+  - "https://docs.vllm.ai/en/latest/features/quantization/quantized_kvcache/"
+  - "https://docs.vllm.ai/projects/llm-compressor/en/latest/examples/transform/"
+  - "https://developers.redhat.com/articles/2024/10/14/introducing-machete-mixed-input-gemm-kernel"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/arch/neuron-hardware/trainium2.html"
+  - "https://docs.cloud.google.com/tpu/docs/v5e"
+  - "https://docs.cloud.google.com/tpu/docs/v6e"
+  - "https://docs.cloud.google.com/tpu/docs/tpu7x"
+  - "https://blog.google/products/google-cloud/ironwood-tpu-age-of-inference/"
+  - "https://aws.amazon.com/ec2/instance-types/p5/"
+  - "https://aws.amazon.com/ec2/instance-types/p6/"
+  - "https://docs.cloud.google.com/compute/docs/gpus"
+  - "https://docs.cloud.google.com/compute/docs/gpus/gpu-network-bandwidth"
+  - "https://docs.cloud.google.com/compute/docs/instances/future-reservations-calendar-mode-overview"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/model-customization-import-model.html"
+  - "https://docs.aws.amazon.com/dlami/latest/devguide/aws-deep-learning-x86-base-gpu-ami-ubuntu-22-04.html"
+  - "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct"
+  - "https://instances.vantage.sh/aws/ec2/g6e.xlarge"
+  - "https://gcloud-compute.com/g2-standard-8.html"
+  - "https://papers.nips.cc/paper_files/paper/2024/hash/496720b3c860111b95ac8634349dcc88-Abstract-Conference.html"
+  - "https://ppopp25.sigplan.org/details/PPoPP-2025-Main-Conference-1/22/MARLIN-Mixed-Precision-Auto-Regressive-Parallel-Inference-on-Large-Language-Models"
 ---
 
 # Model Quantization and Compression
@@ -159,17 +188,18 @@ The network computes the same function, but the energy of a single outlier chann
 After rotation, activations are close to Gaussian, which is what makes W4A4 and 4-bit KV cache feasible.
 The cost is an online Hadamard transform where the rotation cannot be folded, for example before `down_proj` and on the KV path.
 A fast Walsh-Hadamard transform is `O(d log d)`, cheap but not free.
-Treat these as research-grade techniques that are only partly integrated into production engines (status UNVERIFIED as of 2026-10).
+Production integration is partial: llm-compressor ships SpinQuant/QuaRot-style (`SpinQuantModifier`) and QuIP-style (`QuIPModifier`) Hadamard transforms, and vLLM can run QuIP-style Hadamard-transformed checkpoints with accelerated Hadamard kernels ([llm-compressor transform docs](https://docs.vllm.ai/projects/llm-compressor/en/latest/examples/transform/), as of 2026-10).
+Treat them as less battle-tested than FP8 or W4A16 and gate them on the same evals.
 
 ### Microscaling formats and Blackwell FP4
 
-The OCP Microscaling (MX) specification defines MXFP8, MXFP6, MXFP4 and MXINT8 as blocks of 32 elements sharing one power-of-two E8M0 scale (OCP MX v1.0; UNVERIFIED as of 2026-10).
-NVIDIA's NVFP4 uses 16-element blocks with an E4M3 block scale plus a per-tensor FP32 scale, so the block scale has fractional precision instead of power-of-two steps (NVIDIA docs; UNVERIFIED as of 2026-10).
+The OCP Microscaling (MX) specification defines MXFP8, MXFP6, MXFP4 and MXINT8 as blocks of 32 elements sharing one power-of-two E8M0 scale ([OCP MX v1.0 spec, Table 1](https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf), Sep 2023).
+NVIDIA's NVFP4 uses 16-element blocks with an E4M3 block scale plus a per-tensor FP32 scale, so the block scale has fractional precision instead of power-of-two steps ([NVIDIA NVFP4 blog](https://developer.nvidia.com/blog/introducing-nvfp4-for-efficient-and-accurate-low-precision-inference/), as of 2026-10).
 The 4-bit element itself is E2M1, so it can represent only the magnitudes {0, 0.5, 1, 1.5, 2, 3, 4, 6}, which follows from the encoding.
 That grid is non-uniform: denser near zero, which suits bell-shaped weights better than uniform INT4.
 The hardware difference from INT4 W4A16 is decisive.
 On Blackwell, block-scaled FP4 multiplies run natively in the tensor core with the scale applied inside the MMA.
-So W4A4 in NVFP4 cuts both bytes and FLOP time, while W4A16 only cuts bytes (NVIDIA Blackwell docs; UNVERIFIED as of 2026-10).
+So W4A4 in NVFP4 cuts both bytes and FLOP time, while W4A16 only cuts bytes (SM100 `tcgen05.mma ... block_scale` instructions take UE8M0 scales per 32 elements for MX types and UE4M3 scales per 16 elements for NVFP4; [CUTLASS Blackwell docs](https://docs.nvidia.com/cutlass/4.4.2/media/docs/cpp/blackwell_functionality.html), as of 2026-10).
 
 ### KV-cache quantization
 
@@ -180,7 +210,7 @@ An FP8 KV cache halves both the PagedAttention block pool's bytes (see [[17-Clou
 It also halves the bytes shipped between prefill and decode pools in [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_07_Prefill_and_Decode_Disaggregation|Prefill and Decode Disaggregation]].
 The failure mode is scales.
 KV quantization typically uses per-tensor or per-head `k_scale` and `v_scale`.
-If a checkpoint ships no calibrated KV scales, engines fall back to a default (historically 1.0 in vLLM; UNVERIFIED for current releases as of 2026-10).
+If a checkpoint ships no calibrated KV scales, engines fall back to a default (vLLM sets all scales to 1.0 when `kv_cache_dtype="fp8"` is used without calibration, and per-head scales need llm-compressor calibration and the Flash Attention backend; [vLLM quantized KV cache docs](https://docs.vllm.ai/en/latest/features/quantization/quantized_kvcache/), as of 2026-10).
 That works only because typical K and V magnitudes sit well inside the E4M3 range, and it breaks on models with large key norms.
 Keys are more sensitive than values: an error in K perturbs the softmax logits, which are then exponentiated, while an error in V is averaged linearly.
 
@@ -188,7 +218,7 @@ Keys are more sensitive than values: an error in K perturbs the softmax logits, 
 
 For one linear layer at decode, `Y[B, N] = X[B, K] W[N, K]^T`, FLOPs are `2 B N K`, and the bytes moved are dominated by the weights, `N K * bytes_per_weight`.
 Arithmetic intensity is therefore `2B / bytes_per_weight` FLOPs per byte.
-An H100 SXM's BF16 ridge point is about `989e12 / 3.35e12 = 295` FLOP/byte (NVIDIA datasheet figures; UNVERIFIED as of 2026-10).
+An H100 SXM's BF16 ridge point is about `989e12 / 3.35e12 = 295` FLOP/byte (NVIDIA datasheet lists 1,979 BF16 TFLOPS with sparsity, so about 989 dense, and 3.35 TB/s; as of 2026-10).
 BF16 weights (2 bytes) give intensity `B`, so decode stays memory-bound until about B = 295.
 W4A16 g128 weights (0.516 bytes) give intensity `3.88 B`, so the layer turns compute-bound at about B = 76 under ideal kernels.
 Past that point it is no faster than BF16, because the FLOPs still run on BF16 tensor cores, and dequantization makes it slower.
@@ -205,24 +235,24 @@ A 4-bit integer `q` is OR-ed into the mantissa of the FP16 constant 1024 (bit pa
 Subtracting `1024 + 8` then yields the signed value `q - 8` for symmetric INT4, all without an integer-to-float conversion instruction.
 Third, global-memory loads are issued several pipeline stages ahead with asynchronous copies, so HBM streaming overlaps the MMAs.
 Fourth, the K dimension is partitioned in stripes across SMs so that skinny decode matrices still occupy all SMs, with a global reduction at the end.
-On Hopper, vLLM's Machete kernel plays the same role using wgmma instructions (vLLM project; UNVERIFIED as of 2026-10).
+On Hopper, vLLM's Machete kernel plays the same role using wgmma instructions, as the W4A16 and W8A16 backend since vLLM 0.6.2 ([Red Hat Machete post](https://developers.redhat.com/articles/2024/10/14/introducing-machete-mixed-input-gemm-kernel), Oct 2024).
 
 At the attention and step level, a decode step reads `W_bytes + sum_i(L_i * kv_bytes_per_token)`.
 For Llama-3-70B at batch 32 with 8K contexts and FP8 KV, the KV term is about 43 GB.
 FP8 weights are 70.6 GB, so KV is 38 percent of step traffic.
 With INT4 weights (about 36 GB), KV becomes 54 percent of traffic.
-On an H200 the step lower bound drops only from 23.7 ms to 16.5 ms, a 1.43x gain rather than the 2x the weight size suggests (derived; H200 4.8 TB/s per NVIDIA datasheet, UNVERIFIED as of 2026-10).
+On an H200 the step lower bound drops only from 23.7 ms to 16.5 ms, a 1.43x gain rather than the 2x the weight size suggests (derived; H200 4.8 TB/s per NVIDIA datasheet, as of 2026-10).
 This is the mechanism behind the field observation that "INT4 helped less than expected on long-context traffic".
 
 ### Accelerator support matrix (what runs natively)
 
 Ampere (A100, A10G) supports INT8 tensor-core math but not FP8.
-FP8 checkpoints on Ampere fall back to weight-only FP8 via mixed-input kernels (W8A16), which saves memory but brings no compute gain (vLLM docs; UNVERIFIED as of 2026-10).
+FP8 checkpoints on Ampere fall back to weight-only FP8 via mixed-input kernels (W8A16), which saves memory but brings no compute gain (vLLM requires compute capability >= 8.9 for FP8 compute and runs FP8 checkpoints as W8A16 via FP8 Marlin on Turing and Ampere; [vLLM FP8 docs](https://docs.vllm.ai/en/latest/features/quantization/llm_compressor/fp8/), as of 2026-10).
 Ada (L4, L40S) and Hopper (H100, H200) support FP8 E4M3 and E5M2 tensor-core math.
-Blackwell (B200, GB200) adds native block-scaled FP4 and FP6 (NVIDIA docs; UNVERIFIED as of 2026-10).
-AWS Trainium2 supports FP8 compute, and the Neuron SDK exposes weight quantization for inference (AWS Neuron docs; UNVERIFIED as of 2026-10).
-Google TPU v5e and v6e (Trillium) provide INT8 MXU throughput at twice their BF16 rate, which JAX stacks reach through AQT-style int8 quantization (Google Cloud docs; UNVERIFIED as of 2026-10).
-Google describes Ironwood (TPU7x) as its first TPU with native FP8 (Google Cloud blog; UNVERIFIED as of 2026-10).
+Blackwell (B200, GB200) adds native block-scaled FP4 and FP6, plus block-scaled MXFP8 ([CUTLASS Blackwell docs](https://docs.nvidia.com/cutlass/4.4.2/media/docs/cpp/blackwell_functionality.html), as of 2026-10).
+AWS Trainium2 supports FP8 compute (1,299 dense FP8 TFLOPS per chip), and the Neuron SDK (NxD Inference) exposes INT8 and FP8 weight quantization plus KV-cache quantization for inference ([AWS Neuron Trainium2 docs](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/arch/neuron-hardware/trainium2.html), as of 2026-10).
+Google TPU v5e and v6e (Trillium) provide INT8 MXU throughput at twice their BF16 rate (v5e 197 BF16 TFLOPS vs 393 INT8 TOPS; v6e 918 vs 1836), which JAX stacks reach through AQT-style int8 quantization ([Google Cloud TPU v6e docs](https://docs.cloud.google.com/tpu/docs/v6e), as of 2026-10).
+Google's Ironwood (TPU7x) announcement states that FP8 is natively supported on Ironwood, whereas FP8 figures for v4 and v5p were emulated ([Google Ironwood blog](https://blog.google/products/google-cloud/ironwood-tpu-age-of-inference/), April 2025).
 The portability consequence: GPTQ/AWQ INT4 artifacts packed for CUDA kernels do not run on Trainium or TPU.
 Those targets recompile from the BF16 master with their own quantization toolchain.
 
@@ -243,7 +273,7 @@ Wire those gates into the platform eval harness described in [[17-Cloud-AI-Engin
 Published evaluations agree on a rough ordering.
 FP8 W8A8 with dynamic per-token activation scales is close to indistinguishable from BF16.
 W4A16 g128 with GPTQ or AWQ loses a small but measurable amount that grows on smaller models and harder tasks.
-3-bit weights and un-rotated W4A4 lose noticeably (qualitative literature consensus; specific deltas UNVERIFIED as of 2026-10).
+3-bit weights and un-rotated W4A4 lose noticeably (qualitative literature consensus; specific deltas UNVERIFIED: they vary by model, task and recipe, and no single primary source fixes them, as of 2026-10).
 
 ### Control plane versus data plane
 
@@ -265,52 +295,52 @@ Alert on throughput per GPU, not just on errors.
 | E4M3 max finite | 448 | (derived from Micikevicius et al., 2022 encoding) |
 | E5M2 max finite | 57344 | (derived from Micikevicius et al., 2022 encoding) |
 | E2M1 (FP4) magnitudes | 0, 0.5, 1, 1.5, 2, 3, 4, 6 | (derived from encoding) |
-| MX block | 32 elements, shared E8M0 scale | (OCP MX v1.0; UNVERIFIED as of 2026-10) |
-| NVFP4 block | 16 elements, E4M3 block scale + FP32 tensor scale | (NVIDIA docs; UNVERIFIED as of 2026-10) |
+| MX block | 32 elements, shared E8M0 scale | (OCP MX v1.0 spec, Sep 2023) |
+| NVFP4 block | 16 elements, E4M3 block scale + FP32 tensor scale | (NVIDIA NVFP4 blog, as of 2026-10) |
 | W4 g128 storage | 4.125 bits/weight symmetric; about 4.16 with 4-bit zeros | (derived) |
-| H100 SXM | 80 GB HBM3, 3.35 TB/s, about 989 BF16 / 1979 FP8 dense TFLOPS | (NVIDIA datasheet; UNVERIFIED as of 2026-10) |
-| H200 | 141 GB HBM3e, 4.8 TB/s, compute as H100 | (NVIDIA datasheet; UNVERIFIED as of 2026-10) |
-| L4 | 24 GB GDDR6, about 300 GB/s, FP8 capable | (NVIDIA datasheet; UNVERIFIED as of 2026-10) |
-| L40S | 48 GB GDDR6, about 864 GB/s, FP8 capable | (NVIDIA datasheet; UNVERIFIED as of 2026-10) |
-| A100 / A10G | No FP8 tensor cores; INT8 supported | (NVIDIA docs; UNVERIFIED as of 2026-10) |
+| H100 SXM | 80 GB HBM3, 3.35 TB/s, about 989 BF16 / 1979 FP8 dense TFLOPS (datasheet lists 2x these with sparsity) | (NVIDIA datasheet, as of 2026-10) |
+| H200 | 141 GB HBM3e, 4.8 TB/s, compute as H100 | (NVIDIA datasheet, as of 2026-10) |
+| L4 | 24 GB GDDR6, about 300 GB/s, FP8 capable | (NVIDIA datasheet, as of 2026-10) |
+| L40S | 48 GB GDDR6, about 864 GB/s, FP8 capable (733 dense FP8 TFLOPS) | (NVIDIA datasheet, as of 2026-10) |
+| A100 / A10G | No FP8 tensor cores (compute capability 8.0 / 8.6, below the 8.9 FP8 threshold); INT8 supported | (vLLM FP8 docs, as of 2026-10) |
 | H100 BF16 ridge point | About 295 FLOP/byte | (derived from datasheet figures) |
 | W4A16 compute crossover on H100 | Batch of about 76 (ideal kernel) | (derived) |
 | Llama-3-70B KV per token | 320 KiB BF16, 160 KiB FP8 | (derived from model config) |
 | Llama-3-70B weights | About 141 GB BF16, 71 GB FP8, 36 GB W4 g128 (+ about 4 GB BF16 embed/lm_head) | (derived) |
 | Decode lower bound, 70B FP8 on 1x H200, batch 1 | About 14.7 ms/step | (derived) |
-| TPU v5e / v6e | 16 GB / 32 GB HBM; INT8 at 2x BF16 rate | (Google Cloud docs; UNVERIFIED as of 2026-10) |
-| Trainium2 | 96 GiB HBM per chip, FP8 support | (AWS docs; UNVERIFIED as of 2026-10) |
-| Lab price g6e.xlarge (1x L40S) | About USD 1.86/hour on-demand, us-east-1 | (AWS pricing; UNVERIFIED as of 2026-10) |
-| Lab price g2-standard-8 (1x L4) | About USD 0.85/hour on-demand, us-central1 | (Google Cloud pricing; UNVERIFIED as of 2026-10) |
+| TPU v5e / v6e | 16 GB / 32 GB HBM; INT8 at 2x BF16 rate (197 / 393 and 918 / 1836) | (Google Cloud TPU docs, as of 2026-10) |
+| Trainium2 | 96 GiB HBM per chip at 2.9 TB/s, FP8 support | (AWS Neuron docs, as of 2026-10) |
+| Lab price g6e.xlarge (1x L40S) | About USD 1.86/hour on-demand (USD 1.861), us-east-1 Linux | (AWS list price via instances.vantage.sh, as of 2026-10) |
+| Lab price g2-standard-8 (1x L4) | About USD 0.85/hour on-demand (USD 0.8536), us-central1 | (Google Cloud list price via gcloud-compute.com, as of 2026-10) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
-| FP8-capable datacenter GPUs | P5 (H100), P5e/P5en (H200), P6 (B200) (AWS docs; UNVERIFIED as of 2026-10) | A3 High/Mega (H100), A3 Ultra (H200), A4 (B200) (GCP docs; UNVERIFIED as of 2026-10) | Same silicon, so the same quantized artifacts and kernels run on both; differences are in fabric and capacity products. |
+| FP8-capable datacenter GPUs | P5 (H100), P5e/P5en (H200), P6 (B200) (AWS docs, as of 2026-10) | A3 High/Mega (H100), A3 Ultra (H200), A4 (B200) (GCP docs, as of 2026-10) | Same silicon, so the same quantized artifacts and kernels run on both; differences are in fabric and capacity products. |
 | Low-cost FP8 inference GPUs | G6 (L4), G6e (L40S) | G2 (L4) | L40S gives 48 GB and about 2.9x L4 bandwidth, which matters for 30B-class models at W4 or FP8. |
 | Non-FP8 legacy GPUs in fleet | G5 (A10G), P4d/P4de (A100) | A2 (A100) | FP8 artifacts fall back to weight-only paths here; failover onto these changes latency. |
-| Custom silicon low precision | Trainium2 / Inferentia2 via Neuron SDK; compiled from BF16 master | TPU v5e/v6e INT8 via JAX/XLA; Ironwood FP8 (UNVERIFIED as of 2026-10) | CUDA-packed GPTQ/AWQ artifacts are not portable; each target needs its own quantization step and eval gate. |
+| Custom silicon low precision | Trainium2 / Inferentia2 via Neuron SDK; compiled from BF16 master | TPU v5e/v6e INT8 via JAX/XLA; Ironwood native FP8 (Google blog, April 2025) | CUDA-packed GPTQ/AWQ artifacts are not portable; each target needs its own quantization step and eval gate. |
 | Quantization toolchain | Neuron quantization APIs; NVIDIA ModelOpt and llm-compressor on GPU | AQT-style int8 in JAX/MaxText; ModelOpt and llm-compressor on GPU | GPU toolchains are cloud-neutral; accelerator toolchains are vendor-locked. |
-| Managed self-weights serving | SageMaker AI endpoints with LMI/vLLM containers; Bedrock Custom Model Import for supported architectures (quantized-format support UNVERIFIED as of 2026-10) | Vertex AI Model Garden vLLM containers and Hex-LLM on TPU; GKE with vLLM | Managed import paths may re-host weights at their own precision; verify what precision you are actually billed for. |
+| Managed self-weights serving | SageMaker AI endpoints with LMI/vLLM containers; Bedrock Custom Model Import for supported architectures (quantized-format support UNVERIFIED: the import docs require Hugging Face safetensors weights for listed architectures but do not document quantized formats, as of 2026-10) | Vertex AI Model Garden vLLM containers and Hex-LLM on TPU; GKE with vLLM | Managed import paths may re-host weights at their own precision; verify what precision you are actually billed for. |
 | Artifact storage | S3 (Standard or Express One Zone), SSE-KMS | Cloud Storage, CMEK via Cloud KMS | Smaller artifacts shorten cold starts, see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_08_Cloud_GPU_Autoscaling_and_Cold_Start_Mitigation\|Cold-Start Mitigation]]. |
 | Private artifact path | S3 gateway VPC endpoint with endpoint policy | Private Google Access plus VPC Service Controls perimeter | VPC SC blocks copying artifacts to a project outside the perimeter; endpoint policies must be written per bucket. |
-| KV transfer fabric for disaggregation | EFA with SRD | GPUDirect-TCPXO on A3 Mega; RDMA on A3 Ultra/A4 (UNVERIFIED as of 2026-10) | FP8 KV halves transfer bytes on either fabric. |
-| Capacity products | Capacity Blocks for ML, ODCRs | DWS calendar mode / flex-start, reservations (UNVERIFIED as of 2026-10) | Precision choice changes GPU count per replica, which changes how much reserved capacity you must buy. |
+| KV transfer fabric for disaggregation | EFA with SRD | GPUDirect-TCPXO on A3 Mega; GPUDirect RDMA on A3 Ultra/A4 (GCP docs, as of 2026-10) | FP8 KV halves transfer bytes on either fabric. |
+| Capacity products | Capacity Blocks for ML, ODCRs | DWS calendar mode / flex-start, reservations (GCP docs, as of 2026-10) | Precision choice changes GPU count per replica, which changes how much reserved capacity you must buy. |
 
 ## Worked Example: FP8 and W4A16 on one cheap GPU, with quality and latency measured
 
 The lab quantizes `Qwen/Qwen2.5-7B-Instruct` (Apache 2.0, ungated) to FP8-dynamic W8A8 and to GPTQ W4A16 g128 with llm-compressor.
 It then serves BF16, FP8, W4A16 and FP8 plus FP8-KV with vLLM, and measures perplexity, argmax flip rate against BF16, and decode throughput at batch 1, 8 and 64.
 Both lab GPUs (L40S on AWS, L4 on GCP) are Ada-class and support FP8 natively.
-Library APIs shown match the llm-compressor and vLLM documentation as last known.
-Pin the versions you test with, because packing formats and import paths change between releases (UNVERIFIED as of 2026-10).
+The `oneshot`, `QuantizationModifier(scheme="FP8_DYNAMIC")` and `GPTQModifier(scheme="W4A16")` calls match the [vLLM llm-compressor FP8](https://docs.vllm.ai/en/latest/features/quantization/llm_compressor/fp8/) and [INT4](https://docs.vllm.ai/en/latest/features/quantization/llm_compressor/int4/) examples (as of 2026-10).
+Pin the versions you test with, because packing formats and import paths change between releases.
 
 ### Cost estimate and guardrails
 
-On AWS, g6e.xlarge costs about USD 1.86/hour (UNVERIFIED as of 2026-10).
+On AWS, g6e.xlarge costs about USD 1.86/hour (list price, us-east-1, as of 2026-10).
 A 3-hour run plus 200 GB of gp3 for 3 hours comes to about USD 5.70.
-On GCP, g2-standard-8 costs about USD 0.85/hour (UNVERIFIED as of 2026-10), so a 3-hour run plus a 200 GB balanced disk comes to about USD 2.70.
+On GCP, g2-standard-8 costs about USD 0.85/hour (list price, us-central1, as of 2026-10), so a 3-hour run plus a 200 GB balanced disk comes to about USD 2.70.
 Both instances get a hard self-destruct timer, so a forgotten lab cannot run past 4 hours.
 
 ### Provision on AWS
@@ -326,8 +356,8 @@ aws budgets create-budget --account-id "$ACCT" \
   --budget '{"BudgetName":"quant-lab","BudgetLimit":{"Amount":"20","Unit":"USD"},"TimeUnit":"MONTHLY","BudgetType":"COST"}' \
   --notifications-with-subscribers '[{"Notification":{"NotificationType":"ACTUAL","ComparisonOperator":"GREATER_THAN","Threshold":80,"ThresholdType":"PERCENTAGE"},"Subscribers":[{"SubscriptionType":"EMAIL","Address":"you@example.com"}]}]'
 
-# Deep Learning Base AMI via public SSM parameter (path UNVERIFIED as of 2026-10; list with
-# aws ssm get-parameters-by-path --path /aws/service/deeplearning/ami/x86_64 --recursive).
+# Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04) via public SSM parameter
+# (path per AWS DLAMI docs, as of 2026-10).
 AMI=$(aws ssm get-parameter --region "$REGION" \
   --name /aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-22.04/latest/ami-id \
   --query Parameter.Value --output text)
@@ -503,7 +533,7 @@ python compare.py bf16.json fp8.json w4a16.json fp8kv.json
 
 ### Back-of-the-envelope: predict before you measure
 
-Qwen2.5-7B has about 6.5B non-embedding parameters and an untied 152K-by-3584 `lm_head` of about 0.55B parameters (model config; approximate, UNVERIFIED as of 2026-10).
+Qwen2.5-7B has about 6.5B non-embedding parameters and an untied 152K-by-3584 `lm_head` of about 0.55B parameters (model card: 7.61B total, 6.53B non-embedding; config: `vocab_size` 152064, `hidden_size` 3584, `tie_word_embeddings` false; as of 2026-10).
 The `lm_head` stays BF16 in all three variants because the recipes ignore it.
 Every decode step reads the whole `lm_head` but only B rows of the input embedding, so per-step weight bytes are about:
 BF16 at `6.5e9 * 2 + 1.1e9 = 14.1 GB`, FP8 at `6.5e9 * 1 + 1.1e9 = 7.6 GB`, and W4A16 at `6.5e9 * 0.516 + 1.1e9 = 4.5 GB`.
@@ -564,13 +594,14 @@ Plug in current negotiated rates from [[17-Cloud-AI-Engineering/Volume_09_FinOps
 - In MoE models, rarely routed experts receive few calibration tokens, so their GPTQ Hessians are poorly estimated, and quality on niche domains drops more than the aggregate metrics show.
 - Numerics are not reproducible across hardware, TP degree or kernel versions, so golden-output tests and cached eval results go stale at every engine upgrade, and tests need tolerance bands on KL divergence instead of string equality.
 - Re-exported quantized checkpoints sometimes drop or alter the chat template, the generation config or special-token settings, which produces quality regressions that have nothing to do with numerics.
-- A public example of precision-related serving regressions is Anthropic's September 2025 postmortem ([A postmortem of three recent issues](https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues)), which describes a TPU compiler issue in which mixed bf16 and fp32 precision in token selection degraded outputs only for some requests, a class of bug that aggregate evals missed (details UNVERIFIED as of 2026-10).
+- A public example of precision-related serving regressions is Anthropic's September 2025 postmortem ([A postmortem of three recent issues](https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues)), which describes an XLA:TPU approximate top-k miscompilation that returned wrong tokens only for certain batch sizes and model configurations.
+  It had been masked by a workaround for an earlier bf16-versus-fp32 precision mismatch in token selection, surfaced when that workaround was removed in August 2025, and was fixed by switching to exact top-k and standardizing some operations on fp32; Anthropic notes its evaluations did not capture the degradation users reported (Anthropic, 2025-09-17).
 - Most quantization regressions never get a public PIR, because they show up as quality complaints rather than availability incidents, which is why the KL and flip-rate canary in the interview answers below matters.
 
 ## Security and Cost Angles
 
 - Supply chain: a third-party quantized checkpoint is a new binary artifact, not "the same model", so require safetensors, forbid `trust_remote_code`, record provenance, and sign artifacts per [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_05_Software_Supply_Chain_Security_SLSA_and_Sigstore|Software Supply Chain Security]].
-- Quantization-conditioned behavior is a demonstrated attack class: research ("Exploiting LLM Quantization", Egashira et al., 2024; venue UNVERIFIED as of 2026-10) builds models that behave benignly in full precision and maliciously after quantization, so safety evals must run on the exact artifact being served.
+- Quantization-conditioned behavior is a demonstrated attack class: research ([Exploiting LLM Quantization, Egashira et al., NeurIPS 2024](https://papers.nips.cc/paper_files/paper/2024/hash/496720b3c860111b95ac8634349dcc88-Abstract-Conference.html)) builds models that behave benignly in full precision and maliciously after quantization, so safety evals must run on the exact artifact being served.
 - IAM scoping on AWS: the calibration job role needs `s3:GetObject` on the master prefix and `s3:PutObject` on the quantized prefix, while serving roles get read-only access to approved prefixes through an S3 gateway endpoint whose policy pins the bucket ARNs.
 - IAM scoping on GCP: grant `roles/storage.objectViewer` on the artifact bucket to the serving service account through Workload Identity, and put Cloud Storage and Vertex AI inside one VPC Service Controls perimeter so artifacts cannot be copied out (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]]).
 - Encryption: store masters and quantized artifacts under SSE-KMS or CMEK with separate keys, so revoking access to fine-tuned or proprietary masters does not break serving of approved derivatives (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Envelope Encryption]]).

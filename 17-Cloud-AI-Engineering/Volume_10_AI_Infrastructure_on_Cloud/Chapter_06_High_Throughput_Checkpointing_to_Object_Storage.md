@@ -19,6 +19,26 @@ sources:
   - "https://aws.amazon.com/blogs/storage/prime-video-improved-stream-analytics-performance-with-amazon-s3-express-one-zone/"
   - "https://cloud.google.com/storage/docs/request-rate"
   - "https://cloud.google.com/storage/docs/request-preconditions"
+  - "https://www.usenix.org/conference/nsdi25/presentation/wan-borui"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-express-differences.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/directory-buckets-overview.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-s3-functionality-conditional-writes"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/12/amazon-s3-default-data-integrity-protections"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/09/managed-tiered-checkpointing-amazon-sagemaker-hyperpod"
+  - "https://aws.amazon.com/ec2/instance-types/p5/"
+  - "https://aws.amazon.com/s3/faqs/"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-express-tutorial-endpoints.html"
+  - "https://docs.cloud.google.com/storage/docs/release-notes"
+  - "https://docs.cloud.google.com/storage/docs/rapid/rapid-bucket"
+  - "https://docs.cloud.google.com/storage/docs/soft-delete"
+  - "https://docs.cloud.google.com/storage/docs/composite-objects"
+  - "https://docs.cloud.google.com/storage/docs/rename-hns-folders"
+  - "https://cloud.google.com/storage/pricing"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/machine-learning/training/multi-tier-checkpointing"
+  - "https://orbax.readthedocs.io/en/latest/optimized_checkpointing.html"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
 ---
 
 # High-Throughput Checkpointing to Object Storage
@@ -92,12 +112,12 @@ It is embarrassingly parallel and limited by per-node NIC bandwidth, per-bucket 
 The control plane is three small steps: plan (who writes which shard), commit (declare the set of shards complete and consistent), and publish (move the pointer).
 DCP does planning by gathering local plans to a coordinator, deduplicating into a global plan, scattering it back, having every rank write `__<rank>_<n>.distcp` files, and having the coordinator write a `.metadata` file that maps each logical tensor (FQN, chunk offsets, sizes) to file byte ranges (PyTorch docs, as of 2026-10).
 That metadata is what allows load-time resharding: a checkpoint saved with one topology (for example TP=8, PP=16) can be loaded with another, because each loading rank computes which byte ranges overlap its new shard.
-ByteCheckpoint (ByteDance, reported at NSDI 2025; venue UNVERIFIED) generalizes the same idea into a parallelism-agnostic representation with asynchronous pipelined I/O across frameworks.
-In JAX, Orbax writes through TensorStore, and its OCDBT format packs many small array chunks into fewer large files, which cuts object count and per-request overhead on object storage (Orbax docs, as of 2026-10; UNVERIFIED this session).
+ByteCheckpoint (ByteDance and HKU, [NSDI 2025](https://www.usenix.org/conference/nsdi25/presentation/wan-borui)) generalizes the same idea into a parallelism-agnostic representation with asynchronous pipelined I/O across frameworks.
+In JAX, Orbax writes through TensorStore, and its OCDBT format packs many small array chunks into fewer large files, which cuts object count and per-request overhead on object storage (Orbax docs, as of 2026-10).
 The control plane must never be "list the bucket and take the highest step number."
 Listing is slow at large object counts.
 Listing also shows partial uploads from crashed jobs as if they were complete.
-On S3 directory buckets, listing order is not lexicographic, so "highest" is not even well-defined (UNVERIFIED).
+On S3 directory buckets, `ListObjectsV2` does not return keys in lexicographic order, so "highest" is not even well-defined (AWS docs, as of 2026-10).
 
 ### Write path on S3 general purpose buckets: why periodic bursts are adversarial
 
@@ -113,7 +133,7 @@ Three countermeasures follow from the mechanism:
 - Smooth the regional-tier upload over the whole checkpoint interval instead of bursting it (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_05_Constant_Work_and_Workload_Smoothing|Constant Work and Workload Smoothing]]).
 
 Entropy-first keys break prefix listing per step, which costs nothing if restore reads the manifest instead of listing.
-Multipart upload is the unit of parallelism within one shard file, with a limit of 10,000 parts and a 5 MiB minimum part size except for the last part (AWS docs; UNVERIFIED this session).
+Multipart upload is the unit of parallelism within one shard file, with a limit of 10,000 parts and a part size of 5 MiB to 5 GiB, with no minimum for the last part (AWS docs, as of 2026-10).
 At a 16 MiB part size, a 5.67 TB checkpoint is about 338,000 part PUTs (derived), and one partitioned prefix at 3,500 writes/s would need about 97 seconds for request admission alone (derived).
 
 ### S3 Express One Zone: what changes mechanically
@@ -126,7 +146,7 @@ That moves per-request IAM evaluation onto a session-creation path, and current 
 Each directory bucket supports up to 200,000 reads and 100,000 writes per second by default, and up to 2 million reads and 200,000 writes per second through a Support increase (AWS docs, as of 2026-10).
 The AWS S3 FAQ states the 2 million TPS ceiling holds regardless of how many directories the bucket has (AWS FAQ, as of 2026-10).
 So, unlike general purpose buckets, key layout does not determine request capacity, and the cold-partition burst problem above mostly goes away.
-Prime Video used S3 Express One Zone specifically to absorb checkpoint write bursts and reported 503 SlowDown rates below 0.1% during high-traffic events (AWS Storage Blog, 2025).
+Prime Video moved the checkpoints of its Apache Flink-based stream processor (not training checkpoints, but the same bursty write pattern) from S3 Standard to S3 Express One Zone and reported 503 SlowDown rates below 0.1% during high-traffic events (AWS Storage Blog, 2025-04).
 The trade-off is the failure domain.
 A directory bucket is a single-AZ resource named `<base>--<az-id>--x-s3`, so losing the AZ means losing every checkpoint in it.
 That is acceptable only if the training cluster is in the same AZ (it usually is, since UltraClusters and placement groups are zonal) and a regional copy exists for the zone-loss case.
@@ -135,13 +155,14 @@ Colocate by AZ ID (for example `use1-az4`), not AZ name, because AZ names map to
 ### Write path on Google Cloud Storage
 
 Cloud Storage buckets start at roughly 1,000 object writes and 5,000 object reads per second.
-They scale by splitting key ranges as load grows, and Google's guidance is to double the request rate no faster than every 20 minutes (Google Cloud docs; UNVERIFIED this session).
+They scale by splitting key ranges as load grows, and Google's guidance is to double the request rate no faster than every 20 minutes (Google Cloud docs, as of 2026-10).
 Key ranges are lexicographic, so step-first or timestamp-first names push a burst onto one range server, which is the same entropy-first lesson as S3.
 GCS has no per-GB ingress or write charge for same-region traffic and bills each write as a Class A operation.
-Large uploads can use resumable uploads, XML API multipart uploads, or parallel composite uploads where up to 32 objects are composed into one (Google Cloud docs; UNVERIFIED this session).
-Hierarchical namespace (HNS) buckets add real folders with atomic folder rename, which suits Orbax-style "write to a temp directory, then rename" finalization (UNVERIFIED this session).
-Google announced Rapid Storage, a zonal bucket type on Colossus with appendable objects and gRPC bidirectional streaming, in April 2025 as a preview; its GA status as of 2026-10 is UNVERIFIED and must be checked before production use.
-Anywhere Cache is a zonal SSD read cache in front of a regional bucket, which helps the restore read path but not the save path.
+Large uploads can use resumable uploads, XML API multipart uploads, or parallel composite uploads where up to 32 objects are composed into one (Google Cloud docs, as of 2026-10).
+Hierarchical namespace (HNS) buckets add real folders with atomic, metadata-only folder rename, which suits Orbax-style "write to a temp directory, then rename" finalization (Google Cloud docs, as of 2026-10).
+Google announced Rapid Storage, a zonal bucket type on Colossus with appendable objects and gRPC bidirectional streaming, in April 2025 as a preview.
+It became generally available as Rapid Bucket on 2026-03-10; it requires HNS and uniform bucket-level access, is offered only in listed zones, and accepts writes only through the gRPC `BidiWriteObject` API (Google Cloud release notes and docs, as of 2026-10).
+Anywhere Cache (renamed Rapid Cache in March 2026, per the Google Cloud release notes) is a zonal SSD read cache in front of a regional bucket, which helps the restore read path but not the save path.
 For GCS internals, see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_09_Cloud_Storage_and_Colossus_Filesystem|Cloud Storage and Colossus Filesystem]].
 
 ### Commit protocol and fencing on an object store
@@ -159,8 +180,8 @@ Suppose a network partition makes the scheduler declare attempt 7 dead and start
 Attempt 7 can still finish writing its own prefix, but it cannot move the pointer backward past attempt 8, because tuple comparison rejects it and CAS rejects a stale ETag.
 This is the fencing-token pattern from lease-based distributed systems, applied to checkpoint publication.
 For GCS, generation preconditions are long-standing and documented.
-For S3, conditional writes (`If-None-Match`, then `If-Match`) launched for general purpose buckets in 2024.
-Directory bucket support for `If-Match` in your region is UNVERIFIED and must be tested before you rely on it.
+For S3, conditional writes launched in 2024: `If-None-Match` in August and `If-Match` in November.
+AWS announced `If-Match` on PutObject and CompleteMultipartUpload for both general purpose and directory buckets (AWS What's New, 2024-11), but still test it with your SDK version before you rely on it.
 
 ### Tiering and the goodput equation
 
@@ -187,8 +208,8 @@ It also schedules checkpoint traffic into idle gaps in the training communicatio
 MegaScale (ByteDance, NSDI 2024) uses a two-stage design, staging to host memory first and then to a distributed file system asynchronously.
 On restore, MegaScale has one rank per data-parallel group read a shard and broadcast it over the training fabric instead of all replicas hitting storage.
 That restore pattern is the general fix for read stampedes.
-On AWS, SageMaker HyperPod launched managed tiered checkpointing in 2025, which keeps checkpoints in CPU memory across nodes with S3 as the durable tier (details and GA scope UNVERIFIED).
-On Google Cloud, Orbax provides an emergency-checkpointing manager that combines local and persistent tiers with cross-slice replication, and GKE has a multi-tier checkpointing offering (GA status UNVERIFIED).
+On AWS, SageMaker HyperPod made managed tiered checkpointing generally available on 2025-09-08 for EKS-orchestrated clusters; it keeps frequent checkpoints in CPU memory, replicates them to neighboring nodes, periodically persists to S3, and integrates with PyTorch DCP (AWS What's New, 2025-09).
+On Google Cloud, Orbax provides an emergency-checkpointing manager that combines local and persistent tiers with cross-slice replication, and GKE Multi-Tier Checkpointing manages node-local, peer-replicated, and Cloud Storage tiers for JAX on TPU v5e, v5p, v6e, and Ironwood and for PyTorch on A3 H100 nodes, from GKE 1.32.4-gke.1415000 (GKE docs, as of 2026-10; GA status UNVERIFIED: the docs carry no Preview label, but no GA release note was found).
 The physical fabric that peer replication uses is covered in [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI|Interconnect Technologies: NVLink, EFA, and TPU ICI]].
 
 ### Failure domains per tier
@@ -221,33 +242,33 @@ For AZ-isolation fundamentals, see [[17-Cloud-AI-Engineering/Volume_00_Foundatio
 | S3 Express One Zone PUT / GET, us-east-1 | $0.00113 / $0.00003 per 1,000 | AWS pricing, as of 2026-10 |
 | S3 Express One Zone upload / retrieval per GB, us-east-1 | $0.0032 / $0.0006, applies to all bytes | AWS pricing, as of 2026-10 |
 | S3 Standard storage (first 50 TB) / PUT, us-east-1 | $0.023 per GB-month / $0.005 per 1,000 | AWS pricing, as of 2026-10 |
-| S3 multipart limits | 10,000 parts, 5 MiB minimum part | AWS docs, UNVERIFIED this session |
-| GCS initial bucket request rate | about 1,000 writes/s, 5,000 reads/s, double every 20 min | Google Cloud docs, UNVERIFIED this session |
-| GCS compose fan-in | 32 source objects per request | Google Cloud docs, UNVERIFIED this session |
-| GCS default soft-delete retention on new buckets | 7 days | Google Cloud docs, UNVERIFIED this session |
-| GCS Standard regional storage / Class A ops | about $0.020 per GB-month / $0.005 per 1,000 | Google Cloud pricing, UNVERIFIED this session |
-| Rapid Storage (GCS zonal buckets) | announced in preview 2025-04; current status UNVERIFIED | Google Cloud Next 2025 |
+| S3 multipart limits | 10,000 parts, 5 MiB to 5 GiB per part (last part has no minimum) | AWS docs, as of 2026-10 |
+| GCS initial bucket request rate | about 1,000 writes/s, 5,000 reads/s, double no faster than every 20 min | Google Cloud docs, as of 2026-10 |
+| GCS compose fan-in | 32 source objects per request | Google Cloud docs, as of 2026-10 |
+| GCS default soft-delete retention on new buckets | 7 days (settable 7 to 90, or 0 to disable) | Google Cloud docs, as of 2026-10 |
+| GCS Standard storage us-central1 / Class A ops | $0.020 per GiB-month / $0.005 per 1,000 (flat namespace; $0.0065 with HNS) | Google Cloud pricing, as of 2026-10 |
+| Rapid Bucket (GCS zonal buckets, Rapid storage class) | preview 2025-04; GA 2026-03-10 in listed zones | Google Cloud release notes, as of 2026-10 |
 | Llama 3 405B interruption rate | 466 interruptions in 54 days, 419 unexpected, 16,384 H100 | Llama 3 paper, 2024 |
 | Implied MTBF at 16k GPUs | about 186 min | derived |
-| p5.48xlarge local NVMe / host RAM / EFA | 8 x 3.84 TB / 2 TiB / 3,200 Gbps | AWS docs, UNVERIFIED this session |
+| p5.48xlarge local NVMe / host RAM / EFA | 8 x 3.84 TB / 2 TiB / 3,200 Gbps | AWS EC2 P5 page, as of 2026-10 |
 | PCIe 5.0 x16 theoretical per direction | about 64 GB/s | PCI-SIG spec |
 
 ## AWS vs GCP Mechanism Parity
 
 | Concern | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
-| Zonal low-latency object tier | S3 Express One Zone in directory buckets, GA | Rapid Storage zonal buckets, preview at 2025-04 launch, status UNVERIFIED | Do not design a GCP production path on a feature you have not confirmed GA |
+| Zonal low-latency object tier | S3 Express One Zone in directory buckets, GA | Rapid Bucket zonal buckets, preview 2025-04, GA 2026-03-10 | Rapid Bucket is offered only in listed zones and needs HNS plus gRPC writes; confirm your zone before designing on it |
 | Regional durable tier | S3 Standard, multi-AZ | GCS regional, dual-region, or multi-region | GCS dual-region gives a two-region failure domain in one bucket namespace |
 | Request scaling unit | Per partitioned prefix, auto-split on sustained rate; Express gives fixed per-bucket TPS | Per bucket key range, auto-split with a ramp | Both punish step-first key names under bursts; Express removes the key-layout dependency |
 | Auth on hot path | `CreateSession` session credentials for Express; SigV4 per request otherwise | OAuth access tokens per request, IAM evaluated by the service | Express sessions need the `s3express:CreateSession` permission, not only `s3:PutObject` |
 | Create-only commit | `If-None-Match: *` on PutObject | `ifGenerationMatch=0` | GCS generation numbers are fencing tokens by design |
-| Pointer CAS | `If-Match: <ETag>` | `ifGenerationMatch=<gen>` | Directory-bucket `If-Match` support UNVERIFIED; test it |
+| Pointer CAS | `If-Match: <ETag>` | `ifGenerationMatch=<gen>` | AWS announced `If-Match` for directory buckets in 2024-11; still test it with your SDK |
 | Large-object parallelism | Multipart upload, parallel parts | XML multipart, resumable, parallel composite with compose | GCS bills each part or compose as a Class A op; S3 Express also bills per GB |
-| Namespace semantics | Directory buckets have real directories; listing not lexicographic (UNVERIFIED) | HNS buckets have folders and atomic folder rename (UNVERIFIED) | Orbax rename-finalize fits HNS; manifest-commit works on both |
+| Namespace semantics | Directory buckets have real directories; listing not lexicographic (AWS docs, as of 2026-10) | HNS buckets have folders and atomic folder rename (Google Cloud docs, as of 2026-10) | Orbax rename-finalize fits HNS; manifest-commit works on both |
 | PyTorch integration | `s3torchconnector.dcp` S3StorageWriter/Reader (AWS CRT) | fsspec/gcsfs writer or local-then-upload | AWS ships a first-party DCP storage plugin |
 | JAX integration | Orbax over S3 via TensorStore or local-then-upload | Orbax over GCS via TensorStore, native | Orbax is GCS-first |
-| Managed in-memory tier | SageMaker HyperPod managed tiered checkpointing (details UNVERIFIED) | Orbax emergency checkpointing, GKE multi-tier checkpointing (status UNVERIFIED) | Both put host RAM and peer replication ahead of the object store |
-| Read cache for restore | Mountpoint cache, FSx for Lustre | Anywhere Cache, Cloud Storage FUSE file cache | Caches help restore and never help save |
+| Managed in-memory tier | SageMaker HyperPod managed tiered checkpointing, GA 2025-09, EKS clusters only | Orbax emergency checkpointing, GKE Multi-Tier Checkpointing (GA status UNVERIFIED: no Preview label, no GA note found) | Both put host RAM and peer replication ahead of the object store |
+| Read cache for restore | Mountpoint cache, FSx for Lustre | Anywhere Cache (renamed Rapid Cache in 2026-03), Cloud Storage FUSE file cache | Caches help restore and never help save |
 | Private path | Gateway VPC endpoints for S3 and S3 Express | Private Google Access, Private Service Connect | Endpoint policies on AWS; VPC Service Controls perimeter on GCP |
 | Encryption | SSE-S3 default, SSE-KMS with Bucket Keys | Google-managed default, CMEK via Cloud KMS | Per-object KMS calls at 338k objects per save is a quota hazard without bucket keys |
 
@@ -266,7 +287,7 @@ Assumptions (labeled, not facts): 2,048 nodes of 8 H100, 5.67 TB unique state, a
 7. Synchronous save to S3 Standard with `C` = 5 min: `T*` = sqrt(2 x 5 x 186) = 43 min, waste = sqrt(10/186) = 23.2%, plus `R/M` = 5.4%, for 28.6% total.
 8. Async two-tier with `C` = 0.5 min and `U` = 3 min: `T*` = 13.6 min, waste = 7.3% + 1.6% + 5.4% = 14.3%.
 9. Async with `C` = 5 s, peer-RAM restore (`R` = 3 min, `U` relevant only for multi-node loss, about 0.3%): 3.0% + 0.3% + 1.6% = about 4.9%.
-10. Cluster burn: 2,048 x $40 = $81,920 per hour = about $1.97M per day, so each goodput point is worth about $19.7k per day, and step 7 versus step 9 is worth about $460k per day under these assumptions.
+10. Cluster burn: 2,048 x $40 = $81,920 per hour = about $1.97M per day, so each goodput point is worth about $19.7k per day, and step 7 versus step 9 (23.7 points) is worth about $466k per day under these assumptions.
 11. Express cost at 15-minute saves: per save $18.14 upload-per-GB + $0.38 PUT = $18.52; 96 saves per day = about $1,780 per day; keeping the last 3 resident = 17 TB x $0.11 = about $1,870 per month.
 12. Regional tier every 2 hours to S3 Standard: PUTs $1.69 per save, 12 per day = about $20 per day; retaining 13 checkpoints (6 recent + 7 daily) = 73.7 TB x $0.023 = about $1,700 per month.
 13. Checkpoint storage total is about 0.1% of cluster spend, so the per-GB Express fee is easy to justify, and the only real decision is how fast the regional copy has to be.
@@ -279,7 +300,7 @@ The lab runs on any CPU host, using two processes on one machine with the gloo b
 Running it on an EC2 instance in the directory bucket's AZ is ideal, but it also works from a laptop through the zonal endpoint, with higher latency.
 Each checkpoint is about 200 MB (two MLPs plus AdamW state); three saves per run, five runs, is about 3 GB uploaded.
 Express cost: 3 GB x $0.0032 = $0.01 upload plus negligible PUTs and storage (AWS pricing, as of 2026-10).
-GCS cost: under $0.01 in Class A operations (UNVERIFIED this session).
+GCS cost: under $0.01 in Class A operations at $0.005 per 1,000 (Google Cloud pricing, as of 2026-10).
 Expected total, excluding the optional EC2 instance: under $1.
 
 ### Budget alarms (create first)
@@ -588,7 +609,7 @@ Three things to observe.
 First, the printed blocking window `C` should be much smaller than the drain time.
 Second, the attempt-1 rerun prints "pointer at newer" and leaves `LATEST` unchanged.
 Third, killing a run with `kill -9` partway through an upload leaves a prefix without `_COMMITTED`, and the next restore ignores it.
-If `IfMatch` is rejected on your directory bucket, the CAS path raises an error; treat that as the UNVERIFIED case and fall back to a general purpose bucket for the pointer object.
+AWS documents `If-Match` on directory buckets (AWS What's New, 2024-11); if an older SDK or endpoint still rejects `IfMatch`, the CAS path raises an error, so fall back to a general purpose bucket for the pointer object.
 
 ### Teardown
 
@@ -645,19 +666,19 @@ A NaN or loss-spike state gets checkpointed and becomes the only resident copy.
 Keep N checkpoints and promote `LATEST` only after a health check (finite loss, gradient-norm bound).
 
 **Silent object corruption.**
-End-to-end checksums (CRC32C on GCS; additional checksums on S3, with SDK defaults that have changed in recent releases, UNVERIFIED) plus per-shard digests in the manifest separate storage corruption from silent data corruption on the GPU.
+End-to-end checksums (CRC32C on GCS; on S3, AWS SDKs released since December 2024 compute CRC-based checksums on uploads by default and S3 stores a CRC64NVME checksum on new objects, per AWS What's New 2024-12) plus per-shard digests in the manifest separate storage corruption from silent data corruption on the GPU.
 See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fault_Tolerance_and_Fleet_Resiliency_at_Scale|Fault Tolerance and Fleet Resiliency at Scale]].
 
 **Dependency on a regional object-store control path.**
 The February 28, 2017 S3 us-east-1 disruption ([AWS summary](https://aws.amazon.com/message/41926/)) showed that a regional object store can stop accepting PUTs entirely.
-The June 12, 2025 Google Cloud incident ([Google Cloud status](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), URL UNVERIFIED) caused broad API failures across products.
+The June 12, 2025 Google Cloud incident ([Google Cloud status](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)) caused broad API failures across products: a policy with blank fields replicated globally and crashed Service Control on an unguarded null-pointer path, returning 503s to external API calls.
 Training should keep running on the local and peer tiers through such events, buffering and retrying later, instead of blocking on the durable tier.
 For more postmortem patterns, see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
 **Silent storage cost.**
 Orphaned multipart uploads keep billing until a lifecycle rule aborts them.
 S3 versioning turns every delete into a retained noncurrent version.
-GCS soft delete (default 7 days on new buckets, UNVERIFIED this session) bills deleted checkpoint bytes for the whole retention window.
+GCS soft delete (default 7 days on new buckets, Google Cloud docs, as of 2026-10) bills deleted checkpoint bytes for the whole retention window.
 With 96 saves per day of 5.67 TB, that is roughly 3.8 PB of soft-deleted bytes held at any time (derived).
 
 **Interval longer than drain.**
@@ -679,7 +700,7 @@ Use SSE-KMS with S3 Bucket Keys, or CMEK on GCS, so that the hundreds of thousan
 See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 
 **Private paths and perimeters.**
-Route S3 and S3 Express traffic through gateway VPC endpoints (`com.amazonaws.<region>.s3express` for directory buckets; UNVERIFIED this session).
+Route S3 and S3 Express traffic through gateway VPC endpoints (`com.amazonaws.<region>.s3express` for directory buckets; AWS docs, as of 2026-10).
 Attach endpoint policies that allow only your buckets, and add `aws:SourceVpce` conditions in bucket policies.
 On GCP, place the project inside a VPC Service Controls perimeter ([[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls: Security Perimeters]]) so a stolen token cannot copy weights to an outside bucket.
 
@@ -760,7 +781,7 @@ Coordinator death after the manifest but before the pointer is safe: restore can
 Death before the manifest leaves garbage that lifecycle rules expire.
 At 16k ranks, marker collection itself is 16k GETs, so use hierarchical aggregation (node leaders aggregate 8 ranks, then rack leaders) to cut coordinator fan-in to a few hundred requests.
 The trade-offs are an extra round trip of control-plane latency added to `U`, and a dependency on conditional-write support.
-I would verify that support per bucket type, because on S3 I would not assume `If-Match` on directory buckets without testing.
+I would verify that support per bucket type and SDK version, because even though AWS announced `If-Match` for directory buckets in 2024-11, the commit path is too critical to rely on an untested header.
 
 #### Follow-up Interviewer Question
 
@@ -801,7 +822,7 @@ Surviving nodes restore from their own local NVMe or pinned RAM, and only replac
 For full-cluster restores from object storage, one rank per data-parallel replica group reads each shard and broadcasts over the fabric, as MegaScale does.
 That divides object-store read volume by the DP degree and turns a storage-bandwidth problem into a fabric-bandwidth problem.
 Use large ranged GETs (16 to 64 MiB) with high concurrency per node, and for S3 Standard make sure keys are entropy-prefixed so 5,500 GET/s per partition is not the cap.
-Read-side caches (Anywhere Cache, FSx or Mountpoint caches) help only if they are warm, so prewarm them with the newest committed checkpoint during training.
+Read-side caches (Anywhere Cache, now named Rapid Cache, FSx or Mountpoint caches) help only if they are warm, so prewarm them with the newest committed checkpoint during training.
 Outside the read path, keep hot-spare nodes with images pre-pulled, and cache NCCL topology where possible, because after reads are fixed, scheduling and initialization usually dominate.
 Each minute of `R` costs `1/M`, about 0.54% goodput at a 186-minute MTBF.
 
@@ -874,7 +895,7 @@ A team wants to resume an AWS-trained PyTorch checkpoint on TPUs in Google Cloud
 - Gemini: Fast Failure Recovery in Distributed Training with In-Memory Checkpoints (SOSP 2023), [ACM DL](https://dl.acm.org/doi/10.1145/3600006.3613145) - Peer-RAM checkpoint placement and traffic interleaving; the design basis for tier 0.
 - [MegaScale: Scaling Large Language Model Training to More Than 10,000 GPUs (NSDI 2024)](https://arxiv.org/abs/2402.15627) - Production two-stage checkpointing and read-once-broadcast restore at 10k+ GPU scale.
 - [The Llama 3 Herd of Models (2024)](https://arxiv.org/abs/2407.21783) - Public interruption statistics for a 16k-GPU run, which give the MTBF used in this chapter's goodput math.
-- ByteCheckpoint: A Unified Checkpointing System for Large Foundation Model Development (NSDI 2025, venue UNVERIFIED) - Parallelism-agnostic representation and load-time resharding across frameworks.
+- [ByteCheckpoint: A Unified Checkpointing System for Large Foundation Model Development (NSDI 2025)](https://www.usenix.org/conference/nsdi25/presentation/wan-borui) - Parallelism-agnostic representation and load-time resharding across frameworks.
 - J. W. Young, "A first order approximation to the optimum checkpoint interval," CACM 1974, and J. T. Daly, "A higher order estimate of the optimum checkpoint interval for restart dumps," FGCS 2006 - The interval math, including restart cost.
 - [PyTorch Distributed Checkpoint documentation](https://pytorch.org/docs/stable/distributed.checkpoint.html) - Planner, storage writer, async_save, and resharding semantics.
 - [Amazon S3 Connector for PyTorch](https://github.com/awslabs/s3-connector-for-pytorch) - First-party DCP storage writer and reader on the AWS CRT, including directory bucket support.

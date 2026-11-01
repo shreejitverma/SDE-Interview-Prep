@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: solid
+status: draft
 last_reviewed:
 sources:
   - "Firecracker: Lightweight Virtualization for Serverless Applications (NSDI 2020) by Agache et al."
@@ -133,7 +133,7 @@ The concept of containerization traces directly to Google internal infrastructur
 | Max Instances per Physical Host | Hundreds (NUMA bounded) | Thousands per host; creation up to 150 per second per host | Thousands | Thousands | NSDI 2020 / Google docs (as of 2026-10) |
 | Syscall Latency Overhead | 0% (Bare-metal direct) | Less than 1% (VT-x EPT) | 2x to 10x for trapped calls | 0% (Native kernel calls) | NSDI 2020 / USENIX ATC (as of 2026-10) |
 | Network Throughput Cap | Up to 200 Gbps ENA on network-optimized types; up to 3,200 Gbps EFA on P5 (SR-IOV) | About 15 Gbps per guest (NSDI 2020); spec targets 14.5 to 25 Gbps per dedicated emulation core (virtio) | Bounded by user-space Netstack | Line-rate host networking | AWS EC2 specs / GCP docs (as of 2026-10) |
-| Host Syscalls Exposed | Zero (Isolated by ASIC) | 24 syscalls and 30 ioctls allowlisted (NSDI 2020 seccomp profile) | Small seccomp allowlist for the Sentry (exact count UNVERIFIED) | 300+ (Direct host kernel) | AWS / Google security whitepapers (as of 2026-10) |
+| Host Syscalls Exposed | Zero (Isolated by ASIC) | 24 syscalls and 30 ioctls allowlisted (NSDI 2020 seccomp profile) | Small seccomp allowlist for the Sentry (exact count UNVERIFIED: no published figure found) | 300+ (Direct host kernel) | AWS / Google security whitepapers (as of 2026-10) |
 
 ## AWS vs GCP Mechanism Parity
 

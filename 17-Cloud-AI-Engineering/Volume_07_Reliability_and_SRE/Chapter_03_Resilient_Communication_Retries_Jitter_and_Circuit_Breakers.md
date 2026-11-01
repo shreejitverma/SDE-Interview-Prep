@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/"
@@ -13,6 +13,38 @@ sources:
   - "https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html"
   - "https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/circuit_breaking"
   - "https://google.aip.dev/194"
+  - "https://builder.aws.com/content/3EumjoZascWd1oZiEgL8ORlv3qE/timeouts-retries-and-backoff-with-jitter"
+  - "https://aws.amazon.com/blogs/developer/announcing-updated-retry-behavior-for-aws-sdks-and-tools/"
+  - "https://docs.aws.amazon.com/boto3/latest/guide/retries.html"
+  - "https://github.com/boto/botocore/blob/develop/botocore/retries/standard.py"
+  - "https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/router_filter"
+  - "https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/circuit_breaker.proto"
+  - "https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/outlier_detection.proto"
+  - "https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/outlier"
+  - "https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/header_sanitizing"
+  - "https://resilience4j.readme.io/docs/circuitbreaker"
+  - "https://github.com/Netflix/Hystrix"
+  - "https://brooker.co.za/blog/2022/02/16/circuit-breakers.html"
+  - "https://brooker.co.za/blog/2022/02/28/retries.html"
+  - "https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md"
+  - "https://grpc.io/docs/guides/deadlines/"
+  - "https://www.barroso.org/publications/TheTailAtScale.pdf"
+  - "https://queue.acm.org/detail.cfm?id=2839461"
+  - "https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s11-bronson.pdf"
+  - "https://www.usenix.org/system/files/osdi22-huang-lexiang.pdf"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/invocation-async-error-handling.html"
+  - "https://docs.cloud.google.com/pubsub/docs/subscription-retry-policy"
+  - "https://docs.cloud.google.com/tasks/docs/reference/rest/v2/RetryConfig"
+  - "https://docs.cloud.google.com/appengine/docs/standard/reference/queueref"
+  - "https://istio.io/latest/docs/concepts/traffic-management/"
+  - "https://aws.amazon.com/blogs/containers/migrating-from-aws-app-mesh-to-amazon-ecs-service-connect/"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-token-burndown.html"
+  - "https://github.com/anthropics/anthropic-sdk-python/blob/main/src/anthropic/_constants.py"
+  - "https://aws.amazon.com/message/12721/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://aws.amazon.com/message/65648/"
+  - "https://github.com/googleapis/google-cloud-python/blob/main/packages/google-api-core/google/api_core/retry/retry_base.py"
 ---
 
 # Resilient Communication: Retries, Jitter, and Circuit Breakers
@@ -52,9 +84,10 @@ This chapter builds on [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/C
 
 Retry safety has two independent axes: whether the error is transient, and whether repeating the request is safe.
 An error class that proves the request never reached application logic is always safe to repeat: TCP connect failure, TLS handshake failure, HTTP/2 REFUSED_STREAM, and gRPC transparent retries where the stream never reached server application code.
-Envoy exposes this distinction directly through its `retry_on` conditions, where `connect-failure` and `refused-stream` are safe for any method, while `5xx` and `reset` are only safe for idempotent operations (Envoy docs, as of 2026-10; UNVERIFIED this session).
-Google's API design guidance for automatic retries (AIP-194) says clients should retry `UNAVAILABLE` by default with exponential backoff, and treat other codes as retryable only when the method is idempotent ([Google AIP-194](https://google.aip.dev/194), UNVERIFIED this session).
-Throttling errors (HTTP 429, `ThrottlingException`, `RESOURCE_EXHAUSTED`, S3 503 `SlowDown`) are transient by definition but are also explicit backpressure, so the correct response is to slow down globally and not merely to retry this request.
+Envoy exposes this distinction through its `retry_on` conditions: `connect-failure` fires when no connection was made and the docs say a `refused-stream` reset "indicates that a request is safe to retry", while `reset` also fires on a disconnect or read timeout and `5xx` includes all of those plus any 5xx response ([Envoy router filter docs](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/router_filter), as of 2026-11).
+Envoy does not prescribe safety per method, so restricting `5xx` and `reset` to idempotent operations is this chapter's reading, because the request may already have run.
+Google's AIP-194 says clients should automatically retry only `UNAVAILABLE`, and only for unary, non-transactional requests where repeated runs cause no unintended state change; it does not specify backoff, and it calls `RESOURCE_EXHAUSTED` generally non-retryable because exhausted quota may not clear for hours ([Google AIP-194](https://google.aip.dev/194), as of 2026-11).
+Throttling errors (HTTP 429, `ThrottlingException`, `RESOURCE_EXHAUSTED`, S3 503 `SlowDown`) are usually transient, with exhausted quota the exception noted above, and they are also explicit backpressure, so the correct response is to slow down globally and not merely to retry this request.
 Deterministic failures (4xx validation, 403, "daily quota exceeded") must never be retried, since a retry only reproduces the error and burns budget.
 
 Idempotency for mutating calls is carried by a client-generated token that the server uses to deduplicate, as described in the AWS Builders' Library article on making retries safe with idempotent APIs.
@@ -63,7 +96,7 @@ The token must be scoped to the authenticated principal, or one tenant can repla
 ### Backoff mathematics
 
 The nominal delay before retry n (n = 0 for the first retry) is `d_n = min(cap, base * 2^n)`.
-The attempt at which the cap binds is `ceil(log2(cap / base))`, so base 100 ms and cap 20 s gives `log2(200) = 7.64`, which means the cap binds from the 8th retry onward.
+The attempt at which the cap binds is `ceil(log2(cap / base))`, so base 100 ms and cap 20 s gives `log2(200) = 7.64`, which means the cap binds from n = 8, the 9th retry, onward (12.8 s at n = 7, 25.6 s capped to 20 s at n = 8).
 Total nominal wait after k retries before the cap is `base * (2^k - 1)`, so the backoff schedule has a built-in time horizon, and the attempt cap and the deadline decide which one stops the loop first.
 The cap sets the floor of steady-state probe load: F clients that all retry forever under full jitter at the cap each sleep a mean of `cap / 2`, so the fleet sends `2F / cap` requests per second to a dead dependency.
 With F = 10,000 and cap = 20 s that is 1,000 requests per second (derived), which is enough to prevent a small recovering dependency from ever draining its queue.
@@ -95,7 +128,7 @@ In a contention model where N clients start together and the server accepts one 
 Full jitter turns each retry round into a uniform arrival rate `m_n / d_n`, which is what a queueing system can absorb.
 Full jitter has mean delay `d_n / 2`, so it also retries sooner than the nominal schedule on average, which is a deliberate choice: the lower bound of zero is what breaks lockstep.
 Equal jitter keeps a floor of `d_n / 2`, which preserves minimum spacing but leaves half the window empty, and it did the worst of the three jittered variants in the 2015 post.
-Decorrelated jitter has state (the previous sleep) and a growth factor of about 2 in expectation, and it has no dependence on attempt count, which makes it convenient when the attempt number is not tracked.
+Decorrelated jitter has state (the previous sleep) and a mean growth factor of about 1.5 once the previous sleep is well above base, since `uniform(base, 3 * prev)` has mean `(base + 3 * prev) / 2` (derived), and it has no dependence on attempt count, which makes it convenient when the attempt number is not tracked.
 
 My own reimplementation of the contention experiment (listing in the Worked Example, mean of 20 seeds) gave these results:
 
@@ -106,12 +139,12 @@ My own reimplementation of the contention experiment (listing in the Worked Exam
 | Full | 649 | 3,378 |
 | Decorrelated | 579 | 3,846 |
 
-Calls grow quadratically without jitter (matching N(N+1)/2 exactly), and about 6.5N to 8.4N with jitter in this model.
-Decorrelated jitter finished earliest in wall time but made more calls than full jitter at N=400, so the choice between them is a trade of latency against server load, and the original post's "full jitter and decorrelated are about equal" should be read as "similar", not "identical".
+Calls grow quadratically without jitter (matching N(N+1)/2 exactly), and about 5.8N to 9.6N across the jittered policies in this model.
+Decorrelated jitter finished earliest in wall time but made more calls than full jitter at N=400, so the choice between them is a trade of latency against server load, which matches the original post's finding that full jitter uses less work but slightly more time and that the decision between them "is less clear".
 The model has one slot per unit and a hard cap of 2,000 units, so the absolute finish times depend on those assumptions and only the ordering is portable.
 
-A mechanism worth knowing: some client libraries implement "jitter" as `uniform(0, 2 * delay)` so the mean equals the nominal delay.
-Python `google-api-core` is reported to do this in its exponential sleep generator, which preserves average pacing while still decorrelating (UNVERIFIED this session; read the installed source before relying on it).
+A variant worth knowing: a library can implement "jitter" as `uniform(0, 2 * delay)` so the mean equals the nominal delay, which preserves average pacing while still decorrelating.
+Python `google-api-core` does not do this: its `exponential_sleep_generator` yields `random.uniform(0.0, max_delay)`, which is full jitter ([source](https://github.com/googleapis/google-cloud-python/blob/main/packages/google-api-core/google/api_core/retry/retry_base.py), as of 2026-11).
 
 ### Retry budgets: token buckets, not counters
 
@@ -121,17 +154,20 @@ At steady state with deposit ratio rho per success and cost 1 per retry, retries
 
 Implementations you will meet:
 
-- **AWS SDKs, standard mode:** a client-local retry quota with capacity 500, cost 5 per retry, cost 10 per timeout retry, and a refund of 1 for a first-attempt success; a depleted quota makes the SDK stop retrying and surface the error ([AWS SDKs and Tools reference: retry behavior](https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html), UNVERIFIED this session).
-- **gRPC:** `retryThrottling` with `maxTokens` (at most 1000) and `tokenRatio`; the bucket starts full, each failed attempt costs 1, each success adds `tokenRatio`, and retries and hedges are suppressed whenever tokens are at or below `maxTokens / 2`, which gives hysteresis ([gRFC A6](https://github.com/grpc/proposal/blob/master/A6-client-retries.md), UNVERIFIED this session).
-- **Envoy:** a `retry_budget` on the cluster circuit breaker, expressed as a percentage of active requests with a `min_retry_concurrency` floor, which is concurrency-based and not rate-based ([Envoy circuit breaking](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/circuit_breaking), UNVERIFIED this session).
-- **Google SRE guidance:** a per-request limit of 3 attempts plus a per-client retry-to-request ratio of about 10% ([SRE book: Handling Overload](https://sre.google/sre-book/handling-overload/), UNVERIFIED this session).
+- **AWS SDKs, standard mode:** a client-local retry quota with capacity 500 and a refund of 1 for a first-attempt success, where a successful retry also refunds its own cost and a depleted quota makes the SDK stop retrying and surface the error ([AWS SDKs and Tools reference: retry behavior](https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html), as of 2026-11).
+  Costs depend on the SDK generation: the updated 2026 behavior charges 14 per transient retry and 5 per throttling retry, while pre-2026 botocore charges 5 per retry and 10 per timeout retry ([botocore source](https://github.com/boto/botocore/blob/develop/botocore/retries/standard.py), as of 2026-11).
+  AWS announced the updated behavior on 2026-05-20 as opt-in through `AWS_NEW_RETRIES_2026=true`, becoming the default in November 2026, so check your SDK version ([AWS announcement](https://aws.amazon.com/blogs/developer/announcing-updated-retry-behavior-for-aws-sdks-and-tools/)).
+- **gRPC:** `retryThrottling` with `maxTokens` (at most 1000) and `tokenRatio`, per server name; the bucket starts full, each failed RPC with a retryable or non-fatal status costs 1, each success adds `tokenRatio`, and retries and hedges are suppressed whenever tokens are at or below `maxTokens / 2`, resuming once the count rises over that threshold ([gRFC A6](https://github.com/grpc/proposal/blob/master/A6-client-retries.md), as of 2026-11).
+- **Envoy:** a `retry_budget` on the cluster circuit breaker, expressed as a percentage of active plus pending requests (default 20%) with a `min_retry_concurrency` floor (default 3), which overrides `max_retries` and is concurrency-based and not rate-based ([Envoy circuit breaker API](https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/circuit_breaker.proto), as of 2026-11).
+- **Google SRE guidance:** a per-request limit of 3 attempts plus a per-client limit that keeps retries below 10% of requests ([SRE book: Handling Overload](https://sre.google/sre-book/handling-overload/), as of 2026-11).
 
-The AWS quota charges timeouts double because a timeout means the server probably did, or is still doing, the work, so the retry is more likely to pile onto an overloaded system.
-The quota lives in the client object, which has a consequence that is invisible in getting-started guides: constructing a new SDK client per request or per Lambda invocation gives each call a fresh, full quota, and the throttle never engages.
+The 2026 AWS costs charge transient retries most because, per the docs, 500s and connection failures often indicate a service-wide problem where continued retrying is unlikely to succeed, and with 3 attempts the quota starts draining above about 22% sustained transient failures or 32% throttling failures.
+The quota is typically scoped to a client instance (AWS docs, as of 2026-11), which has a consequence that is invisible in getting-started guides: constructing a new SDK client per request or per Lambda invocation gives each call a fresh, full quota, and the throttle never engages.
 
 Separate from retry budgets is client-side adaptive throttling.
-Google's SRE book describes a rejection probability of `max(0, (requests - K * accepts) / (requests + 1))` computed over a recent window (about two minutes), where K is typically 2, so a client starts rejecting locally once the backend accepts fewer than 1/K of what is sent (UNVERIFIED this session).
-AWS SDK adaptive mode adds a CUBIC-shaped client-side rate limiter driven by throttle responses, with a multiplicative decrease around 0.7 and a cubic recovery curve, and it is documented as assuming one client per throttled resource (parameters and status UNVERIFIED this session).
+Google's SRE book describes a rejection probability of `max(0, (requests - K * accepts) / (requests + 1))` computed over a recent window (about two minutes), where K is typically 2, so a client starts rejecting locally once the backend accepts fewer than 1/K of what is sent (SRE book, as of 2026-11).
+AWS SDK adaptive mode adds a client-side rate limiter driven by throttle responses, which botocore implements as a CUBIC-style calculator with a multiplicative decrease of 0.7 and a cubic recovery curve ([botocore source](https://github.com/boto/botocore/blob/develop/botocore/retries/throttling.py), as of 2026-11).
+The AWS reference recommends it only for a client targeting a single resource and "not as a general default", and the Boto3 guide still calls it experimental ([Boto3 retries guide](https://docs.aws.amazon.com/boto3/latest/guide/retries.html), as of 2026-11).
 The sharing hazard is real: one adaptive client used against many tables or models lets one hot partition slow every call through that client.
 
 ### Circuit breakers
@@ -147,12 +183,12 @@ stateDiagram-v2
     HalfOpen --> Open: probe failure criterion met
 ```
 
-Resilience4j defaults make the knobs concrete: 50% failure-rate threshold, a count-based sliding window of 100 calls, a minimum of 100 calls before evaluating, a 60-second wait in open, and 10 permitted calls in half-open (Resilience4j docs, UNVERIFIED this session).
-Hystrix, which popularized the pattern, has been in maintenance mode since 2018 (UNVERIFIED this session), so new designs use Resilience4j, Envoy, or a mesh.
+Resilience4j defaults make the knobs concrete: 50% failure-rate threshold, a count-based sliding window of 100 calls, a minimum of 100 calls before evaluating, a 60-second wait in open, and 10 permitted calls in half-open ([Resilience4j docs](https://resilience4j.readme.io/docs/circuitbreaker), as of 2026-11).
+Hystrix, which popularized the pattern, is in maintenance mode with 1.5.18 (published 2018-11-16) as its last release ([Hystrix README](https://github.com/Netflix/Hystrix), as of 2026-11), so new designs use Resilience4j, Envoy, or a mesh.
 
 What the pattern descriptions leave out:
 
-1. **Modality.** A closed breaker sends 100% of traffic and an open breaker sends 0%, so a dependency that is 30% degraded becomes 100% unavailable from the caller's view; Marc Brooker's posts "Will circuit breakers solve my problems?" and "Fixing retries with token buckets and circuit breakers" argue this makes breakers hard to test and can lengthen outages, and prefer a smooth retry token bucket (UNVERIFIED this session on exact titles and dates).
+1. **Modality.** A closed breaker sends 100% of traffic and an open breaker sends 0%, so a dependency that is 30% degraded becomes 100% unavailable from the caller's view; Marc Brooker's post ["Will circuit breakers solve my problems?"](https://brooker.co.za/blog/2022/02/16/circuit-breakers.html) (2022-02-16) argues that breakers "turn partial failures into complete failures", and ["Fixing retries with token buckets and circuit breakers"](https://brooker.co.za/blog/2022/02/28/retries.html) (2022-02-28) shows a retry-only breaker still "suffers from some modality" while a token bucket does not, at the price of some tunable extra load at high failure rates.
 2. **Scope.** A breaker keyed on a whole service opens for all callers and all keys when one shard or one host is bad; key breakers per host, per cell, or per partition, as in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]].
 3. **Half-open statistics.** With k probes and a requirement that all succeed, a dependency that is still failing 30% of calls passes with probability `0.7^k`, so 2.8% for k = 10; with k = 1 it passes 70% of the time and the breaker flaps.
 4. **Fleet probe herd.** In half-open each of F instances sends its own probes, so 2,000 instances times 10 probes is 20,000 simultaneous probes aimed at a dependency that is just recovering; jitter the open duration (for example 0.5x to 1.5x), grow it on each consecutive re-open, and ramp admission from a small fraction to 100% over tens of seconds, not step from 0 to full.
@@ -160,17 +196,18 @@ What the pattern descriptions leave out:
 6. **What counts as failure.** Count timeouts, 5xx, and slow calls, do not count 4xx, and treat 429 as a rate signal, not as a health signal.
 
 Envoy shows the anti-modality design in a mature system.
-Outlier detection ejects hosts after consecutive 5xx (default 5), for a base ejection time (default 30 s) multiplied by the number of prior ejections, but caps ejection at 10% of the cluster by default, and the load balancer's panic threshold (default 50% healthy) makes it ignore health status and spread traffic across all hosts when too few are healthy (Envoy docs, UNVERIFIED this session).
+Outlier detection ejects hosts after consecutive 5xx (default 5), for a base ejection time (default 30 s) multiplied by the number of times the host has been ejected in a row, up to `max_ejection_time` (default 300 s), but caps ejection at 10% of the cluster by default ([outlier detection API](https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/outlier_detection.proto), [overview](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/outlier), as of 2026-11).
+The load balancer's panic threshold (default 50% healthy) makes it ignore health status and spread traffic across all hosts when too few are healthy, unless configured to fail all traffic ([panic threshold docs](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/panic_threshold), as of 2026-11).
 Those two caps exist precisely so that a correlated failure cannot make the proxy eject its way into a total outage.
-Envoy's default connection-level circuit breaker thresholds are 1024 for connections, pending requests, and requests, and 3 for concurrent retries (UNVERIFIED this session), so the proxy bounds concurrency independent of any health logic.
+Envoy's default circuit breaker thresholds are 1024 for connections, pending requests, and requests, and 3 for concurrent retries ([Envoy circuit breaker API](https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/circuit_breaker.proto), as of 2026-11), so the proxy bounds concurrency independent of any health logic.
 
 ### Deadlines and propagation
 
 A timeout is a local, per-call duration; a deadline is an absolute point in time for the whole operation, and every hop derives its own timeout from what remains.
 The edge stamps `D = now + budget`, and each hop computes `remaining = D - now`, reserves time for its own post-processing, and uses `min(per_try_cap, remaining - reserve)` as the per-attempt timeout.
-gRPC sends this as a relative `grpc-timeout` header (at most 8 digits plus a unit letter), recomputed from the local deadline at send time, so no clock synchronization is needed and each hop automatically loses the time it consumed, though not the one-way network transit time (gRPC protocol docs, UNVERIFIED this session).
-Propagation is not free in every stack: Go and Java propagate through the context object, while in other runtimes the handler must explicitly derive the outgoing call's deadline from the incoming one (gRPC deadlines guide, UNVERIFIED this session).
-Envoy adds `x-envoy-expected-rq-timeout-ms` so downstream services can see what remains (UNVERIFIED this session), and AWS Lambda exposes remaining invocation time through the context object (for example `context.get_remaining_time_in_millis()` in Python).
+gRPC sends this as a relative `grpc-timeout` header (at most 8 digits plus a unit letter), recomputed from the local deadline at send time, so no clock synchronization is needed and each hop automatically loses the time it consumed, though not the one-way network transit time ([gRPC over HTTP2](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md), as of 2026-11).
+Propagation is not free in every stack: it is enabled by default in Java and Go, while it must be explicitly enabled in C++ ([gRPC deadlines guide](https://grpc.io/docs/guides/deadlines/), as of 2026-11).
+Envoy adds `x-envoy-expected-rq-timeout-ms`, the time the router expects the request to take, so upstream services can make decisions such as exiting early (Envoy router filter docs, as of 2026-11), and AWS Lambda exposes remaining invocation time through the context object (for example `context.get_remaining_time_in_millis()` in Python).
 
 Three rules turn propagation into protection:
 
@@ -178,18 +215,18 @@ Three rules turn propagation into protection:
 2. **Check at dequeue.** The server must compare the request deadline to the clock when it removes the request from the queue and discard expired requests at near-zero cost; otherwise a FIFO server spends capacity on responses nobody is waiting for, which is the dominant effect in the lab (90.4% wasted work).
 3. **Timeouts must nest.** The caller's timeout must exceed the sum of the callee's attempts, otherwise the callee keeps retrying for a request whose caller has already abandoned it (orphaned work).
 
-Facebook's ACM Queue article "Fail at Scale" pairs this with adaptive LIFO and CoDel-style queue management so that under overload the server prefers requests most likely to still be wanted (UNVERIFIED this session).
+Ben Maurer's ACM Queue article ["Fail at Scale"](https://queue.acm.org/detail.cfm?id=2839461) (2015) describes Facebook pairing this with adaptive LIFO and a CoDel variant so that under overload the server prefers requests most likely to still be wanted.
 The edge must clamp or strip externally supplied deadline headers, covered under Security.
 
 ### Hedging
 
 Hedged requests send a second copy after a delay near the p95 latency and cancel the loser, which targets tail latency and not errors.
-Dean and Barroso's "The Tail at Scale" (CACM, 2013) reports that hedging after a short delay cut a Bigtable benchmark's 99.9th percentile from 1,800 ms to 74 ms for about 2% extra requests (UNVERIFIED this session on exact figures).
+Dean and Barroso's ["The Tail at Scale"](https://www.barroso.org/publications/TheTailAtScale.pdf) (CACM, 2013) reports that hedging after a 10 ms delay cut the 99.9th percentile for reading 1,000 keys from a Bigtable table across 100 servers from 1,800 ms to 74 ms for just 2% more requests.
 Hedging is a retry with a latency trigger, so it must draw from the same budget, and gRPC's `hedgingPolicy` is subject to the same `retryThrottling` bucket.
 
 ### Metastable failure theory and the stability condition
 
-Bronson et al., "Metastable Failures in Distributed Systems" (HotOS 2021), define a metastable failure as a state where a sustaining feedback loop keeps the system degraded after the trigger is removed, and Huang et al., "Metastable Failures in the Wild" (OSDI 2022), find retry policy to be the most common sustaining mechanism in public incidents (exact share UNVERIFIED this session).
+Bronson et al., ["Metastable Failures in Distributed Systems"](https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s11-bronson.pdf) (HotOS 2021), define a metastable failure as a bad state with low goodput where a sustaining effect keeps the system degraded after the trigger is removed, and Huang et al., ["Metastable Failures in the Wild"](https://www.usenix.org/system/files/osdi22-huang-lexiang.pdf) (OSDI 2022), find the retry policy to be by far the most common sustaining effect, in more than 50% of the studied public incidents.
 A simple stability condition shows why.
 Let C be server capacity, lambda the fresh arrival rate, and A the attempts per logical request.
 If the server processes requests FIFO and cannot tell that a request has timed out, then once the queue depth exceeds `C * T` (T = client timeout) every request is served after its client gave up, goodput is about 0, and each logical request produces A attempts.
@@ -202,46 +239,49 @@ The conclusion is that attempt caps alone give no protection at normal utilizati
 
 Asynchronous systems retry on your behalf, and their policies stack with the SDK's.
 SQS has no per-message backoff, so consumers implement it with `ChangeMessageVisibility`, and a redrive policy with `maxReceiveCount` sends poison messages to a DLQ.
-Lambda asynchronous invocation retries failed events up to 2 times by default, with a maximum event age of 6 hours (Lambda docs, UNVERIFIED this session).
-Cloud Pub/Sub subscriptions can use an exponential backoff retry policy (documented defaults of 10 s minimum and 600 s maximum), whereas the default behavior redelivers immediately (UNVERIFIED this session).
-Cloud Tasks retry config has `maxDoublings`, after which the interval grows linearly and not exponentially, so a config of `minBackoff` 0.1 s, `maxBackoff` 3600 s, and `maxDoublings` 16 does not behave like a plain doubling schedule (UNVERIFIED this session).
-AWS Step Functions `Retry` blocks support `IntervalSeconds`, `BackoffRate`, `MaxAttempts`, `MaxDelaySeconds`, and `JitterStrategy` (`FULL` or `NONE`), and the default is no jitter unless you set it (UNVERIFIED this session).
+Lambda asynchronous invocation retries function errors 2 more times by default, and retries throttles and system errors for up to 6 hours by default ([Lambda docs](https://docs.aws.amazon.com/lambda/latest/dg/invocation-async-error-handling.html), as of 2026-11).
+Cloud Pub/Sub subscriptions can use an exponential backoff retry policy (documented defaults of 10 s minimum and 600 s maximum), whereas the default behavior redelivers immediately ([Pub/Sub retry policy docs](https://docs.cloud.google.com/pubsub/docs/subscription-retry-policy), as of 2026-11).
+Cloud Tasks retry config has `maxDoublings`, after which the interval grows linearly and not exponentially, so `minBackoff` 10 s, `maxBackoff` 300 s, and `maxDoublings` 3 retries at 10, 20, 40, 80, 160, 240, 300, 300 s ([RetryConfig docs](https://docs.cloud.google.com/tasks/docs/reference/rest/v2/RetryConfig), as of 2026-11).
+With `minBackoff` 0.1 s, `maxBackoff` 3600 s, and `maxDoublings` 16, the cap binds before the doublings run out (`0.1 * 2^16 = 6553.6 s`, derived), so that config does behave like plain doubling up to the cap.
+AWS Step Functions `Retry` blocks support `IntervalSeconds`, `BackoffRate`, `MaxAttempts`, `MaxDelaySeconds`, and `JitterStrategy` (`FULL` or `NONE`), and the default is `NONE` ([Step Functions docs](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html), as of 2026-11).
 
 ### Retries in LLM serving
 
 Model APIs add three wrinkles.
-First, rate limits are token-denominated, and some providers reserve `max_tokens` against quota at admission, so a retried request with a large `max_tokens` can be throttled by its own reservation; on Bedrock, newer Claude models also apply an output-token burndown multiplier to quota (UNVERIFIED this session).
+First, rate limits are token-denominated, and some providers reserve `max_tokens` against quota at admission, so a retried request with a large `max_tokens` can be throttled by its own reservation; on Bedrock, input tokens plus `max_tokens` are deducted at the start of a request, and Claude models apply an output-token burndown rate to quota of 5x, 10x, or 15x depending on the model version ([Bedrock token counting docs](https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-token-burndown.html), as of 2026-11).
 Second, a streamed response that fails mid-stream cannot be retried transparently: the first attempt already emitted and billed tokens, so the client must either resume with a continuation prompt or discard output, and you need separate time-to-first-token and inter-token idle timeouts, not one total timeout.
 Third, replica cold start takes minutes because weights must load, so retries during scale-out hit a fleet that cannot yet absorb them; see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_08_Cloud_GPU_Autoscaling_and_Cold_Start_Mitigation|Cloud GPU Autoscaling and Cold-Start Mitigation]] and [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_09_Managed_Inference_Amazon_Bedrock_vs_Vertex_AI|Managed Inference: Amazon Bedrock vs Vertex AI]].
-Anthropic's SDKs retry by default with short exponential backoff and honor server hints such as `retry-after` (defaults UNVERIFIED this session), so wrapping them in your own retry loop silently squares the attempt count.
+Anthropic's Python SDK retries 2 times by default with exponential backoff from 0.5 s to 8 s, and honors `retry-after-ms`, `retry-after`, and `x-should-retry` server hints ([SDK constants](https://github.com/anthropics/anthropic-sdk-python/blob/main/src/anthropic/_constants.py), as of 2026-11), so wrapping them in your own retry loop silently squares the attempt count.
 
 ## Numbers to Know
 
-Web research tools were unavailable while this chapter was drafted.
-Every row marked UNVERIFIED is from the author's knowledge of the named document and must be re-checked against the live source before this note moves to `status: solid`.
-Rows marked "derived" or "lab" are computed here and are reproducible from the listings in the Worked Example.
+Rows with a named source were checked against that primary source on 2026-11-01.
+Rows marked "derived" or "lab" are computed here and are reproducible from the listings in the Worked Example; rerunning both labs on 2026-11-01 reproduced the figures.
 
 | Item | Value | Source and status |
 |---|---|---|
-| AWS SDK standard mode max attempts (total, including first) | 3 | AWS SDKs and Tools reference, as of 2026-10; UNVERIFIED |
-| botocore legacy mode max attempts | 5 | botocore docs, as of 2026-10; UNVERIFIED |
-| AWS standard mode backoff | exponential with full jitter, 20 s maximum backoff | AWS SDKs and Tools reference, as of 2026-10; UNVERIFIED |
-| AWS SDK retry quota | capacity 500, retry cost 5, timeout retry cost 10, success refund 1 | AWS SDKs and Tools reference, as of 2026-10; UNVERIFIED |
-| AWS adaptive mode | CUBIC-style client rate limiter, multiplicative decrease about 0.7; experimental in several SDKs | AWS SDKs and Tools reference, as of 2026-10; UNVERIFIED |
-| botocore `retries.max_attempts` vs `total_max_attempts` | first counts retries, second counts total attempts | botocore docs, as of 2026-10; UNVERIFIED |
-| gRPC retry attempt cap | 5 | gRFC A6, as of 2026-10; UNVERIFIED |
-| gRPC retry throttling | `maxTokens` at most 1000; retries stop at or below `maxTokens / 2`; success adds `tokenRatio` | gRFC A6, as of 2026-10; UNVERIFIED |
-| gRPC backoff | `uniform(0, min(initialBackoff * multiplier^(n-1), maxBackoff))` | gRFC A6, as of 2026-10; UNVERIFIED |
-| Google SRE retry guidance | at most 3 attempts per request; about 10% retry ratio per client; adaptive throttling K = 2 | SRE book, as of 2026-10; UNVERIFIED |
-| Envoy default breaker thresholds | 1024 connections, 1024 pending, 1024 requests, 3 retries | Envoy docs, as of 2026-10; UNVERIFIED |
-| Envoy default retry backoff | base 25 ms, max 250 ms | Envoy docs, as of 2026-10; UNVERIFIED |
-| Envoy outlier detection defaults | 5 consecutive 5xx, 30 s base ejection, 10% max ejection, 10 s interval | Envoy docs, as of 2026-10; UNVERIFIED |
-| Envoy panic threshold default | 50% healthy hosts | Envoy docs, as of 2026-10; UNVERIFIED |
-| Resilience4j breaker defaults | 50% failure rate, window 100, min calls 100, 60 s open, 10 half-open calls | Resilience4j docs, as of 2026-10; UNVERIFIED |
-| `google-api-core` Retry defaults | initial 1 s, max 60 s, multiplier 2, 120 s overall deadline | google-api-core source, as of 2026-10; UNVERIFIED |
-| Cloud Tasks retry defaults | 100 attempts, 0.1 s min, 3600 s max, 16 doublings | Cloud Tasks docs, as of 2026-10; UNVERIFIED |
-| Lambda async retries | 2 retries, 6 h max event age | Lambda docs, as of 2026-10; UNVERIFIED |
-| Pub/Sub retry policy defaults | 10 s minimum, 600 s maximum backoff when enabled | Pub/Sub docs, as of 2026-10; UNVERIFIED |
+| AWS SDK standard mode max attempts (total, including first) | 3 (4 for DynamoDB and DynamoDB Streams under the 2026 behavior) | AWS SDKs and Tools reference, as of 2026-11 |
+| Boto3 legacy mode max attempts (total, including first) | 5 | Boto3 retries guide, as of 2026-11 |
+| AWS standard mode backoff | exponential with full jitter, 20 s maximum backoff; 2026 behavior base delay 50 ms transient, 1,000 ms throttling | AWS SDKs and Tools reference, as of 2026-11 |
+| AWS SDK retry quota, 2026 behavior | capacity 500, transient retry cost 14, throttling retry cost 5, first-try success refund 1 | AWS SDKs and Tools reference, as of 2026-11 |
+| AWS SDK retry quota, pre-2026 botocore | capacity 500, retry cost 5, timeout retry cost 10, first-try success refund 1 | botocore source, as of 2026-11 |
+| AWS updated retry behavior rollout | opt-in with `AWS_NEW_RETRIES_2026=true`; announced 2026-05-20 to become the default in November 2026 | AWS Developer Tools blog, as of 2026-11 |
+| AWS adaptive mode | CUBIC-style client rate limiter, multiplicative decrease 0.7; Boto3 guide calls it experimental | botocore source and Boto3 retries guide, as of 2026-11 |
+| botocore `retries.max_attempts` vs `total_max_attempts` | first counts retries, second counts total attempts | Boto3 retries guide, as of 2026-11 |
+| gRPC retry attempt cap | 5 (higher values are treated as 5) | gRFC A6, as of 2026-11 |
+| gRPC retry throttling | `maxTokens` at most 1000; retries stop at or below `maxTokens / 2`; success adds `tokenRatio` | gRFC A6, as of 2026-11 |
+| gRPC backoff | `min(initialBackoff * multiplier^(n-1), maxBackoff) * random(0.8, 1.2)` | gRFC A6, as of 2026-11 |
+| Google SRE retry guidance | at most 3 attempts per request; retries under 10% of requests per client; adaptive throttling K = 2 over two minutes | SRE book, as of 2026-11 |
+| Envoy default breaker thresholds | 1024 connections, 1024 pending, 1024 requests, 3 retries | Envoy circuit breaker API, as of 2026-11 |
+| Envoy retry budget defaults | 20% of active plus pending requests, `min_retry_concurrency` 3 | Envoy circuit breaker API, as of 2026-11 |
+| Envoy default retry backoff | base 25 ms, max 250 ms | Envoy router filter docs, as of 2026-11 |
+| Envoy outlier detection defaults | 5 consecutive 5xx, 30 s base ejection, 10% max ejection, 10 s interval | Envoy outlier detection API, as of 2026-11 |
+| Envoy panic threshold default | 50% healthy hosts | Envoy panic threshold docs, as of 2026-11 |
+| Resilience4j breaker defaults | 50% failure rate, window 100, min calls 100, 60 s open, 10 half-open calls | Resilience4j docs, as of 2026-11 |
+| `google-api-core` Retry defaults | initial 1 s, max 60 s, multiplier 2, 120 s overall deadline | google-api-core source, as of 2026-11 |
+| Cloud Tasks retry settings | 0.1 s min, 3600 s max, 16 doublings as documented defaults; 100 attempts as shown in sample `describe` output, not labeled a default | [queue.yaml reference](https://docs.cloud.google.com/appengine/docs/standard/reference/queueref) and [Cloud Tasks queue docs](https://docs.cloud.google.com/tasks/docs/configuring-queues), as of 2026-11 |
+| Lambda async retries | 2 retries of function errors, 6 h for throttles and system errors | Lambda docs, as of 2026-11 |
+| Pub/Sub retry policy defaults | 10 s minimum, 600 s maximum backoff when enabled | Pub/Sub docs, as of 2026-11 |
 | Layered retry amplification | 3 attempts x 5 layers = 243x | derived, 2026-10-21 |
 | Expected attempts, q = 0.9, A = 3 | 2.71x | derived, 2026-10-21 |
 | Fleet probe floor under full jitter at cap | 2F / cap = 1,000 rps for F = 10,000, cap = 20 s | derived, 2026-10-21 |
@@ -251,7 +291,7 @@ Rows marked "derived" or "lab" are computed here and are reproducible from the l
 | Metastable lab, goodput after spike, 3 retries no budget | 0.0% | lab, 2026-10-21 |
 | Metastable lab, goodput with 10% budget | 100.0% | lab, 2026-10-21 |
 | Metastable lab, wasted server work, FIFO vs drop-expired | 90.4% vs 0.0% | lab, 2026-10-21 |
-| Hedging effect on p99.9 | 1,800 ms to 74 ms for about 2% extra requests | Dean and Barroso, CACM 2013; UNVERIFIED exact figures |
+| Hedging effect on p99.9 | 1,800 ms to 74 ms for 2% more requests, 10 ms hedge delay | Dean and Barroso, CACM 2013 |
 | List prices | none apply; this chapter provisions no billable resources | - |
 
 ## AWS vs GCP Mechanism Parity
@@ -262,12 +302,12 @@ Rows marked "derived" or "lab" are computed here and are reproducible from the l
 | Retry semantics source | SDK spec shared across languages, with per-service overrides | AIP-194 and gapic service config per method | Google config is per method and per status code; AWS retryable sets are mostly global |
 | Wire-level retry | Not a protocol feature; implemented in SDK or proxy | gRPC retry policy, hedging, and `retryThrottling` in service config, deliverable via xDS | gRPC makes the budget part of the channel config |
 | Server pushback | HTTP 429 and 503 with `Retry-After` on some services; throttling error codes | gRPC `grpc-retry-pushback-ms` metadata; HTTP `Retry-After` | gRPC pushback can tell clients to stop retrying entirely |
-| Client-side adaptive limiting | SDK adaptive mode (experimental in several SDKs) | Google-internal adaptive throttling per SRE book; no standard managed equivalent | Neither cloud turns it on by default |
-| Proxy and mesh | ECS Service Connect, VPC Lattice, Istio or Envoy on EKS; App Mesh end of support announced for 2026-09-30 (UNVERIFIED) | Cloud Service Mesh with Envoy or proxyless gRPC | Check which retry defaults your mesh injects, for example Istio's default of 2 retries (UNVERIFIED) |
-| Async redelivery | SQS visibility timeout and redrive; Lambda async retries; EventBridge retry window (24 h, 185 attempts, UNVERIFIED) | Pub/Sub retry policy; Cloud Tasks `maxDoublings` | SQS has no native per-message backoff; Pub/Sub and Cloud Tasks do |
+| Client-side adaptive limiting | SDK adaptive mode (the Boto3 guide calls it experimental, as of 2026-11) | Google-internal adaptive throttling per SRE book; no standard managed equivalent | Neither cloud turns it on by default |
+| Proxy and mesh | ECS Service Connect, VPC Lattice, Istio or Envoy on EKS; App Mesh discontinued effective 2026-09-30 ([AWS blog](https://aws.amazon.com/blogs/containers/migrating-from-aws-app-mesh-to-amazon-ecs-service-connect/)) | Cloud Service Mesh with Envoy or proxyless gRPC | Check which retry defaults your mesh injects, for example Istio's default of 2 retries ([Istio docs](https://istio.io/latest/docs/concepts/traffic-management/), as of 2026-11) |
+| Async redelivery | SQS visibility timeout and redrive; Lambda async retries; EventBridge retry window (24 h, 185 attempts; [EventBridge docs](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-retry-policy.html), as of 2026-11) | Pub/Sub retry policy; Cloud Tasks `maxDoublings` | SQS has no native per-message backoff; Pub/Sub and Cloud Tasks do |
 | Workflow retries | Step Functions `Retry` with `JitterStrategy` | Cloud Workflows `retry` with backoff parameters | Step Functions jitter is opt-in |
 | Throttle signal on model APIs | Bedrock `ThrottlingException` (HTTP 429), `ServiceUnavailableException` (503) | Vertex AI HTTP 429 `RESOURCE_EXHAUSTED` | Both are quota or capacity signals; treat as backpressure, not health |
-| Incident lesson | AWS us-east-1, 2021-12-07: client retries on an internal network sustained congestion (UNVERIFIED details) | Google Cloud, 2025-06-12: crash-looping Service Control tasks restarted without randomized backoff and overloaded Spanner (UNVERIFIED details) | Both are recovery-phase herds, not trigger-phase failures |
+| Incident lesson | AWS us-east-1, 2021-12-07: connection attempts and retries sustained congestion between the internal and main networks (AWS post-event summary) | Google Cloud, 2025-06-12: crash-looping Service Control tasks restarted without randomized backoff and overloaded Spanner in us-central1 (Google incident report) | Both are recovery-phase herds, not trigger-phase failures |
 
 ## Worked Example: Reproducing a Metastable Failure and Fixing It
 
@@ -460,7 +500,7 @@ CFG = Config(
 ddb = boto3.client("dynamodb", config=CFG)   # create once, at import time
 ```
 
-Use `total_max_attempts` and not `max_attempts`, because in botocore's `retries` dictionary `max_attempts` counts retries excluding the first call, while the `AWS_MAX_ATTEMPTS` environment variable counts total attempts (UNVERIFIED this session; test with a stubbed failing endpoint).
+Use `total_max_attempts` and not `max_attempts`, because in botocore's `retries` dictionary `max_attempts` counts retries excluding the first call, while the `AWS_MAX_ATTEMPTS` environment variable counts total attempts ([Boto3 retries guide](https://docs.aws.amazon.com/boto3/latest/guide/retries.html), as of 2026-11).
 
 gRPC service config with a per-method deadline, jittered retries on `UNAVAILABLE` only, and a shared budget:
 
@@ -481,7 +521,7 @@ gRPC service config with a per-method deadline, jittered retries on `UNAVAILABLE
 }
 ```
 
-Envoy route and cluster fragment that retries only never-sent failures, caps concurrent retries at 10% of active requests, and bounds per-try time:
+Envoy route and cluster fragment that retries connection failures, refused streams, and gRPC `UNAVAILABLE` (the last of which is a server response, so keep it to idempotent methods), caps concurrent retries at 10% of active plus pending requests, and bounds per-try time:
 
 ```yaml
 route:
@@ -499,7 +539,7 @@ cluster:
         min_retry_concurrency: 3
 ```
 
-All three snippets follow the documented schemas as I know them; validate each against current docs before shipping (UNVERIFIED this session).
+Field names in all three snippets were checked against the Boto3 retries guide, gRFC A6, and the Envoy route and circuit breaker APIs (as of 2026-11), but the snippets were not run, so validate each in your environment before shipping.
 
 ### Step 5: verification checklist for a real service
 
@@ -511,7 +551,7 @@ All three snippets follow the documented schemas as I know them; validate each a
 ## Failure Modes and Pitfalls
 
 **Retry multiplication across layers.**
-SDK, application, framework, mesh sidecar, and queue redelivery each retry, and the attempt counts multiply; Istio injecting a default retry policy (2 retries, UNVERIFIED) under an application that retries 3 times under an SDK that retries 3 times is 3 x 3 x 3 = 27 attempts for one call.
+SDK, application, framework, mesh sidecar, and queue redelivery each retry, and the attempt counts multiply; Istio injecting a default retry policy (2 retries, Istio docs, as of 2026-11) under an application that retries 3 times under an SDK that retries 3 times is 3 x 3 x 3 = 27 attempts for one call.
 Audit by sending one request to a stubbed always-failing dependency and counting arrivals.
 
 **Doomed work.**
@@ -520,10 +560,10 @@ Detect it with a histogram of `now - deadline` at completion; any mass above zer
 
 **Recovery-phase herds.**
 Public post-incident reviews repeatedly show the trigger is brief and the amplifier is a retry or restart loop.
-The Google Cloud incident of 2025-06-12 began with a malformed policy that crashed Service Control binaries globally, and the report states that recovery in one region was slowed because restarting tasks overloaded the dependent Spanner infrastructure for lack of randomized exponential backoff ([Google Cloud status incident ow5i3PPK96RduMcb1SsW](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW); incident ID and duration of roughly three hours UNVERIFIED this session).
-The AWS us-east-1 event of 2021-12-07 began when automated scaling on the internal network caused a surge of connection activity, and the AWS summary describes retries and latency feeding more congestion that hindered recovery ([AWS post-event summary](https://aws.amazon.com/message/12721/), URL and details UNVERIFIED this session).
-The AWS us-east-1 event of 2025-10-19 to 2025-10-20 began with a DynamoDB DNS record race, and the follow-on phase of EC2 control-plane work backing up after DNS was repaired is a recovery-phase congestion pattern (details UNVERIFIED this session).
-The April 2011 EBS event, in which nodes that lost mirrors all searched for new replicas at once and exhausted spare capacity, is the storage version of the same loop (details UNVERIFIED this session).
+The Google Cloud incident of 2025-06-12 began with a policy change containing blank fields that hit a null pointer and crash-looped Service Control binaries in every region, and the report states that recovery in us-central1 was slowed because restarting tasks overloaded the Spanner table they depend on for lack of randomized exponential backoff ([Google Cloud status incident ow5i3PPK96RduMcb1SsW](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)); the dashboard window is 10:51 to 18:18 PDT, while the mini report gives 3 hours.
+The AWS us-east-1 event of 2021-12-07 began when an automated activity to scale a service in the main AWS network caused a surge of connection activity that overwhelmed the devices between the internal and main networks, and the AWS summary describes delays and errors driving more connection attempts and retries, which led to persistent congestion ([AWS post-event summary](https://aws.amazon.com/message/12721/)).
+The AWS us-east-1 event of 2025-10-19 to 2025-10-20 began with a race condition that left the DynamoDB regional endpoint's DNS record empty, and after DynamoDB recovered, the EC2 DropletWorkflow Manager's fleet-wide lease re-establishment timed out and queued retries into what AWS calls congestive collapse, which engineers cleared by throttling work and restarting hosts ([AWS post-event summary](https://aws.amazon.com/message/101925/)).
+The April 2011 EBS event, a "re-mirroring storm" in which nodes that lost mirrors all searched for new replicas at once and exhausted free capacity, is the storage version of the same loop ([AWS post-event summary](https://aws.amazon.com/message/65648/)).
 For more cases see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
 **Jitter without a budget.**
@@ -542,11 +582,11 @@ When a breaker opens on a dependency with no fallback, the caller turns a partia
 A single-probe half-open with a 70% pass rate on a still-failing dependency closes the breaker most of the time, which floods it again; use multiple probes, a success-ratio criterion, and a ramp.
 
 **No timeout at all.**
-Python `requests` and Go's default `http.Client` have no timeout unless one is set, so a hung dependency holds threads or connections indefinitely and exhausts pools (library behavior, UNVERIFIED this session).
+Python `requests` and Go's default `http.Client` have no timeout unless one is set, so a hung dependency holds threads or connections indefinitely and exhausts pools ([Requests docs](https://requests.readthedocs.io/en/latest/user/advanced/), [Go net/http docs](https://pkg.go.dev/net/http), as of 2026-11).
 Missing timeouts convert latency into resource exhaustion before any breaker can see an error.
 
 **Timeouts that do not nest.**
-When a caller has a 2 s timeout and the callee makes 3 attempts of 1 s, the callee keeps working for 3 s on abandoned requests.
+When a caller has a 2 s timeout and the callee makes 3 attempts of 1 s, the callee can work for 3 s in total, up to 1 s of it on a request the caller has already abandoned.
 
 **Retrying non-idempotent calls.**
 Retrying a `POST` that charges a card or creates a VM without an idempotency token produces duplicates.
@@ -570,7 +610,7 @@ When overload makes health checks fail, ejecting the "unhealthy" hosts concentra
 ## Security and Cost Angles
 
 **Deadline headers are a trust boundary.**
-An external caller that supplies a 1-hour deadline or a 1-ms deadline can pin server resources or force immediate failure, so the edge must clamp deadlines to a maximum and strip internal timeout headers from untrusted traffic (Envoy sanitizes `x-envoy-*` headers for external requests, UNVERIFIED this session).
+An external caller that supplies a 1-hour deadline or a 1-ms deadline can pin server resources or force immediate failure, so the edge must clamp deadlines to a maximum and strip internal timeout headers from untrusted traffic (Envoy's sanitizing list for external requests includes `x-envoy-expected-rq-timeout-ms`, `x-envoy-max-retries`, and `x-envoy-retry-on`; [Envoy header sanitizing docs](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/header_sanitizing), as of 2026-11).
 
 **Retry as an amplification vector.**
 Authenticated clients with unbounded retries are an inadvertent DoS source, and unauthenticated paths that trigger retries are an attack path; apply per-tenant retry budgets at the gateway so one tenant's retry storm cannot drain shared capacity.
@@ -603,7 +643,7 @@ Exponential backoff spaces a single client's retries, but clients that failed to
 Each impulse is the full surviving population hitting the server in one instant, which is the worst shape for a queue.
 Jitter randomizes each client's delay so the load becomes a rate; with full jitter the retry round n is spread uniformly over `[0, min(cap, base * 2^n)]`.
 In a contention simulation with N = 100 clients and one accepted call per slot, no jitter used 5,050 calls (exactly N(N+1)/2) while full jitter used about 650.
-Full jitter is the default: it needs the attempt counter, it decorrelates best, and it is what the AWS SDK standard mode and gRPC use.
+Full jitter is the default: it needs the attempt counter, it decorrelates best, and it is what the AWS SDK standard mode uses, while gRPC instead applies a narrower `random(0.8, 1.2)` around the nominal delay (AWS docs and gRFC A6, as of 2026-11).
 Decorrelated jitter, `min(cap, uniform(base, 3 * prev))`, needs no attempt counter and finished fastest in my run, but it made more calls than full jitter at N = 400, so it trades server load for client latency.
 I would say jitter is necessary and insufficient: it fixes synchronization, and does nothing for sustained overload where the problem is the number of attempts, which needs a budget.
 
@@ -739,7 +779,7 @@ Explain how deadline propagation works across a gRPC and Envoy path, what breaks
 
 The caller sets a deadline on the call, the gRPC client encodes the remaining time into `grpc-timeout` at send time, and the server library reconstructs a local deadline on arrival.
 Because the value is relative, clock skew is irrelevant, but one-way network latency is not subtracted, so each hop is slightly optimistic by its transit time; reserve a small margin per hop.
-Envoy can add its own timeout and exposes the expected remaining timeout to upstreams through a header, so the effective deadline is the minimum of the application's and the route's.
+Envoy can add its own timeout and exposes the time it expects the request to take to upstreams through a header, so the effective deadline is the minimum of the application's and the route's.
 It breaks when a handler makes outgoing calls with a fresh context or a hard-coded timeout instead of deriving from the incoming deadline, when an intermediary strips the header, and when work moves onto a queue or thread pool that drops the context.
 Enforcement on a server has three pieces: check the deadline when dequeuing and drop expired requests without doing work; pass the context into every downstream call and I/O so cancellation propagates; and on cancellation, release resources, since a cancelled request that keeps running is still doomed work.
 I would also measure it: the histogram of remaining deadline at arrival tells you which upstream hop is burning the budget, and the count of dropped-expired requests is a direct signal of overload.
@@ -759,7 +799,7 @@ A batch job legitimately needs 30 minutes per call; how do you keep deadline dis
 - [Envoy circuit breaking and outlier detection documentation](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/circuit_breaking) - a production anti-modality design, with ejection caps, panic thresholds, and retry budgets.
 - Bronson, Aghayev, Charapko, Zhu, "Metastable Failures in Distributed Systems," HotOS 2021, and Huang et al., "Metastable Failures in the Wild," OSDI 2022 - the definition and the incident taxonomy that show why retries sustain outages.
 - Dean and Barroso, "The Tail at Scale," CACM 2013 - hedged and tied requests, and why tail latency compounds with fan-out.
-- Marc Brooker's blog posts on circuit breakers and retry token buckets (brooker.co.za/blog) - the clearest argument that smooth retry budgets beat modal breakers.
+- Marc Brooker's blog posts on circuit breakers and retry token buckets (brooker.co.za/blog) - how breakers turn partial failures into complete ones, and a simulated comparison of token buckets and retry-only breakers.
 - [Google AIP-194: Automatic retry configuration](https://google.aip.dev/194) - Google's standard for which codes are retryable and with what backoff.
 - Nygard, *Release It!* (2nd ed.) - the origin of the circuit breaker, bulkhead, and timeout patterns.
 - [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_01_SLIs_SLOs_and_Error_Budget_Engineering|SLIs, SLOs, and Error Budget Engineering]] - how to set the availability targets that retry budgets trade against.

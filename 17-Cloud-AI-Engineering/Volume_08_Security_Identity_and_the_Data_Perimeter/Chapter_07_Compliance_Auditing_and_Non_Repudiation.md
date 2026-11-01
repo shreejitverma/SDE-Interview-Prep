@@ -18,6 +18,33 @@ sources:
   - "https://www.rfc-editor.org/rfc/rfc6962"
   - "https://www.rfc-editor.org/rfc/rfc9162"
   - "https://www.rfc-editor.org/rfc/rfc3161"
+  - "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-log-file-validation-digest-file-structure.html"
+  - "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/how-cloudtrail-works.html"
+  - "https://aws.amazon.com/cloudtrail/faqs/"
+  - "https://aws.amazon.com/cloudtrail/pricing/"
+  - "https://docs.aws.amazon.com/awscloudtrail/latest/APIReference/API_LookupEvents.html"
+  - "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-lake.html"
+  - "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-lake-service-availability-change.html"
+  - "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/create-kms-key-policy-for-cloudtrail.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock-managing.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/logging-using-cloudtrail.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/model-invocation-logging.html"
+  - "https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/no-aws-operator-access.html"
+  - "https://docs.aws.amazon.com/prescriptive-guidance/latest/modern-data-centric-use-cases/data-preparation-cleaning.html"
+  - "https://docs.cloud.google.com/logging/quotas"
+  - "https://cloud.google.com/stackdriver/pricing"
+  - "https://docs.cloud.google.com/logging/docs/buckets"
+  - "https://docs.cloud.google.com/vertex-ai/docs/predictions/online-prediction-logging"
+  - "https://docs.cloud.google.com/vertex-ai/docs/general/audit-logging"
+  - "https://docs.cloud.google.com/iam/docs/deny-permissions-support"
+  - "https://docs.cloud.google.com/assured-workloads/key-access-justifications/docs/overview"
+  - "https://www.fedramp.gov/resources/documents/FedRAMP_Security_Controls_Baseline.xlsx"
+  - "https://www.fedramp.gov/archive/2023-07-14-fedramp-guidance-for-m-21-31-and-m-22-09/"
+  - "https://www.alston.com/en/insights/publications/2026/07/hhs-delays-hipaa-security-rule-2027"
+  - "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C/section-164.316"
+  - "https://www.vanta.com/resources/how-long-does-a-soc-2-audit-take"
 ---
 
 # Compliance, Auditing, and Non-Repudiation
@@ -26,8 +53,8 @@ sources:
 
 - An audit record is evidence only if three things hold: it is complete (the population of events is provable), it is immutable (the log store refuses deletion even from root), and it is verifiable (a third party can detect tampering without trusting the party who stored it).
 - CloudTrail log file validation is a signed hash chain over hourly digests. It detects modification and deletion of delivered files. It does not detect tail truncation, unreferenced injected files, events never recorded, or a compromised trust anchor.
-- Cloud Audit Logs has no documented per-entry signature or hash chain (UNVERIFIED). Its tamper resistance comes from the access-control boundary around the log bucket, retention locks, and separation of the archive project. Closing the gap on either cloud means adding your own anchor to an external witness.
-- SOC 2, FedRAMP, and HIPAA do not ask for cryptography. They ask for specific properties: sampled populations that are complete and accurate (SOC 2), AU-family controls plus a retention horizon (FedRAMP), and audit controls plus six-year documentation retention (HIPAA). Map each requirement to a mechanism, then to a recurring machine-collected evidence artifact.
+- The Cloud Audit Logs overview documents entries as immutable but mentions no per-entry signature or hash chain (Google Cloud docs, as of 2026-11). Its tamper resistance comes from the access-control boundary around the log bucket, retention locks, and separation of the archive project. Closing the gap on either cloud means adding your own anchor to an external witness.
+- SOC 2, HIPAA, and the FedRAMP Low and Moderate baselines do not mandate cryptographic log protection, while the FedRAMP High baseline does through AU-9(3) (FedRAMP Rev5 baseline workbook, as of 2026-11). They ask for specific properties: sampled populations that are complete and accurate (SOC 2), AU-family controls plus a retention horizon (FedRAMP), and audit controls plus six-year documentation retention (HIPAA). Map each requirement to a mechanism, then to a recurring machine-collected evidence artifact.
 - The audit pipeline is a production system with its own SLOs. A disabled KMS key, a stopped trail, a sink with a broken writer identity, or a Data Access config that was never enabled all fail silently, and you find out during the incident.
 
 ## Mental Model
@@ -79,10 +106,13 @@ The Trust Services Criteria do not mandate a log retention duration.
 The mechanism they test is that you detect and evaluate security events (the CC7 family), manage access (CC6), and control changes (CC8), and that you can produce evidence for each.
 
 FedRAMP is more prescriptive.
-Rev5 baselines are derived from NIST SP 800-53 Rev5 (UNVERIFIED).
+Rev5 baselines are derived from NIST SP 800-53 Rev5 (FedRAMP Rev5 baseline workbook, as of 2026-11).
 The audit and accountability (AU) family covers event selection (AU-2), record content (AU-3), review (AU-6), time stamps (AU-8), protection of audit information (AU-9), non-repudiation (AU-10), retention (AU-11), and generation (AU-12).
-Federal retention is driven by OMB M-21-31, which sets 12 months of active storage plus 18 months of cold storage (UNVERIFIED as to the exact FedRAMP parameter value).
-AU-10 non-repudiation is a High-baseline control in NIST's baselines (UNVERIFIED).
+Federal retention is driven by OMB M-21-31, which sets minimums of 12 months of active storage plus 18 months of cold storage, with full packet capture held for only 72 hours (OMB M-21-31, Appendix C).
+The FedRAMP Rev5 AU-11 parameter is "a time period in compliance with M-21-31" at Low, Moderate, and High (FedRAMP Rev5 baseline workbook, as of 2026-11).
+The same control requires 90 days on-line plus off-line preservation per NARA, and has the provider either export logs so the agency can comply or store them in compliance with M-21-31 (FedRAMP Rev5 baseline workbook, as of 2026-11).
+FedRAMP states that M-21-31 does not apply directly to cloud offerings unless the provider is a government system, and that authorized offerings comply by supporting agency implementations (FedRAMP guidance, 2023-07-14).
+AU-10 non-repudiation and AU-9(3) cryptographic protection appear only in the High baseline, in both NIST's and FedRAMP's baselines (NIST SP 800-53 Rev5 OSCAL profiles and FedRAMP Rev5 baseline workbook, as of 2026-11).
 Most Moderate systems satisfy the intent through AU-9 protections and identity binding rather than a dedicated signing mechanism.
 
 HIPAA is the loosest on mechanism and strictest on scope.
@@ -91,7 +121,7 @@ It requires retention of required documentation for six years (164.316(b)(2)(i))
 Many covered entities apply the six years to audit logs as policy.
 The rule does not prescribe a log retention number itself.
 The HIPAA Security Rule NPRM published in January 2025 proposed removing the required/addressable distinction.
-Its finalization status as of 2026-10 is UNVERIFIED, so treat the current text as the operative standard until you confirm.
+No final rule was found as of 2026-11, and the HHS regulatory agenda targets final action in July 2027 (Alston and Bird citing reginfo.gov RIN 0945-AA22, 2026-07), so treat the current text as the operative standard until you confirm.
 
 ### Control-to-mechanism mapping
 
@@ -102,9 +132,9 @@ Its finalization status as of 2026-10 is UNVERIFIED, so treat the current text a
 | FedRAMP AU-2 / AU-12 | Generate defined auditable events | Org trail plus advanced event selectors | Org-level `auditConfigs` in the IAM policy |
 | FedRAMP AU-8 | Authoritative time stamps | Amazon Time Sync Service on instances; service-side `eventTime` | Google NTP with leap smear; service-side `timestamp` |
 | FedRAMP AU-9 | Protect audit information from modification and deletion | Separate log archive account, S3 Object Lock, SCPs, KMS key policy | Aggregated sink to a separate project, bucket retention lock, IAM Deny, CMEK |
-| FedRAMP AU-9(3) / AU-10 | Cryptographic protection, non-repudiation | CloudTrail digest signing plus your own witness | No documented native equivalent (UNVERIFIED); build an external witness |
+| FedRAMP AU-9(3) / AU-10 | Cryptographic protection, non-repudiation | CloudTrail digest signing plus your own witness | No native equivalent in the Cloud Audit Logs overview (Google Cloud docs, as of 2026-11); build an external witness |
 | FedRAMP AU-11 / HIPAA 164.316(b)(2) | Retention horizon | S3 lifecycle plus Object Lock retention | Log bucket retention plus Bucket Lock |
-| HIPAA 164.312(b) | Record and examine activity in systems containing ePHI | Data events on PHI buckets and tables, Bedrock invocation logging | Data Access logs, Vertex AI request-response logging (UNVERIFIED) |
+| HIPAA 164.312(b) | Record and examine activity in systems containing ePHI | Data events on PHI buckets and tables, Bedrock invocation logging | Data Access logs, Vertex AI request-response logging to BigQuery, which samples unless set to log all requests (Google Cloud docs, as of 2026-11) |
 
 ### CloudTrail data path
 
@@ -112,8 +142,8 @@ Every AWS API call is processed by the owning service, which emits an event to C
 The `eventTime` is stamped by the service and not by the caller.
 This is the property that makes the record useful against a malicious caller.
 Events are batched per region into gzipped JSON log files and delivered to your S3 bucket under `AWSLogs/<account>/CloudTrail/<region>/yyyy/mm/dd/`.
-Delivery is typically within about five minutes of the call (AWS docs, UNVERIFIED this session).
-Treat delivery as at-least-once and deduplicate on `eventID` (UNVERIFIED).
+CloudTrail typically delivers within an average of about 5 minutes of the call, and that time is not guaranteed (AWS docs, as of 2026-11).
+Treat delivery as at-least-once and deduplicate on `eventID`, because duplicates share an event ID (AWS CloudTrail FAQ, as of 2026-11).
 Management events are on by default.
 Data events (S3 object-level, Lambda invoke, DynamoDB item-level and similar) are opt-in and billed per event.
 
@@ -124,16 +154,18 @@ Validation is enabled by default for trails created in the console (AWS docs, as
 
 ### Digest anatomy and the chain
 
-Each hourly digest is a JSON document with these fields (recalled, UNVERIFIED this session): the account, `digestStartTime` and `digestEndTime`, its own bucket and key, the oldest and newest event times, a `logFiles` array of `{s3Bucket, s3Object, hashValue, hashAlgorithm}`, the previous digest's bucket, key, hash and signature, the public-key fingerprint, and the signature algorithm.
-The hash algorithm is SHA-256 and the signature is RSA over SHA-256 (UNVERIFIED).
+Each hourly digest is a JSON document with these fields (AWS docs, as of 2026-11): the account, `digestStartTime` and `digestEndTime`, its own bucket and key, the oldest and newest event times, a `logFiles` array of `{s3Bucket, s3Object, hashValue, hashAlgorithm}`, the previous digest's bucket, key, hash and signature, the public-key fingerprint, and the signature algorithm.
+The hash algorithm is SHA-256 over uncompressed contents and the signature algorithm is `SHA256withRSA` (AWS docs, as of 2026-11).
 CloudTrail digest files are signed with RSA digital signatures (AWS docs, as of 2026-10).
-The data signing string is built from the digest end time, the digest's S3 path, the hash of the digest file, and the previous digest's signature (AWS docs, as of 2026-10; exact field order and canonicalization UNVERIFIED).
+A digest's own signature is not in the file, but in the `x-amz-meta-signature` metadata of its S3 object (AWS docs, as of 2026-11).
+The data signing string is the digest end time, the digest's S3 path, the hex SHA-256 of the digest file, and the previous digest's hex signature, joined by newlines in that order (AWS docs, as of 2026-11).
 That last input is the mechanism most guides skip.
 
 Because each signature covers the previous signature, and each digest also embeds the previous digest's hash, the digests form a hash chain.
-Altering any historical digest invalidates every later signature, and the attacker cannot recompute them without the signing key.
+Altering a historical digest fails that digest's own signature check and no longer matches the hash and signature recorded in the next digest, while later signatures stay valid (AWS validate-logs sample output, as of 2026-11).
+Hiding the change would mean re-signing that digest and every later one, and the attacker cannot do that without the signing key.
 Public keys are retrieved with the `ListPublicKeys` API for a time range, and the digest's fingerprint selects the matching key (AWS docs, as of 2026-10).
-Keys are regional (UNVERIFIED), so a multi-region trail validates against per-region keys.
+Keys are regional (AWS docs, as of 2026-11), so a multi-region trail validates against per-region keys.
 
 ### How validate-logs walks the chain
 
@@ -142,6 +174,7 @@ It first checks that the digest was downloaded from the location it claims, so t
 That defeats an attacker who copies a valid digest to a different path.
 If the signature is valid, it checks the hash of each log file the digest references, then steps backward through previous digests until the start time or the end of the chain (AWS docs, as of 2026-10).
 A missing or invalid digest makes the covered time range unvalidatable rather than silently skipped.
+Backfill digests (suffix `_backfill`), delivered when processing delays left log files out of the original digest, form a separate chain that `validate-logs` checks after the standard chain (AWS docs, as of 2026-11).
 The cost is linear in the number of digests.
 One digest per hour is 8,760 per region-year.
 Validating six years across one region is about 52,560 sequential digest verifications, plus one hash per referenced log file.
@@ -170,7 +203,7 @@ If you need per-event proofs for AI agent actions, build on this family and do n
 
 ### The witness pattern
 
-Because each digest embeds the previous digest's hash and signature, the SHA-256 of the head digest object commits to the whole history behind it.
+Because each digest embeds the previous digest's hash and signature, the SHA-256 of the uncompressed head digest commits to the whole history behind it.
 Publishing that single 32-byte hash to a system the AWS account's administrators and the log archive's administrators cannot rewrite turns tail truncation into a detectable event.
 Good witnesses include an RFC 3161 time-stamping authority, an Object Lock bucket in a separately administered organization, a Rekor-style transparency log, or a hash written to the other cloud's locked bucket.
 The witness does not replace AWS's signature.
@@ -181,66 +214,72 @@ It bounds how far back an attacker with control of all your cloud accounts could
 S3 Object Lock operates on object versions, so the bucket must be versioned.
 Governance mode protects against deletion except by principals with `s3:BypassGovernanceRetention`.
 Compliance mode cannot be shortened or removed by any principal, including the account root, until the retain-until date.
-Cohasset Associates has assessed S3 Object Lock against SEC 17a-4(f) and related rules (UNVERIFIED as to current assessment date).
+Cohasset Associates has assessed S3 Object Lock for use in environments subject to SEC 17a-4, CFTC, and FINRA regulations (AWS S3 docs, as of 2026-11; the page does not state an assessment date).
 An unversioned `DeleteObject` on a locked bucket only adds a delete marker.
 The protected version remains.
+Delete markers are not WORM-protected, and S3 then behaves in most ways as though the object were gone, so listings can miss it (AWS S3 docs, as of 2026-11).
 Lifecycle rules cannot expire a version before its retention.
 Retention applies across storage classes, so you can tier locked logs to a colder class.
 
 Google Cloud Storage Bucket Lock sets a bucket-level retention period.
 Once locked, the policy cannot be removed and the period can only be extended.
-The maximum retention is 100 years (3,155,760,000 seconds; UNVERIFIED).
-Cloud Logging log buckets support a similar retention lock.
-A locked bucket prevents deletion of any entry until it is older than the retention period (UNVERIFIED).
+The maximum retention is 100 years (3,155,760,000 seconds; Google Cloud docs, as of 2026-11).
+Cloud Logging log buckets support a similar retention lock, with retention from 1 to 3,650 days (Google Cloud docs, as of 2026-11).
+Locking a log bucket is irreversible, prevents updates to the bucket and its retention policy, and blocks bucket deletion until every entry has met the retention period (Google Cloud docs, as of 2026-11).
 
 Both are irreversible by design.
 That is the point, and it is also the operational cost: a mistake in the retention period is a mistake you pay storage for until it expires.
 
 ### Cloud Audit Logs path
 
-Google Cloud emits four audit log types (Google Cloud docs, UNVERIFIED this session).
+Google Cloud emits four audit log types (Google Cloud docs, as of 2026-11).
 Admin Activity covers configuration changes, is always on, and cannot be disabled.
 System Event covers Google-initiated administrative actions and is always on.
 Data Access covers reads of configuration and reads and writes of user data, is off by default for most services (BigQuery being the exception), and is billed as log volume.
 Policy Denied records denials by security policy (VPC Service Controls and similar).
+Policy Denied logs are generated by default, stored in `_Default`, charged for storage, and cannot be disabled, though exclusion filters can keep them out of Cloud Logging (Google Cloud docs, as of 2026-11).
 
 Admin Activity, System Event, and Access Transparency entries land in the `_Required` bucket.
-It has a fixed 400-day retention and cannot be altered or excluded (UNVERIFIED).
-Everything else lands in `_Default`, which defaults to 30 days and is configurable.
+It has a fixed 400-day retention at no charge, and its sink cannot be modified and has no exclusion filters (Google Cloud docs and pricing, as of 2026-11).
+Everything else lands in `_Default`, which defaults to 30 days and is configurable on projects but not on folders or organizations (Google Cloud docs, as of 2026-11).
 The Log Router evaluates sinks as entries are ingested.
 Sink destinations are log buckets, Cloud Storage, BigQuery, Pub/Sub, or another project.
-Delivery to Cloud Storage is batched (hourly files; UNVERIFIED), while Pub/Sub and BigQuery are near real time.
+Cloud Storage sinks are processed hourly and a new one can take several hours to start routing (Google Cloud docs, as of 2026-11), while Pub/Sub and BigQuery are near real time.
 An aggregated sink at the organization or folder with `includeChildren` captures every descendant project, including projects created later.
 Data Access logging is configured through `auditConfigs` in the IAM policy at the organization, folder, or project level, with `DATA_READ`, `DATA_WRITE`, and `ADMIN_READ` log types and optional exempted members.
 
 Access Transparency logs actions by Google personnel on your content.
 Access Approval gates those actions behind your explicit approval.
-Key Access Justifications gates key use through External Key Manager.
-AWS has no direct equivalent product that gates provider-personnel access (UNVERIFIED).
-Its stance is architectural: Nitro is designed with no operator access path to customer instance memory.
+Key Access Justifications gates key use on Cloud EKM, Cloud HSM, and Cloud KMS software keys, with the available key types set by the control package (Google Cloud docs, as of 2026-11).
+AWS has no direct equivalent product that gates provider-personnel access (UNVERIFIED: absence claim, no AWS document states it).
+Its stance is architectural: the Nitro System is designed with no operator access, and no mechanism for any system or person to access EC2 instance memory (AWS Nitro whitepaper, as of 2026-11).
 
 ### Time
 
 FedRAMP AU-8 and every forensic timeline depend on clocks.
-AWS exposes the Amazon Time Sync Service at the link-local address 169.254.169.123, and Google exposes NTP at `metadata.google.internal`, both with leap-second smearing (UNVERIFIED).
+AWS exposes the Amazon Time Sync Service at the link-local address 169.254.169.123, and Google exposes NTP at `metadata.google.internal`, both with leap-second smearing (AWS and Google Cloud docs, as of 2026-11).
+The EC2 PTP hardware clock is the exception, because it does not smear (AWS docs, as of 2026-11).
 Audit event timestamps are stamped by the provider's service, so your instance clock drift does not corrupt `eventTime`.
 It does corrupt your application's own logs when you join them to cloud audit events.
 Join on request IDs and `eventID` or `insertId`, not on timestamp windows.
 
 ### AI-specific audit surfaces
 
-Model invocation is a data-plane operation, so default management-event logging says little about prompts.
-Amazon Bedrock model invocation logging is opt-in and delivers prompts and completions to S3 or CloudWatch Logs (UNVERIFIED as to which Bedrock runtime actions CloudTrail records by default).
-Vertex AI offers request-response logging for endpoints into BigQuery (UNVERIFIED), and Data Access audit logs for `aiplatform.googleapis.com`.
+Default management-event logging says little about prompts, even though model invocation is the data path of an AI system.
+Bedrock logs `InvokeModel`, `InvokeModelWithResponseStream`, `Converse`, and `ConverseStream` as CloudTrail management events, so they are recorded by default, and AWS's sample entry shows the model ID and no prompt body (AWS Bedrock docs, as of 2026-11).
+Other runtime actions such as `StartAsyncInvoke`, and Agents runtime actions such as `InvokeAgent`, are data events you must opt into (AWS Bedrock docs, as of 2026-11).
+Amazon Bedrock model invocation logging is disabled by default, delivers prompts and completions to S3 or CloudWatch Logs, and covers only the `bedrock-runtime` endpoint and not `bedrock-mantle` (AWS Bedrock docs, as of 2026-11).
+Vertex AI request-response logging writes a configurable sample of online inference requests and responses to BigQuery (Google Cloud docs, as of 2026-11).
+Data Access audit logs for `aiplatform.googleapis.com` are off by default and list `endpoints.predict` and `endpoints.rawPredict` as DATA_READ (Google Cloud docs, as of 2026-11).
+That page does not list `generateContent`, so Gemini call coverage needs a test (UNVERIFIED: not in current docs).
 These stores contain whatever users typed, including PHI.
 They are in HIPAA scope, need the same encryption and retention controls as any ePHI store, and collide with minimum-necessary and deletion obligations.
 See [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_07_AI_Safety_Guardrails_and_Governance|AI Safety, Guardrails, and Governance]] for the audit trail design on the application side.
 
 ## Numbers to Know
 
-Rows marked V were verified against AWS documentation on 2026-10-21.
-Rows marked U are recalled values that I could not re-verify in this session and are listed in the batch report.
-Re-check every U row against the cited source before you quote it.
+Status V means the row was verified against the cited source at the stated date.
+Prices and limits are volatile, so re-check them before you quote them.
 
 | Item | Value | Status | Source and date |
 |---|---|---|---|
@@ -249,22 +288,22 @@ Re-check every U row against the cited source before you quote it.
 | Validation default on console-created trails | Enabled | V | AWS CloudTrail docs, as of 2026-10 |
 | Digests per region-year | 8,760 (derived from hourly cadence) | V | Derived, as of 2026-10 |
 | validate-logs coverage | Only log files referenced by digests | V | AWS CloudTrail docs, as of 2026-10 |
-| Typical CloudTrail event delivery latency | About 5 minutes | U | AWS docs, as of 2026-10 |
-| Event history (console and LookupEvents) | 90 days of management events | U | AWS docs, as of 2026-10 |
-| LookupEvents rate | About 2 requests per second per account per region | U | AWS docs, as of 2026-10 |
-| CloudTrail data events price | $0.10 per 100,000 events | U | AWS pricing, as of 2026-10 |
-| CloudTrail management events price | First copy free; additional copies $2.00 per 100,000 | U | AWS pricing, as of 2026-10 |
-| CloudTrail Lake maximum retention | 3,653 days (about 10 years) | U | AWS docs, as of 2026-10 |
-| Cloud Logging `_Required` retention | 400 days, fixed | U | Google Cloud docs, as of 2026-10 |
-| Cloud Logging `_Default` retention | 30 days, configurable | U | Google Cloud docs, as of 2026-10 |
-| Cloud Logging ingestion price | $0.50 per GiB | U | Google Cloud pricing, as of 2026-10 |
-| Cloud Logging storage beyond free retention | $0.01 per GiB per month | U | Google Cloud pricing, as of 2026-10 |
-| Admin Activity audit log cost | No charge | U | Google Cloud pricing, as of 2026-10 |
-| GCS Bucket Lock maximum retention | 100 years | U | Google Cloud docs, as of 2026-10 |
-| KMS key deletion waiting period | 7 to 30 days on AWS | U | AWS KMS docs, as of 2026-10 |
-| Federal audit log retention | 12 months active plus 18 months cold | U | OMB M-21-31 |
-| HIPAA documentation retention | 6 years | U | 45 CFR 164.316(b)(2)(i) |
-| SOC 2 Type 2 observation window | Commonly 3 to 12 months | U | AICPA practice, as of 2026-10 |
+| Typical CloudTrail event delivery latency | Average of about 5 minutes, not guaranteed | V | AWS docs, as of 2026-11 |
+| Event history (console and LookupEvents) | 90 days of management events | V | AWS docs, as of 2026-11 |
+| LookupEvents rate | 2 requests per second per account per region | V | AWS API reference, as of 2026-11 |
+| CloudTrail data events price | $0.10 per 100,000 events | V | AWS pricing, as of 2026-11 |
+| CloudTrail management events price | First copy free; additional copies $2.00 per 100,000 | V | AWS pricing, as of 2026-11 |
+| CloudTrail Lake maximum retention | 3,653 days (about 10 years) on one-year extendable pricing, 2,557 days on seven-year pricing; closed to new customers since 2026-05-31 | V | AWS docs, as of 2026-11 |
+| Cloud Logging `_Required` retention | 400 days, fixed | V | Google Cloud docs, as of 2026-11 |
+| Cloud Logging `_Default` retention | 30 days; configurable from 1 to 3,650 days on projects only | V | Google Cloud docs, as of 2026-11 |
+| Cloud Logging ingestion price | $0.50 per GiB after the first 50 GiB per project per month | V | Google Cloud pricing, as of 2026-11 |
+| Cloud Logging storage beyond free retention | $0.01 per GiB per month | V | Google Cloud pricing, as of 2026-11 |
+| Admin Activity audit log cost | No charge (`_Required` bucket) | V | Google Cloud pricing, as of 2026-11 |
+| GCS Bucket Lock maximum retention | 100 years | V | Google Cloud docs, as of 2026-11 |
+| KMS key deletion waiting period | 7 to 30 days on AWS, default 30 | V | AWS KMS docs, as of 2026-11 |
+| Federal audit log retention | Minimums of 12 months active plus 18 months cold; full packet capture 72 hours | V | OMB M-21-31, Appendix C |
+| HIPAA documentation retention | 6 years | V | 45 CFR 164.316(b)(2)(i), as of 2026-11 |
+| SOC 2 Type 2 observation window | Commonly 3 to 12 months, chosen by the company | V | Vanta, a secondary source, as of 2026-11 |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -277,16 +316,16 @@ Re-check every U row against the cited source before you quote it.
 | Who can disable | Anyone with `cloudtrail:StopLogging` unless blocked by SCP; org trail cannot be stopped from member accounts | Admin Activity cannot be disabled; Data Access and sinks can be changed by `logging.*` and IAM admins unless denied |
 | Management account exemption | SCPs do not apply to the organization management account | Org-level IAM Deny policies apply to all principals |
 | Immutable store | S3 Object Lock, governance or compliance mode, on versioned bucket | Bucket Lock on GCS; log bucket retention lock |
-| Native cryptographic tamper evidence | Signed hourly digest chain with SHA-256 and RSA | None documented (UNVERIFIED) |
-| Provider-operator access visibility | No direct equivalent product (UNVERIFIED) | Access Transparency and Access Approval |
-| Delivery to custody store | Batched log files, about 5 minutes (UNVERIFIED) | Router at ingestion; GCS in batches, Pub/Sub and BigQuery near real time |
-| Query | Athena on S3, CloudTrail Lake (SQL, managed retention) | Log Analytics, BigQuery sink |
-| Encryption | SSE-KMS, CloudTrail enforces encryption context `aws:cloudtrail:arn` (UNVERIFIED) | CMEK on log buckets, GCS CMEK |
+| Native cryptographic tamper evidence | Signed hourly digest chain with SHA-256 and RSA | None in the Cloud Audit Logs overview, which documents entries as immutable (Google Cloud docs, as of 2026-11) |
+| Provider-operator access visibility | No direct equivalent product (UNVERIFIED: absence claim, no AWS document states it) | Access Transparency and Access Approval |
+| Delivery to custody store | Batched log files, average of about 5 minutes (AWS docs, as of 2026-11) | Router at ingestion; GCS sinks processed hourly, Pub/Sub and BigQuery near real time |
+| Query | Athena on S3; CloudTrail Lake (SQL, managed retention) is closed to new customers since 2026-05-31, and AWS points to CloudWatch (AWS docs, as of 2026-11) | Log Analytics, BigQuery sink |
+| Encryption | SSE-KMS, with key policies conditioned on encryption context `kms:EncryptionContext:aws:cloudtrail:arn` (AWS docs, as of 2026-11) | CMEK on log buckets, GCS CMEK |
 | Billing model | Per event | Per GiB of uncompressed ingestion, then storage |
 | Compliance artifacts | AWS Artifact (SOC reports, FedRAMP packages, BAA) | Compliance Reports Manager, BAA in the contract terms |
 | FedRAMP High environments | GovCloud (US) regions | Assured Workloads FedRAMP High control package |
 | Continuous evidence | AWS Config conformance packs, Audit Manager, Security Hub | Security Command Center compliance, Assured Workloads monitoring |
-| Retired or at-risk building blocks | Amazon QLDB reached end of support on 2025-07-31 (UNVERIFIED) | Not applicable |
+| Retired or at-risk building blocks | Amazon QLDB reached end of support on 2025-07-31 (AWS Prescriptive Guidance, as of 2026-11) | Not applicable |
 
 The most important asymmetry is cryptographic.
 AWS gives you verifiable tamper evidence you can run yourself, anchored in an AWS-held key.
@@ -300,7 +339,7 @@ See [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_03_Identi
 
 A health-tech platform processes ePHI and trains models on it.
 It has one PHI data bucket receiving 200 million S3 data events per month (reads and writes by data loaders and services).
-All figures below use the unverified list prices from the Numbers table and must be re-checked before you commit.
+All figures below use the list prices from the Numbers table, checked 2026-11, and must be re-checked before you commit.
 The lab provisions only a one-account, one-day version of the archive.
 
 **Event cost.**
@@ -312,15 +351,15 @@ A second trail in the same account is billed at $2.00 per 100,000 management eve
 Assume about 250 bytes per event after CloudTrail gzip (assumption, measure your own).
 200,000,000 x 250 B = 50 GB per month.
 Six-year HIPAA horizon is 72 months, so 3.6 TB at the end.
-At S3 Standard $0.023 per GB-month (UNVERIFIED), the cumulative six-year cost is 50 x 0.023 x (72 x 73 / 2) = 1.15 x 2,628, about $3,022.
-Tiering after 90 days to a cold class around $0.0036 per GB-month cuts the cold portion by about 6x.
+At S3 Standard $0.023 per GB-month (AWS S3 price list, us-east-1, as of 2026-11), the cumulative six-year cost is 50 x 0.023 x (72 x 73 / 2) = 1.15 x 2,628, about $3,022.
+Tiering after 90 days to a cold class around $0.0036 per GB-month (S3 Glacier Flexible Retrieval, AWS S3 price list, us-east-1, as of 2026-11) cuts the cold portion by about 6x.
 
 **GCP equivalent.**
 Assume 1.2 KiB per audit entry, billed uncompressed.
 200,000,000 x 1.2 KiB is about 229 GiB per month.
-At $0.50 per GiB, ingestion is about $114 per month.
-Storing that in a log bucket beyond 30 days at $0.01 per GiB-month reaches about $165 per month after 72 months (229 GiB x 72 = 16.5 TiB).
-Per-event pricing on AWS and per-byte pricing on GCP cross over based on event size, so measure your median entry size before choosing.
+At $0.50 per GiB, ingestion is about $114 per month, or about $90 after the free 50 GiB per project per month.
+Storing that in a log bucket beyond 30 days at $0.01 per GiB-month reaches about $165 per month after 72 months (229 GiB x 72 = 16,488 GiB, about 16.1 TiB).
+Per-event pricing on AWS and per-byte pricing on GCP cross over at about 2.1 KiB per event at these list prices ($0.000001 per event / ($0.50 per GiB)), with smaller entries cheaper on GCP and larger ones cheaper on AWS, so measure your median entry size before choosing.
 
 **ML data-loader warning.**
 A training job reading 10,000 objects per second generates 10,000 x 86,400 = 864,000,000 data events per day.
@@ -502,23 +541,27 @@ output "bucket"    { value = aws_s3_bucket.logs.id }
 ```
 
 The `DenyForgedLogInjection` statement is the mitigation for the unreferenced-file gap.
-Test that CloudTrail still delivers after applying it, because the exact behavior of `aws:PrincipalServiceName` for service-delivered writes was not re-verified here (UNVERIFIED).
+The `aws:PrincipalServiceName` key holds `cloudtrail.amazonaws.com` when the CloudTrail service principal calls directly and is absent for IAM principals, so `StringNotEquals` denies them (AWS IAM docs, as of 2026-11).
+Still test that CloudTrail delivers after applying it, with Object Lock default retention on the bucket, because this exact combination was not exercised here.
 
 ### Verify the chain with the CLI
 
+The command is Region specific, so pass `--region` (AWS docs, as of 2026-11).
 Wait at least an hour after `terraform apply`, then:
 
 ```bash
 TRAIL_ARN=$(terraform output -raw trail_arn)
 aws cloudtrail validate-logs \
+  --region us-east-1 \
   --trail-arn "$TRAIL_ARN" \
   --start-time "$(date -u -d '-3 hours' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-3H +%Y-%m-%dT%H:%M:%SZ)" \
   --verbose
 ```
 
 Then prove the detection works.
-Download one log file referenced by a digest, edit a byte, and upload it back as a new object version (governance mode still lets writers add versions).
-Re-run `validate-logs` and confirm it reports the file as invalid.
+First try to upload any object under `AWSLogs/` and confirm that `DenyForgedLogInjection` refuses it.
+Temporarily remove that statement, download one log file referenced by a digest, edit a byte of its uncompressed content, re-gzip it, and upload it back as a new object version (Object Lock does not prevent new versions, AWS S3 docs, as of 2026-11).
+Re-run `validate-logs`, confirm it reports the file as invalid, and restore the statement.
 That one exercise teaches more than any documentation page.
 
 ### Python: continuity, freshness, and witness anchor
@@ -555,7 +598,8 @@ def main():
     objs = []
     for pfx in day_prefixes(base, a.hours):
         for page in s3.get_paginator("list_objects_v2").paginate(Bucket=a.bucket, Prefix=pfx):
-            objs += [o for o in page.get("Contents", []) if o["LastModified"] >= cutoff]
+            objs += [o for o in page.get("Contents", [])
+                     if o["LastModified"] >= cutoff and not o["Key"].endswith("_backfill.json.gz")]
     objs.sort(key=lambda o: o["LastModified"])
     if not objs:
         print("FAIL: no digests in window"); sys.exit(2)
@@ -575,7 +619,7 @@ def main():
 
     anchor = {
         "account": a.account, "region": a.region, "head_key": prev_key,
-        "head_sha256": hashlib.sha256(head_raw).hexdigest(),
+        "head_sha256": hashlib.sha256(gzip.decompress(head_raw)).hexdigest(),
         "digest_end_time": head_doc.get("digestEndTime"),
         "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
@@ -595,9 +639,11 @@ def main():
 main()
 ```
 
+The script skips `_backfill` digests because they form a separate chain, and it hashes uncompressed content so the anchor is comparable with the next digest's `previousDigestHashValue` (AWS docs, as of 2026-11).
+Organization trails add the organization ID to the digest path, so adjust `base` for them (AWS docs, as of 2026-11).
 Run it hourly from a scheduler in a different account, and alarm when the job itself stops reporting.
 A missing heartbeat is as important as a failed check.
-Retrieval is cheap: about 24 GETs per day per region for digests, plus one GET per anchor.
+Retrieval is cheap: with the default 24-hour window, about 24 GETs per run per region, so about 576 GETs per day at an hourly cadence, plus one PUT per anchor.
 
 ### Hardening snippet: SCP for the audit estate
 
@@ -662,7 +708,8 @@ Use it only on a throwaway project.
 ### Teardown
 
 The AWS bucket is versioned with governance retention, so `terraform destroy` fails on a non-empty bucket.
-Empty it with bypass first:
+Stop the trail first, because new deliveries would refill the bucket and stopping delivers a final digest file (AWS docs, as of 2026-11).
+After that final digest arrives, empty the bucket with bypass:
 
 ```python
 #!/usr/bin/env python3
@@ -678,6 +725,8 @@ print("emptied", bucket)
 ```
 
 ```bash
+# Run this first and wait for the final digest before emptying.
+aws cloudtrail stop-logging --name "$(terraform output -raw trail_arn)"
 python3 empty_bucket.py "$(terraform output -raw bucket)"
 terraform destroy -auto-approve
 # KMS key enters its 7-day deletion window; it cannot be deleted sooner.
@@ -692,8 +741,8 @@ gcloud storage rm -r "gs://$BUCKET"          # run after 24 hours
 ### The pipeline fails silently
 
 - A trail with `StopLogging` called, a KMS key disabled or with a broken key policy, or a bucket policy edited so the CloudTrail service principal loses `PutObject`: all leave you with no new logs and no error in your application.
-- Do not assume undelivered events are replayed after you fix the key (UNVERIFIED). Treat any delivery outage as a permanent gap and document it for the auditor.
-- Alarm on head-digest age, on CloudTrail delivery errors, and on a synthetic canary: a scheduled harmless API call whose event you expect to find every hour.
+- On a misconfigured trail, such as an unreachable bucket, CloudTrail attempts redelivery for 30 days and those attempted events are billed, and it retries missing digests once the issue is fixed, possibly out of order (AWS docs, as of 2026-11). AWS's KMS guidance says only that it cannot deliver while the key is disabled or misconfigured, so treat anything not redelivered as a permanent gap and document every outage for the auditor.
+- Alarm on head-digest age, on CloudTrail delivery errors (`get-trail-status` exposes `LatestDigestDeliveryError`), and on a synthetic canary: a scheduled harmless API call whose event you expect to find every hour.
 - On GCP, a sink whose writer identity lost `storage.objectCreator` fails while the source log bucket still holds the data only for its own retention. An `_Default` exclusion filter silently drops entries that never reach any sink.
 
 ### Logging that was never enabled
@@ -714,7 +763,7 @@ If the workload account's admin can delete the log bucket, an attacker who becom
 
 SCPs do not apply to the organization management account.
 A trail whose protection depends on an SCP is unprotected against anyone using that account.
-Keep it empty of workloads and use delegated administration for CloudTrail where available (UNVERIFIED).
+Keep it empty of workloads and use a delegated administrator account, which can also create organization trails (AWS docs, as of 2026-11).
 
 ### Object Lock misconfiguration
 
@@ -777,7 +826,7 @@ Pair audit with per-person federated sessions and source identity propagation (s
 
 - Separate four duties: log writers (provider service principals only), custodians (can configure retention but cannot read), readers (read-only, time-boxed), and verifiers (read digests and write witness records).
 - On AWS, readers get `s3:GetObject` and `kms:Decrypt` on the archive key only through a dedicated role. Nobody gets `s3:DeleteObjectVersion` or `s3:BypassGovernanceRetention` in production.
-- On GCP, Data Access logs are visible only to principals with the private log viewer role (`roles/logging.privateLogViewer`), so grant that sparingly. Use IAM Deny policies on `logging.sinks.delete`, `logging.buckets.delete`, and bucket deletion in the archive project (supported permission set UNVERIFIED).
+- On GCP, Data Access logs are visible only to principals with the private log viewer role (`roles/logging.privateLogViewer`), so grant that sparingly. Use IAM Deny policies on `logging.sinks.delete`, `logging.buckets.delete`, and bucket deletion in the archive project (deny policies support `logging.googleapis.com/sinks.delete`, `logging.googleapis.com/buckets.delete`, and `storage.googleapis.com/buckets.delete`; Google Cloud docs, as of 2026-11).
 - Cross-reference the policy engine behavior in [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]] and [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions|Cloud IAM: Roles, Policies, and Conditions]].
 
 ### Key hierarchy
@@ -798,9 +847,9 @@ Pair audit with per-person federated sessions and source identity propagation (s
 
 - Scope data events with advanced event selectors by resource ARN and read-write type. This is the single largest lever.
 - Tier archived logs to a colder storage class under the same retention. Locks apply across classes.
-- Choose per-event versus per-GiB billing deliberately: small, frequent events favor GCP's per-byte model less than AWS's per-event model, and large entries favor the reverse. Measure median entry size.
+- Choose per-event versus per-GiB billing deliberately: small, frequent events favor GCP's per-byte model, and large entries favor AWS's per-event model, with the crossover near 2.1 KiB per event at current list prices. Measure median entry size.
 - Keep hot query data (30 to 90 days) in a query store and everything else in the object archive. Rehydrate only for audits.
-- CloudTrail Lake charges for managed ingestion and retention and removes the Athena partition upkeep. It pays off when many analysts query, and not for a compliance-only archive (UNVERIFIED pricing; run the numbers).
+- CloudTrail Lake closed to new customers on 2026-05-31 and now receives only critical bug fixes and security updates, with AWS pointing to CloudWatch (AWS docs, as of 2026-11). For existing customers it charges $0.75 per GB of uncompressed ingestion with the first year of retention included (AWS pricing, as of 2026-11), and removes the Athena partition upkeep. It pays off when many analysts query, and not for a compliance-only archive.
 - Retention is the multiplier: choose the shortest retention that satisfies the strictest applicable regime, and document which rule drove the number.
 - Budget alarms on the logging estate are not optional; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cloud_Billing_Models_and_Unit_Cost_Allocation|Cloud Billing Models and Unit Cost Allocation]].
 
@@ -892,7 +941,7 @@ A SOC 2 Type 2 auditor selects 25 samples from "all production IAM changes in th
 #### Model Answer
 
 The population is information produced by the entity, so the auditor tests the report's completeness and accuracy, not only the 25 samples.
-I produce the population from the system of record: CloudTrail management events for IAM, queried from the immutable archive (or CloudTrail Lake) with the query text, run timestamp, and time range saved as the evidence.
+I produce the population from the system of record: CloudTrail management events for IAM, queried from the immutable archive (or CloudTrail Lake, if we onboarded before it closed to new customers on 2026-05-31) with the query text, run timestamp, and time range saved as the evidence.
 Completeness argument: the organization trail covers all accounts and regions, a conformance rule shows the trail was never stopped in the period, the digest chain validates over the whole range, and the head freshness job has no gaps.
 Accuracy argument: events are stamped by the service, and I reconcile counts against a second source such as AWS Config configuration items for the IAM resources.
 Each sampled change links to the change ticket and approval, which is the actual control being tested.
@@ -926,7 +975,8 @@ If it is not in scope, the answer is a self-hosted model on in-scope compute, or
 For evidence, the AU-2 and AU-12 questions are: what events will exist for model invocation, and who owns them?
 Management-plane calls are logged by default.
 Prompts and completions are not, unless I enable Bedrock invocation logging or Vertex request-response logging, which makes those stores in scope for AU-9 and AU-11.
-I need to confirm which runtime actions appear in CloudTrail and which Data Access types apply (UNVERIFIED for both today).
+CloudTrail records Bedrock `InvokeModel` and `Converse` as management events without prompt bodies, Agents runtime calls need data events, and Vertex `endpoints.predict` is DATA_READ (AWS and Google Cloud docs, as of 2026-11).
+Google's audit logging page does not list Gemini `generateContent`, so I would test that coverage before relying on it (UNVERIFIED: not in current docs).
 I add application-level audit records binding user identity, model ID, and prompt hash, stored in the same archive with the same retention.
 I avoid storing full prompts when a hash plus a pointer to a controlled store suffices, which shrinks the sensitive surface.
 

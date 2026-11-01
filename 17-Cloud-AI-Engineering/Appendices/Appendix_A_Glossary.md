@@ -4,20 +4,57 @@ track: [cloud-ai, ai-eng, sde, distinguished]
 level:
 status: draft
 last_reviewed:
-sources: []
+sources: 
+  - "https://docs.cloud.google.com/tpu/docs/tpu7x"
+  - "https://docs.cloud.google.com/tpu/docs/v6e"
+  - "https://docs.cloud.google.com/tpu/docs/v5p"
+  - "https://docs.cloud.google.com/tpu/docs/release-notes"
+  - "https://blog.google/innovation-and-ai/infrastructure-and-cloud/google-cloud/eighth-generation-tpu-agentic-era/"
+  - "https://www.datacenterdynamics.com/en/news/google-unveils-eighth-generation-tpus-two-dedicated-training-and-inference-chips/"
+  - "https://www.usenix.org/conference/nsdi20/presentation/agache"
+  - "https://research.google/pubs/spanner-googles-globally-distributed-database-2/"
+  - "https://www.amazon.science/publications/amazon-aurora-design-considerations-for-high-throughput-cloud-native-relational-databases"
+  - "https://www.usenix.org/conference/nsdi20/presentation/brooker"
+  - "https://research.google/pubs/maglev-a-fast-and-reliable-software-network-load-balancer/"
+  - "https://research.google/pubs/andromeda-performance-isolation-and-velocity-at-scale-in-cloud-network-virtualization/"
+  - "https://research.google/pubs/the-tail-at-scale/"
+  - "https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s11-bronson.pdf"
+  - "https://www.microsoft.com/en-us/research/publication/gray-failure-achilles-heel-cloud-scale-systems/"
+  - "https://arxiv.org/abs/1910.02054"
+  - "https://arxiv.org/abs/2304.01433"
+  - "https://docs.cloud.google.com/tpu/docs"
+  - "https://aws.amazon.com/builders-library/"
+  - "https://arxiv.org/abs/2309.06180"
+  - "https://docs.cloud.google.com/tpu/docs/system-architecture-tpu-vm"
+  - "https://jax-ml.github.io/scaling-book/tpus/"
+  - "https://arxiv.org/abs/1704.04760"
+  - "https://raw.githubusercontent.com/firecracker-microvm/firecracker/main/docs/jailer.md"
+  - "https://raw.githubusercontent.com/firecracker-microvm/firecracker/main/docs/seccomp.md"
+  - "https://gvisor.dev/docs/architecture_guide/platforms/"
+  - "https://gvisor.dev/blog/2023/06/27/directfs/"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa.html"
+  - "https://raw.githubusercontent.com/linux-rdma/rdma-core/master/providers/efa/man/efadv.7.md"
+  - "https://cdn.amazon.science/a6/34/41496f64421faafa1cbe301c007c/a-cloud-optimized-transport-protocol-for-elastic-and-scalable-hpc.pdf"
+  - "https://www.nvidia.com/en-us/data-center/gb200-nvl72/"
+  - "https://aws.amazon.com/about-aws/whats-new/2020/12/amazon-s3-now-delivers-strong-read-after-write-consistency-automatically-for-all-applications/"
+  - "https://www.cs.utexas.edu/~bornholt/papers/shardstore-sosp21.pdf"
+  - "https://docs.aws.amazon.com/global-infrastructure/latest/regions/aws-availability-zones.html"
+  - "https://docs.aws.amazon.com/eks/latest/best-practices/prefix-mode-linux.html"
+  - "https://cloud.google.com/titanium"
 ---
 
 # Appendix A: Glossary of Cloud and AI Infrastructure Terms
 
 This appendix defines the virtualization, networking, storage, reliability, and accelerator vocabulary used across the curriculum.
 Definitions are mechanism-first: each one says what physically happens, not only what the term is called.
-Section 8 works six mechanisms through to numbers, and Section 11 has eight interview questions with L6 and L7 model answers.
+Section 8 works six mechanisms through to numbers, and Section 11 has eight interview questions with L5, L6, and L7 model answers.
 
-Verification posture for this edition, dated 2026-10-21:
-- Vendor numbers in this appendix are limited to the Google Cloud TPU figures I checked against official documentation (Section 9).
+Verification posture for this edition, dated 2026-11-01:
+- Vendor numbers in this appendix are limited to the Google Cloud TPU figures I checked against official documentation (Section 9) and the few other facts attributed inline.
 - Architectural figures that come from peer-reviewed papers are tagged with the paper and year.
-- I could not re-verify GPU and Trainium specifications, instance bandwidths, storage IOPS limits, or list prices during this edition. I omitted them rather than guess. Volume 14 carries the full numbers sheet.
-- Anything cited from memory of a paper, or that I could not re-check, is listed in the UNVERIFIED block at the end.
+- Apart from those inline attributions, I omitted GPU and Trainium specifications, instance bandwidths, storage IOPS limits, and list prices rather than guess. Volume 14 carries the full numbers sheet.
+- Numbers, names, dates, and venues were re-checked against primary sources, and claims that could not be confirmed were reworded to what the source states, so no open-verification marker remains.
+- Plain mechanism definitions that carry no citation were read for accuracy but were not each traced to a source.
 
 Primary chapter pointers by domain:
 - Virtualization: [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_01_Hypervisors_MicroVMs_and_Sandboxing|Hypervisors, MicroVMs, and Sandboxing]], [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_04_Firecracker_MicroVM|Firecracker]].
@@ -56,18 +93,20 @@ Primary chapter pointers by domain:
   The trade-off is that the offload cards are a fixed-function fleet component, and a card firmware bug has a per-host blast radius.
   See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_04_EC2_Nitro_Architecture_and_Graviton|EC2, Nitro Architecture, and Graviton]].
 - **Titanium (Google Cloud)**: Google's tiered offload architecture, with offload processors and adapters that take over host networking, storage, and security functions on current machine families.
-  It plays the same role as Nitro with a different packaging.
+  It plays the same role as Nitro with a different packaging ([Google Cloud Titanium](https://cloud.google.com/titanium), as of 2026-11).
   See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_06_Compute_Engine_and_Titanium_Architecture|Compute Engine and Titanium Architecture]].
 - **MicroVM**: A VM with a deliberately tiny device model and no BIOS or legacy hardware.
   It trades guest compatibility for boot time and attack surface.
 - **Firecracker**: A Rust VMM on KVM with a minimal device set (virtio-net, virtio-block, vsock, serial, and a few others).
-  The paper reports under 125 ms boot, under 5 MiB memory overhead per microVM, and up to 150 microVMs created per second per host (Firecracker, NSDI 2020).
+  The paper reports under 125 ms boot, under 5 MB memory overhead per microVM, and up to 150 microVMs created per second per host (Firecracker, NSDI 2020).
   It underpins Lambda and Fargate.
-  The jailer sets up namespaces, cgroups, and seccomp before the VMM starts handling guest input.
+  The jailer sets up the chroot, namespaces, and cgroups and drops privileges before exec ([Firecracker jailer docs](https://raw.githubusercontent.com/firecracker-microvm/firecracker/main/docs/jailer.md), as of 2026-11).
+  Firecracker itself loads per-thread seccomp filters before its API server starts and before guest code runs ([Firecracker seccomp docs](https://raw.githubusercontent.com/firecracker-microvm/firecracker/main/docs/seccomp.md), as of 2026-11), although the 2020 paper describes the seccomp profile as part of the jailer sandbox.
   See [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_04_Firecracker_MicroVM|Firecracker]].
 - **gVisor**: A user-space application kernel (the Sentry, written in Go) that implements the Linux syscall surface so a sandboxed app never talks to the host kernel directly.
-  File I/O goes through a separate Gofer process.
-  Its interception platforms include ptrace, systrap, and KVM, and each has a different syscall-overhead profile.
+  File I/O originally made round trips to a separate Gofer process, and since directfs became the `runsc` default the Gofer stays outside the sandbox and passes file descriptors in so the sandbox makes filesystem calls directly ([gVisor directfs](https://gvisor.dev/blog/2023/06/27/directfs/), as of 2026-11).
+  Its interception platforms are systrap, the default since mid-2023, and KVM, and each has a different syscall-overhead profile.
+  The older ptrace platform is no longer supported ([gVisor platforms](https://gvisor.dev/docs/architecture_guide/platforms/), as of 2026-11).
   The trade-off is a compatibility gap and syscall-heavy workloads running slower.
 - **Namespaces, cgroups, seccomp-bpf**: The three Linux primitives behind containers.
   Namespaces limit what a process can see, cgroups limit what it can consume, and seccomp limits which syscalls it can make.
@@ -140,14 +179,15 @@ Primary chapter pointers by domain:
   It needs a near-lossless fabric, built from PFC (priority flow control, link-level pause), ECN marking, and a rate controller such as DCQCN.
   Pause frames propagate backward hop by hop.
   A misbehaving NIC can start a "pause storm", and cyclic buffer dependencies can deadlock a fabric.
-- **EFA and SRD (AWS)**: The Elastic Fabric Adapter exposes OS-bypass communication through libfabric.
+- **EFA and SRD (AWS)**: The Elastic Fabric Adapter exposes OS-bypass communication through libfabric ([AWS EFA docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa.html), as of 2026-11).
   Its transport, Scalable Reliable Datagram, is implemented on the Nitro card.
   SRD sends one logical message over many network paths and tolerates out-of-order arrival, which sidesteps ECMP elephant collisions.
-  It is not an InfiniBand-verbs transport.
+  It is not the in-order InfiniBand or RoCE transport, because SRD delivers out of order and leaves ordering to the layer above (SRD, IEEE Micro 2020).
+  The EFA device is still a provider under the Linux verbs stack, with direct-verbs extensions ([rdma-core efadv](https://raw.githubusercontent.com/linux-rdma/rdma-core/master/providers/efa/man/efadv.7.md), as of 2026-11).
   See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI|NVLink, EFA, and TPU ICI]].
 - **NVLink / NVSwitch**: NVIDIA's scale-up interconnect, with GPU-to-GPU load/store semantics at far higher bandwidth than the host's PCIe.
   NVSwitch makes the domain all-to-all.
-  Rack-scale systems such as GB200 NVL72 extend one NVLink domain to 72 GPUs.
+  Rack-scale systems such as GB200 NVL72 extend one NVLink domain to 72 GPUs ([NVIDIA](https://www.nvidia.com/en-us/data-center/gb200-nvl72/), as of 2026-11).
 - **Scale-up vs scale-out domain**: Scale-up is the high-bandwidth, low-latency island where accelerators share memory semantics (NVLink domain, one TPU slice).
   Scale-out is the Ethernet or InfiniBand network between islands.
   Parallelism strategies are assigned to domains by communication intensity, with tensor parallelism inside the scale-up domain and data parallelism across the scale-out network.
@@ -202,10 +242,10 @@ Primary chapter pointers by domain:
   Spanner provides it via TrueTime (Section 8.4).
 - **TrueTime**: An API that returns a time interval `[earliest, latest]` guaranteed to contain absolute time.
   Its width is the uncertainty epsilon, driven by GPS and atomic-clock time masters plus polling error (Spanner, OSDI 2012).
-- **S3 strong consistency**: Since December 2020, S3 provides strong read-after-write and list consistency.
+- **S3 strong consistency**: Since December 2020, S3 provides strong read-after-write and list consistency ([AWS, 2020-12-01](https://aws.amazon.com/about-aws/whats-new/2020/12/amazon-s3-now-delivers-strong-read-after-write-consistency-automatically-for-all-applications/)).
   Mechanism details are in [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_08_S3_Deep_Dive_Consistency_and_ShardStore|S3 Deep Dive]] and [[04-System-Design/05-Data-Stores/Amazon-S3-and-Object-Storage|Amazon S3 and Object Storage]].
 - **ShardStore**: S3's per-disk storage node implementation, a log-structured design with an LSM-tree index.
-  It was checked against an executable reference model using property-based and lightweight formal methods, specifically for crash consistency (ShardStore, SOSP 2021).
+  It was checked against an executable reference model using property-based and lightweight formal methods, and the work covers crash consistency and concurrency among other properties (ShardStore, SOSP 2021).
 - **Colossus**: Google's successor to GFS, with a distributed, scalable metadata layer instead of a single master (GFS, SOSP 2003, for the lineage).
   Cloud Storage and Bigtable sit on it.
 - **Erasure coding RS(k, m)**: Data is cut into k chunks plus m parity chunks, and any k of the k+m reconstruct the data.
@@ -230,7 +270,8 @@ Primary chapter pointers by domain:
 ## 4. Reliability and failure domains
 
 - **Availability Zone (AWS) / Zone (GCP)**: One or more datacenters with independent power, cooling, and networking inside a region.
-  AWS account-specific AZ names such as `us-east-1a` can map to different physical AZs per account, so use AZ IDs when coordinating across accounts.
+  AZ codes such as `us-east-1a` can map to different physical AZs per account in AWS's oldest Regions for accounts created before November 2025, while accounts created from November 2025 get a common mapping ([AWS docs](https://docs.aws.amazon.com/global-infrastructure/latest/regions/aws-availability-zones.html), as of 2026-11).
+  Use AZ IDs when coordinating across accounts, because an AZ ID is the same physical location in every account.
   See [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_06_Physical_Failure_Domains_and_Blast_Radius|Physical Failure Domains and Blast Radius]].
 - **Region**: A geographic location containing multiple zones and its own regional control plane instances.
 - **Static stability**: A system keeps operating correctly in the face of a dependency impairment without having to take new actions.
@@ -274,9 +315,10 @@ Primary chapter pointers by domain:
 - **SM / Tensor Core (NVIDIA)**: A streaming multiprocessor runs warps of threads.
   Tensor Cores execute small matrix-multiply-accumulate tiles at reduced precisions such as bf16, FP8, and FP4.
 - **MXU and systolic array (TPU)**: A grid of multiply-accumulate cells through which operands flow rhythmically, so each loaded value is reused many times without returning to memory.
-  Each v5p TensorCore has four MXUs (Google Cloud docs, as of 2026-10).
-  MXUs were 128x128 through the v5 generation per the TPU papers.
-  Trillium is reported to use a larger array (UNVERIFIED against primary docs).
+  Each v5p TensorCore has four MXUs (Google Cloud docs, as of 2026-11).
+  TPU v4 uses four 128x128 MXUs per TensorCore (TPU v4, ISCA 2023), and the JAX scaling book gives 128x128 for generations before v6e ([How to Scale Your Model](https://jax-ml.github.io/scaling-book/tpus/), as of 2026-11).
+  The original TPU v1 is the exception, with one 256x256 8-bit array (TPU v1, ISCA 2017).
+  Trillium (v6e) has two 256x256 MXUs per TensorCore (Google Cloud docs, as of 2026-11).
 - **SparseCore (TPU)**: A dataflow unit for embedding lookups and other irregular access, separate from the MXUs.
 - **NeuronCore (Trainium)**: The AWS Trainium compute unit, programmed through the Neuron SDK.
   See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_01_Accelerator_Architectures_GPUs_Trainium_TPUs|Accelerator Architectures]].
@@ -292,7 +334,7 @@ Primary chapter pointers by domain:
   It is the metric procurement should use, not peak FLOP/s.
 - **Slice (TPU)**: A set of chips connected by ICI with a defined topology, allocated as a unit.
   Slices must be contiguous in the torus.
-  On v5p the largest schedulable job is a 96-cube, 6144-chip job out of a pod of 8960 chips (Google Cloud docs, as of 2026-10).
+  On v5p the largest schedulable job is a 96-cube, 6144-chip job out of a pod of 8960 chips (Google Cloud docs, as of 2026-11).
 - **Multislice**: Training that spans several slices, using ICI within a slice and DCN between slices.
 - **Superpod / UltraCluster / UltraServer**: Vendor names for the largest tightly coupled unit.
   They are not interchangeable.
@@ -365,7 +407,7 @@ Primary chapter pointers by domain:
 | Workload identity | IAM role via instance profile, IRSA, Pod Identity | Attached service account, Workload Identity | Prefer short-lived federated credentials over exported keys on both clouds. |
 | Offload hardware | Nitro | Titanium | Both remove the hypervisor from the I/O path, but they are different products with different guest-visible devices. |
 | HPC and AI fabric | EFA over SRD | RDMA/RoCE-based stacks on GPU VMs, ICI on TPU | Do not assume one transport model. Collectives libraries are tuned per transport. |
-| Zone naming | AZ name varies per account, AZ ID is stable | Zone names are stable | Cross-account AZ affinity on AWS requires AZ IDs. |
+| Zone naming | AZ code can vary per account in the oldest Regions for accounts created before November 2025, AZ ID is stable (AWS docs, as of 2026-11) | Zones are logical abstractions, and the docs do not state a per-project mapping (Google Cloud docs, as of 2026-11) | Cross-account AZ affinity on AWS requires AZ IDs. |
 
 ---
 
@@ -390,13 +432,13 @@ A synchronous ring or tree all-reduce finishes when its slowest flow finishes, s
 Splitting each transfer across k queue pairs improves the imbalance only slowly: with per-link load modeled as binomial, the relative standard deviation is `sqrt((1-p)/(n p))` with p = 1/8.
 That is 0.94 at n = 8 flows and 0.47 at n = 32 flows, so it falls as the square root of n.
 Per-packet spraying with out-of-order tolerance (the SRD approach) or adaptive routing in the switch removes the per-flow hash from the picture.
-The costs are receiver reordering logic and a transport that cannot be offloaded to a standard verbs NIC.
+The costs are receiver reordering logic and a transport that needs NIC support beyond in-order RDMA (SRD, IEEE Micro 2020).
 Both approaches move the problem from placement luck to congestion-control quality.
 
 ### 8.3 Roofline arithmetic for decode and the KV cache
 
 For a dense model with P parameters in bf16, one decode step for a batch of B sequences does about `2 x B x P` FLOPs and reads `2P` bytes of weights, so arithmetic intensity is about B FLOP/byte.
-On TPU v6e the ridge point is `918 TFLOP/s / 1.638 TB/s = 560 FLOP/byte` (Google Cloud docs, as of 2026-10).
+On TPU v6e the ridge point is `918 TFLOP/s / 1.638 TB/s = 560 FLOP/byte` (Google Cloud docs, as of 2026-11).
 Decode therefore needs a batch near 560 sequences to be compute-bound, before counting KV-cache reads, which add bytes and push the ridge farther out.
 Weight-only 8-bit quantization halves the bytes and doubles the intensity (2B), so the ridge is reached at about B = 280 for the weights alone.
 This is the quantitative reason decode throughput scales with batch size and with HBM bandwidth, not FLOPs.
@@ -415,6 +457,7 @@ Any transaction that starts after this one finishes therefore receives a later t
 The expected wait is at least `2 x epsilon` where epsilon is the average clock uncertainty.
 The 2012 paper reports epsilon between about 1 and 7 ms in production, averaging about 4 ms (Spanner, OSDI 2012).
 That implies roughly 8 ms of commit wait.
+The paper's one-replica microbenchmark measured commit wait at about 5 ms, so treat 8 ms as the derived figure and not a measurement (Spanner, OSDI 2012).
 The wait overlaps with Paxos replication, so it adds little when replication is already slow.
 Locks are held during the wait, so conflicting writes to one hot row serialize at roughly `1 / (2 x epsilon)`, which is about 125 transactions per second at 4 ms.
 If time masters degrade and epsilon grows, throughput and latency degrade smoothly and correctness holds.
@@ -444,7 +487,7 @@ For RS(6,3), storage overhead is `9/6 = 1.5x` against 3x for triple replication,
 Rebuilding one lost chunk reads 6 chunks, a 6x read amplification of the lost data.
 Repair bandwidth and the time spent with reduced redundancy are the operational price of the capacity saving.
 
-For ZeRO accounting, mixed-precision Adam needs per parameter: 2 bytes bf16 weights, 2 bytes bf16 gradients, and 12 bytes optimizer state (fp32 master weights, momentum, and variance), which totals 16 bytes (ZeRO, SC 2020).
+For ZeRO accounting, mixed-precision Adam needs per parameter: 2 bytes fp16 weights, 2 bytes fp16 gradients (bf16 is the same size), and 12 bytes optimizer state (fp32 master weights, momentum, and variance), which totals 16 bytes (ZeRO, SC 2020).
 For P = 70e9 that is `16 x 70e9 = 1.12e12` bytes.
 ZeRO-3 across 64 ranks divides it to `1.12e12 / 64 = 17.5e9` bytes per rank before activations and gather buffers.
 
@@ -455,22 +498,25 @@ ZeRO-3 across 64 ranks divides it to `1.12e12 / 64 = 17.5e9` bytes per rank befo
 | Spec | v5p | v6e (Trillium) | TPU7x (Ironwood) |
 | --- | --- | --- | --- |
 | Chips per pod | 8960 | 256 | 9216 |
-| HBM per chip (GiB) | 95 | 32 | 192 |
+| HBM per chip, as listed | 95 GiB after reserved memory (96 physical) | 32 GB nominal (31.25 GiB usable) | 192 GiB |
 | HBM bandwidth per chip (GBps) | 2765 | 1638 | 7380 |
 | Bidirectional ICI per chip (GBps) | 1200 | 800 | 1200 |
 | DCN per chip (Gbps) | 50 | 100 | 100 |
 | Derived: pod HBM (TiB) | 831 | 8 | 1728 |
 
-Source for the table rows other than the derived row: [TPU7x docs](https://docs.cloud.google.com/tpu/docs/tpu7x) (Google Cloud docs, as of 2026-10).
+Source for the table rows other than the derived row: [TPU7x docs](https://docs.cloud.google.com/tpu/docs/tpu7x) (Google Cloud docs, as of 2026-11).
 The derived row is my arithmetic from chips per pod times HBM per chip.
+The HBM row uses listed values: v5p is 96 GiB physical with 95 GiB after reserved memory, and the v6e page states 32 GB nominal with 31.25 GiB usable (Google Cloud docs, as of 2026-11).
 
 Additional verified facts:
-- v6e peak bf16 compute is 918 TFLOPs per chip and peak Int8 is 1836 TOPs (Google Cloud docs, as of 2026-10; [TPU v6e](https://docs.cloud.google.com/tpu/docs/v6e)).
-- v5p has 8960 chips in a pod, and the largest schedulable job is a 96-cube (6144-chip) job (Google Cloud docs, as of 2026-10; [TPU v5p](https://docs.cloud.google.com/tpu/docs/v5p)).
-- TPU7x (Ironwood) is listed as generally available in the Cloud TPU release notes, dated March 31, 2026 (Google Cloud docs, as of 2026-10; [release notes](https://docs.cloud.google.com/tpu/docs/release-notes)).
-- Google announced eighth-generation TPUs on 2026-04-22: TPU 8t for training and TPU 8i for inference. They were described as "available later this year" at announcement time, so treat them as announced, not confirmed GA, until you check the release notes ([Google blog](https://blog.google/innovation-and-ai/infrastructure-and-cloud/google-cloud/eighth-generation-tpu-agentic-era/), as of 2026-10).
-- Announced TPU 8t scale is 9,600 chips and two petabytes of shared HBM per superpod ([Google blog](https://blog.google/innovation-and-ai/infrastructure-and-cloud/google-cloud/eighth-generation-tpu-agentic-era/), as of 2026-10).
-- Reported TPU 8i scale is 1,152 chips per pod, with 19.2 Tbps bidirectional scale-up bandwidth per chip (trade press, [DatacenterDynamics](https://www.datacenterdynamics.com/en/news/google-unveils-eighth-generation-tpus-two-dedicated-training-and-inference-chips/), as of 2026-10).
+- v6e peak bf16 compute is 918 TFLOPs per chip and peak Int8 is 1836 TOPs (Google Cloud docs, as of 2026-11; [TPU v6e](https://docs.cloud.google.com/tpu/docs/v6e)).
+- v5p has 8960 chips in a pod, and the largest schedulable job is a 96-cube (6144-chip) job (Google Cloud docs, as of 2026-11; [TPU v5p](https://docs.cloud.google.com/tpu/docs/v5p)).
+- TPU7x (Ironwood) is listed as generally available in the Cloud TPU release notes, dated March 31, 2026 (Google Cloud docs, as of 2026-11; [release notes](https://docs.cloud.google.com/tpu/docs/release-notes)).
+- Google announced eighth-generation TPUs on 2026-04-22: TPU 8t for training and TPU 8i for inference. They were described as "generally available later this year" at announcement time ([Google blog](https://blog.google/innovation-and-ai/infrastructure-and-cloud/google-cloud/eighth-generation-tpu-agentic-era/), as of 2026-11).
+  Treat them as announced, not GA: the release notes (newest entry 2026-06-01 when fetched on 2026-11-01) and the TPU system architecture version list do not mention them ([release notes](https://docs.cloud.google.com/tpu/docs/release-notes), [system architecture](https://docs.cloud.google.com/tpu/docs/system-architecture-tpu-vm), as of 2026-11).
+- Announced TPU 8t scale is 9,600 chips and two petabytes of shared HBM per superpod ([Google blog](https://blog.google/innovation-and-ai/infrastructure-and-cloud/google-cloud/eighth-generation-tpu-agentic-era/), as of 2026-11).
+- Google's image caption for TPU 8i describes four chips per board, eight boards per group, and 36 groups per pod, which multiplies to 1,152 chips ([Google blog](https://blog.google/innovation-and-ai/infrastructure-and-cloud/google-cloud/eighth-generation-tpu-agentic-era/), as of 2026-11).
+- The same post says TPU 8i doubled ICI bandwidth to 19.2 Tb/s, without saying whether that figure is per chip or bidirectional ([Google blog](https://blog.google/innovation-and-ai/infrastructure-and-cloud/google-cloud/eighth-generation-tpu-agentic-era/), as of 2026-11).
 
 ---
 
@@ -499,7 +545,7 @@ Additional verified facts:
 A container shares one host kernel, so a kernel vulnerability or a mis-scoped capability becomes a cross-tenant breach.
 The kernel attack surface is the whole syscall interface, and seccomp filters narrow it but cannot make it small.
 A microVM puts the hardware virtualization boundary between tenants, so the shared attack surface shrinks to the VMM and a handful of devices.
-Firecracker keeps that device model tiny (virtio net and block, vsock, serial) and reports under 125 ms boot and under 5 MiB overhead per microVM (Firecracker, NSDI 2020).
+Firecracker keeps that device model tiny (virtio net and block, vsock, serial) and reports under 125 ms boot and under 5 MB overhead per microVM (Firecracker, NSDI 2020).
 What you give up is density and warm-state sharing, because each microVM has its own guest kernel and page cache.
 Boot time is also higher than a container start, which is why snapshot restore exists.
 Snapshot restore brings a correctness risk: clones share identical RNG state and cached secrets unless the guest is told it was restored.
@@ -515,7 +561,7 @@ Should you buy faster chips?
 
 Probably not.
 Decode reads all weights per step for about 2 FLOPs per weight per sequence, so at batch B the intensity is about B FLOP/byte for bf16.
-On v6e the ridge is 560 FLOP/byte (918 TFLOP/s over 1.638 TB/s, Google Cloud docs, as of 2026-10), so batches below that are bandwidth-bound and low FLOP utilization is expected.
+On v6e the ridge is 560 FLOP/byte (918 TFLOP/s over 1.638 TB/s, Google Cloud docs, as of 2026-11), so batches below that are bandwidth-bound and low FLOP utilization is expected.
 The levers are, in order of cost: raise the batch via continuous batching and more concurrency per replica, shrink bytes via weight-only quantization (intensity doubles at 8 bits), shrink KV bytes via GQA or a quantized cache, and only then buy more HBM bandwidth.
 Raising batch is limited by KV capacity and by the latency SLO.
 Each added sequence costs 320 KiB per token in the Section 8.3 example, so memory runs out before the ridge is reached.
@@ -550,7 +596,7 @@ Cross-region it is asynchronous, so RPO equals replication lag.
 Spanner commits through Paxos groups, with two-phase commit across groups, and assigns timestamps with TrueTime.
 Commit wait delays acknowledging until the timestamp is in the past everywhere, which gives external consistency: if T1 completes before T2 begins, T1's timestamp is smaller.
 This lets snapshot reads at a timestamp be lock-free and globally consistent.
-The cost is about `2 x epsilon` of added latency per read-write commit (about 8 ms at the 4 ms average uncertainty the 2012 paper reports), and locks held through the wait, bounding single-row write rate near `1/(2 epsilon)`.
+The cost is about `2 x epsilon` of added latency per read-write commit (about 8 ms derived from the 4 ms average uncertainty the 2012 paper reports, against about 5 ms measured in its one-replica microbenchmark), and locks held through the wait, bounding single-row write rate near `1/(2 epsilon)`.
 Choose it where cross-region ordering matters and the writes are not concentrated on a few keys.
 
 Follow-up: Time masters in one region fail and epsilon grows tenfold.
@@ -596,7 +642,7 @@ MoE expert parallelism needs all-to-all of token activations every layer, and bi
 A rack-scale NVLink domain gives all-to-all through NVSwitch inside the domain with load/store semantics and uniform latency.
 The domain size caps how many experts you can place without crossing the scale-out network.
 A TPU torus gives high-bandwidth nearest-neighbor links, and all-to-all traverses multiple hops, so mapping experts onto torus dimensions matters.
-Its strengths are very large coherent slices (a v5p slice up to 6144 chips, Google Cloud docs, as of 2026-10) and OCS reconfiguration to carve slices and route around faults.
+Its strengths are very large coherent slices (a v5p slice up to 6144 chips, Google Cloud docs, as of 2026-11) and OCS reconfiguration to carve slices and route around faults.
 Then operations decide as much as peak numbers: gang scheduling and fragmentation (a torus slice must be contiguous, a failed node can strand a slice shape), spare-node strategy, software maturity of your framework on each platform, quota and capacity availability, and unit economics per goodput-hour, not per peak-FLOP.
 I would run the same step on both and compare MFU and goodput including failures before committing a multi-year capacity reservation.
 
@@ -612,7 +658,7 @@ Per-instance limits on ENIs and IPs per ENI cap pods per node.
 Free addresses in the subnet do not help because the node's attach limits bind first.
 Options: use larger instance types with higher limits, enable prefix delegation so each ENI slot carries a /28 block instead of one address (fewer slots consumed, but coarser subnet fragmentation), or use an overlay or alternative CNI such as Cilium in overlay mode.
 Overlay removes the IP-per-ENI bound at the cost of encapsulation overhead, losing VPC-native pod addressing, and security groups per pod.
-Check subnet fragmentation if you adopt prefix delegation, because contiguous /28 availability can run out before free IP counts do.
+Check subnet fragmentation if you adopt prefix delegation, because contiguous /28 availability can run out before free IP counts do ([Amazon EKS docs](https://docs.aws.amazon.com/eks/latest/best-practices/prefix-mode-linux.html), as of 2026-11).
 
 Follow-up: What breaks first when you move to an overlay?
 Expected: anything that relies on VPC-native pod IPs (security group references, flow logs at pod granularity, direct ALB IP-target mode), plus MTU reduction from encapsulation.

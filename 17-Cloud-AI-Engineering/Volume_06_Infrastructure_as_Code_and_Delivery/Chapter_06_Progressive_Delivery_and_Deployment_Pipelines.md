@@ -2,18 +2,49 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://aws.amazon.com/builders-library/automating-safe-hands-off-deployments/"
   - "https://aws.amazon.com/builders-library/ensuring-rollback-safety-during-deployments/"
   - "https://sre.google/workbook/canarying-releases/"
   - "https://netflixtechblog.com/automated-canary-analysis-at-netflix-with-kayenta-3260bc7acc69"
-  - "https://www.usenix.org/conference/nsdi20/presentation/li-chenggang"
+  - "https://www.usenix.org/conference/nsdi20/presentation/li"
   - "https://argo-rollouts.readthedocs.io/"
   - "https://docs.aws.amazon.com/codedeploy/latest/userguide/"
   - "https://cloud.google.com/deploy/docs"
   - "https://status.cloud.google.com/"
+  - "https://argo-rollouts.readthedocs.io/en/stable/features/analysis/"
+  - "https://argo-rollouts.readthedocs.io/en/stable/features/canary/"
+  - "https://argo-rollouts.readthedocs.io/en/stable/features/specification/"
+  - "https://argo-rollouts.readthedocs.io/en/stable/features/traffic-management/alb/"
+  - "https://argo-rollouts.readthedocs.io/en/stable/features/experiment/"
+  - "https://github.com/argoproj/argo-rollouts/releases"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/target-group-health-checks.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/rule-action-types.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-limits.html"
+  - "https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/ingress/annotations/"
+  - "https://docs.aws.amazon.com/codedeploy/latest/userguide/deployment-configurations.html"
+  - "https://docs.aws.amazon.com/codedeploy/latest/userguide/reference-appspec-file-structure-hooks.html"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/configuring-alias-routing.html"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/monitoring-metrics.html"
+  - "https://aws.amazon.com/blogs/aws/accelerate-safe-software-releases-with-new-built-in-blue-green-deployments-in-amazon-ecs/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/10/amazon-ecs-built-in-linear-canary-deployments/"
+  - "https://aws.amazon.com/codedeploy/pricing/"
+  - "https://docs.cloud.google.com/deploy/docs/overview"
+  - "https://docs.cloud.google.com/deploy/docs/deployment-strategies/canary/cloud-run"
+  - "https://docs.cloud.google.com/deploy/docs/automation"
+  - "https://docs.cloud.google.com/deploy/docs/analysis"
+  - "https://docs.cloud.google.com/deploy/docs/iam-roles-permissions"
+  - "https://cloud.google.com/deploy/pricing"
+  - "https://cloud.google.com/run/pricing"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://www.crowdstrike.com/blog/falcon-content-update-preliminary-post-incident-report/"
+  - "https://spinnaker.io/docs/guides/user/canary/best-practices/"
+  - "https://spinnaker.io/docs/guides/user/canary/judge"
+  - "https://sre.google/static/pdf/canary_analysis.pdf"
+  - "https://raw.githubusercontent.com/argoproj/argo-cd/master/resource_customizations/argoproj.io/Rollout/health.lua"
 ---
 
 # Progressive Delivery and Deployment Pipelines
@@ -21,7 +52,7 @@ sources:
 ## TL;DR
 
 Progressive delivery is a control loop that exposes a change to a bounded fraction of traffic, measures it against a baseline, and either widens or reverts the exposure without a human in the loop.
-The exposure knob is only as good as the traffic router behind it: replica-ratio canaries are per-connection and quantized, while ALB listener rules, Gateway API HTTPRoutes, Lambda alias weights, and Cloud Run revision splits are per-request and exact.
+The exposure knob is only as good as the traffic router behind it: replica-ratio canaries are per-connection and quantized, while ALB listener rules, Gateway API HTTPRoutes, Lambda alias weights, and Cloud Run revision splits are per-request and not quantized by pod count, though Lambda's split is probabilistic and shows high variance at low traffic (AWS Lambda docs, as of 2026-11).
 Rollback triggers are statistical instruments with a latency floor and a sample-size floor, so the first canary step should be sized as `n / (rps * T_floor)` (about 3.6% in the worked example), not picked by feel.
 Every pipeline is a control plane that must degrade safely: a dead rollout controller freezes traffic at a partial split, a GitOps self-heal can fight the controller, and config or data pushes that bypass the pipeline are the classic way a "canaried" system still goes global in seconds.
 Rollback is itself a deployment of the previous version, so it is only safe if N and N+1 can coexist on every wire format, schema, and cache, which means expand-contract changes, flags separating deploy from release, and rehearsed reverts.
@@ -55,12 +86,8 @@ See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04
 Argo Rollouts replaces the Deployment controller with a `Rollout` custom resource.
 Each pod template revision gets its own ReplicaSet, identified by a `rollouts-pod-template-hash` label, and the controller steps through a list of `steps` (`setWeight`, `pause`, `analysis`, `experiment`) while persisting its position in `status`.
 `setWeight` is an intent, not a measurement.
-Without `trafficRouting`, 
-
-Argo approximates the weight by changing stable and canary replica counts; with a router it writes a weight into an Istio, NGINX, ALB, Gateway API, or other supported routing resource
-
- (OneUptime Argo Rollouts guide, secondary source, 2026-08).
-The latest release listed on the project releases page is v1.10.1 (Argo Rollouts GitHub releases, as of 2026-10).
+Without `trafficRouting`, Argo approximates the weight by changing stable and canary replica counts; with a router it writes a weight into an Istio, NGINX, ALB, Gateway API, or other supported routing resource ([Argo Rollouts canary docs](https://argo-rollouts.readthedocs.io/en/stable/features/canary/), as of 2026-11).
+The latest release listed on the project releases page is v1.10.1, published 2026-10-12 ([Argo Rollouts GitHub releases](https://github.com/argoproj/argo-rollouts/releases), as of 2026-11).
 Official docs: [Argo Rollouts](https://argo-rollouts.readthedocs.io/).
 
 ### Mechanism 1: what a weight actually is at each layer
@@ -68,16 +95,16 @@ Official docs: [Argo Rollouts](https://argo-rollouts.readthedocs.io/).
 | Layer | Unit of splitting | Granularity | Stickiness | Where the weight lives |
 |---|---|---|---|---|
 | Replica ratio (no router) | Pod share behind a ClusterIP Service | `1/N` of pods, quantized by replica count | None, per TCP connection via kube-proxy | ReplicaSet sizes |
-| ALB forward action | Request | Integer weights across target groups | Optional target group stickiness | Listener rule, outside the cluster |
+| ALB forward action | Request | Integer weights 0 to 999 across up to 5 target groups | Optional target group stickiness | Listener rule, outside the cluster |
 | Gateway API HTTPRoute | Request (implementation dependent) | Integer `backendRef` weights | Implementation dependent | HTTPRoute object |
-| Lambda alias | Invocation | Percentage between exactly two versions | None | Alias routing config |
+| Lambda alias | Invocation | Percentage between at most two versions, split probabilistically | None | Alias routing config |
 | Cloud Run traffic split | Request | Percentage per revision or tag | Optional best-effort session affinity | Service spec |
 | DNS weighted records | Resolver cache fill | Bounded by TTL and resolver behavior | Per resolver | Hosted zone |
 
 The replica-ratio canary is the one that surprises people.
 A Kubernetes Service load-balances connections, not requests, because kube-proxy (iptables or IPVS mode) picks an endpoint when the TCP connection is established.
 An HTTP/2 or gRPC client that holds one connection open for hours therefore pins to one pod, so a "10 percent canary" can see 0 percent or 100 percent of a client's traffic.
-With 10 replicas, a 5 percent step cannot exist: the nearest representable splits are 0, 1/10 and 2/10, so the controller rounds up to one canary pod and you get roughly 9 to 10 percent of connections.
+With 10 replicas, a 5 percent step cannot exist: the nearest representable splits are 0, 1/10 and 2/10, so the controller picks the whole pod count with the smallest delta, rounding up on a tie, which gives one canary pod and roughly 9 to 10 percent of connections ([Argo Rollouts canary docs](https://argo-rollouts.readthedocs.io/en/stable/features/canary/), as of 2026-11).
 Request-level routers (ALB, Gateway API, a mesh sidecar) remove both defects but add their own: the weight is only real once the router has converged and the targets behind it are healthy.
 
 ### Mechanism 2: the propagation timeline between "pod Ready" and "pod serving"
@@ -87,24 +114,17 @@ The data plane lags the control plane through a chain of asynchronous hops.
 
 1. The kubelet marks the pod Ready after its readiness probe passes.
 2. The EndpointSlice controller publishes the endpoint, and kube-proxy or the CNI datapath programs it.
-3. For an ALB in IP target mode, the AWS Load Balancer Controller registers the pod IP as a target, and the target is not In Service until `HealthCheckInterval x HealthyThresholdCount` has elapsed. The ALB API defaults are 30 s and 5 (about 150 s), and the controller's annotation defaults are lower; treat both as UNVERIFIED and read your own target group.
-4. On removal, the target enters draining for the deregistration delay, which defaults to 300 s (AWS docs, UNVERIFIED in this pass).
+3. For an ALB in IP target mode, the AWS Load Balancer Controller registers the pod IP as a target, and AWS documents that a newly registered target must pass one health check before it counts as healthy, while `HealthCheckIntervalSeconds x HealthyThresholdCount` is the time for an unhealthy target to return to service.
+   The ALB API defaults are 30 s and 5 (about 150 s on that recovery path), and the controller's annotation defaults are 15 s and 2 (about 30 s) ([ALB health check docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/target-group-health-checks.html), [AWS Load Balancer Controller annotations](https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/ingress/annotations/), as of 2026-11); read your own target group.
+4. On removal, the target enters draining for the deregistration delay, which defaults to 300 s, although a target with no in-flight requests and no active connections finishes deregistering immediately ([ALB target group attributes](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html), as of 2026-11).
 
 Two consequences follow.
-First, blue/green cutover is a selector patch on the active Service, and the old ReplicaSet must stay alive until every hop has observed the patch, which is the purpose of `scaleDownDelaySeconds`: 
-
-it gives the router or cluster network time to observe the switch before the old stable ReplicaSet is scaled down
-
- (OneUptime Argo Rollouts guide, 2026-08).
+First, blue/green cutover is a selector patch on the active Service, and the old ReplicaSet must stay alive until every hop has observed the patch, which is the purpose of `scaleDownDelaySeconds`: it gives the router or cluster network time to observe the switch before the old stable ReplicaSet is scaled down ([Argo Rollouts blue/green docs](https://argo-rollouts.readthedocs.io/en/stable/features/bluegreen/), as of 2026-11).
 A short delay makes cutover produce a burst of 502 and 503 responses from targets that disappeared before the router noticed.
-The same delay is what makes rollback cheap: 
-
-keeping the old ReplicaSet running turns rollback into a selector flip, not fresh Pod startup
-
- (dev.to Argo Rollouts guide, secondary, 2026-10).
+The same delay is what makes rollback cheap: keeping the old ReplicaSet running turns rollback into a selector flip, not fresh Pod startup (dev.to Argo Rollouts guide, secondary, 2026-10).
 Second, a controller that trusts its own write is wrong whenever the router is slower than the controller.
 The ALB reconciler in Argo Rollouts exposes a `VerifyWeight` method and, since v1.6.0, `VerifyWeightPerIngress` (Go package docs for `rollout/trafficrouting/alb`), which exists to read the weight back from the load balancer before the controller counts the step as achieved.
-The controller-side flag names and IAM permissions for this verification are UNVERIFIED here, so confirm them in the ALB traffic management page before relying on them.
+Enable it with the controller flag `--aws-verify-target-group` (`--alb-verify-weight` in v1.0) plus the mandatory `--aws-region`, and grant the controller the `elasticloadbalancing` describe actions `DescribeTargetGroups`, `DescribeLoadBalancers`, `DescribeListeners`, `DescribeRules`, `DescribeTags`, and `DescribeTargetHealth` ([Argo Rollouts ALB docs](https://argo-rollouts.readthedocs.io/en/stable/features/traffic-management/alb/), as of 2026-11).
 The fix on the workload side is a `preStop` sleep at least as long as the propagation chain, `terminationGracePeriodSeconds` longer than that sleep plus drain time, and pod readiness gates so that "Ready" means "In Service" for ALB targets.
 
 ### Mechanism 3: the sample-size floor, the latency floor, and the optimal first step
@@ -121,24 +141,21 @@ The practical rule is that the first step should sit near `w*`, and later steps 
 ### Mechanism 4: baseline versus canary, and why "stable" is the wrong control
 
 Comparing a fresh canary to long-running stable pods biases the result: the canary has cold caches, cold JIT, fresh connection pools, and a different age distribution.
-Netflix's Kayenta popularized a three-way design in which a new baseline cluster running the old version is started at the same time and size as the canary, and the verdict compares canary to that baseline rather than to production (Netflix Tech Blog, Kayenta).
-Argo Rollouts has an `Experiment` resource, and an `experiment` step, that launches ad hoc ReplicaSets for the baseline and the candidate and runs analysis against them; the exact field layout is UNVERIFIED here, so check the Experiment docs.
-Google's Canary Analysis Service paper (Davidovic and Beyer, ACM Queue 2018) makes the related point that the canary population must be representative and the evaluation window must cover the traffic mix that triggers the bug.
-Netflix's Kayenta uses nonparametric comparison (Mann-Whitney U) on metric distributions rather than a threshold on a single mean (recalled, UNVERIFIED).
+Netflix's Kayenta popularized a three-way design in which a new baseline cluster running the old version is started at the same time and size as the canary, and the verdict compares canary to that baseline rather than to production (Netflix Tech Blog, Kayenta; [Spinnaker canary best practices](https://spinnaker.io/docs/guides/user/canary/best-practices/), as of 2026-11).
+Argo Rollouts has an `Experiment` resource, and an `experiment` step, that launches ad hoc ReplicaSets for the baseline and the candidate and runs analysis against them; the step takes `duration`, `templates` (each with `name` and `specRef: stable` or `canary`, plus an optional `weight` under traffic routing), and `analyses` ([Argo Rollouts Experiment docs](https://argo-rollouts.readthedocs.io/en/stable/features/experiment/), as of 2026-11).
+Google's Canary Analysis Service paper ([Davidovic and Beyer, ACM Queue 2018](https://sre.google/static/pdf/canary_analysis.pdf)) makes the related point that the canary population must be representative with respect to the evaluation metrics, and the SRE Workbook adds that the canary must run long enough to be representative.
+Netflix's Kayenta uses nonparametric comparison (Mann-Whitney U) on metric distributions rather than a threshold on a single mean ([Spinnaker canary judge docs](https://spinnaker.io/docs/guides/user/canary/judge), as of 2026-11).
 
 ### Analysis semantics worth knowing cold
 
 An `AnalysisTemplate` defines metrics, and an `AnalysisRun` is its instantiation with a list of measurements.
-Fields seen in upstream examples include `count`, `interval`, `initialDelay`, `failureLimit`, `inconclusiveLimit`, `consecutiveErrorLimit`, `successCondition`, and `failureCondition` (Argo Rollouts GitHub issue examples).
-The three verdicts are distinct: Failed (conditions evaluated and failed), Error (the provider query itself failed, governed by consecutive errors), and Inconclusive (neither condition held, which pauses the rollout for a human).
-An empty Prometheus result is the trap: 
-
-an empty result satisfies neither condition and counts as an inconclusive measurement
-
- (OneUptime Argo Rollouts guide on Prometheus results, 2026-08).
-A canary that crashes before emitting any series therefore looks "inconclusive" rather than "failed", and you must decide that policy deliberately, for example with `failureCondition: len(result) == 0`.
+Fields seen in upstream examples include `count`, `interval`, `initialDelay`, `failureLimit`, `inconclusiveLimit`, `consecutiveErrorLimit`, `successCondition`, and `failureCondition`, with defaults of 0 for `failureLimit` and `inconclusiveLimit` and 4 for `consecutiveErrorLimit` ([Argo Rollouts analysis docs](https://argo-rollouts.readthedocs.io/en/stable/features/analysis/), `analysis_types.go`, as of 2026-11).
+The three verdicts are distinct: Failed (conditions evaluated and failed), Error (the provider query itself failed, governed by consecutive errors), and Inconclusive (both conditions defined and neither held, or no conditions defined, which pauses the rollout for a human).
+An empty Prometheus result is the trap, because the outcome depends on the conditions you wrote ([Argo Rollouts analysis docs](https://argo-rollouts.readthedocs.io/en/stable/features/analysis/), as of 2026-11).
+With both conditions defined and neither met, the measurement is Inconclusive; with only `successCondition`, an unmet condition is Failed; and an unguarded `result[0]` can raise an evaluation error instead, as the docs show for Datadog nil results.
+A canary that crashes before emitting any series can therefore look "inconclusive" rather than "failed", and you must decide that policy deliberately, for example with `failureCondition: len(result) == 0`.
 Analysis may run inline as a step, or as background analysis for the whole rollout, and a pre-promotion analysis gates a blue/green cutover.
-`failureLimit` counts total failed measurements, not consecutive ones, so with k independent checks at per-check alpha the chance of at least one false failure is `1 - (1 - alpha)^k`: 5%, 23%, 40%, 79% for k = 1, 5, 10, 30 at alpha 0.05.
+`failureLimit` counts total failed measurements, not consecutive ones, and the metric fails once failures exceed the limit (`analysis.go`, as of 2026-11), so with k independent checks at per-check alpha the chance of at least one false failure is `1 - (1 - alpha)^k`: 5%, 23%, 40%, 79% for k = 1, 5, 10, 30 at alpha 0.05.
 Setting `failureLimit: 2` (three failures to trip) over 30 checks at alpha 0.05 still produces a false rollback in about 19% of rollouts if checks were independent, which is why per-check alpha should be about 0.01 or lower and why repeated peeking needs a sequential or corrected test.
 Checks on overlapping rate windows are positively correlated, so the independence figures are upper-bound idealizations.
 
@@ -180,9 +197,9 @@ Scoping to the canary hash avoids the dilution error: an aggregate query over st
 The AWS Builders' Library article on automating safe, hands-off deployments describes a pipeline that deploys through pre-production, then a one-box stage that takes a small share of production, then progressively larger waves across Availability Zones and Regions, with alarm-driven automatic rollback and a bake time at each stage ([AWS Builders' Library](https://aws.amazon.com/builders-library/automating-safe-hands-off-deployments/)).
 The invariant is that a change reaches a failure domain only after it has survived in a smaller, less critical one, and the wave order follows the blast-radius boundaries described in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]].
 Google's SRE Workbook chapter on canarying releases frames the canary as a partial, time-limited deployment plus evaluation, and stresses choosing population size and duration against the signal you need ([SRE Workbook, Canarying Releases](https://sre.google/workbook/canarying-releases/)).
-Microsoft's Gandalf (NSDI 2020) shows the fleet-scale version: correlate deployment waves with health signals to decide automatically whether to stop a rollout ([Gandalf, USENIX NSDI '20](https://www.usenix.org/conference/nsdi20/presentation/li-chenggang)).
-Google Cloud Deploy renders manifests per target when a release is created, via Skaffold, so promotion moves an already-rendered artifact through targets rather than re-rendering (Google Cloud Deploy docs, UNVERIFIED in this pass).
-That render-once property is what keeps "what we tested in staging" identical to "what we promote to prod".
+Microsoft's Gandalf (NSDI 2020) shows the fleet-scale version: correlate deployment waves with health signals to decide automatically whether to stop a rollout ([Gandalf, USENIX NSDI '20](https://www.usenix.org/conference/nsdi20/presentation/li)).
+Google Cloud Deploy renders manifests per target when a release is created, via Skaffold, so promotion moves an already-rendered release through targets rather than re-rendering ([Google Cloud Deploy overview](https://docs.cloud.google.com/deploy/docs/overview), as of 2026-11).
+That render-once property is what keeps "what we tested in staging" the same release as "what we promote to prod", apart from differences the per-target render deliberately introduces.
 
 ### Rollback safety is a property of the change, not the tool
 
@@ -198,45 +215,45 @@ Policy checks run before each wave per [[17-Cloud-AI-Engineering/Volume_06_Infra
 
 ## Numbers to Know
 
-Status "Verified" means checked against a search result in this authoring pass; "UNVERIFIED" means recalled from official documentation and not re-fetched, so confirm before quoting in an interview or design review.
+Status "Verified" means checked against the cited primary source (official docs, pricing pages, release pages, or project source) in the 2026-11 fact-check pass; "Derived" means computed here and recomputed in that pass.
 
 | Quantity | Value | Source and date | Status |
 |---|---|---|---|
-| Latest Argo Rollouts release | v1.10.1 | Argo Rollouts GitHub releases, as of 2026-10 | Verified |
-| `VerifyWeightPerIngress` in ALB reconciler | Added in v1.6.0 | Go package docs, as of 2026-10 | Verified |
-| Rollout `setWeight` without `trafficRouting` | Replica-count based | OneUptime guide (secondary), 2026-08 | Verified |
-| Blue/green `scaleDownDelaySeconds` default | 30 s | Argo Rollouts docs, as of 2026-10 | UNVERIFIED |
-| Rollout `progressDeadlineSeconds` default | 600 s | Argo Rollouts and Kubernetes docs, as of 2026-10 | UNVERIFIED |
-| ALB deregistration delay default | 300 s | AWS ELB docs, as of 2026-10 | UNVERIFIED |
-| ALB target health default | 30 s interval, healthy threshold 5, so about 150 s to In Service | AWS ELB docs, as of 2026-10 | UNVERIFIED |
-| ALB forward action | Weighted target groups, up to 5 groups, weights 0 to 999 | AWS ELB docs, as of 2026-10 | UNVERIFIED |
-| CodeDeploy Lambda canary configs | `Canary10Percent5Minutes`, `10Minutes`, `15Minutes`, `30Minutes` | AWS CodeDeploy docs, as of 2026-10 | UNVERIFIED |
-| CodeDeploy Lambda linear configs | `Linear10PercentEvery1Minute`, `2Minutes`, `3Minutes`, `10Minutes` | AWS CodeDeploy docs, as of 2026-10 | UNVERIFIED |
-| CodeDeploy ECS configs | `ECSCanary10Percent5Minutes`, `ECSCanary10Percent15Minutes`, `ECSLinear10PercentEvery1Minutes`, `ECSLinear10PercentEvery3Minutes`, `ECSAllAtOnce` | AWS CodeDeploy docs, as of 2026-10 | UNVERIFIED |
-| Lambda alias routing | Weighted split between exactly two versions | AWS Lambda docs, as of 2026-10 | UNVERIFIED |
-| Lambda CloudWatch metric granularity | 1 minute | AWS Lambda docs, as of 2026-10 | UNVERIFIED |
+| Latest Argo Rollouts release | v1.10.1 (2026-10-12) | Argo Rollouts GitHub releases, as of 2026-11 | Verified |
+| `VerifyWeightPerIngress` in ALB reconciler | Added in v1.6.0 | Go package docs, as of 2026-11 | Verified |
+| Rollout `setWeight` without `trafficRouting` | Replica-count based, smallest delta, rounds up on a tie | Argo Rollouts canary docs, as of 2026-11 | Verified |
+| Blue/green `scaleDownDelaySeconds` default | 30 s | Argo Rollouts spec docs, as of 2026-11 | Verified |
+| Rollout `progressDeadlineSeconds` default | 600 s; marks the rollout failed but aborts only with `progressDeadlineAbort: true` (default false) | Argo Rollouts spec docs, as of 2026-11 | Verified |
+| ALB deregistration delay default | 300 s | AWS ELB docs, as of 2026-11 | Verified |
+| ALB target health default | API: 30 s interval, healthy threshold 5, about 150 s for an unhealthy target to recover; controller annotations: 15 s, threshold 2; a newly registered target must pass one health check | AWS ELB and AWS Load Balancer Controller docs, as of 2026-11 | Verified |
+| ALB forward action | Weighted target groups, up to 5 groups (not adjustable), weights 0 to 999 | AWS ELB docs, as of 2026-11 | Verified |
+| CodeDeploy Lambda canary configs | `CodeDeployDefault.LambdaCanary10Percent5Minutes`, `10Minutes`, `15Minutes`, `30Minutes` | AWS CodeDeploy docs, as of 2026-11 | Verified |
+| CodeDeploy Lambda linear configs | `CodeDeployDefault.LambdaLinear10PercentEvery1Minute`, `2Minutes`, `3Minutes`, `10Minutes` | AWS CodeDeploy docs, as of 2026-11 | Verified |
+| CodeDeploy ECS configs | `CodeDeployDefault.` prefix plus `ECSCanary10Percent5Minutes`, `ECSCanary10Percent15Minutes`, `ECSLinear10PercentEvery1Minutes`, `ECSLinear10PercentEvery3Minutes`, `ECSAllAtOnce` | AWS CodeDeploy docs, as of 2026-11 | Verified |
+| Lambda alias routing | Weighted split between at most two published versions, probabilistic, high variance at low traffic | AWS Lambda docs, as of 2026-11 | Verified |
+| Lambda CloudWatch metric granularity | 1 minute | AWS Lambda docs, as of 2026-11 | Verified |
 | Requests to detect 0.1% to 0.2% errors | about 8,000 (known baseline), about 18,500 (equal arms) | Derived, `canary_sizing.py`, 2026-10 | Derived |
 | First-step crossover weight in the example | 3.6% at 1,000 rps and 220 s floor | Derived, `canary_sizing.py`, 2026-10 | Derived |
 | False rollback, 10 independent checks at alpha 0.05 | 40% | Derived, 2026-10 | Derived |
 | GPU surge cost, 32 pods x 8 GPUs, 50% surge, 1.5 h | USD 768 at an assumed USD 4.00 per GPU-hour | Derived with an assumed price, not a quote, 2026-10 | Derived |
-| Cloud Deploy pricing | per active delivery pipeline per month | Google Cloud pricing, as of 2026-10 | UNVERIFIED |
+| Cloud Deploy pricing | First active multiple-target delivery pipeline per billing account free, each additional one USD 5.00 per month; single-target pipelines free | Google Cloud pricing, as of 2026-11 | Verified |
 
 ## AWS vs GCP Mechanism Parity
 
 | Concern | AWS | Google Cloud |
 |---|---|---|
-| Orchestrator for managed compute | CodeDeploy (EC2, Lambda, ECS) and ECS built-in blue/green (announced 2025; GA date and linear/canary support UNVERIFIED) | Cloud Deploy for GKE and Cloud Run, plus Cloud Run native revisions |
+| Orchestrator for managed compute | CodeDeploy (EC2, Lambda, ECS), ECS built-in blue/green (launched 2025-07-17), and ECS built-in linear and canary (launched 2025-10-30) (AWS News Blog and What's New, as of 2026-11) | Cloud Deploy for GKE and Cloud Run, plus Cloud Run native revisions |
 | Serverless traffic primitive | Lambda alias routing config, two versions, per invocation | Cloud Run revision percentages and tags, per request |
 | Container request-level split | ALB forward action across target groups, weights in listener rule | GKE Gateway API HTTPRoute weights, or Cloud Run split |
 | Where the weight state lives | Load balancer or alias, so it survives pipeline failure | Gateway object or Cloud Run service spec, same property |
-| Automatic rollback trigger | CloudWatch alarms attached to the deployment group, plus lifecycle hook failure | Cloud Deploy verify jobs and automations (repair rollout, rollback), plus custom metrics checks (details UNVERIFIED) |
-| Hooks | `BeforeInstall`, `AfterInstall`, `AfterAllowTestTraffic`, `BeforeAllowTraffic`, `AfterAllowTraffic` | Predeploy and postdeploy actions, deploy verification (UNVERIFIED) |
+| Automatic rollback trigger | CloudWatch alarms attached to the deployment group, plus lifecycle hook failure | Cloud Deploy verify jobs, analysis jobs (alert policies or custom containers), and `repairRollout` automation with retry and rollback phases (Cloud Deploy docs, as of 2026-11) |
+| Hooks | CodeDeploy ECS: `BeforeInstall`, `AfterInstall`, `AfterAllowTestTraffic`, `BeforeAllowTraffic`, `AfterAllowTraffic`; CodeDeploy Lambda: only `BeforeAllowTraffic` and `AfterAllowTraffic` (AWS CodeDeploy docs, as of 2026-11) | `predeploy` and `postdeploy` tasks, deploy verification (Cloud Deploy docs, as of 2026-11) |
 | Canary data source latency | CloudWatch Lambda and ALB metrics, 1-minute class; alarm needs M of N periods | Cloud Monitoring, typically similar order; check per-metric sampling and delay |
-| Approval gates | CodePipeline manual approval, IAM-scoped | Cloud Deploy approvals via IAM (permission names UNVERIFIED) |
+| Approval gates | CodePipeline manual approval, IAM-scoped | Cloud Deploy approvals via IAM (`roles/clouddeploy.approver`, permission `clouddeploy.rollouts.approve`; Cloud Deploy docs, as of 2026-11) |
 | Kubernetes-native option | Argo Rollouts or Flagger with ALB or mesh | Argo Rollouts or Flagger with Gateway API or mesh |
 | Test traffic before exposure | ALB test listener on a second port | Cloud Run revision tag URL |
 | Failure semantics if orchestrator dies | Stuck deployment, traffic frozen at last split | Same; Cloud Run split persists in service spec |
-| Cost of the orchestrator | CodeDeploy for Lambda and ECS has no extra charge (UNVERIFIED) | Cloud Deploy per active pipeline (UNVERIFIED) |
+| Cost of the orchestrator | CodeDeploy for EC2, Lambda, and ECS has no additional charge (AWS CodeDeploy pricing, as of 2026-11) | First active multiple-target pipeline free, then USD 5.00 per active pipeline per month; single-target free (Cloud Deploy pricing, as of 2026-11) |
 
 The parity is mechanical, not conceptual: both clouds persist the split in a data-plane object, both gate on a metric alarm or verification job, and both leave you to supply the statistical rigor.
 One real difference is granularity: the ALB lets you shift exact percentages across arbitrary target groups, whereas Lambda aliases are limited to two versions at a time, which forces CodeDeploy to serialize overlapping releases.
@@ -316,7 +333,7 @@ Running it prints 8027 and 18519 for the two sample sizes and the 3.6% crossover
 ### Lab A: Lambda alias canary with CloudWatch alarm rollback (AWS)
 
 Cost estimate: one Lambda function with a few thousand invocations per run, one standard CloudWatch alarm, and CodeDeploy for Lambda.
-Expected total is well under USD 1 for a few runs (Lambda free tier, alarm monthly price, and CodeDeploy no-charge for Lambda are all UNVERIFIED in this pass; confirm on the pricing pages).
+Expected total is well under USD 1 for a few runs: the Lambda free tier includes one million requests and 400,000 GB-seconds per month, the CloudWatch free tier includes 10 standard-resolution alarm metrics, and CodeDeploy adds no charge for Lambda (AWS pricing pages, as of 2026-11).
 The Terraform file includes a budget alarm, and the exact teardown is `terraform destroy -auto-approve` (or `tofu destroy -auto-approve`).
 
 `main.tf`:
@@ -688,11 +705,11 @@ kubectl argo rollouts get rollout demo --watch
 Two canary pods (20% of 10) with a 50% failure rate produce about 10% aggregate failures on the shared `demo` Service, which exceeds the 5% threshold, so the AnalysisRun fails and the rollout aborts and scales the canary back.
 Try `FAIL_RATE` of 0.2: the aggregate is about 4%, which passes, which demonstrates the dilution error from the Internals section (a 20% canary failure rate sails through a 5% aggregate threshold).
 Teardown: `kind delete cluster --name pd`.
-The image tag `curlimages/curl:8.10.1` and the `latest` install manifest are UNVERIFIED here, so pin to versions you have confirmed.
+The image tag `curlimages/curl:8.10.1` exists on Docker Hub and the `latest` install manifest is the URL in the [Argo Rollouts installation docs](https://argo-rollouts.readthedocs.io/en/stable/installation/) (both as of 2026-11), but pin the manifest to a fixed release for repeatable runs.
 
 ### Lab C: Cloud Run revision split (GCP)
 
-Cost estimate: the sample hello image on Cloud Run stays inside the free request allowance for a few hundred requests (UNVERIFIED pricing in this pass).
+Cost estimate: the sample hello image on Cloud Run stays inside the free allowance for a few hundred requests: request-based billing includes 2 million requests, 180,000 vCPU-seconds, and 360,000 GiB-seconds free per month ([Cloud Run pricing](https://cloud.google.com/run/pricing), as of 2026-11).
 Budget alarm:
 
 ```bash
@@ -713,7 +730,7 @@ gcloud run services update-traffic pdlab --region=us-central1 --to-latest
 
 Rollback is `gcloud run services update-traffic pdlab --region=us-central1 --to-revisions=PREVIOUS_REVISION=100`, which takes effect without starting new instances because the previous revision still exists.
 Teardown: `gcloud run services delete pdlab --region=us-central1 --quiet`.
-The same shape in Cloud Deploy is a `DeliveryPipeline` with a `canary` strategy and `canaryDeployment.percentages` plus `verify: true`; field names are UNVERIFIED here, so read the Cloud Deploy canary page before writing it.
+The same shape in Cloud Deploy is a `DeliveryPipeline` stage with `strategy.canary`, `runtimeConfig.cloudRun.automaticTrafficControl: true`, and `canaryDeployment.percentages`, plus a `verify` stanza that adds a verify job to each canary phase ([Cloud Deploy Cloud Run canary docs](https://docs.cloud.google.com/deploy/docs/deployment-strategies/canary/cloud-run), as of 2026-11).
 
 ## Failure Modes and Pitfalls
 
@@ -725,12 +742,12 @@ The same shape in Cloud Deploy is a `DeliveryPipeline` with a `canary` strategy 
    Set `scaleDownDelaySeconds` and `preStop` sleep above the measured propagation, use pod readiness gates, and consider ALB weight or target-group verification.
 3. **The controller is a single point of partial exposure.**
    If the rollout controller or pipeline stalls mid-canary, the router holds the last split with no analysis attached, so a 20% canary can run for days.
-   Alert on rollout age in a non-terminal step, and set `progressDeadlineSeconds` deliberately: a large model that takes ten or more minutes to load will trip the 600 s default (UNVERIFIED default) and abort healthy releases.
+   Alert on rollout age in a non-terminal step, and set `progressDeadlineSeconds` deliberately: a large model that takes ten or more minutes to load will exceed the 600 s default and mark a healthy release as failed, and it will abort that release only if `progressDeadlineAbort: true` is set, which defaults to false ([Argo Rollouts spec docs](https://argo-rollouts.readthedocs.io/en/stable/features/specification/), as of 2026-11).
 4. **GitOps fights the controller.**
    Argo CD self-heal sees Ingress annotations, Service selectors, or HTTPRoute weights that the rollout controller mutated and reverts them, which oscillates the weight or breaks the selector switch.
    Add `ignoreDifferences` for the managed fields, as described in [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_07_GitOps_Delivery_Argo_CD_and_Flux|GitOps Delivery: Argo CD and Flux]]; the upstream release notes reference a `managedFieldsManagers` option for GitOps setups (Argo Rollouts release notes, as of 2026-10).
 5. **Metric blind spots.**
-   Empty results are Inconclusive, not Failed, so a crash-looping canary can stall a rollout in a human-wait state instead of aborting.
+   With both conditions defined, empty results that meet neither are Inconclusive, not Failed, so a crash-looping canary can stall a rollout in a human-wait state instead of aborting.
    Aggregate queries dilute the signal by the canary weight.
    CloudWatch alarms with `notBreaching` for missing data treat "canary emitted nothing" as healthy.
    Metrics with a 1-minute publication cadence plus a 5-minute rate window can lag a fast failure by several minutes.
@@ -747,9 +764,9 @@ The same shape in Cloud Deploy is a `DeliveryPipeline` with a `canary` strategy 
    If version N+1 has written data or messages that N cannot read, "roll back" becomes an outage.
    Gate such changes on the two-phase pattern from the Builders' Library rollback-safety article.
 10. **The change that never went through the pipeline.**
-    The Google Cloud incident of 2025-06-12 began when a policy change with blank fields was written to regional metadata tables and replicated globally within seconds, tripping a null-pointer path in Service Control that was not behind a feature flag; recovery was then slowed by a herd effect on restart (Google Cloud incident report and post-incident write-up, recalled, UNVERIFIED in this pass; read the primary report at [status.cloud.google.com](https://status.cloud.google.com/)).
+    The Google Cloud incident of 2025-06-12 began when a policy change with blank fields was written to regional Spanner tables and replicated globally within seconds, tripping a null-pointer path in Service Control that was not behind a feature flag; recovery in us-central1 was then slowed by a herd effect on restart, without randomized exponential backoff ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-11).
     The lesson generalizes: binary canaries do not protect against config, policy, or data pushes, which need their own wave gates, flags, and randomized backoff on restart.
-    The July 2024 CrowdStrike content update is the other canonical example of a fleet-wide push without staged exposure (public RCA, recalled, UNVERIFIED).
+    The 2024-07-19 CrowdStrike Rapid Response Content update (Channel File 291) is the other canonical example of a fleet-wide push without staged exposure, and the vendor's remediation adds a staggered rollout starting with a canary ([CrowdStrike preliminary post-incident report](https://www.crowdstrike.com/blog/falcon-content-update-preliminary-post-incident-report/), as of 2026-11).
     Cross-reference [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 11. **Analysis templates are an injection surface.**
     A web or job provider executes arbitrary requests or containers, so whoever can write an `AnalysisTemplate` can run code in the cluster and can also make a bad release pass by editing the template.
@@ -759,10 +776,10 @@ The same shape in Cloud Deploy is a `DeliveryPipeline` with a `canary` strategy 
 **Identity and permissions.**
 Separate the CI role (push images), the release role (create deployments), and the approval role (promote), so a compromised build cannot also approve itself.
 The CodeDeploy service role needs only the managed Lambda or ECS deployment policy plus access to the alarms it reads.
-The Argo Rollouts controller should run with workload identity ([[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]]) and, if ALB verification is enabled, only read-only Elastic Load Balancing describe permissions (exact list UNVERIFIED).
+The Argo Rollouts controller should run with workload identity ([[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]]) and, if ALB verification is enabled, only read-only Elastic Load Balancing describe permissions, which the [Argo Rollouts ALB docs](https://argo-rollouts.readthedocs.io/en/stable/features/traffic-management/alb/) list as target groups, load balancers, listeners, rules, tags, and target health (as of 2026-11).
 Restrict Kubernetes RBAC on `AnalysisTemplate`, `ClusterAnalysisTemplate`, and `Rollout` objects as strictly as on Deployments, because the gate is part of the trust boundary.
 Verify image signatures at admission so the canary and the promoted artifact are provably the same digest, per [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_05_Software_Supply_Chain_Security_SLSA_and_Sigstore|Software Supply Chain Security: SLSA and Sigstore]].
-Cloud Deploy approvals are IAM-gated, which lets you require a named approver role for production targets (permission names UNVERIFIED).
+Cloud Deploy approvals are IAM-gated, which lets you require a named approver role for production targets (`roles/clouddeploy.approver` carries `clouddeploy.rollouts.approve`; [Cloud Deploy IAM docs](https://docs.cloud.google.com/deploy/docs/iam-roles-permissions), as of 2026-11).
 
 **Network and key boundaries.**
 Metric providers need private paths: Prometheus behind an internal address, CloudWatch via VPC endpoints, and Cloud Monitoring via Private Google Access, so analysis traffic does not traverse the internet.
@@ -772,9 +789,9 @@ Deployment artifacts that are encrypted at rest should use the same KMS key poli
 **Cost levers.**
 Cost has four components: surge capacity, bake time during which both versions run, analysis query volume, and the orchestrator itself.
 Blue/green doubles the fleet for the preview and scale-down delay window, canary at 5% to 25% costs far less, and for GPU fleets the surge dominates (USD 768 per rollout in the example at an assumed price).
-Levers: scale preview replicas down with `previewReplicaCount`, use controller options that scale the stable set down in proportion to canary weight where supported (UNVERIFIED here), shorten model load time so surge windows shrink, and shift the first step to `w*` instead of a fixed 25%.
+Levers: scale preview replicas down with `previewReplicaCount`, set `dynamicStableScale: true` to reduce stable pods as canary pods increase (default false; [Argo Rollouts spec docs](https://argo-rollouts.readthedocs.io/en/stable/features/specification/), as of 2026-11), shorten model load time so surge windows shrink, and shift the first step to `w*` instead of a fixed 25%.
 Metric API costs are usually small, but per-minute analysis against CloudWatch `GetMetricData` scales with metrics times runs, so keep queries to a few well-chosen SLIs.
-Cloud Deploy bills per active pipeline and CodeDeploy for Lambda and ECS adds no direct charge (both UNVERIFIED), so the real cost is capacity and delay, which is a FinOps decision covered in [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics|GPU and TPU Unit Economics]].
+Cloud Deploy bills USD 5.00 per month for each active multiple-target pipeline after the first and CodeDeploy for Lambda and ECS adds no direct charge (vendor pricing pages, as of 2026-11), so the real cost is capacity and delay, which is a FinOps decision covered in [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics|GPU and TPU Unit Economics]].
 
 ## Interview Questions and Model Answers
 
@@ -789,7 +806,7 @@ Canary shifts a growing fraction of live traffic and learns from real requests, 
 Blue/green stands up a full second fleet, tests it with synthetic or test-listener traffic, and flips everything at once, so there is no mixed-version window for end users and rollback is a flip back while the old fleet is still up, but the blast radius at flip time is 100% and the cost is roughly double capacity for the duration of the scale-down delay.
 I pick blue/green when mixed versions are unsafe (a breaking cache or wire change that cannot be made backward compatible) or when pre-flip verification on a full-size fleet is valuable.
 I pick canary for the default stateless case, because exposure is bounded by the first step and I get statistical evidence from real traffic.
-On AWS I would use CodeDeploy with an ECS canary configuration or a linear one when I want a smooth ramp, with CloudWatch alarms for automatic rollback.
+On AWS I would use the ECS built-in canary or linear strategy, available since 2025-10-30, or CodeDeploy with an ECS canary or linear configuration, with CloudWatch alarms for automatic rollback.
 In either case the flip is not instantaneous: ALB targets need time to pass health checks and old targets drain for the deregistration delay, so I keep the old tasks until draining is over.
 
 #### Follow-up Interviewer Question
@@ -862,7 +879,7 @@ Explain how Argo CD and Argo Rollouts interact and the failure modes when a bad 
 Argo CD reconciles Git to the cluster, and Argo Rollouts reconciles the pod template into stable and canary ReplicaSets and manages router fields.
 They are two controllers that both write to related objects, so the contract has to be explicit.
 Argo CD owns the Rollout spec, and the rollout controller owns the derived fields: Service selectors, Ingress annotations or HTTPRoute weights, and ReplicaSet sizes.
-If Argo CD's self-heal treats those as drift it reverts them, so I add `ignoreDifferences` for the managed fields or configure the field-manager exemption, and I make Argo CD health assessment understand the Rollout so a paused rollout is shown as progressing, not healthy.
+If Argo CD's self-heal treats those as drift it reverts them, so I add `ignoreDifferences` for the managed fields or configure the field-manager exemption, and I confirm Argo CD's built-in Rollout health check is active so a paused rollout is shown as Suspended, not Healthy ([Argo CD Rollout health check](https://raw.githubusercontent.com/argoproj/argo-cd/master/resource_customizations/argoproj.io/Rollout/health.lua), as of 2026-11).
 For rollback there are three levers with different speeds.
 `abort` stops the rollout and returns traffic to stable quickly, but if Git still declares the bad version, Argo CD will keep the Rollout spec at the bad template, so the state is aborted and Degraded until Git changes.
 A Git revert is the durable fix but is gated by CI and sync latency.
@@ -926,11 +943,11 @@ How would you pick the bake time for a service whose worst historical leak took 
 - [Google SRE Workbook, Canarying Releases](https://sre.google/workbook/canarying-releases/) - how to size canary populations and durations and what to measure.
 - Davidovic and Beyer, "Canary Analysis Service", ACM Queue, 2018 - Google's account of automated canary evaluation and its pitfalls.
 - [Netflix Tech Blog: Automated Canary Analysis at Netflix with Kayenta](https://netflixtechblog.com/automated-canary-analysis-at-netflix-with-kayenta-3260bc7acc69) - the baseline-versus-canary design and metric comparison approach.
-- [Gandalf, USENIX NSDI 2020](https://www.usenix.org/conference/nsdi20/presentation/li-chenggang) - fleet-scale safe deployment driven by health correlation.
+- [Gandalf, USENIX NSDI 2020](https://www.usenix.org/conference/nsdi20/presentation/li) - fleet-scale safe deployment driven by health correlation.
 - [Argo Rollouts documentation](https://argo-rollouts.readthedocs.io/) - authoritative source for strategies, traffic router integrations, analysis, and experiments.
 - [AWS CodeDeploy User Guide](https://docs.aws.amazon.com/codedeploy/latest/userguide/) - deployment configurations, hooks, and alarm-based rollback for Lambda and ECS.
 - [Google Cloud Deploy documentation](https://cloud.google.com/deploy/docs) - delivery pipelines, canary strategy, verification, and automations.
-- [Google Cloud status incident history](https://status.cloud.google.com/) - the primary post-incident report for the June 2025 Service Control outage cited above.
+- [Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW) - the primary post-incident report for the June 2025 Service Control outage cited above.
 - Kohavi, Tang, and Xu, "Trustworthy Online Controlled Experiments" - the statistics behind peeking, multiple comparisons, and sample sizing used by canary gates.
 
 ## See also in Developer Toolchain

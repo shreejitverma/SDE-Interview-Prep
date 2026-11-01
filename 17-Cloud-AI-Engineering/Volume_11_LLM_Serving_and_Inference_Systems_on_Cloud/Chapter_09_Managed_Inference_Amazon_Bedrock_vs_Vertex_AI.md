@@ -24,6 +24,20 @@ sources:
   - "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/"
   - "https://sre.google/sre-book/handling-overload/"
   - "https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/geographic-cross-region-inference.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/prov-throughput.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/prov-thru-purchase.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/inference-chat-completions.html"
+  - "https://aws.amazon.com/bedrock/pricing/"
+  - "https://aws.amazon.com/blogs/security/securing-amazon-bedrock-api-keys-best-practices-for-implementation-and-management"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/standard-paygo"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/priority-paygo"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/flex-paygo"
+  - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/measure-provisioned-throughput"
+  - "https://cloud.google.com/vertex-ai/generative-ai/pricing"
+  - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/data-governance"
 ---
 
 # Managed Inference: Amazon Bedrock vs Vertex AI
@@ -32,7 +46,7 @@ sources:
 
 On both clouds, a managed inference call goes through an admission plane (quotas and tiers), then a routing plane (region selection), then a capacity plane (shared or reserved accelerator pools), and only then reaches a continuous-batching engine.
 Bedrock admits requests by pre-reserving `input + cache_write + max_tokens` against a per-minute token quota, then settles to `input + cache_write + output x burndown`, where Claude output tokens burn 5x or more. That makes `max_tokens` and output length the main levers on quota headroom.
-Vertex AI pay-as-you-go has no per-project token quota: Dynamic Shared Quota admits requests based on how loaded the shared pool is in real time. Provisioned Throughput (GSUs) is enforced over a sliding window that gets shorter as the purchase gets larger, and traffic above it spills over to pay-as-you-go by default.
+Vertex AI pay-as-you-go (Standard PayGo) has no hard per-project token quota: requests are admitted from a shared pool based on real-time load, with spend-based usage tiers that give an organization prioritized access up to a TPM threshold. Provisioned Throughput (GSUs) is enforced over a sliding window that gets shorter as the purchase gets larger, and traffic above it spills over to pay-as-you-go by default.
 Cross-region routing (Bedrock geographic or global inference profiles, Vertex global or multi-region endpoints) trades data-residency guarantees for capacity and price. On Bedrock, routing has to be explicitly allowed by your SCPs, IAM and quota scopes, or it fails closed.
 At full utilization, reserved capacity on both clouds costs roughly the same per token as on-demand. You buy it for admission priority and predictable latency, not as a discount, so size it to your baseline and serve peaks from premium or standard on-demand lanes.
 
@@ -73,7 +87,7 @@ On Bedrock, a serverless foundation model is addressed by a versioned model ID, 
 Geographic profiles carry a prefix such as `us.`, `eu.` or `apac.`, and global profiles carry `global.` ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html), as of 2026-10).
 An inference profile is a routing object with its own quota scope, not an alias: geographic and global profiles each have separate "Cross-region model inference tokens per minute" and "Global Cross-region model inference tokens per minute" quotas ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html), as of 2026-10).
 Application inference profiles are user-created, taggable handles on a model or a cross-region profile, and their main job is cost allocation (secondary: [Sailor.sh summary](https://sailor.sh/blog/aws-ai-practitioner-bedrock-cross-region-inference-prompt-caching-prompt-routing-distillation/), as of 2026-10).
-Bedrock also exposes an OpenAI-compatible path on the runtime host (`https://bedrock-runtime.<region>.amazonaws.com/openai/v1`), authenticated with a Bedrock API key bearer token ([AWS re:Post article](https://repost.aws/articles/ARaIuaNrrURJCURHWk8ZEr6Q/balance-cost-performance-reliability-for-ai-at-enterprise-scale-through-bedrock-inference-tiers), as of 2026-10).
+Bedrock also exposes an OpenAI-compatible path on the runtime host (`https://bedrock-runtime.<region>.amazonaws.com/openai/v1`), authenticated only with a Bedrock API key bearer token ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-chat-completions.html), as of 2026-10).
 Per-model feature coverage varies: some model cards list only in-region inference and no geographic or global profiles (secondary: [Caylent](https://caylent.com/blog/amazon-bedrock-pricing-explained), as of 2026-10).
 
 On Google Cloud, the generative AI documentation is now filed under the name "Gemini Enterprise Agent Platform", while the API host is still `aiplatform.googleapis.com` ([Google Cloud docs](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations), as of 2026-10).
@@ -91,7 +105,7 @@ At admission, it deducts `InputTokenCount + CacheWriteInputTokenCount + max_toke
 While the request runs, the deduction is periodically adjusted toward actual generation (secondary: [AWS Builder Center](https://builder.aws.com/content/34jeVcp6um2UIA0euKnxiAobwC3/throttling-error-when-amazon-bedrock-hits-the-brakes), as of 2026-10).
 At completion, it settles to `InputTokenCount + CacheWriteInputTokenCount + OutputTokenCount x burndown`.
 Cache-read tokens do not count toward the quota ([AWS ML blog](https://aws.amazon.com/blogs/machine-learning/optimize-your-applications-for-scale-and-reliability-on-amazon-bedrock/), as of 2026-07).
-The output burndown is 5x for Anthropic models at version 4.7 and below, 10x or 15x for specific newer Claude generations named in the docs, and 1:1 for most other models ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-token-burndown.html), as of 2026-10).
+The output burndown is 5x for Anthropic models at version 4.7 and below, 15x for Claude version 4.8, 10x for Claude Opus 5, Opus 5.5, Sonnet 5 and Fable 5.1, and 1:1 for most other models unless the model card says otherwise ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-token-burndown.html), as of 2026-10).
 If `max_tokens` is omitted, it defaults to the model's maximum output, for example 64,000 for Claude Sonnet ([AWS ML blog](https://aws.amazon.com/blogs/machine-learning/optimize-your-applications-for-scale-and-reliability-on-amazon-bedrock/), as of 2026-07).
 
 Three non-obvious consequences follow.
@@ -106,7 +120,7 @@ The extra 976 tokens are charged after the fact, so the debt lands on requests a
 Admission therefore lags reality, and a client-side limiter that only mirrors the initial deduction will systematically under-predict 429s.
 
 Third, quota and billing diverge.
-The documented example is 1,000 input and 100 output tokens on Claude Sonnet 4: that consumes 1,500 tokens of quota but is billed as 1,100 tokens (secondary, reproducing the AWS example: [BlowStack](https://blowstack.com/tools/aws-bedrock-throttling-calculator), as of 2026-10).
+The documented example is 1,000 input and 100 output tokens on Claude Sonnet 4: that consumes 1,500 tokens of quota but is billed as 1,100 tokens ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-token-burndown.html), as of 2026-10).
 A FinOps dashboard built on billed tokens will show 70% utilization of a quota that is actually exhausted.
 
 Why would a provider burn output tokens at 5x?
@@ -120,46 +134,47 @@ The metering layer cannot preempt your request, so it reserves pessimistically.
 
 ### Admission plane on Vertex AI: Dynamic Shared Quota, tiers and Provisioned Throughput
 
-Under default pay-as-you-go, Vertex uses Dynamic Shared Quota (DSQ), which has no predefined usage limit and allocates from a shared pool based on real-time availability and demand ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/resources/throughput-quota), as of 2026-10).
-Under DSQ, a 429 `RESOURCE_EXHAUSTED` means the shared pool is under high demand from many tenants, not that you crossed a number on your project ([Google Cloud docs](https://cloud.google.com/vertex-ai/generative-ai/docs/resources/dynamic-shared-quota), as of 2026-10).
+Under default pay-as-you-go, which Google earlier documented as Dynamic Shared Quota (DSQ) and now documents as Standard PayGo, Vertex serves requests from a shared pool based on real-time availability and demand, with no reserved capacity and no fixed per-project quota ([Google Cloud docs](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/standard-paygo), as of 2026-10).
+On this shared pool, a 429 `RESOURCE_EXHAUSTED` does not mean you hit a fixed quota; it means temporary high contention from many tenants ([Google Cloud docs](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/standard-paygo), as of 2026-10).
 The same error code can also mean an explicit API quota was exceeded or a logprobs daily limit was reached ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/api-errors), as of 2026-10).
-Google also describes Usage Tiers, which raise TPM limits as spend grows (secondary summary of a Google Cloud blog: [daily.dev](https://daily.dev/posts/build-a-robust-and-cost-effective-gen-ai-strategy-3y6j3f70j), as of 2026-10).
-The tier thresholds are UNVERIFIED.
+Standard PayGo layers usage tiers on top: rolling 30-day organization spend sets an org-level prioritized TPM threshold per model, and traffic up to it is served ahead of excess burst traffic, which is served opportunistically rather than hard-capped ([Google Cloud docs](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/standard-paygo), as of 2026-10).
+The thresholds run from 500,000 TPM (Tier 1, $10-$250) to 10,000,000 TPM (Tier 4, over $50,000) for Gemini Pro models, and from 2,000,000 to 50,000,000 TPM for Gemini Flash and Flash-Lite, and they apply to the global endpoint ([Google Cloud docs](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/standard-paygo), as of 2026-10).
 
-Priority PayGo charges a higher per-token rate in exchange for more consistent performance than Standard PayGo, with no upfront commitment ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/priority-paygo), as of 2026-10).
-Flex PayGo is the discounted lane for latency-tolerant work; its discount percentage is UNVERIFIED.
+Priority PayGo charges a higher per-token rate in exchange for more consistent performance than Standard PayGo, with no upfront commitment ([Google Cloud docs](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/priority-paygo), as of 2026-10).
+Flex PayGo is the discounted lane for latency-tolerant work: 50% off Standard PayGo, global endpoint only, and still in Preview ([Google Cloud docs](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/flex-paygo), as of 2026-10).
 Lane selection happens through HTTP headers.
 `X-Vertex-AI-LLM-Request-Type: dedicated` restricts a request to Provisioned Throughput and returns 429 instead of spilling over.
-`X-Vertex-AI-LLM-Request-Type: shared` bypasses Provisioned Throughput.
-`X-Vertex-AI-LLM-Shared-Request-Type: priority` or `flex` selects the PayGo sub-lane (secondary: [pydantic-ai issue 5095](https://github.com/pydantic/pydantic-ai/issues/5095) and [Flexprice](https://flexprice.io/pricing-index/google-vertex-ai), as of 2026-10).
+`X-Vertex-AI-LLM-Request-Type: shared` bypasses Provisioned Throughput ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/use-provisioned-throughput), as of 2026-10).
+`X-Vertex-AI-LLM-Shared-Request-Type: priority` or `flex` selects the PayGo sub-lane; sent alone it uses any available PT first, and sent together with `X-Vertex-AI-LLM-Request-Type: shared` it uses only that sub-lane ([Google Cloud docs](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/priority-paygo), as of 2026-10).
 
 Provisioned Throughput is sold in generative AI scale units (GSUs).
 Each model publishes its throughput per GSU and its burndown rates, which convert input, output, cached and multimodal tokens into one standard per-second unit ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/measure-provisioned-throughput), as of 2026-10).
 Cached input tokens burn at 0.1, so 1,000 cached tokens to Gemini 2.5 Pro consume 100 tokens per second of PT ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/measure-provisioned-throughput), as of 2026-10).
 Partner models carry context-length cliffs.
-For a Claude Haiku model on Vertex, inputs above 100,000 tokens multiply every burndown by 5: input goes from 1 to 5, output from 5 to 25, and cache hits from 0.1 to 0.5 ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/supported-models), as of 2026-10).
+For Claude Haiku 5.5 on Vertex, inputs above 100,000 tokens multiply every burndown by 5: input goes from 1 to 5, output from 5 to 25, and cache hits from 0.1 to 0.5 ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/supported-models), as of 2026-10).
 
 The deep mechanism here is the enforcement window.
 PT is not a per-second hard cap; it is checked against a quota enforcement window whose length depends on how much you bought ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/use-provisioned-throughput), as of 2026-10).
-For 3 GSUs or fewer, the window is 40 to 120 seconds, so that one large request can be absorbed by averaging; for medium purchases (more than 3, for example under 50 GSUs), it is 5 to 30 seconds.
+For 3 GSUs or fewer, the window is 40 to 120 seconds, so that one large request can be absorbed by averaging; for medium purchases (more than 3, for example under 50 GSUs), it is 5 to 30 seconds; and at 50 GSUs or more it is 1 to 5 seconds ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/use-provisioned-throughput), as of 2026-10).
 In token-bucket terms, a small purchase is a bucket with a large depth relative to its fill rate.
 A 1-GSU buyer of gemini-2.5-flash (2,690 tokens per second average) can absorb a single request worth roughly 100,000 or more burndown-adjusted tokens without spilling.
 A 40-GSU buyer gets a much shallower bucket relative to its rate, so sub-minute bursts spill over to PayGo sooner.
 That is why two teams with the same average utilization can see very different spillover bills.
-Spillover above PT is served and billed at pay-as-you-go rates by default (secondary: [PointFive](https://www.pointfive.co/efficiency-hub/inefficiencies/underutilized-vertex-ai-provisioned-throughput), as of 2026-09).
+Spillover above PT is served and billed at pay-as-you-go rates by default ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/use-provisioned-throughput), as of 2026-10).
 
 ### Admission plane on Bedrock: service tiers and Provisioned Throughput
 
-Bedrock has four tiers: Reserved, Priority, Standard and Flex. The tier is selected with a `service_tier` runtime parameter whose values are `reserved`, `priority`, `default` or `flex` (secondary, citing the AWS tiers doc: [Westloop](https://www.westloop.io/post/updated-list-of-models-supported-for-service-tiers-updated-list-of-models-supported-for-priority-and-flex-service-tiers), as of 2026-10).
-Priority requests jump ahead of Standard requests in the processing queue and can see up to 25% better output tokens per second on most supported models ([AWS service tiers page](https://aws.amazon.com/cn/bedrock/service-tiers/), as of 2026-10).
-Reserved buys guaranteed tokens-per-minute capacity for 1 or 3 months at a fixed price per 1K TPM, billed monthly ([AWS service tiers page](https://aws.amazon.com/cn/bedrock/service-tiers/), as of 2026-10).
-Standard, Priority and Flex share one on-demand quota per model ([AWS re:Post](https://repost.aws/articles/ARaIuaNrrURJCURHWk8ZEr6Q/balance-cost-performance-reliability-for-ai-at-enterprise-scale-through-bedrock-inference-tiers), as of 2026-10).
+Bedrock has four tiers: Reserved, Priority, Standard and Flex.
+The tier is selected with a `service_tier` runtime parameter whose values are `reserved`, `priority`, `default` or `flex`; the Converse API exposes it as `serviceTier` with a `type` member ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html) and [Converse API reference](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html), as of 2026-10).
+Priority requests jump ahead of Standard and Flex requests in the processing queue and can see up to 25% better output tokens per second on most supported models ([AWS service tiers page](https://aws.amazon.com/bedrock/service-tiers/), as of 2026-10).
+Reserved buys prioritized tokens-per-minute capacity for 1 or 3 months at a fixed price per 1K TPM, billed monthly, with minimums of 100,000 input TPM and 10,000 output TPM, a 99.5% uptime target, and automatic overflow to Standard above the reservation ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html), as of 2026-10).
+Standard, Priority and Flex share one on-demand quota per model, while Reserved capacity is separate from it ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html), as of 2026-10).
 Because the quota is shared, Flex batch traffic can starve Priority traffic of quota even though Priority wins in the queue.
 Priority is a queue position, not a quota partition.
 
-Provisioned Throughput by Model Units reserves model-specific capacity, billed hourly, with no commitment or a 1-month or 6-month term ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/prov-thru-purchase.html), as of 2026-10).
-Before buying, you must request an MU allocation through AWS Support.
-AWS now documents a second type, Provisioned Throughput by Tokens; its semantics are UNVERIFIED here.
+Provisioned Throughput by Model Units reserves model-specific capacity, billed hourly, with no commitment or a 1-month or 6-month term ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/prov-throughput.html), as of 2026-10).
+Before buying, you must request an MU allocation through AWS Support ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/prov-thru-purchase.html), as of 2026-10).
+AWS now documents a second type, Provisioned Throughput by Tokens, whose input and output tokens per minute can be modified after purchase; its terms and pricing are UNVERIFIED here (not detailed on the AWS pages checked).
 Inference profiles do not support Provisioned Throughput ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html), as of 2026-10).
 That makes a PT purchase a single-region capacity island: it cannot borrow from other regions the way an on-demand inference profile can.
 
@@ -168,9 +183,9 @@ That makes a PT purchase a single-region capacity island: it cannot borrow from 
 On Bedrock, the source region is where you call the API, the profile defines the set of destination regions, and the service picks a destination based on available capacity.
 Pricing follows the source region, with no extra routing charge ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html), as of 2026-10).
 Global profiles can route to any supported commercial region worldwide and are about 10% cheaper on input and output tokens than geographic profiles ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/global-cross-region-inference.html), as of 2026-10).
-Quotas for global profiles are requested and managed through Service Quotas in US East (N. Virginia) ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html), as of 2026-10).
-That is a control-plane dependency on a single region even though the data plane is global.
-SCPs that restrict `aws:RequestedRegion` must allow every destination region of a geographic profile, and must allow the value `unspecified` for global profiles (secondary: [Sailor.sh](https://sailor.sh/blog/aws-ai-practitioner-bedrock-cross-region-inference-prompt-caching-prompt-routing-distillation/), as of 2026-10).
+Quotas for global profiles are requested and managed through Service Quotas in the source region you call from, and AWS describes the global cross-region quota as a global limit across its 20-plus supported source regions ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/global-cross-region-inference.html), as of 2026-10).
+So do not assume that adding a source region adds its own global-profile headroom.
+SCPs that restrict `aws:RequestedRegion` must allow every destination region of a geographic profile, and must allow the value `unspecified` for global profiles, unless they carve out Bedrock routing with a `bedrock:InferenceProfileArn` exception ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/global-cross-region-inference.html), as of 2026-10).
 This interacts directly with the evaluation order covered in [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]].
 
 On Vertex, region selection is done with the hostname rather than a model-ID prefix.
@@ -182,7 +197,7 @@ Each region's pool reports headroom, and the router either sends to the source r
 Neither vendor documents the selection policy, so you should assume that consecutive requests in a session may land in different regions.
 That affects prompt-cache hit rates, because KV prefix caches are local to the replica.
 The cache-affinity problem is the same one Mooncake ([Qin et al., FAST 2025](https://www.usenix.org/conference/fast25/presentation/qin)) and Llumnix ([Sun et al., OSDI 2024](https://www.usenix.org/conference/osdi24/presentation/sun-biao)) solve inside one fleet with KV-aware scheduling and migration.
-Whether the managed routers are cache-affine is UNVERIFIED.
+Whether the managed routers are cache-affine is UNVERIFIED: neither vendor documents it.
 
 ### Capacity plane: what tiers probably map to inside the fleet
 
@@ -209,27 +224,27 @@ Reserved capacity (Bedrock PT, Vertex PT) protects you from capacity-plane conte
 | --- | --- | --- |
 | Bedrock admission deduction | input + cache write + max_tokens | (AWS docs, as of 2026-10) |
 | Bedrock settled deduction | input + cache write + output x burndown; cache reads excluded | (AWS docs, as of 2026-10) |
-| Bedrock Claude output burndown | 5x for Claude 4.7 and below; 10x or 15x for specific newer generations; 1:1 for most others | (AWS docs, as of 2026-10) |
+| Bedrock Claude output burndown | 5x for Claude 4.7 and below; 15x for Claude 4.8; 10x for Claude Opus 5, Opus 5.5, Sonnet 5, Fable 5.1; 1:1 for most others | (AWS docs, as of 2026-10) |
 | Default max_tokens if unset | Model maximum, e.g. 64,000 for Claude Sonnet | (AWS ML blog, as of 2026-07) |
 | Example default TPM | 2,000,000 TPM for Claude Opus 4.6 | (AWS ML blog, as of 2026-07) |
-| Quota vs billed example | Sonnet 4, 1,000 in / 100 out: 1,500 quota, 1,100 billed | (AWS docs example via BlowStack, as of 2026-10) |
+| Quota vs billed example | Sonnet 4, 1,000 in / 100 out: 1,500 quota, 1,100 billed | (AWS docs, as of 2026-10) |
 | Global vs geographic profile price | About 10% lower for global | (AWS docs, as of 2026-10) |
-| Sonnet 4.6, global, Standard | $3 / $15 per 1M input / output; geographic and in-region +10% | (secondary: CloudForecast, as of 2026-10) |
+| Sonnet 4.6, global, Standard | $3 / $15 per 1M input / output, $0.30 cache read; geographic and in-region $3.30 / $16.50 (+10%) | (AWS Bedrock pricing page, as of 2026-10) |
 | Priority tier gain | Up to 25% better output tokens per second | (AWS service tiers page, as of 2026-10) |
-| Priority / Flex price | +75% / -50% vs Standard | (secondary: CloudBurn, Sailor.sh, as of 2026-10) |
-| Bedrock Reserved tier term | 1 or 3 months, fixed price per 1K TPM, billed monthly | (AWS service tiers page, as of 2026-10) |
-| Reserved tier minimum | 100K input TPM / 10K output TPM | (secondary: Sailor.sh, as of 2026-10; UNVERIFIED against AWS docs) |
+| Priority / Flex price | +75% / -50% vs Standard | (AWS Bedrock pricing page, as of 2026-10) |
+| Bedrock Reserved tier term | 1 or 3 months, fixed price per 1K TPM, billed monthly; overflow to Standard | (AWS docs, as of 2026-10) |
+| Reserved tier minimum | 100K input TPM / 10K output TPM; 99.5% uptime target | (AWS docs, as of 2026-10) |
 | Bedrock PT terms | No commitment, 1-month, 6-month; MUs must be requested via Support | (AWS docs, as of 2026-10) |
-| Bedrock batch inference | 50% discount vs on-demand | (secondary: Sailor.sh, CloudBurn, as of 2026-10) |
-| Vertex DSQ | No predefined project limit; 429 = shared pool pressure | (Google Cloud docs, as of 2026-10) |
-| Vertex PT terms | 1 week, 1 month, 3 months, 1 year | (secondary: PointFive, as of 2026-09) |
-| GSU price, global endpoint | $7.14 / $3.70 / $2.74 per GSU-hour for 1-week / 1-month / 1-year; non-global 8-10% higher | (secondary: Markaicode, as of 2026-10) |
-| gemini-2.5-flash per GSU | 2,690 tokens/s average | (Google Cloud docs, as of 2026-10) |
-| PT enforcement window | 40-120 s at 3 GSUs or fewer; 5-30 s for medium allocations | (Google Cloud docs, as of 2026-10) |
+| Bedrock batch inference | 50% lower price vs on-demand for select models | (AWS Bedrock pricing page, as of 2026-10) |
+| Vertex Standard PayGo (DSQ) | No fixed project limit; 429 = shared pool contention; org usage tiers 500K-10M TPM (Pro) and 2M-50M TPM (Flash) | (Google Cloud docs, as of 2026-10) |
+| Vertex PT terms | 1 week, 1 month, 3 months, 1 year | (Google Cloud pricing page, as of 2026-10) |
+| GSU price, global endpoint | $7.14 / $3.70 / $3.29 / $2.74 per GSU-hour for 1-week / 1-month / 3-month / 1-year; non-global 10% higher for GA Gemini 3 and later from 2026-07-01 | (Google Cloud pricing page, as of 2026-10) |
+| gemini-2.5-flash per GSU | 2,690 tokens/s average; output burndown 9, audio input 4 | (Google Cloud docs, as of 2026-10) |
+| PT enforcement window | 40-120 s at 3 GSUs or fewer; 5-30 s for medium allocations; 1-5 s at 50 GSUs or more | (Google Cloud docs, as of 2026-10) |
 | PT cached-token burndown | 0.1 | (Google Cloud docs, as of 2026-10) |
-| Claude Haiku on Vertex PT | 10,417 tokens/s per GSU; all burndowns x5 above 100K input tokens | (Google Cloud docs, as of 2026-10) |
-| Google worked PT example | gemini-2.0-flash: 3,360/GSU, output 4, audio 7; 10 QPS -> 57,000 tok/s -> 17 GSUs | (Google Cloud docs mirror and Flexprice, as of 2026-10) |
-| Gemini 2.5 Flash PayGo | $0.30 / $2.50 per 1M input / output | (secondary: drpranayjha, as of 2026-10) |
+| Claude Haiku 5.5 on Vertex PT | 10,417 tokens/s per GSU; all burndowns x5 above 100K input tokens | (Google Cloud docs, as of 2026-10) |
+| Google worked PT example | gemini-2.0-flash: 3,360/GSU, output 4, audio 7; 10 QPS -> 57,000 tok/s -> 17 GSUs | (Google Cloud pricing page, as of 2026-10) |
+| Gemini 2.5 Flash PayGo | $0.30 / $2.50 per 1M input / output; audio input $1.00 | (Google Cloud pricing page, as of 2026-10) |
 | Vertex global endpoint | No data-residency guarantee | (Google Cloud docs, as of 2026-10) |
 
 ## AWS vs GCP Mechanism Parity
@@ -237,17 +252,17 @@ Reserved capacity (Bedrock PT, Vertex PT) protects you from capacity-plane conte
 | Dimension | Amazon Bedrock | Vertex AI | Critical difference |
 | --- | --- | --- | --- |
 | Model addressing | Versioned model ID or inference-profile ID (`us.`, `eu.`, `apac.`, `global.`) | Model name plus endpoint hostname (regional, `us`/`eu` multi-region, global) | AWS encodes routing in the model ID; Google encodes it in the host |
-| On-demand admission | Per account x region x model quotas (RPM, TPM, TPD), separate for in-region, geographic, global | DSQ: no fixed project limit, pool-load admission; Usage Tiers scale TPM | Bedrock 429s are mostly your arithmetic; DSQ 429s are mostly other tenants |
+| On-demand admission | Per account x region x model quotas (RPM, TPM, TPD), separate for in-region, geographic, global | Standard PayGo (formerly DSQ): no fixed project limit, pool-load admission; org usage tiers set a prioritized TPM threshold | Bedrock 429s are mostly your arithmetic; Vertex PayGo 429s are mostly other tenants |
 | Reservation semantics | Pre-deducts max_tokens, settles with output burndown | PT is checked per request within an enforcement window; reservation of max_output_tokens is not documented | Bedrock punishes a large max_tokens at admission time |
 | Premium lane | Priority tier, shares on-demand quota | Priority PayGo, selected by header | Neither partitions quota; both reorder queues |
-| Discount lane | Flex tier; batch at 50% | Flex PayGo; batch prediction (discount UNVERIFIED) | Flex shares quota with production on Bedrock |
+| Discount lane | Flex tier (-50%); batch at 50% | Flex PayGo (-50%, Preview, global endpoint only); Gemini batch at 50% | Flex shares quota with production on Bedrock |
 | Reserved capacity | PT by MUs (none/1/6 months) and Reserved tier (1/3 months, per 1K TPM) | PT by GSUs (1 week/1/3/12 months) | Vertex sells a 1-week term; Bedrock sells a no-commit hourly MU |
-| Overflow above reservation | PT overflow behavior UNVERIFIED; PT not usable via inference profiles | Spillover to PayGo by default; `dedicated` header fails closed | Vertex overflow is a silent cost risk; Bedrock PT is a regional island |
-| Cross-region price | Source-region pricing; global about 10% cheaper | Global-endpoint PT 8-10% cheaper (secondary) | Both pay you to give up residency |
+| Overflow above reservation | Reserved tier overflows to Standard; MU PT overflow behavior UNVERIFIED (not stated in AWS PT docs); PT not usable via inference profiles | Spillover to PayGo by default; `dedicated` header fails closed | Vertex overflow is a silent cost risk; Bedrock PT is a regional island |
+| Cross-region price | Source-region pricing; global about 10% cheaper | Non-global PT about 10% more than global for GA Gemini 3 and later | Both pay you to give up residency |
 | Residency control | Geographic profiles bound processing to a geography | `us`/`eu` multi-region endpoints bound processing | Both: global means "anywhere commercial" |
 | Governance hook | SCP `aws:RequestedRegion` must allow destinations or `unspecified` | Org Policy resource locations and VPC-SC perimeter on `aiplatform.googleapis.com` | AWS routing can be broken by an SCP written years earlier |
 | Throttle signal | HTTP 429 `ThrottlingException` | HTTP 429 `RESOURCE_EXHAUSTED` | Same code, different meaning |
-| Quota for cross-region | Global quotas managed in us-east-1 | Not region-scoped under DSQ | Bedrock has a control-plane region dependency |
+| Quota for cross-region | Global-profile quotas managed in the source region; AWS calls the global quota a global limit | Usage-tier TPM thresholds are org-level and apply to the global endpoint | Plan global-scope capacity as one shared budget on both clouds, not as per-region headroom |
 
 ## Worked Example: Quota Arithmetic, Dual-Cloud Probe, and PT Sizing
 
@@ -269,7 +284,8 @@ No standing resources are created except the budgets.
 
 ```bash
 # AWS: account-level monthly cost budget with an 80% actual-spend alert.
-# The budget is not filtered by service, because third-party model usage may be itemized outside "Amazon Bedrock" (UNVERIFIED).
+# The budget is not filtered by service, because third-party model usage may be itemized outside "Amazon Bedrock"
+# (UNVERIFIED: secondary reports show per-model "(Amazon Bedrock Edition)" service names; no AWS doc found).
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 cat > /tmp/budget.json <<'EOF'
 {"BudgetName":"bedrock-lab-5usd","BudgetLimit":{"Amount":"5","Unit":"USD"},
@@ -345,7 +361,7 @@ def bedrock():
                           config=Config(retries={"max_attempts": 1, "mode": "standard"},
                                         read_timeout=120))
     extra = {}
-    tier = os.environ.get("BEDROCK_SERVICE_TIER")  # e.g. "flex"; shape UNVERIFIED
+    tier = os.environ.get("BEDROCK_SERVICE_TIER")  # "priority", "default" or "flex"
     if tier:
         extra["serviceTier"] = {"type": tier}
     retry_budget = max(1, CALLS // 10)  # at most ~10% extra load from retries
@@ -440,22 +456,23 @@ Caching therefore halves quota demand, which is often worth more than the price 
 Step 3 - Bedrock monthly cost on a $3 / $15 model via a global profile.
 Requests per month = 8 x 86,400 x 30 = 20,736,000.
 Without caching: 3,000 x $3e-6 + 400 x $15e-6 = $0.015 per request, or $311,040 per month.
-With caching, using an assumed cache-read price of 0.1x input ($0.30 per 1M; the multiplier is UNVERIFIED for your model): 500 x $3e-6 + 2,500 x $0.30e-6 + 400 x $15e-6 = $0.00825, or $171,072 per month.
+With caching, using a cache-read price of 0.1x input ($0.30 per 1M, the Claude Sonnet 4.6 global rate on the AWS Bedrock pricing page, as of 2026-10; check your model's row): 500 x $3e-6 + 2,500 x $0.30e-6 + 400 x $15e-6 = $0.00825, or $171,072 per month.
 Cache-write premiums are ignored because the prefix is stable.
 Calling through a geographic profile adds 10%, about $188,179 per month.
 Moving a latency-tolerant 30% of traffic to Flex at -50% saves about 0.3 x 0.5 x $171,072 = $25,661 per month.
 Output is 73% of the cached cost (400 x $15e-6 / $0.00825), so trimming output length by 25% saves more than any tier change.
 
-Step 4 - Vertex PT sizing with Google's published gemini-2.0-flash burndowns (substitute your model's row from the supported-models table).
+Step 4 - Vertex PT sizing with the gemini-2.0-flash burndowns from Google's pricing-page example (gemini-2.0-flash is no longer in the supported-models table, so substitute your model's row from it).
 Per query = 3,000 x 1 + 400 x 4 = 4,600; at 20 QPS that is 92,000 per second, and 92,000 / 3,360 = 27.4, so 28 GSUs at peak.
 With caching = 500 + 2,500 x 0.1 + 1,600 = 2,350; at 20 QPS that is 47,000 per second, or 14 GSUs at peak with zero headroom.
 Sizing to the 8 QPS baseline instead: 2,350 x 8 = 18,800 per second, so 6 GSUs. That costs 6 x $3.70 x 730 = $16,206 per month on a 1-month term, and peaks spill over to PayGo or Priority PayGo.
 
 Step 5 - Is PT a discount? A derivation the docs do not state.
-For gemini-2.0-flash, the published burndowns (output 4, audio 7) match its list-price ratios, so a GSU is denominated in input-token dollars (the price-ratio claim is UNVERIFIED).
-For gemini-2.5-flash, one GSU delivers 2,690 x 3,600 = 9.68M input-equivalent tokens per hour, worth 9.68 x $0.30 = $2.91 per hour at PayGo, assuming the output burndown tracks the 8.3:1 price ratio (UNVERIFIED).
+For gemini-2.0-flash, the burndowns (output 4, audio 7) track its Vertex list prices ($0.15 input, $0.60 output, $1.00 audio: ratios 4 and 6.7, rounded up to 7), so a GSU is denominated in input-token dollars (Google Cloud pricing page, as of 2026-10).
+For gemini-2.5-flash, one GSU delivers 2,690 x 3,600 = 9.68M input-equivalent tokens per hour, worth 9.68 x $0.30 = $2.91 per hour at PayGo for input tokens.
+Its published output burndown is 9, slightly above the 8.3:1 price ratio ($2.50 / $0.30), so for output tokens the same GSU-hour buys 9.68M / 9 = 1.08M output tokens, worth $2.69 at PayGo (Google Cloud docs and pricing page, as of 2026-10).
 That compares with $3.70 per hour (1-month) or $2.74 per hour (1-year).
-At 100% utilization, a 1-year GSU is about 6% cheaper than PayGo, and a 1-month GSU is about 27% more expensive.
+At 100% utilization, a 1-year GSU is about 6% cheaper than PayGo for input-heavy traffic and about 2% more expensive for output-heavy traffic, and a 1-month GSU is 27% to 38% more expensive.
 At 60% utilization, every PT term is more expensive per token than PayGo.
 Buy PT for admission priority and its SLA, size it to a baseline you will hold above roughly 90% utilization, and do not expect it to lower unit cost.
 The same reasoning applies to Bedrock PT and the Reserved tier; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Commitment Discounts]] for breakeven formulas.
@@ -514,7 +531,7 @@ Fix: put Flex on a separate account or region (a quota cell), or rate-limit Flex
 On 2025-06-12, a Google Service Control policy change containing blank fields replicated globally and triggered a null-pointer crash loop. Many Google Cloud APIs, Vertex AI Gemini among them, failed until the change was rolled back, and us-central1 recovered slowly because of herd effects on the backing store ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMB9yLsU)).
 The lesson for managed inference is that quota checking is itself a global dependency, and reserved capacity does not protect you from it.
 On 2025-10-19 and 20, a race condition in DynamoDB's DNS automation in us-east-1 emptied the regional endpoint record and cascaded through services that depend on it ([AWS summary](https://aws.amazon.com/message/101925/)).
-Any Bedrock architecture whose global-profile quotas are managed in us-east-1, or whose IAM and STS calls go to us-east-1, inherits that region's control-plane blast radius.
+Any Bedrock architecture that uses us-east-1 as its source region, or whose IAM and STS calls go to us-east-1, inherits that region's control-plane blast radius.
 See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
 ### Quality regressions that vary by platform
@@ -531,22 +548,22 @@ Watch the cache-read token share as a first-class SLI after any change of profil
 ### Bedrock PT as a regional island
 
 PT cannot be used through inference profiles, so a region-level capacity event leaves PT-backed traffic with nowhere to go unless the client fails over to an on-demand profile with pre-approved quota.
-Commitment PT cannot be cancelled mid-term (secondary: [PointFive](https://www.pointfive.co/efficiency-hub/inefficiencies/underutilized-bedrock-provisioned-throughput), as of 2026-09).
+Commitment PT cannot be deleted until its 1-month or 6-month term is over, and billing continues until you delete it ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/prov-throughput.html), as of 2026-10).
 
 ## Security and Cost Angles
 
 ### Identity and least privilege
 
 On Bedrock, scope `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` (Converse is authorized by these) to specific inference-profile ARNs.
-Also scope them to the foundation-model ARNs in every destination region of that profile, because the routed call is authorized against the model in the destination (UNVERIFIED against current AWS docs).
+Also scope them to the foundation-model ARNs in the source region and in every destination region of a geographic profile, or to the region-less global foundation-model ARN (`arn:aws:bedrock:::foundation-model/...`) for a global profile, with a `bedrock:InferenceProfileArn` condition, because the routed call is authorized against those model resources ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/geographic-cross-region-inference.html), as of 2026-10).
 Prefer IAM roles with short-lived credentials over Bedrock API keys.
-If you must issue keys (`AWS_BEARER_TOKEN_BEDROCK`), use short-term keys and deny long-term key creation with an SCP; the key-type semantics are UNVERIFIED.
+If you must issue keys (`AWS_BEARER_TOKEN_BEDROCK`), use short-term keys, which expire natively, and deny long-term keys (IAM service-specific credentials) with an SCP on the `bedrock:BearerTokenType` condition key ([AWS Security Blog](https://aws.amazon.com/blogs/security/securing-amazon-bedrock-api-keys-best-practices-for-implementation-and-management), as of 2026-10).
 On Vertex, grant `roles/aiplatform.user` only at the project level where it is needed. Use Workload Identity Federation rather than service account keys ([[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]]), and restrict API-key ("express mode") usage with Org Policy.
 
 ### Private network boundaries
 
 On AWS, put interface VPC endpoints for `bedrock-runtime` in each source region. Attach endpoint policies that allow only approved profile ARNs, and add `aws:SourceVpce` conditions to the role policies.
-Cross-region routing starts at the source-region endpoint, so the VPC endpoint is still your boundary. AWS states that routed traffic stays on its network (UNVERIFIED in this revision).
+Cross-region routing starts at the source-region endpoint, so the VPC endpoint is still your boundary. AWS states that cross-region traffic stays on the AWS network, never traverses the public internet, and is encrypted in transit between regions ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html), as of 2026-10).
 On Google Cloud, place `aiplatform.googleapis.com` inside a VPC Service Controls perimeter and reach it through Private Service Connect or Private Google Access ([[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]]).
 For the combined design, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
 
@@ -555,7 +572,7 @@ For the combined design, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identi
 Choosing a global profile or the global endpoint is a data-processing location decision, not just a price choice.
 Encode it in policy rather than in code review.
 On AWS, use SCP region conditions plus IAM conditions on profile ARNs; on GCP, use multi-region `us`/`eu` hostnames and Org Policy resource-location constraints.
-Zero-data-retention configurations on Vertex also require disabling in-memory caching (UNVERIFIED in this revision).
+Zero-data-retention configurations on Vertex also require disabling the default project-level in-memory caching of customer data, which has a 24-hour TTL ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/data-governance), as of 2026-10).
 
 ### Encryption and logging
 
@@ -568,7 +585,7 @@ You still need logging, because it is the only place `max_tokens` is observable 
 1. Output length: output tokens cost 5x or more per token in both price and quota, so instruct for concision and cap `max_tokens` per route.
 2. Prompt caching of stable prefixes: on Bedrock it removes tokens from quota entirely and discounts them on price; on Vertex PT they burn at 0.1.
 3. Lane mix: move latency-tolerant traffic to Flex or batch (about -50%), and confine Priority to the interactive slice.
-4. Global versus geographic routing: about 10% on Bedrock, and 8-10% on Vertex PT, where residency allows.
+4. Global versus geographic routing: about 10% on Bedrock, and about 10% on Vertex PT for GA Gemini 3 and later, where residency allows.
 5. Reserved capacity sized to a high-utilization baseline: it buys admission priority, not lower unit cost.
 6. Attribution: tag application inference profiles per team or tenant on AWS and use labels on GCP, so showback works ([[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cloud_Billing_Models_and_Unit_Cost_Allocation|Unit Cost Allocation]]).
 
@@ -640,10 +657,10 @@ Finance says Vertex Provisioned Throughput is a discount and wants 100% of Gemin
 
 I would reframe PT as an admission-priority and SLA instrument whose unit cost is close to PayGo at full utilization, and show why.
 A GSU of gemini-2.5-flash delivers an average of 2,690 burndown-adjusted tokens per second, which is 9.68M input-equivalent tokens per hour.
-At $0.30 per million input tokens, that is worth about $2.91 per hour at PayGo, assuming the output burndown tracks the output-to-input price ratio. That relationship holds exactly for the published gemini-2.0-flash burndowns, and I would verify it for our model.
-A 1-year GSU is about $2.74 per hour and a 1-month GSU about $3.70 per hour, so even a 1-year term saves only about 6%, and only at 100% utilization.
+At $0.30 per million input tokens, that is worth about $2.91 per hour at PayGo for input tokens. The output burndown of 9 sits slightly above the 8.3:1 output-to-input price ratio, so for output tokens the same GSU-hour is worth only about $2.69.
+A 1-year GSU is about $2.74 per hour and a 1-month GSU about $3.70 per hour, so even a 1-year term saves at most about 6%, only at 100% utilization, and costs about 2% more than PayGo for output-heavy traffic.
 Utilization is what matters most: traffic with a 2.5:1 peak-to-average ratio, provisioned for peak, averages 40% utilization, which makes the effective unit cost about 2.4x PayGo.
-The enforcement window also matters: purchases above 3 GSUs are enforced over 5 to 30 seconds, so sub-minute bursts spill over to PayGo even when the hourly average fits, and we pay both the commitment and the spillover.
+The enforcement window also matters: purchases above 3 GSUs are enforced over 5 to 30 seconds, and 50 GSUs or more over 1 to 5 seconds, so sub-minute bursts spill over to PayGo even when the hourly average fits, and we pay both the commitment and the spillover.
 My recommendation is to buy 1-year GSUs only for a baseline we can hold above roughly 90% utilization, cover the shoulder with 1-month or 1-week terms around known events, and serve the peak with Priority PayGo for the interactive slice and Standard or Flex PayGo for the rest.
 We send `dedicated` only on workloads where load-shedding is preferable to the spillover price, and we monitor the spillover share as a cost SLI.
 If finance wants a real discount, the bigger levers are context caching (0.1 burndown and a lower price), batch and Flex lanes, and shorter outputs.

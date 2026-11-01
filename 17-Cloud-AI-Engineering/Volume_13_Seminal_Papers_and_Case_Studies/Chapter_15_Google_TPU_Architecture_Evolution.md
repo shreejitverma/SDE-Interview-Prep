@@ -2,7 +2,7 @@
 type: paper
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/abs/1704.04760"
@@ -12,6 +12,27 @@ sources:
   - "https://cloud.google.com/blog/products/ai-machine-learning/bfloat16-the-secret-to-high-performance-on-cloud-tpus"
   - "https://jax-ml.github.io/scaling-book/tpus/"
   - "https://docs.cloud.google.com/compute/docs/tpus/tpu-machines"
+  - "https://docs.cloud.google.com/tpu/docs/v5p"
+  - "https://docs.cloud.google.com/tpu/docs/v5e"
+  - "https://docs.cloud.google.com/tpu/docs/v6e"
+  - "https://docs.cloud.google.com/tpu/docs/system-architecture-tpu-vm"
+  - "https://docs.cloud.google.com/tpu/docs/runtimes"
+  - "https://docs.cloud.google.com/tpu/docs/regions-zones"
+  - "https://docs.cloud.google.com/tpu/docs/managing-tpus-tpu-vm"
+  - "https://cloud.google.com/tpu/pricing"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/compute/tpus/tpu-vm/create"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/supported-products"
+  - "https://docs.cloud.google.com/confidential-computing/confidential-vm/docs/supported-configurations"
+  - "https://docs.cloud.google.com/iam/docs/understanding-roles"
+  - "https://arxiv.org/abs/1810.09868"
+  - "https://arxiv.org/abs/2312.11805"
+  - "https://arxiv.org/abs/1510.00149"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/nki/guides/architecture/trainium_inferentia2_arch.html"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/nki/guides/architecture/trainium2_arch.html"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/nki/guides/architecture/trainium3_arch.html"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/arch/neuron-hardware/neuron-core-v2.html"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/arch/neuron-hardware/neuron-core-v3.html"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/arch/neuron-hardware/trn2-arch.html"
 ---
 
 # Google TPU Architecture Papers: TPU v1 to v4 (ISCA 2017-2023)
@@ -20,7 +41,7 @@ sources:
 
 - Every TPU generation rests on one idea: feed a weight-stationary systolic Matrix Multiply Unit (MXU) from a software-managed scratchpad, so each operand is read from SRAM once and reused across the whole array instead of being refetched per multiply.
 - TPU v1 (ISCA 2017) was an 8-bit inference coprocessor with 92 TOPS of peak compute, but it was starved by 34 GB/s DDR3. Its ridge point of about 1350 MACs per weight byte is the first roofline lesson every TPU engineer has to learn.
-- TPU v2/v3 made the chip a training supercomputer. They added bfloat16 multiplies with fp32 accumulation, HBM, and a dedicated 2D-torus Inter-Chip Interconnect (ICI). bfloat16 keeps the fp32 exponent, so loss scaling is not needed, and it cuts multiplier area about 9x compared with fp32.
+- TPU v2/v3 made the chip a training supercomputer. They added bfloat16 multiplies with fp32 accumulation, HBM, and a dedicated 2D-torus Inter-Chip Interconnect (ICI). bfloat16 keeps the fp32 exponent, so loss scaling is not needed, and it cuts multiplier area about 8x to 9x compared with fp32 (Google quotes eight times, and significand arithmetic gives nine).
 - TPU v4 (ISCA 2023) wired 64 cubes of 4x4x4 chips through optical circuit switches (OCS). The OCS turns a fixed 4096-chip torus into a pool of failure-isolated blocks that are composed on demand. That improves availability, deployment speed and tenant isolation, and the optics cost less than 5% of system cost.
 - In production the failure unit is the slice, not the chip. Your levers are MXU-aligned tensor shapes, operational intensity above the HBM ridge, collectives mapped onto torus axes, spare-cube headroom, and checkpoint intervals sized to slice MTBF.
 
@@ -89,7 +110,7 @@ The heart of the chip is a 256x256 matrix of 65,536 8-bit multiply-accumulate un
 At 700 MHz that gives 65,536 x 0.7e9 = 4.59e13 MAC/s, or 92 TOPS when a MAC is counted as two operations (Jouppi et al., ISCA 2017).
 On-chip storage is 28 MiB of software-managed memory: a 24 MiB Unified Buffer for activations and 4 MiB of 32-bit accumulators.
 Off-chip memory is 8 GiB of DDR3 for weights at 34 GB/s.
-The card sits on PCIe and draws about 40 W in typical operation (Jouppi et al., ISCA 2017).
+The card sits on PCIe and draws about 40 W when busy, against a 75 W board TDP and 28 W idle (Jouppi et al., ISCA 2017, Table 2).
 
 The control model is deliberately CISC.
 The host pushes a small set of coarse instructions over PCIe: read host memory, read weights, matrix multiply or convolve, activate, and write host memory.
@@ -112,7 +133,8 @@ The energy argument is the whole reason for the design.
 In a register-file machine every multiply needs at least two operand reads from a register file or SRAM.
 In a systolic array an operand read from SRAM once is reused N times as it hops between neighboring cells over short wires.
 Hop-to-hop transfer costs far less energy than an SRAM read, and an SRAM read costs orders of magnitude less than a DRAM read.
-Horowitz's ISSCC 2014 energy table is the standard reference for that ordering (UNVERIFIED exact pJ figures, so none are quoted here).
+Horowitz's ISSCC 2014 energy table is the standard reference for that ordering, and the TPUv4i paper updates it from 45 nm to 7 nm (Jouppi et al., ISCA 2021).
+At 45 nm, a 32-bit SRAM cache access costs about 5 pJ and a 32-bit DRAM access about 640 pJ ([Han et al., arXiv 1510.00149](https://arxiv.org/abs/1510.00149)).
 
 Two consequences follow, and both bite in production.
 
@@ -141,7 +163,7 @@ That counterfactual explains why every later TPU uses HBM.
 Training changed the requirements.
 Backpropagation needs floating point, much more memory for activations and optimizer state, and all-reduce of gradients across many chips.
 The CACM paper says the TPUv2 project began in 2014 (Jouppi et al., CACM 2020).
-It frames the result as co-design of five layers: TensorFlow, the XLA compiler, the TPU architecture, the Brain floating-point format, and the ICI interconnect.
+It frames the result as co-design of six parts: TensorFlow, the XLA compiler, the TPU architecture, the Brain floating-point format, the ICI interconnect, and the TPUv2/v3 chips (Jouppi et al., CACM 2020).
 That co-design let production applications scale at 96% to 99% of perfect linear speedup (Jouppi et al., CACM 2020).
 
 The structural changes:
@@ -152,7 +174,7 @@ The structural changes:
 - Each chip gained an ICI router and links directly to its neighbors.
   This builds a 2D torus without a separate switch or NIC.
   The TPU v4 paper describes the v3 machine as a 1024-chip system that could not be used until all 1024 chips and all cables were installed and tested (Jouppi et al., ISCA 2023).
-- TPU v3 doubled the MXUs per core and moved to liquid cooling.
+- TPU v3 doubled the MXUs per core and moved to liquid cooling (Jouppi et al., CACM 2020).
   Google quoted up to 420 TFLOPS per Cloud TPU v3 device and more than 100 PFLOPS per full v3 pod (Google Cloud blog, 2019-08).
 
 Why 128x128 rather than v1's 256x256?
@@ -184,7 +206,7 @@ That width is 24 bits for fp32, 11 for fp16 and 8 for bf16.
 So 24^2 / 8^2 = 9, and a bf16 multiplier needs about one ninth the area of an fp32 multiplier.
 Likewise 11^2 / 8^2 = 1.9, so it needs about half the area of an fp16 multiplier.
 These ratios are first-order arithmetic.
-Google's own bfloat16 post makes the same square-law argument (Google Cloud blog, 2019-08).
+Google's own bfloat16 post makes the same square-law argument, but it uses mantissa width and quotes "eight times smaller" than fp32 and about half of fp16 (Google Cloud blog, 2019-08).
 Because the systolic array is almost entirely multipliers and adders, multiplier area translates directly into MACs per mm^2 and per watt.
 
 Mechanism three, accumulation stays wide.
@@ -224,7 +246,8 @@ Sixteen hosts of four chips each make a rack-level cube of 64 chips in a 4x4x4 a
 Inside the cube, ICI runs over electrical links.
 Each of the cube's six faces exposes 16 links, so each cube has 96 optical links leaving it.
 For 64 cubes that is 64 x 96 = 6144 fiber endpoints.
-The paper's 48 OCSes provide 48 x 128 = 6144 ports, so the arithmetic closes (derived from Jouppi et al., ISCA 2023).
+The paper's Palomar OCS is 136x136, meaning 128 ports plus 8 spares for link testing and repairs.
+Its 48 OCSes therefore provide 48 x 128 = 6144 usable ports, so the arithmetic closes (derived from Jouppi et al., ISCA 2023).
 
 **Data plane versus control plane.**
 The OCS data plane is passive optics.
@@ -232,7 +255,7 @@ MEMS mirror arrays steer light from an input fiber to an output fiber.
 They have no packet buffers, perform no packet parsing and do not care about data rate, so a link upgrade does not require a switch upgrade.
 The control plane is the slice scheduler.
 When a job asks for, say, a 4x4x8 slice, the scheduler picks two healthy cubes and programs the mirrors so that the face links of the two cubes join into the requested torus, including the wraparound links.
-Reconfiguration happens at job boundaries, not per packet, so mirror settling time is off the critical path (UNVERIFIED: exact settling time).
+Reconfiguration happens at job boundaries, not per packet, and the MEMS mirrors switch in milliseconds, so mirror settling time is off the critical path (Jouppi et al., ISCA 2023).
 
 **Twisted tori.**
 The OCS can wire the wraparound links with an offset, which gives a twisted 3D torus.
@@ -277,21 +300,24 @@ See [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_
 
 ### TPU v5p: the documented successor
 
-Google lists v5p at 459 bf16 TFLOPS and 918 int8 TOPS per chip, with 95 GB of HBM at about 2.76 TB/s and pods of up to 8960 chips (Google launch figures as reported 2023-12; JAX Scaling Book, as of 2026-10).
-Each chip has two TensorCores with four 128x128 MXUs each.
+Google lists v5p at 459 bf16 TFLOPS per chip, with 95 GiB of usable HBM (96 GiB physical) at 2765 GB/s and 8960 chips in a pod (Google Cloud v5p docs, as of 2026-11).
+The JAX Scaling Book lists int8 at 918 TOPS per chip (as of 2026-11).
+Each chip has two TensorCores with four 128x128 MXUs each (JAX Scaling Book; Google Cloud TPU architecture docs for the 128x128 array, as of 2026-11).
 That implies a clock of about 1.75 GHz from 459e12 / (2 x 4 x 16384 x 2) (derived).
-ICI bandwidth is quoted at 4800 Gbps per chip in a 3D torus (secondary sources quoting Google, as of 2026-10).
+ICI bandwidth is listed as 1200 GB/s bidirectional per chip in a 3D torus, which is 600 GB/s or 4800 Gbps per direction (Google Cloud v5p docs, as of 2026-11; per-direction figure derived).
 The JAX Scaling Book gives the full pod shape as 16x20x28, with 2x2x1 chips per host.
-That makes 2240 hosts and 17,920 TensorCores (JAX Scaling Book, as of 2026-10).
-The pod is 140 groups of 4x4x4 chips, which fits the v4 cube-and-OCS building block, but Google has not published a v5p architecture paper confirming the internal wiring (UNVERIFIED: v5p OCS wiring details).
-Google Cloud docs list four SparseCores per v5p chip and position v5p for large-scale pre-training and recommender training (Google Cloud docs, as of 2026-10).
+That makes 2240 hosts and 17,920 TensorCores (JAX Scaling Book, as of 2026-11).
+The pod is 140 cubes of 4x4x4 chips across 16 hosts each, with copper links inside a cube and optical links and OCSes between cubes, which is the v4 building block (Google Cloud v5p docs, as of 2026-11).
+The v5p docs give no OCS count.
+The whole pod is not offered as one slice: the largest single slice is 16x16x24, which is 6144 chips or 96 cubes, and Multislice scales training to 18,432 chips (Google Cloud v5p docs, as of 2026-11).
+Google Cloud docs list four SparseCores per v5p chip and position v5p for large-scale pre-training and recommender training (Google Cloud docs, as of 2026-11).
 
 ### Beyond v5p, for orientation only
 
-Compute Engine docs as of 2026-10 list three current accelerator-optimized TPU versions: v6e (Trillium), v5p and TPU7x (Google Cloud docs, as of 2026-10).
+Compute Engine docs as of 2026-11 list three current accelerator-optimized TPU versions: v6e (Trillium), v5p and TPU7x (Google Cloud docs, as of 2026-11).
 The docs recommend TPU7x for high-FP8 pre-training and inference, and v6e for cost-effective serving.
-The JAX Scaling Book lists TPU7x at about 2.3e15 bf16 FLOPs/s per chip, 192 GiB of HBM and 128 MiB of VMEM (JAX Scaling Book, as of 2026-10).
-Secondary sources say Trillium moved the MXU from 128x128 to 256x256 (UNVERIFIED against a Google primary source).
+The JAX Scaling Book lists TPU7x at about 2.3e15 bf16 FLOPs/s per chip, 192 GiB of HBM and 128 MiB of VMEM (JAX Scaling Book, as of 2026-11).
+Trillium moved the MXU from 128x128 to 256x256, with two 256x256 MXUs in its single TensorCore (Google Cloud v6e and TPU architecture docs, as of 2026-11).
 For the accelerator-level comparison with GPUs and Trainium, see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_01_Accelerator_Architectures_GPUs_Trainium_TPUs|Accelerator Architectures]].
 
 ### Failure domain boundaries
@@ -301,7 +327,7 @@ For the accelerator-level comparison with GPUs and Trainium, see [[17-Cloud-AI-E
 | TensorCore or chip | One chip's compute and HBM | The XLA program for the whole slice cannot proceed, because collectives are compiled across every chip |
 | Host (4 chips on v4 and v5p) | Chips sharing a host, PCIe and NIC | Slice loss, with the host drained by maintenance |
 | Cube (4x4x4) | Electrical ICI domain in a rack | With OCS, the scheduler swaps in a spare cube on restart |
-| OCS | One switch carries a fraction of the links in one dimension | Slices using those ports lose their wraparound links (UNVERIFIED: Google's OCS redundancy policy) |
+| OCS | One switch carries a fraction of the links in one dimension | On v5p, ICI resiliency is on by default for slices of one cube or larger and routes traffic around OCS and optical faults, at temporarily reduced ICI performance (Google Cloud v5p docs, as of 2026-11) |
 | Slice | The unit of SPMD execution | Fail-stop, with restart from checkpoint |
 | Multislice over DCN | Independent slices joined by data parallelism | One slice failing stalls synchronous training on all slices |
 
@@ -313,7 +339,7 @@ For the accelerator-level comparison with GPUs and Trainium, see [[17-Cloud-AI-E
 | TPU v1 peak | 92 TOPS at 700 MHz | Jouppi et al., ISCA 2017 |
 | TPU v1 on-chip memory | 28 MiB, software-managed | Jouppi et al., ISCA 2017 |
 | TPU v1 weight memory bandwidth | 34 GB/s DDR3 | Jouppi et al., ISCA 2017 |
-| TPU v1 typical power | about 40 W | Jouppi et al., ISCA 2017 |
+| TPU v1 busy power | about 40 W (75 W board TDP) | Jouppi et al., ISCA 2017 |
 | TPU v1 ridge point | about 1350 MACs per weight byte | Derived from the figures above |
 | TPU v1 vs K80 and Haswell | 15x to 30x faster, 30x to 80x TOPS/W | Jouppi et al., ISCA 2017 |
 | TPU v2 per core | 22.5 TFLOP/s, 8 GB HBM at 300 GB/s | Fischer and Saba, 2018 |
@@ -323,35 +349,36 @@ For the accelerator-level comparison with GPUs and Trainium, see [[17-Cloud-AI-E
 | TPU v4 per chip | 275 bf16 TFLOPS, 32 GiB HBM2, 1200 GB/s | Jouppi et al., ISCA 2023 |
 | TPU v4 vs v3 | 2.1x performance, 2.7x performance per watt | Jouppi et al., ISCA 2023 |
 | TPU v4 supercomputer | 4096 chips = 64 cubes of 4x4x4 | Jouppi et al., ISCA 2023 |
-| TPU v4 OCS count and ports | 48 OCS x 128 ports = 6144 = 64 cubes x 96 links | Jouppi et al., ISCA 2023, arithmetic derived |
+| TPU v4 OCS count and ports | 48 OCS x 128 usable ports (136x136 with 8 spares) = 6144 = 64 cubes x 96 links | Jouppi et al., ISCA 2023, arithmetic derived |
 | OCS share of system | below 5% of cost, below 3% of power | Jouppi et al., ISCA 2023 |
 | SparseCore | 5x to 7x faster embeddings at about 5% of die area and power | Jouppi et al., ISCA 2023 |
 | v4 LLM efficiency | about 60% of peak FLOPS | Jouppi et al., ISCA 2023 |
-| TPU v5p per chip | 459 bf16 TFLOPS, 918 int8 TOPS | Google launch figures, 2023-12 |
-| TPU v5p HBM | 95 GB at about 2765 GB/s | Google launch figures, 2023-12; JAX Scaling Book, as of 2026-10 |
+| TPU v5p per chip | 459 bf16 TFLOPS, 918 int8 TOPS | Google Cloud v5p docs (bf16); JAX Scaling Book (int8), as of 2026-11 |
+| TPU v5p HBM | 95 GiB usable (96 GiB physical) at 2765 GB/s | Google Cloud v5p docs, as of 2026-11 |
 | TPU v5p ridge point | about 166 FLOPs/byte | Derived: 459e12 / 2.765e12 |
-| TPU v5p ICI | 4800 Gbps per chip | Secondary sources quoting Google, as of 2026-10 |
-| TPU v5p pod | 8960 chips, 16x20x28, 4 chips per host | JAX Scaling Book, as of 2026-10 |
-| TPU v5p host VM | 208 vCPUs (Sapphire Rapids), 448 GB memory | Google Cloud docs, as of 2026-10 |
-| TPU7x host VM | 224 vCPUs (Emerald Rapids), 960 GB memory | Google Cloud docs, as of 2026-10 |
-| TPU7x per chip | about 2.3e15 bf16 FLOPs/s, 192 GiB HBM, 128 MiB VMEM | JAX Scaling Book, as of 2026-10 |
-| bf16 vs fp32 multiplier area | about 1/9 | Derived from significand widths 8 and 24 |
-| v5p on-demand price per chip-hour | UNVERIFIED, check the Cloud TPU pricing page | - |
+| TPU v5p ICI | 1200 GB/s bidirectional per chip, or 4800 Gbps per direction | Google Cloud v5p docs, as of 2026-11; per-direction figure derived |
+| TPU v5p pod | 8960 chips (140 cubes), 16x20x28, 4 chips per host | Google Cloud v5p docs; JAX Scaling Book, as of 2026-11 |
+| TPU v5p largest single slice | 6144 chips (96 cubes), 16x16x24 | Google Cloud v5p docs, as of 2026-11 |
+| TPU v5p host VM | 208 vCPUs (Sapphire Rapids), 448 GB memory | Google Cloud docs, as of 2026-11 |
+| TPU7x host VM | 224 vCPUs (Emerald Rapids), 960 GB memory | Google Cloud docs, as of 2026-11 |
+| TPU7x per chip | about 2.3e15 bf16 FLOPs/s, 192 GiB HBM, 128 MiB VMEM | JAX Scaling Book, as of 2026-11 |
+| bf16 vs fp32 multiplier area | about 1/9 (Google quotes about 1/8) | Derived from significand widths 8 and 24; Google Cloud blog, 2019-08 |
+| v5p on-demand price per chip-hour | 4.20 USD in us-east1 and us-east5 | Cloud TPU pricing, as of 2026-11 |
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | Google Cloud TPU | AWS Trainium and Inferentia | Critical difference |
 | --- | --- | --- | --- |
 | Lineage | TPU v1 (2015 deployment) through v4, v5e, v5p, v6e and TPU7x | Inferentia, then Trainium generations, all Annapurna Labs silicon | Google has published peer-reviewed architecture papers, while AWS publishes mostly product docs and re:Invent talks |
-| Matmul engine | MXU weight-stationary systolic array, 128x128 through v5p | NeuronCore tensor engine, described by AWS as systolic-array based (UNVERIFIED dimensions) | Both reward tile-aligned shapes, and the tile size differs per generation |
-| Number formats | bf16 multiply with fp32 accumulate since v2, int8, and FP8 on newer generations | bf16, FP8 variants and hardware stochastic rounding (UNVERIFIED per generation) | Check format support per generation before porting quantized checkpoints |
-| On-chip memory model | Compiler-managed VMEM scratchpad fed from HBM | Compiler-managed SBUF scratchpad (UNVERIFIED naming per generation) | Both are scratchpad machines, so the compiler does the work a cache does on a GPU |
-| Scale-up fabric | ICI direct links, 2D or 3D torus, no switch | NeuronLink between chips in an instance or UltraServer (UNVERIFIED topology) | A torus has no switch hop, but bisection bandwidth depends on slice shape |
+| Matmul engine | MXU weight-stationary systolic array, 128x128 through v5p and 256x256 on v6e and TPU7x | NeuronCore Tensor Engine, a 128x128 systolic array on Trainium, Trainium2 and Trainium3, with FP8 modes that logically present 256x128 or 512x128 (AWS Neuron NKI docs, as of 2026-11) | Both reward tile-aligned shapes, and the tile size differs per generation |
+| Number formats | bf16 multiply with fp32 accumulate since v2, int8, and FP8 on newer generations | bf16 and cFP8 with programmable round-nearest-even or stochastic rounding on NeuronCore-v2 and v3, and MXFP8 on Trainium3 (AWS Neuron docs, as of 2026-11) | Check format support per generation before porting quantized checkpoints |
+| On-chip memory model | Compiler-managed VMEM scratchpad fed from HBM | Software-managed SBUF scratchpad plus PSUM accumulation buffer, 24 MiB and 2 MiB on NeuronCore-v2 (AWS Neuron NKI docs, as of 2026-11) | Both are scratchpad machines, so the compiler does the work a cache does on a GPU |
+| Scale-up fabric | ICI direct links, 2D or 3D torus, no switch | NeuronLink-v3 on Trn2: a 4x4 2D torus inside a 16-chip instance, plus rings between the four instances of a 64-chip UltraServer (AWS Neuron docs, as of 2026-11) | A torus has no switch hop, but bisection bandwidth depends on slice shape |
 | Topology reconfiguration | OCS composes 4x4x4 cubes into slices and supports twisted tori | No public equivalent, and scale-out uses a static electrical Clos | OCS gives availability by composition, while AWS relies on placement groups and spare instances |
 | Scale-out fabric | DCN between slices (multislice) | EFA with SRD multipath transport over Clos, see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI\|Interconnects]] | TPU keeps tightly coupled traffic on ICI, while AWS spreads collectives across EFA as well |
 | Compiler stack | XLA from JAX, PyTorch/XLA and TensorFlow | Neuron SDK compiler with PyTorch and JAX frontends | Both compile ahead of time, and shape changes trigger recompilation on both |
 | Failure unit | The slice, which is fail-stop | The job across instances, with HyperPod-style health checks and node replacement, see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_03_High_Performance_AI_Cluster_Architectures\|AI Clusters]] | On both, a single bad chip forces restart from checkpoint unless the framework is elastic |
-| Embedding acceleration | SparseCore on v4, v5p and TPU7x | No dedicated public equivalent (UNVERIFIED) | Recommender economics differ materially |
+| Embedding acceleration | SparseCore on v4, v5p (four per chip), v6e (two per chip) and TPU7x (four per chip), per Google Cloud docs, as of 2026-11 | No dedicated embedding engine in the AWS Neuron architecture docs, and the Tensor Engine's sparse mode targets structured sparsity (as of 2026-11) | Recommender economics differ materially |
 | Capacity acquisition | Reservations, queued resources and Spot TPUs | Capacity Blocks for ML, On-Demand Capacity Reservations and Spot | Both treat large contiguous accelerator capacity as scarce and scheduled |
 
 For the platform-level translation, see [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_06_AI_and_ML_Platform_Translation|AI and ML Platform Translation]].
@@ -361,8 +388,10 @@ For the platform-level translation, see [[17-Cloud-AI-Engineering/Volume_04_AWS_
 ### Cost estimate and guardrails
 
 The lab uses one single-chip TPU v5e VM (`v5litepod-1`) as Spot capacity for under an hour.
-At an assumed on-demand rate of about 1.20 USD per v5e chip-hour (UNVERIFIED, check the Cloud TPU pricing page) the lab costs under 2 USD, and Spot is cheaper.
+At the on-demand rate of 1.20 USD per v5e chip-hour in us-central1 (Cloud TPU pricing, as of 2026-11) the lab costs under 2 USD, and Spot is cheaper.
 The boot disk and host VM are billed with the TPU VM.
+The `gcloud compute tpus tpu-vm` commands below use the Cloud TPU API, which still supports v5e but is no longer under active development, gets only bug and security fixes, and does not support TPU7x or later (Google Cloud docs, as of 2026-11).
+For new production work, Google directs users to Compute Engine or GKE.
 Create a budget alert before you provision anything.
 Budgets send alerts but do not stop spend, so the teardown command is the real control.
 
@@ -473,17 +502,18 @@ Goal: pre-train a 70B-parameter dense transformer on 1.4T tokens.
 3. Chip-hours are 5.88e23 / 2.3e14 / 3600, about 712,000 chip-hours at 50% MFU.
    That rises to about 890,000 at 40% MFU and falls to about 593,000 at 60%.
 4. Wall-clock on 4096 chips is about 7.2 days at 50% MFU.
-   On a full 8960-chip pod it is about 3.3 days, but per the OCS availability table a full-pod job has no spare cubes.
-   Plan on about 4096 to 7680 chips with spares.
+   On the 6144-chip maximum single slice it is about 4.8 days (slice limit from Google Cloud v5p docs, as of 2026-11).
+   A full 8960-chip pod would take about 3.3 days, but the docs do not offer it as one slice, and per the OCS availability table it would have no spare cubes.
+   Plan on 4096 to 6144 chips, which leaves 44 to 76 of the pod's 140 cubes for other tenants and spares.
 5. Memory: mixed-precision Adam needs about 16 bytes per parameter for weights, gradients, fp32 master weights and two moments.
    That is about 1.12 TB.
-   Spread across 95 GB chips it needs at least 12 chips before activations, which is trivially satisfied by FSDP over thousands of chips (see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_05_Memory_Optimization_ZeRO_FSDP_and_JAX_Sharding|ZeRO, FSDP, and JAX Sharding]]).
-6. Communication sanity check: a bf16 gradient all-reduce of 140 GB over about 600 GB/s of per-chip ICI has a ring lower bound of about 2S/B = 0.47 s per step.
+   Spread across chips with 95 GiB (about 102 GB) of usable HBM it needs at least 11 chips before activations, which is trivially satisfied by FSDP over thousands of chips (see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_05_Memory_Optimization_ZeRO_FSDP_and_JAX_Sharding|ZeRO, FSDP, and JAX Sharding]]).
+6. Communication sanity check: a bf16 gradient all-reduce of 140 GB over about 600 GB/s of per-chip, per-direction ICI has a ring lower bound of about 2S/B = 0.47 s per step.
    That bound assumes plain data parallelism with full replication.
    With FSDP reduce-scatter overlapped with backward compute, communication is hidden only when step compute time exceeds it.
    Check this with the profiler, not by assumption.
 7. Cost is chip-hours x rate.
-   At a hypothetical 4.00 USD per chip-hour (UNVERIFIED), 712,000 chip-hours is about 2.85M USD.
+   At the on-demand 4.20 USD per v5p chip-hour (Cloud TPU pricing, as of 2026-11), 712,000 chip-hours is about 2.99M USD.
    Every 10 points of MFU moves the bill by roughly 20%, which is why MFU is the primary unit-economics metric (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics|GPU and TPU Unit Economics]]).
 
 ## Failure Modes and Pitfalls
@@ -527,7 +557,8 @@ This shows up as loss spikes that disappear in fp32, so keep these reductions in
 **Silent data corruption (SDC).**
 Google's "Cores that don't count" (Hochschild et al., HotOS 2021) and Meta's "Silent Data Corruptions at Scale" (Dixit et al., 2021) describe defective cores that compute wrong answers without raising errors.
 At thousands of chips per job, the probability that some chip is "mercurial" during a multi-week run is high.
-The Gemini 1.0 technical report describes SDC as a recurring event at its training scale and reports raising goodput through fast detection and in-memory redundant state (UNVERIFIED exact frequencies and goodput figures).
+The Gemini 1.0 technical report expects SDC events to impact training every week or two at its scale, and it detects them with deterministic replay and proactive scanners on idle machines ([arXiv 2312.11805](https://arxiv.org/abs/2312.11805)).
+The same report credits redundant in-memory copies of model state, rather than periodic checkpoints, with raising goodput on its largest training job from 85% to 97%.
 Detection levers include:
 
 - Deterministic replay of a step on a different slice.
@@ -562,7 +593,7 @@ Use Workload Identity Federation for CI rather than exported keys (see [[17-Clou
 
 Create TPU VMs with `--internal-ips` so the hosts have no public addresses, and reach Google APIs through Private Google Access.
 Wrap the training and checkpoint buckets in a VPC Service Controls perimeter so that a compromised training host cannot copy weights to a foreign project.
-Whether the Cloud TPU API itself is a supported VPC-SC service should be confirmed in the VPC-SC supported products list (UNVERIFIED in this revision) (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]]).
+The Cloud TPU API (`tpu.googleapis.com`) is itself a GA VPC-SC supported service with no known limitations (VPC-SC supported products, as of 2026-11) (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]]).
 
 ### Tenant isolation through physical topology
 
@@ -574,7 +605,7 @@ That is a stronger isolation primitive than VLANs or encryption on a shared pack
 
 Checkpoints and datasets at rest in Cloud Storage can use CMEK through Cloud KMS with envelope encryption, where a per-object DEK is wrapped by a KEK (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Envelope Encryption]]).
 Model weights are the crown jewels, so a key-revocation runbook should exist before the first checkpoint lands.
-Confidential-computing support for TPU HBM contents was not verified, so do not assume memory encryption on the accelerator (UNVERIFIED).
+Confidential VM does not cover TPUs: the docs state that you cannot attach TPUs to Confidential VM instances, so do not assume memory encryption on the accelerator (Google Cloud docs, as of 2026-11).
 
 ### Unit-economics levers, in order of typical impact
 
@@ -584,7 +615,8 @@ Confidential-computing support for TPU HBM contents was not verified, so do not 
    Serving-optimized parts such as v6e, per the docs, versus training parts such as v5p and TPU7x.
    Paying for HBM capacity you do not use is waste.
 3. Capacity model.
-   Spot for preemption-tolerant work, committed use for steady fleets, and queued or flex-start provisioning for bursty training (UNVERIFIED current discount levels).
+   Spot for preemption-tolerant work, committed use for steady fleets, and queued or flex-start provisioning for bursty training.
+   For v5p, the listed rates against 4.20 USD on demand are 2.94 USD for a 1-year commitment or DWS Calendar Mode, 2.10 USD for DWS Flex-start and 1.89 USD for a 3-year commitment (Cloud TPU pricing, as of 2026-11).
 4. Spare-cube policy.
    Size jobs a few cubes below pod size, so restarts land on healthy hardware instead of waiting for repair.
 5. Checkpoint interval.
@@ -746,7 +778,7 @@ Suppose you rent instead. How do you structure capacity commitments across TPU a
 
 ### Question 7 (L7+ - Principal)
 
-At 8960 chips, silent data corruption and fail-stop faults are routine. Design the reliability architecture for a multi-week pre-training run, including the numbers you would put on the dashboard.
+At 6144 chips, the largest single v5p slice, silent data corruption and fail-stop faults are routine. Design the reliability architecture for a multi-week pre-training run, including the numbers you would put on the dashboard.
 
 #### Model Answer
 

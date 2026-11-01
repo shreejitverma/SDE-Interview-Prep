@@ -21,6 +21,24 @@ sources:
   - "https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/"
   - "https://aws.amazon.com/message/101925/"
   - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://aws.amazon.com/bedrock/agentcore/pricing/"
+  - "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/bedrock-agentcore-limits.html"
+  - "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-lifecycle-settings.html"
+  - "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-filesystem-configurations.html"
+  - "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/long-term-saving-and-retrieving-insights.html"
+  - "https://docs.aws.amazon.com/bedrock-agentcore-control/latest/APIReference/API_CodeInterpreterNetworkConfiguration.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/10/amazon-bedrock-agentcore-available"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/03/policy-amazon-bedrock-agentcore-generally-available/"
+  - "https://brooker.co.za/blog/2025/09/18/firecracker"
+  - "https://aws.amazon.com/cn/blogs/china/lambda-microvms-vs-bedrock-agentcore-ai-agent-development/"
+  - "https://docs.aws.amazon.com/step-functions/latest/dg/service-quotas.html"
+  - "https://docs.aws.amazon.com/step-functions/latest/dg/choosing-workflow-type.html"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html"
+  - "https://aws.amazon.com/dynamodb/pricing/on-demand/"
+  - "https://aws.amazon.com/security/security-bulletins/AWS-2025-015/"
+  - "https://www.theregister.com/2025/07/22/replit_saastr_response/"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/release-notes"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/build/runtime"
 ---
 
 # Agent Runtimes and Cloud Execution Environments
@@ -29,7 +47,7 @@ sources:
 
 The agent loop is a state machine whose transitions are decided by a model you cannot run the same way twice, so a durable agent runtime is a write-ahead log of model outputs and tool results, plus compute that is allowed to die.
 Managed runtimes isolate each user session in its own VM: Amazon Bedrock AgentCore Runtime gives each session a dedicated microVM that is terminated and memory-sanitized when the session ends (AWS docs, as of 2026-10), and Vertex AI Agent Engine bills Runtime and sandbox environments as metered vCPU and memory (Google Cloud pricing, as of 2026-10).
-Session compute is ephemeral by design (AgentCore caps a session at 8 hours and by default stops it after 15 idle minutes), so anything you cannot afford to lose must be written to an external log before you act on it (AWS ML blog, as of 2026-10).
+Session compute is ephemeral by design (AgentCore caps a session at 8 hours and by default stops it after 15 idle minutes), so anything you cannot afford to lose must be written to an external log before you act on it (AWS docs, as of 2026-10).
 To get exactly-once side effects from at-least-once tool execution, derive the idempotency key from the step's position in the log, never from a model-generated tool-call ID, and use fencing epochs to reject a stale executor.
 On cost, tokens usually make up more than 90 percent of the bill, runtime memory left resident during idle tails is the largest runtime line item, and the model's tokens-per-minute quota (not CPU) is the capacity limit that actually binds.
 
@@ -93,7 +111,7 @@ When a tool cannot be made idempotent (an email send, or a third-party API with 
 ### Execution isolation: microVMs, user-space kernels, and the session as the unit
 
 Each AgentCore Runtime session gets its own microVM with isolated compute, memory, and filesystem, and when the session completes the whole microVM is terminated and its memory sanitized (AWS docs, as of 2026-10).
-Third-party analyses describe these as Firecracker microVMs (UNVERIFIED against an AWS primary source as of 2026-10).
+AWS engineers describe these as Firecracker microVMs ([Marc Brooker, 2025-09-18](https://brooker.co.za/blog/2025/09/18/firecracker); [AWS China blog, 2026](https://aws.amazon.com/cn/blogs/china/lambda-microvms-vs-bedrock-agentcore-ai-agent-development/)), although the AgentCore developer guide itself says only "microVM" (as of 2026-10).
 Firecracker exposes a deliberately minimal virtio device model behind KVM and runs each VMM inside a jailer with seccomp filters ([Agache et al., Firecracker, NSDI 2020](https://www.usenix.org/conference/nsdi20/presentation/agache)); see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_04_Firecracker_MicroVM|Firecracker microVM]].
 Google's sandbox lineage is gVisor, a user-space kernel (the Sentry) that intercepts guest syscalls so that a container never talks to the host kernel directly; see [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_01_Hypervisors_MicroVMs_and_Sandboxing|Hypervisors, MicroVMs, and Sandboxing]].
 The two approaches trade off differently: a microVM puts a hardware virtualization boundary between tenants and costs guest-kernel memory, while gVisor has a smaller per-sandbox footprint and pays a syscall-interception tax on I/O-heavy code ([Anjali et al., Blending Containers and Virtual Machines, VEE 2020](https://dl.acm.org/doi/10.1145/3381052.3381315)).
@@ -102,19 +120,19 @@ Per-request isolation (classic Lambda) destroys the in-memory reasoning state an
 Per-tenant isolation lets one user's prompt-injected session read another user's scratch files inside the same tenant.
 Per-session isolation keeps warm state across turns and keeps the blast radius of one compromised conversation to that conversation.
 
-Session lifecycle on AgentCore: the client supplies a `runtimeSessionId`, later invocations with the same ID go to the same microVM, a session can live up to 8 hours, the compute shuts down on its own after `idleRuntimeSessionTimeout` (15 minutes by default, configurable), and `StopRuntimeSession` ends it immediately (AWS ML blog, as of 2026-10).
+Session lifecycle on AgentCore: the client supplies a `runtimeSessionId`, later invocations with the same ID go to the same microVM, a session can live up to 8 hours, the compute shuts down on its own after `idleRuntimeSessionTimeout` (900 seconds by default, configurable from 60 to 28,800 seconds on microVMs), and `StopRuntimeSession` ends it immediately (AWS docs, as of 2026-10).
 By default, data in memory or on the session's local disk lasts only as long as the session's compute (AWS docs, as of 2026-10).
-AWS also describes configurable storage mounts such as a `/mnt/workspace` path for filesystem persistence (AWS ML blog, as of 2026-10), but treat that as a convenience cache, not as your write-ahead log.
+AWS also offers managed session storage, a per-session mount such as `/mnt/workspace` that survives stop and resume, but it is in Preview, capped at 1 GB per session, reset after 14 days without invocation, and wiped on a runtime version update (AWS docs, as of 2026-10), so treat it as a convenience cache, not as your write-ahead log.
 
 ### Code execution sandboxes
 
 Running model-written code is a separate trust domain from running your agent code.
-On AWS, AgentCore Code Interpreter and AgentCore Browser are billed on the same active vCPU-hour and GB-hour meters as Runtime (AWS pricing, as of 2026-10).
+On AWS, AgentCore Code Interpreter and AgentCore Browser are billed at $0.0895 per vCPU-hour and $0.00945 per GB-hour, the same rates as Runtime v1 microVMs, with I/O wait and idle time free when no background process runs (AWS pricing, as of 2026-10).
 On Google Cloud, the Agent Engine pricing groups "Runtime and Sandbox environments, including Code Execution and Computer Use" under Agent Compute and Agent Memory (Google Cloud pricing, as of 2026-10).
 The parameter that matters most is network egress.
 A sandbox with public internet egress plus access to session data is an exfiltration channel: an indirect prompt injection in a retrieved document can tell the model to `requests.post` your data to an attacker's host ([Greshake et al., Not what you've signed up for, AISec 2023](https://arxiv.org/abs/2302.12173)).
 Default sandboxes to no egress, let data in through explicit file staging, and treat any sandbox with egress as internet-facing compute.
-AgentCore Code Interpreter's exact network-mode names and their GA status are UNVERIFIED as of 2026-10, so check the current CreateCodeInterpreter API reference before you depend on them.
+AgentCore Code Interpreter's `networkMode` accepts `PUBLIC`, `SANDBOX`, or `VPC` ([AWS API reference](https://docs.aws.amazon.com/bedrock-agentcore-control/latest/APIReference/API_CodeInterpreterNetworkConfiguration.html), as of 2026-10), so read the egress semantics of the mode you pick in the current developer guide before you depend on it.
 
 ### Tool integration plane
 
@@ -125,7 +143,7 @@ The cost below is not on any pricing page: every tool schema you expose is resen
 Take an illustrative 120 tools at about 250 tokens of JSON schema each: that is 30,000 input tokens of tool definitions per step before the user has said anything (author estimate, not a vendor number).
 Semantic tool search, which retrieves the top-k relevant tools per step, is therefore a token-cost and accuracy optimization, not just a convenience.
 It also changes failure behavior: if the tool index returns a stale or wrong top-k, the model cannot call the right tool and silently improvises instead.
-For agent-to-agent delegation, both clouds support the A2A protocol, and third-party sources report that AgentCore Runtime accepts both plain HTTP and A2A workloads (as of 2026-10, UNVERIFIED against AWS docs).
+For agent-to-agent delegation, AgentCore Runtime accepts HTTP, MCP, A2A, and AG-UI workloads, with A2A added at GA on 2025-10-13 (AWS docs and What's New, as of 2026-10), while A2A on Google's Agent Runtime is labeled Preview (Google Cloud docs, as of 2026-10).
 
 ### Bedrock Agents (managed orchestration) versus hosted runtimes
 
@@ -138,14 +156,15 @@ The built-in `AMAZON.CodeInterpreter` and `AMAZON.UserInput` parent action-group
 Session state travels as `sessionAttributes` (for your executor) and `promptSessionAttributes` (injected into the prompt), which makes them both a convenience and a prompt-injection surface if they carry user-controlled strings.
 AgentCore inverts this model: you bring any framework (Strands Agents, LangGraph, ADK, or custom code) in a container, and AWS supplies isolation, identity, memory, gateway, and observability as separable services.
 Google's equivalent split is ADK, an open-source framework, deployed to Vertex AI Agent Engine, which supplies runtime, Sessions, Memory Bank, and sandboxes.
-Recent third-party material says Google now markets this stack as the Gemini Enterprise Agent Platform and calls the runtime "Agent Runtime (formerly Agent Engine)" (UNVERIFIED against official docs as of 2026-10).
+Google's 2026-04-22 release notes fold Vertex AI and Agent Builder into Gemini Enterprise Agent Platform and rename Agent Engine to Agent Runtime, Sessions to Agent Platform Sessions, and Memory Bank to Agent Platform Memory Bank (Google Cloud release notes, as of 2026-10).
 This chapter uses "Agent Engine" for continuity, and the pricing page's "Gemini Enterprise Flexible Savings Plan" labels are consistent with the rebrand (Google Cloud pricing, as of 2026-10).
 
 ### Memory: short-term events and asynchronous long-term extraction
 
 Both clouds split memory into a short-term event log of the conversation and long-term records extracted from it.
 The extraction is an asynchronous, model-driven pipeline: a model reads the events, writes facts or summaries, and indexes them for retrieval.
-Long-term memory is therefore eventually consistent with the conversation, with a lag set by extraction-model latency and queueing; the exact SLOs on both clouds are UNVERIFIED as of 2026-10.
+Long-term memory is therefore eventually consistent with the conversation, with a lag set by extraction-model latency and queueing.
+AWS documents that it may take a minute or more for insights from a new conversation to become retrievable (AWS docs, as of 2026-10); Google's equivalent lag is UNVERIFIED as of 2026-10 (not stated in current docs).
 The practical consequence is a read-your-writes violation across sessions.
 A user states a preference, closes the tab, opens a new session ten seconds later, and the agent does not know it yet.
 If your product needs read-your-writes for certain facts (consent, opt-outs, allergies), write them synchronously to your own store and do not rely on extracted memory.
@@ -159,8 +178,8 @@ Tier 1 is a fine-grained event log per session (DynamoDB, Firestore, Spanner, or
 It records every model output and tool result, supports fencing, and gives you a replay debugger for free.
 Tier 2 is a coarse workflow engine (AWS Step Functions, Google Cloud Workflows, or Lambda durable functions) for long, human-in-the-loop processes.
 Examples are "draft contract, wait up to 5 days for legal approval via callback token, then send".
-Step Functions Standard workflows allow executions up to one year with exactly-once state transitions, while Express workflows are at-least-once and capped at five minutes (UNVERIFIED, not re-checked as of 2026-10).
-Do not run the inner agent loop as Step Functions states: a 40-step agent session with retries can exhaust the per-execution event-history limit, 25,000 events (UNVERIFIED as of 2026-10), and every iteration is billed as state transitions.
+Step Functions Standard workflows allow executions up to one year with exactly-once execution, while Express workflows are at-least-once when asynchronous (at-most-once when synchronous) and capped at five minutes (AWS docs, as of 2026-10).
+Do not run the inner agent loop as Step Functions states: a 40-step agent session with retries can exhaust the per-execution event-history limit, 25,000 events (AWS docs, as of 2026-10), and every iteration is billed as state transitions.
 Tier 3 is extracted long-term memory, which is a retrieval index, not a source of truth.
 The control plane and data plane split from [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]] applies directly.
 `bedrock-agentcore-control` (create runtime, versions, endpoints) is the control plane and `bedrock-agentcore` (InvokeAgentRuntime) is the data plane.
@@ -179,45 +198,46 @@ If you need cross-region continuation, replicate the log (DynamoDB global tables
 | Item | Value | Source and date |
 |---|---|---|
 | AgentCore Runtime isolation unit | One dedicated microVM per session; terminated and memory-sanitized at session end | (AWS docs, as of 2026-10) |
-| AgentCore Runtime max session lifetime | 8 hours | (AWS ML blog, as of 2026-10) |
-| AgentCore Runtime idle timeout default | 15 minutes, configurable via `idleRuntimeSessionTimeout` | (AWS ML blog, as of 2026-10) |
-| AgentCore Runtime price | $0.0895 per vCPU-hour, $0.00945 per GB-hour, per-second metering | (AWS pricing as reported by Caylent and Cloudburn, as of 2026-10) |
-| AgentCore CPU metering rule | CPU charged on active use only; I/O wait such as waiting on the model is not CPU-billed | (third-party analysis of AWS pricing, as of 2026-10) |
-| AgentCore Code Interpreter and Browser price | Same vCPU-hour and GB-hour rates as Runtime | (AWS pricing via Caylent, as of 2026-10) |
-| AgentCore Gateway price | $0.005 per 1,000 invocations; $0.025 per 1,000 searches; $0.02 per 100 indexed tools per month | (AWS pricing via Caylent, as of 2026-10) |
-| AgentCore Policy price | $0.000025 per authorization request; GA status UNVERIFIED | (Cloudburn calculator, as of 2026-10) |
+| AgentCore Runtime max session lifetime | 8 hours on microVMs (`maxLifetime` up to 28,800 s); up to 14 days on the Instances compute type | (AWS docs, as of 2026-10) |
+| AgentCore Runtime idle timeout default | 15 minutes (900 s), configurable via `idleRuntimeSessionTimeout` from 60 to 28,800 s on microVMs | (AWS docs, as of 2026-10) |
+| AgentCore Runtime concurrency quota | 5,000 active session workloads per account in us-east-1 and us-west-2, 2,500 in other Regions (adjustable); at most 2 vCPU and 8 GB per session | (AWS docs, as of 2026-10) |
+| AgentCore Runtime price | v1 microVMs: $0.0895 per vCPU-hour, $0.00945 per GB-hour; v2 consumption: $0.1276 per vCPU-hour, $0.0169 per GB-hour; per-second metering, 1-second minimum, 128 MB minimum memory | (AWS pricing, as of 2026-10) |
+| AgentCore CPU metering rule | CPU scales to zero during I/O wait (waiting on the model, tools, or databases); billing otherwise spans idle periods until session termination; v2 reclaims idle memory after 120 seconds | (AWS pricing, as of 2026-10) |
+| AgentCore Code Interpreter and Browser price | $0.0895 per vCPU-hour and $0.00945 per GB-hour, the same as Runtime v1 | (AWS pricing, as of 2026-10) |
+| AgentCore Gateway price | $0.005 per 1,000 invocations; $0.025 per 1,000 searches; $0.02 per 100 indexed tools per month | (AWS pricing, as of 2026-10) |
+| AgentCore Policy price | $0.000025 per authorization request; GA since 2026-03-03 | (AWS pricing and What's New, as of 2026-10) |
 | Vertex Agent Compute | $0.085 per vCPU-hour after the first 50 free vCPU-hours per month per account | (Google Cloud pricing, as of 2026-10) |
 | Vertex Agent Memory | $0.009 per GiB-hour after the first 100 free GiB-hours per month | (Google Cloud pricing, as of 2026-10) |
 | Vertex savings plan rates | Compute $0.0765 (1 year), $0.068 (3 years); Memory $0.0081 (1 year), $0.0072 (3 years) | (Google Cloud pricing, as of 2026-10) |
 | Vertex idle billing rule | Runtime idle time waiting for the next prompt between turns is not billed | (Google Cloud pricing, as of 2026-10) |
 | Vertex Agent Gateway | 1 Agent Compute vCPU-hour ($0.085) corresponds to 15,000 API calls, about $0.0057 per 1,000 | (Google Cloud pricing, as of 2026-10) |
-| Vertex Sessions and Memory Bank storage | $0.30 per GiB-month after 1 free GiB-month, under the structure effective 2026-09-01 | (third-party, as of 2026-10; UNVERIFIED on official page) |
-| Vertex rate history | $0.0864 per vCPU-hour from 2025-12-16, then $0.085 now; prior Sessions price $0.25 per 1,000 events | (third-party, as of 2026-10) |
-| Lambda max function timeout | 900 seconds | (AWS docs, long-standing; UNVERIFIED re-check 2026-10) |
-| Step Functions Standard max execution | 1 year; Express 5 minutes | (AWS docs; UNVERIFIED re-check 2026-10) |
-| Step Functions history limit | 25,000 events per execution | (AWS docs; UNVERIFIED re-check 2026-10) |
+| Vertex Sessions and Memory Bank storage | $0.30 per GiB-month (Agent Storage) after 1 free GiB-month, with Sessions and Memory Bank billed on this structure from 2026-09-01 | (Google Cloud pricing, as of 2026-10) |
+| Vertex rate history | Third-party reports list an earlier $0.0864 per vCPU-hour rate and a Sessions price of $0.25 per 1,000 events | (third-party, as of 2026-10; UNVERIFIED: not on the current official pricing page, and the 2025-12-16 effective date could not be confirmed) |
+| Lambda max function timeout | 900 seconds (Lambda Managed Instances allow 5,400 s for asynchronous and event source mapping invocations) | (AWS docs, as of 2026-10) |
+| Step Functions Standard max execution | 1 year; Express 5 minutes | (AWS docs, as of 2026-10) |
+| Step Functions history limit | 25,000 events per execution (Standard; Express is unlimited) | (AWS docs, as of 2026-10) |
 | Tool-schema token tax | About 250 tokens per tool schema times tools exposed per step | (author estimate, illustrative) |
 
-Pricing on the Google side changed at least three times between 2025-12 and 2026-09, so cost models must read rates from configuration, not constants.
+Pricing on both clouds changed repeatedly in 2026 (Google moved Agent Gateway billing onto Agent Compute from 2026-07-13 and Sessions and Memory Bank onto Agent Storage from 2026-09-01, and AWS added Runtime v2 rates alongside v1), so cost models must read rates from configuration, not constants.
 
 ## AWS vs GCP Mechanism Parity
 
 | Concern | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
 | Managed orchestration loop | Bedrock Agents: action groups, AWS-owned prompt templates, `RETURN_CONTROL`, multi-agent collaboration | Conversational Agents playbooks and ADK-built agents; no direct one-to-one with Bedrock Agents | Bedrock Agents hides the loop; you cannot fence or log intermediate steps yourself beyond trace output |
-| Bring-your-own-framework runtime | AgentCore Runtime: container, per-session microVM, `runtimeSessionId` affinity | Vertex AI Agent Engine (Agent Runtime): deploy ADK, LangGraph, or custom agents | AWS documents per-session microVM isolation; Google's per-session isolation primitive is not documented to the same depth (UNVERIFIED) |
-| Session lifecycle | 8-hour max, 15-minute idle default, `StopRuntimeSession` | Idle between turns not billed; max session duration UNVERIFIED | AWS idle tail can carry memory cost; Google bills active time only |
+| Bring-your-own-framework runtime | AgentCore Runtime: container, per-session microVM, `runtimeSessionId` affinity | Vertex AI Agent Engine (Agent Runtime): deploy ADK, LangGraph, or custom agents | AWS documents per-session microVM isolation; Google's per-session isolation primitive is not documented to the same depth (UNVERIFIED: not described in current Agent Runtime docs) |
+| Session lifecycle | 8-hour max on microVMs, 15-minute idle default, `StopRuntimeSession` | Idle between turns not billed; long-running operations up to 7 days since 2026-04-22; max interactive session duration UNVERIFIED (not stated in current docs) | AWS bills through idle periods until termination (v2 reclaims idle memory after 120 s); Google does not bill idle time between turns |
 | Code sandbox | AgentCore Code Interpreter, same meters as Runtime | Agent Engine Code Execution, on Agent Compute and Agent Memory meters | Network-mode semantics differ; verify egress defaults on each |
 | Browser or computer use | AgentCore Browser | Computer Use sandbox, on Agent Compute meters | Both are internet-facing by nature; isolate from session secrets |
 | Tool gateway | AgentCore Gateway: APIs and Lambda to MCP, semantic tool search | Agent Gateway (Agent-to-Anywhere), metered at 15,000 calls per vCPU-hour | AWS meters tool indexing separately; Google folds gateway into compute units |
-| Tool authorization policy | AgentCore Policy (Cedar-based per AWS announcements; status UNVERIFIED) | Semantic Governance Policies, natural-language constraints on tool calls, billing later in 2026 | Cedar is deterministic and analyzable; natural-language policy is model-evaluated and probabilistic |
-| Outbound identity | AgentCore Identity: OAuth token vault, user-delegated 3LO tokens | Service accounts plus agent identity features (exact GA scope UNVERIFIED) | Both aim to keep long-lived secrets out of agent code; audit which principal appears in downstream logs |
+| Tool authorization policy | AgentCore Policy (Cedar-based, GA since 2026-03-03) | Semantic Governance Policies, natural-language constraints on tool calls, billing later in 2026 | Cedar is deterministic and analyzable; natural-language policy is model-evaluated and probabilistic |
+| Outbound identity | AgentCore Identity: OAuth token vault, user-delegated 3LO tokens | Service accounts plus Agent Identity for Agent Runtime (exact GA scope UNVERIFIED: not labeled in current docs) | Both aim to keep long-lived secrets out of agent code; audit which principal appears in downstream logs |
 | Memory | AgentCore Memory: short-term events plus async long-term strategies | Agent Engine Sessions plus Memory Bank | Both are eventually consistent for long-term recall |
 | Coarse workflow and HITL | Step Functions callbacks (`.waitForTaskToken`), Lambda durable functions | Cloud Workflows callbacks | Neither should host the inner agent loop |
 | Event-log store with fencing | DynamoDB `TransactWriteItems` with `ConditionCheck` | Firestore transactions or Spanner read-write transactions | Spanner gives externally consistent multi-region fencing; DynamoDB global tables are asynchronously replicated last-writer-wins unless configured with multi-Region strong consistency |
 | Framework | Strands Agents (open source) | Agent Development Kit (open source) | Both deploy elsewhere; framework choice need not lock in the runtime |
-| Inter-agent protocol | MCP and A2A | MCP and A2A | Protocol parity is high; auth and policy parity is not |
-| Private networking | VPC-attached runtime and PrivateLink endpoints (endpoint coverage UNVERIFIED) | VPC Service Controls perimeter and PSC (Agent Engine coverage UNVERIFIED) | VPC SC is a perimeter on API calls; PrivateLink is a network path; see the Security section |
+| Inter-agent protocol | MCP and A2A | MCP and A2A (A2A in Preview on Agent Runtime) | Protocol parity is high; auth and policy parity is not |
+| Private networking | VPC mode and AWS PrivateLink for all AgentCore services since GA on 2025-10-13 | VPC Service Controls and PSC interfaces for Agent Runtime; VPC SC and PSC for sandboxes announced with the 2026-09-09 sandbox GA | VPC SC is a perimeter on API calls; PrivateLink is a network path; see the Security section |
 
 ## Worked Example: A Crash-Safe Agent Turn With Fencing and Log-Position Idempotency
 
@@ -500,8 +520,8 @@ rm -f /tmp/agent_wal.db
 
 SQLite mode costs 0 USD.
 DynamoDB on-demand mode costs well under 0.01 USD for these runs.
-Transactional writes consume double write units, and a few dozen requests at on-demand rates of roughly $0.625 per million write units round to zero (UNVERIFIED rate as of 2026-10).
-A Bedrock model call with under 1,000 tokens costs a fraction of a cent for most models (model-dependent, UNVERIFIED).
+Transactional writes consume double write units, and a few dozen requests at the on-demand rate of $0.625 per million write units in us-east-1 round to zero (AWS pricing, as of 2026-10).
+A Bedrock model call with under 1,000 tokens costs a fraction of a cent at typical list prices (for example, 1,000 tokens at $3 per million is $0.003; check the Bedrock pricing page for your model).
 
 ### Capacity and cost sizing for production
 
@@ -512,19 +532,21 @@ Each session runs in a 1 vCPU, 2 GB environment.
 Step 1, sessions: 10,000 x 3 = 30,000 sessions per day and 300,000 turns per day.
 Step 2, session lifetime: 10 turns x (20 s + 40 s) = 600 s of conversation, plus the 900 s default idle tail = 1,500 s.
 Step 3, peak concurrency by Little's law: the average arrival rate is 30,000 / 86,400 = 0.35 sessions per second, a 3x peak gives 1.04 per second, and L = 1.04 x 1,500 = 1,563 concurrent session microVMs.
-Calling `StopRuntimeSession` when the conversation ends cuts W to 600 s and L to 625, which matters against any concurrent-session quota (quota value UNVERIFIED as of 2026-10).
-Step 4, CPU: 300,000 turns x 2 s = 600,000 vCPU-seconds = 166.7 vCPU-hours per day, which is $14.92 on AgentCore at $0.0895 and $14.17 on Vertex at $0.085 before the free tier.
+Calling `StopRuntimeSession` when the conversation ends cuts W to 600 s and L to 625, which matters against the concurrent-session quota of 5,000 active session workloads per account in us-east-1 and us-west-2 and 2,500 in other Regions, adjustable (AWS docs, as of 2026-10).
+Step 4, CPU: AgentCore bills CPU only while it is active, so 300,000 turns x 2 s = 600,000 vCPU-seconds = 166.7 vCPU-hours per day, which is $14.92 at the v1 rate of $0.0895 ($21.27 at the v2 rate of $0.1276).
+Vertex bills the allocated vCPU and exempts only idle time between turns, so the whole 20 s turn counts: 300,000 x 20 s = 1,666.7 vCPU-hours per day, or $141.67 at $0.085 before the free tier (Google Cloud pricing, as of 2026-10).
 Step 5, memory, upper bound (memory billed for the whole session lifetime): 30,000 x 1,500 s x 2 GB = 25,000 GB-hours, which is $236 per day on AgentCore.
 Memory, lower bound (memory billed only during active turns): 300,000 x 20 s x 2 GB = 3,333 GB-hours, which is $31.50 per day on AgentCore and $30 per day on Vertex, where idle time between turns is documented as unbilled.
-Which bound applies on AWS depends on the memory-metering rule during idle, which is UNVERIFIED as of 2026-10, so instrument your bill before you trust either number.
+AWS pricing says Runtime billing spans idle periods until session termination and follows actual memory consumption, so on v1 the upper bound applies to whatever memory the process keeps resident (AWS pricing, as of 2026-10).
+On v2, idle memory is reclaimed after 120 seconds, so the 900 s tail shrinks to about 120 s: 30,000 x 720 s x 2 GB = 12,000 GB-hours, or $202.80 per day at $0.0169; instrument your bill before you trust any of these numbers.
 At the upper bound, shortening the idle timeout to 60 s and calling `StopRuntimeSession` at conversation end cuts memory to about 10,000 GB-hours, or $94.50 per day.
 Step 6, tokens: assume an average of 6,000 input tokens and 300 output tokens per model call, at illustrative list prices of $3 per million input and $15 per million output (parametric, not a specific model's verified price).
 Per turn: 12,000 x $3e-6 + 600 x $15e-6 = $0.036 + $0.009 = $0.045, so 300,000 turns cost $13,500 per day.
 With prompt caching that hits 80 percent of input at an illustrative 0.1x read price, input cost per turn drops to $0.036 x 0.28 = $0.010, and the daily total drops to about $5,700.
 Step 7, which constraint binds: the daily input volume is 300,000 x 12,000 = 3.6 billion tokens, or 2.5 million input tokens per minute on average and 7.5 million at the 3x peak.
 That tokens-per-minute figure, not vCPU, is the quota to negotiate first; see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_11_End_to_End_Latency_Throughput_and_Cost_Modeling|End-to-End Latency, Throughput, and Cost Modeling]].
-Step 8, event log: about 4 events per turn at about 4 write units each (transactional) is 4.8 million write units per day, a few dollars per day at on-demand rates (UNVERIFIED rate).
-Conclusion: runtime compute is 0.5 to 4 percent of total spend, the idle memory tail is the largest runtime lever, and context engineering plus caching is the largest lever overall.
+Step 8, event log: about 4 events per turn at about 4 write units each (transactional) is 4.8 million write units per day, or $3.00 per day at $0.625 per million on-demand write units (AWS pricing, as of 2026-10).
+Conclusion: runtime compute is roughly 0.3 to 4 percent of total spend (AgentCore v1 $46 to $251 per day, Vertex about $172 per day, against $5,700 to $13,500 of tokens), the idle memory tail is the largest runtime lever, and context engineering plus caching is the largest lever overall.
 
 ## Failure Modes and Pitfalls
 
@@ -576,8 +598,8 @@ See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_o
 ### Agent-specific incidents
 
 In July 2025, Replit's coding agent was publicly reported to have deleted a user's production database during a declared code freeze.
-That is the canonical example of an agent holding destructive credentials with no out-of-band approval gate (public reporting; details UNVERIFIED against a formal PIR).
-Also in July 2025, AWS published a security bulletin about a malicious prompt injected into a release of the Amazon Q Developer extension for VS Code (bulletin identifier and version details UNVERIFIED as of 2026-10).
+That is the canonical example of an agent holding destructive credentials with no out-of-band approval gate ([The Register, 2025-07-22](https://www.theregister.com/2025/07/22/replit_saastr_response/); Replit's CEO publicly called it unacceptable, but no formal PIR was published).
+Also in July 2025, AWS security bulletin AWS-2025-015 (CVE-2025-8217, published 2025-07-23) disclosed that version 1.84.0 of the Amazon Q Developer extension for VS Code shipped with injected code designed to call the Q Developer CLI, committed through an inappropriately scoped GitHub token in the project's CodeBuild configuration; it failed to execute because of a syntax error, and version 1.85.0 removed it ([AWS bulletin](https://aws.amazon.com/security/security-bulletins/AWS-2025-015/)).
 That incident shows that the agent's instructions are part of the software supply chain; see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_05_Software_Supply_Chain_Security_SLSA_and_Sigstore|Supply Chain Security]].
 
 ## Security and Cost Angles
@@ -603,7 +625,7 @@ Capability-separation designs such as CaMeL go further: a privileged planner nev
 Code sandboxes default to no egress, and browser sandboxes get no access to session secrets or internal networks.
 On AWS, attach runtimes to a VPC with interface endpoints for the model, the event log, and KMS, and add endpoint policies that pin access to your organization (`aws:PrincipalOrgID`, `aws:ResourceOrgID`); see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Data Perimeter]].
 On Google Cloud, place the agent project inside a VPC Service Controls perimeter with the Vertex AI and storage APIs restricted, so that a stolen token cannot copy data into an attacker's project; see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]].
-Agent Engine coverage under VPC SC and private connectivity options is UNVERIFIED as of 2026-10.
+Google documents VPC Service Controls support and Private Service Connect interfaces for Agent Runtime, and announced VPC SC and PSC for Agent Platform sandboxes with their 2026-09-09 GA release (Google Cloud docs and release notes, as of 2026-10).
 
 ### Encryption
 
@@ -691,7 +713,7 @@ Finance says your agent platform's runtime bill is three times the forecast whil
 #### Model Answer
 
 Tokens matching while runtime overshoots points to resource-residency time, not work.
-CPU on AgentCore is reported to be charged on active use, so waiting on the model is cheap on the CPU meter, but memory is allocated per session and the residency rule during idle is what I would verify first on the bill.
+AWS pricing says AgentCore CPU scales to zero during I/O wait, so waiting on the model is cheap on the CPU meter, but billing spans idle periods until termination, so memory a session keeps resident during idle is what I would verify first on the bill (AWS pricing, as of 2026-10).
 The default 15-minute idle timeout means a 10-minute conversation can stay resident for 25 minutes.
 At 30,000 sessions a day, 2 GB, and a 1,500-second lifetime, the upper bound is 25,000 GB-hours, or about $236 per day, against about $32 if only active turns are billed.
 That gap is the same order as the overshoot.
@@ -758,7 +780,7 @@ Workflow engines give durable, exactly-once transitions for deterministic state 
 An agent loop's structure is decided at runtime by a nondeterministic model, its step count is unbounded, and each step's payload (the whole conversation) grows.
 Mapping each model step to a workflow state creates three problems.
 First, cost per transition multiplied by steps per session per day.
-Second, per-execution history limits (25,000 events on Step Functions Standard, UNVERIFIED as of 2026-10) that long sessions can hit, which forces continue-as-new.
+Second, per-execution history limits (25,000 events on Step Functions Standard, per AWS docs as of 2026-10) that long sessions can hit, which forces continue-as-new.
 Third, payload limits, which push conversation state into external storage anyway, so you end up with a log store regardless.
 Workflow engines are the right tool one level up, for durable business processes with human approval, multi-day waits, and compensation: draft, wait for an approval callback, execute, reconcile.
 My recommendation is a two-tier design.

@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/legacy/event/osdi06/tech/chang/chang.pdf"
@@ -18,6 +18,26 @@ sources:
   - "https://cloud.google.com/bigtable/docs/editions-overview"
   - "https://www.usenix.org/conference/atc22/presentation/elhemali"
   - "https://aws.amazon.com/message/5467D2/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://cloud.google.com/bigtable/pricing"
+  - "https://docs.cloud.google.com/bigtable/docs/release-notes"
+  - "https://docs.cloud.google.com/bigtable/docs/autoscaling"
+  - "https://docs.cloud.google.com/bigtable/docs/garbage-collection"
+  - "https://docs.cloud.google.com/bigtable/docs/in-memory-overview"
+  - "https://docs.cloud.google.com/bigtable/docs/tiered-storage"
+  - "https://docs.cloud.google.com/bigtable/docs/data-boost-overview"
+  - "https://docs.cloud.google.com/bigtable/docs/cmek"
+  - "https://docs.cloud.google.com/bigtable/docs/access-control"
+  - "https://docs.cloud.google.com/bigtable/docs/delete-data"
+  - "https://docs.cloud.google.com/bigtable/docs/hot-tablets"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/bigtable/instances/create"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/billing/budgets/create"
+  - "https://www.pdsw.org/pdsw-discs17/slides/PDSW-DISCS-Google-Keynote.pdf"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Constraints.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/burst-adaptive-capacity.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/multi-region-strong-consistency-gt.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/06/amazon-dynamo-db-global-tables-multi-region-strong-consistency-generally-available/"
 ---
 
 # Cloud Bigtable: LSM Storage and Tablet Serving
@@ -68,27 +88,27 @@ The schema is the sharding function.
 ### Lineage and data model
 
 Cloud Bigtable is the external productization of the system described in [Chang et al., "Bigtable: A Distributed Storage System for Structured Data", OSDI 2006](https://www.usenix.org/legacy/event/osdi06/tech/chang/chang.pdf).
-The paper's term "tablet server" corresponds to what Cloud Bigtable calls a node (Google Cloud docs, as of 2026-10).
+The paper's term "tablet server" corresponds to what Cloud Bigtable calls a node (Google Cloud docs, as of 2026-11).
 The storage engine is a log-structured merge design in the tradition of [O'Neil et al., "The Log-Structured Merge-Tree", Acta Informatica 1996](https://www.cs.umb.edu/~poneil/lsmtree.pdf).
 Mutations accumulate in memory and are written out as sorted immutable runs, which background compaction merges.
-The data model is a sparse map: an absent column costs nothing, and a table can have millions of columns as long as no single row exceeds the 256 MB hard limit (Google Cloud docs, as of 2026-10).
+The data model is a sparse map: an absent column costs nothing, and a table can have millions of columns as long as no single row exceeds the 256 MB hard limit (Google Cloud docs, as of 2026-11).
 Atomicity covers one row only.
 Every mutation to a single row key is atomic, and there are no multi-row transactions.
 Conditional single-row operations (CheckAndMutate and ReadModifyWrite) are the only read-modify-write primitives.
-They are forbidden under multi-cluster routing, because they would conflict across clusters (Google Cloud docs, as of 2026-10).
+They are forbidden under multi-cluster routing, because they would conflict across clusters (Google Cloud docs, as of 2026-11).
 Column families group columns for administrative purposes and for GC policy.
-Family names travel with every request, which is why the docs ask for short names (Google Cloud docs, as of 2026-10).
+Family names travel with every request, which is why the docs ask for short names (Google Cloud docs, as of 2026-11).
 The paper also describes locality groups: column families stored together in separate SSTables so that scans can skip unrelated families.
 Cloud Bigtable does not expose locality groups as a configuration knob, so treat the concept as background rather than an API.
 
 ### Control plane versus data plane
 
 The data plane is frontend servers plus nodes.
-All client requests enter through a frontend server pool, which forwards each request to the node that currently owns the tablet covering the key (Google Cloud docs, as of 2026-10).
+All client requests enter through a frontend server pool, which forwards each request to the node that currently owns the tablet covering the key (Google Cloud docs, as of 2026-11).
 This differs from HBase, where thick clients cache region locations and talk to region servers directly.
 In Bigtable a stale location becomes a frontend-side reroute, not a client-visible error storm.
 The control plane in each zone is a primary process that balances workload and data volume within the cluster.
-It splits busier or larger tablets in half, merges less-accessed or smaller tablets, and moves tablets between nodes (Google Cloud docs, as of 2026-10).
+It splits busier or larger tablets in half, merges less-accessed or smaller tablets, and moves tablets between nodes (Google Cloud docs, as of 2026-11).
 In the 2006 design, the master relies on Chubby, a Paxos-replicated lock service, for several things:
 - master election;
 - tablet-server liveness, because each tablet server holds an exclusive lock on a file in a servers directory;
@@ -106,7 +126,7 @@ The sequence for a write is:
 3. The node appends the mutation to the commit log.
 4. The node inserts it into the tablet's MemTable, a sorted in-memory buffer.
 5. The node acknowledges.
-In Cloud Bigtable, all writes are stored in Colossus's shared log as soon as Bigtable acknowledges them (Google Cloud docs, as of 2026-10).
+In Cloud Bigtable, all writes are stored in Colossus's shared log as soon as Bigtable acknowledges them (Google Cloud docs, as of 2026-11).
 The acknowledgement is therefore durable before any SSTable exists.
 The paper explains why the log is shared rather than per tablet.
 One log per tablet would mean many concurrent files and many disk seeks on the underlying filesystem.
@@ -116,7 +136,7 @@ When a MemTable reaches a size threshold, the node freezes it, opens a new MemTa
 The paper calls this a minor compaction.
 It does two things: it bounds memory, and it bounds how much log must be replayed if the node dies.
 This write path explains the HDD numbers in the table below.
-On HDD storage, writes cost about the same as on SSD (up to 10,000 rows/s per node versus 14,000 on SSD), while point reads collapse to about 500 rows/s per node (Google Cloud docs, as of 2026-10).
+On HDD storage, writes cost about the same as on SSD (up to 10,000 rows/s per node versus 14,000 on SSD), while point reads collapse to about 500 rows/s per node (Google Cloud docs, as of 2026-11).
 Writes are sequential appends to the log and the SSTables.
 Reads need random block fetches from SSTables.
 
@@ -144,11 +164,12 @@ Only a major compaction can drop deletion markers together with the data they su
 A delete therefore writes data first.
 It appends a tombstone, and space is reclaimed only when a later compaction covers both the tombstone and the shadowed cells.
 GC policies (max versions, max age, and unions or intersections of the two) are enforced the same lazy way, during compaction.
-Cells that already violate the policy can still be returned until compaction removes them.
+Cells that already violate the policy can still be returned until compaction removes them, which can take up to a week (Google Cloud docs, as of 2026-11).
 So a read that depends on the policy, such as "latest version only", must also apply a read filter, for example a cells-per-column limit.
 For mass deletion of a key prefix, use the admin DropRowRange operation rather than millions of per-row deletes.
+On replicated instances it can take a long time to complete, because of increased replication latency and CPU usage (Google Cloud docs, as of 2026-11).
 Per-row deletes create a dense band of tombstones that later scans must step over.
-On replicated instances, changing a GC policy has extra restrictions, which the replication docs call out (Google Cloud docs, as of 2026-10).
+On replicated instances, changing a GC policy has extra restrictions, which the replication docs call out (Google Cloud docs, as of 2026-11).
 
 ### Tablet split mechanics: the protocol the docs do not show you
 
@@ -168,8 +189,8 @@ Moving a tablet uses a two-step flush that keeps the unavailability window small
 3. The destination loads the tablet with no log recovery at all (Chang et al., OSDI 2006).
 Cloud Bigtable adds disaggregation on top of this.
 Tablets sit on Colossus in the same zone as the nodes, and a node holds only pointers.
-Rebalancing therefore updates pointers, node failure loses no data, and recovery migrates only metadata (Google Cloud docs, as of 2026-10).
-After a resize, balancing under load typically takes a few minutes (Google Cloud docs, as of 2026-10).
+Rebalancing therefore updates pointers, node failure loses no data, and recovery migrates only metadata (Google Cloud docs, as of 2026-11).
+The overview says balancing after a resize takes just a few minutes under load, while the performance guide warns that after autoscaling adds nodes it can take up to 20 minutes under load before performance significantly improves (Google Cloud docs, as of 2026-11).
 The hard constraint is that split points are row keys.
 The splitter can cut between two rows but never inside one.
 One hot row, or a 256 MB row, is a single-node problem regardless of cluster size.
@@ -193,7 +214,7 @@ Colossus succeeded GFS as Google's cluster filesystem.
 GFS had a single master as its metadata bottleneck.
 Colossus keeps metadata in a scalable database: Curators store file metadata in Bigtable, and D file servers hold the data ([Google Cloud blog, "A peek behind Colossus"](https://cloud.google.com/blog/products/storage-data-transfer/a-peek-behind-colossus-googles-file-system)).
 The recursion is deliberate.
-Bigtable stores its SSTables on Colossus, and Colossus stores its metadata in a Bigtable, which in turn sits on a smaller Colossus anchored in Chubby.
+Bigtable stores its SSTables on Colossus, and Colossus stores its metadata in a Bigtable, which in turn sits on a smaller Colossus, with the recursion small enough to end in Chubby ([Serenyi, "Cluster-Level Storage @ Google", PDSW-DISCS 2017 keynote](https://www.pdsw.org/pdsw-discs17/slides/PDSW-DISCS-Google-Keynote.pdf)).
 For a Bigtable user, Colossus durability and erasure coding sit below the database.
 Bigtable does not replicate tablets inside a cluster, because the filesystem already provides durability.
 Replicas exist only across clusters.
@@ -202,16 +223,18 @@ See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_09_Cloud_Storage_a
 ### Replication topology and consistency
 
 An instance contains one or more clusters.
-Each cluster is a set of nodes in one zone with its own tablets on that zone's storage (Google Cloud docs, as of 2026-10).
-Replication between clusters is asynchronous and eventually consistent by default (Google Cloud docs, as of 2026-10).
+Each cluster is a set of nodes in one zone with its own tablets on that zone's storage (Google Cloud docs, as of 2026-11).
+Replication between clusters is asynchronous and eventually consistent by default (Google Cloud docs, as of 2026-11).
 A cell is identified by (row key, family, qualifier, timestamp).
-If two clusters write the same cell, replication keeps a single value using last-write-wins ([Bigtable replication GA announcement](https://groups.google.com/g/google-cloud-bigtable-discuss/c/C_VjBZd4CBI)).
+If two writes with the exact same four-tuple reach different clusters, Bigtable resolves the conflict with an internal last-write-wins algorithm based on server-side time, and all clusters converge on the same value ([Bigtable replication overview](https://cloud.google.com/bigtable/docs/replication-overview), as of 2026-11).
 Routing is a client-side contract expressed as an app profile:
-- Single-cluster routing gives read-your-writes for that workload (Google Cloud docs, as of 2026-10).
-- Multi-cluster routing sends each request to the nearest available cluster and fails over automatically. How fast failover happens depends on the request deadline (Google Cloud docs, as of 2026-10).
-- Row-affinity ("sticky") routing raises the read-your-writes rate under multi-cluster routing for single-row workloads (Google Cloud docs, as of 2026-10).
+- Single-cluster routing gives read-your-writes for that workload (Google Cloud docs, as of 2026-11).
+- Multi-cluster routing sends each request to the nearest available cluster and fails over automatically. How fast failover happens depends on the request deadline (Google Cloud docs, as of 2026-11).
+- Row-affinity ("sticky") routing raises the read-your-writes rate under multi-cluster routing for single-row workloads (Google Cloud docs, as of 2026-11).
 The precise consequence: under multi-cluster routing, a write acknowledged by cluster A but not yet replicated is invisible to a reader that failed over to cluster B.
-If cluster B also accepts a conflicting write, one of the two is silently discarded by timestamp.
+If cluster B also accepts a conflicting write, the outcome depends on the timestamps.
+With the same four-tuple, last-write-wins on server-side time silently keeps one value.
+With different timestamps, both cells survive as versions, a latest-value read returns only the newest, and a max-versions GC policy later removes the older one.
 Compare this with Spanner's TrueTime-based external consistency in [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_10_Cloud_Spanner_TrueTime_and_External_Consistency|Cloud Spanner]].
 
 ### Failure domains
@@ -226,46 +249,46 @@ Compare this with Spanner's TrueTime-based external consistency in [[17-Cloud-AI
 
 ### Editions and storage tiers in 2026
 
-The Bigtable editions feature reached GA on 2026-04-22 with two tiers, Enterprise and Enterprise Plus (Google Cloud release notes, as of 2026-10).
-Instances created before editions launched are classified as Enterprise automatically (Google Cloud docs, as of 2026-10).
+The Bigtable editions feature reached GA on 2026-04-22 with two tiers, Enterprise and Enterprise Plus (Google Cloud release notes, as of 2026-11).
+Instances created before editions launched are classified as Enterprise automatically (Google Cloud docs, as of 2026-11).
 Enterprise Plus adds:
-- an in-memory tier for sub-millisecond point reads, which is in Preview and available only on SSD clusters;
-- tiered storage up to 64 TB per node instead of 32 TB, also in Preview;
-- Data Boost reads from tiered storage and HDD clusters, which is GA (Google Cloud docs and release notes, as of 2026-10).
+- an in-memory tier for sub-millisecond point reads, which is in Preview, requires SSD storage, and accepts only single-cluster app profiles;
+- tiered storage up to 64 TB per node instead of 32 TB, where tiered storage itself is in Preview in both editions;
+- Data Boost reads from tiered storage and HDD clusters, which is GA (Google Cloud docs and release notes, as of 2026-11).
 Do not design a production SLO around the in-memory tier or tiered storage while they remain Preview.
 
 ## Numbers to Know
 
 | Quantity | Value | Source |
 | --- | --- | --- |
-| SSD node throughput, 1 KB rows | up to 17,000 reads/s or 14,000 writes/s or 220 MBps scan | (Google Cloud docs, as of 2026-10) |
-| HDD node throughput | up to 500 reads/s or 10,000 writes/s or 180 MBps scan | (Google Cloud docs, as of 2026-10) |
-| Infrequent access tier throughput | up to 100 reads/s or 10,000 writes/s or 36 MBps scan | (Google Cloud docs, as of 2026-10) |
-| In-memory tier (Preview, Enterprise Plus) | 40,000 rows/s per increment, up to 120,000 reads/s per node, 8 GB per node | (Google Cloud docs, as of 2026-10) |
-| Linear scaling example | 10 SSD nodes ~ 170,000 reads/s or 140,000 writes/s | (Google Cloud docs, as of 2026-10) |
-| Storage per node, SSD | 5 TB (TiB) | (Google Cloud docs, as of 2026-10) |
-| Storage per node, HDD | 16 TB | (Google Cloud docs, as of 2026-10) |
-| Storage per node, SSD with tiered storage | 32 TB Enterprise, 64 TB Enterprise Plus, max 5 TB of it SSD | (Google Cloud docs, as of 2026-10) |
-| Recommended storage headroom | use about 70% of the per-node limit | (Google Cloud docs, as of 2026-10) |
-| Autoscaling default storage target | 50%, i.e. 2.5 TB SSD and 8 TB HDD per node | (Google Cloud docs, as of 2026-10) |
-| Autoscaling max/min ratio | max nodes no more than 10x min nodes, hard limit | (Google Cloud docs, as of 2026-10) |
-| Row key | 4 KB hard | (Google Cloud docs, as of 2026-10) |
-| Cell value | 10 MB recommended, 100 MB hard | (Google Cloud docs, as of 2026-10) |
-| Row | 100 MB recommended, 256 MB hard | (Google Cloud docs, as of 2026-10) |
-| Single mutation | 200 MB hard | (Google Cloud docs, as of 2026-10) |
-| Column qualifier | 16 KB recommended | (Google Cloud docs, as of 2026-10) |
-| Column families per table | about 100 recommended | (Google Cloud docs, as of 2026-10) |
-| Tables per instance | 1,000 | (Google Cloud docs, as of 2026-10) |
-| Rebalance after resize | typically a few minutes under load | (Google Cloud docs, as of 2026-10) |
-| Node price, us-central1 | from $0.65/node-hour Enterprise, $0.85/node-hour Enterprise Plus | (Google Cloud pricing, as of 2026-10) |
-| Storage price | from $0.17/GB-month SSD, $0.026/GB-month HDD and infrequent access, billed per replica | (Google Cloud pricing, as of 2026-10) |
-| In-memory tier price | from $0.20 per 40,000 rows/s capacity increment | (Google Cloud pricing, as of 2026-10) |
-| Enterprise Plus backup retention | up to 365 days | (Google Cloud release notes, as of 2026-10) |
+| SSD node throughput, 1 KB rows | up to 17,000 reads/s or 14,000 writes/s or 220 MBps scan | (Google Cloud docs, as of 2026-11) |
+| HDD node throughput | up to 500 reads/s or 10,000 writes/s or 180 MBps scan | (Google Cloud docs, as of 2026-11) |
+| Infrequent access tier throughput (Preview, tiered storage) | up to 100 reads/s or 10,000 writes/s or 36 MBps scan | (Google Cloud docs, as of 2026-11) |
+| In-memory tier (Preview, Enterprise Plus) | 40,000 reads/s per node included, scaling in 40,000 increments to 120,000 reads/s, or up to 10,000 writes/s, 8 GB per node | (Google Cloud docs, as of 2026-11) |
+| Linear scaling example | 10 SSD nodes: up to 140,000 rows/s read-only or write-only as the docs state it (the 17,000 reads/s table figure would extrapolate to 170,000), about 1.2 million reads/s with the in-memory tier | (Google Cloud docs, as of 2026-11) |
+| Storage per node, SSD | 5 TB (TiB) | (Google Cloud docs, as of 2026-11) |
+| Storage per node, HDD | 16 TB | (Google Cloud docs, as of 2026-11) |
+| Storage per node, SSD with tiered storage (Preview) | 32 TB Enterprise, 64 TB Enterprise Plus, max 5 TB of it SSD | (Google Cloud docs, as of 2026-11) |
+| Recommended storage headroom | use about 70% of the per-node limit | (Google Cloud docs, as of 2026-11) |
+| Autoscaling default storage target | 50%, i.e. 2.5 TB SSD and 8 TB HDD per node | (Google Cloud docs, as of 2026-11) |
+| Autoscaling max/min ratio | max nodes no more than 10x min nodes, hard limit | (Google Cloud docs, as of 2026-11) |
+| Row key | 4 KB hard | (Google Cloud docs, as of 2026-11) |
+| Cell value | 10 MB recommended, 100 MB hard | (Google Cloud docs, as of 2026-11) |
+| Row | 100 MB recommended, 256 MB hard | (Google Cloud docs, as of 2026-11) |
+| Single mutation | 200 MB hard | (Google Cloud docs, as of 2026-11) |
+| Column qualifier | 16 KB recommended | (Google Cloud docs, as of 2026-11) |
+| Column families per table | about 100 recommended | (Google Cloud docs, as of 2026-11) |
+| Tables per instance | 1,000 | (Google Cloud docs, as of 2026-11) |
+| Rebalance after resize | a few minutes under load per the overview, up to 20 minutes under load before performance significantly improves per the performance guide | (Google Cloud docs, as of 2026-11) |
+| Node price, us-central1 | from $0.65/node-hour Enterprise, $0.85/node-hour Enterprise Plus | (Google Cloud pricing, as of 2026-11) |
+| Storage price | from $0.17/GiB-month SSD, $0.026/GiB-month HDD and infrequent access, billed per replica | (Google Cloud pricing, as of 2026-11) |
+| In-memory tier price | base 40,000 reads/s included in the node price, then a node SKU multiplier of 1.235 at 80,000 and 1.471 at 120,000, about $0.20/node-hour per added increment on $0.85 | (Google Cloud pricing, as of 2026-11) |
+| Enterprise Plus backup retention | up to 365 days | (Google Cloud release notes, as of 2026-11) |
 | Paper: default tablet size | ~100-200 MB | (Chang et al., OSDI 2006) |
 | Paper: SSTable block size | 64 KB default, configurable | (Chang et al., OSDI 2006) |
 | Paper: METADATA addressing | 128 MB METADATA tablets address 2^34 tablets | (Chang et al., OSDI 2006) |
-| DynamoDB item size | 400 KB | (AWS docs, UNVERIFIED as of 2026-10) |
-| DynamoDB per-partition ceiling | 3,000 RCU and 1,000 WCU | (AWS docs, UNVERIFIED as of 2026-10) |
+| DynamoDB item size | 400 KB | (AWS docs, as of 2026-11) |
+| DynamoDB per-partition ceiling | 3,000 RCU and 1,000 WCU | (AWS docs, as of 2026-11) |
 
 The read, write, and scan figures in each throughput row are alternatives, not additive.
 A node doing 7,000 writes/s has roughly half its write budget left, not 17,000 reads/s of read budget.
@@ -280,9 +303,9 @@ A node doing 7,000 writes/s has roughly half its write budget left, not 17,000 r
 | Intra-cluster replication | None at database layer, filesystem provides durability | Multi-Paxos replication group of three across AZs per partition (ATC 2022) | Delegated to S3 for HFiles |
 | Failure domain of one replica set | One zone per cluster | One region, spans three AZs | One EMR cluster, typically one AZ |
 | Split trigger | Primary process splits by load or size, merges cold ranges | Split for size and split for consumption (ATC 2022) | Region split policy by size, manual or balancer |
-| Split granularity floor | One row key | One partition key value (item collections) | One row key |
+| Split granularity floor | One row key | One item: adaptive capacity can isolate a single item and segment an item collection by sort key, except with a local secondary index or monotonic sort-key traffic (AWS docs, as of 2026-11) | One row key |
 | Single-cluster consistency | Strong per row | Eventually consistent reads by default, strongly consistent reads optional from the leader | Strong per row |
-| Cross-replica consistency | Async multi-cluster, LWW per cell | Global tables multi-active with LWW; a multi-Region strong consistency mode exists (status UNVERIFIED as of 2026-10) | Async HBase replication |
+| Cross-replica consistency | Async multi-cluster, LWW per cell | Global tables default to multi-Region eventual consistency with last-writer-wins; multi-Region strong consistency has been GA since June 2025 and requires exactly three Regions (AWS docs, as of 2026-11) | Async HBase replication |
 | Transactions | Single-row CheckAndMutate and ReadModifyWrite, not under multi-cluster routing | Multi-item TransactWriteItems and TransactGetItems | Single-row |
 | Capacity unit | Nodes, which pay for CPU; storage billed separately | RCU/WCU provisioned or on-demand per request | EC2 instance-hours plus S3 |
 | Hotspot tooling | Key Visualizer, hot tablets listing | CloudWatch Contributor Insights | HBase UI and region metrics |
@@ -309,9 +332,9 @@ That spreads writes across buckets while keeping every device's history contiguo
 
 ### Cost estimate and budget guardrail
 
-A one-node SSD Enterprise cluster in us-central1 lists from $0.65/node-hour (Google Cloud pricing, as of 2026-10).
+A one-node SSD Enterprise cluster in us-central1 lists from $0.65/node-hour (Google Cloud pricing, as of 2026-11).
 A two-hour lab costs about 2 x $0.65 = $1.30 in node time.
-Storage is a few MB at $0.17/GB-month, which rounds to less than $0.01.
+Storage is a few MB at $0.17/GiB-month, which rounds to less than $0.01.
 The hard requirement is teardown, because an idle one-node cluster still costs about $0.65 x 730 = $475/month.
 
 ```bash
@@ -452,7 +475,7 @@ The workload:
 - 40 TiB of physical data;
 - two clusters in two regions with multi-cluster routing.
 Step 1 is a per-node budget model.
-Treat the per-node figures as alternative budgets and blend them linearly: required node-equivalents = writes/14,000 + reads/17,000 (Google Cloud docs, as of 2026-10).
+Treat the per-node figures as alternative budgets and blend them linearly: required node-equivalents = writes/14,000 + reads/17,000 (Google Cloud docs, as of 2026-11).
 The linear blend is a planning approximation, not a documented formula.
 Step 2 is writes per cluster.
 Replicated writes must be applied by every cluster, so each cluster carries all 200,000 writes/s: 200,000 / 14,000 = 14.3 node-equivalents.
@@ -460,14 +483,15 @@ Step 3 is reads per cluster.
 In steady state, reads split by proximity at 25,000 per cluster, which is 1.5 node-equivalents.
 On failover, one cluster takes all 50,000, which is 2.9 node-equivalents.
 Step 4 is the failover ceiling.
-Size so that the failover state stays at or below 70% CPU: (14.3 + 2.9) / 0.70 = 24.6, rounded to 25 nodes per cluster.
+Size so that the failover state stays at or below 70% CPU, a planning choice between the documented maximums of 60% when optimizing for latency and 90% when optimizing for throughput (Google Cloud docs, as of 2026-11): (14.3 + 2.9) / 0.70 = 24.6, rounded to 25 nodes per cluster.
 Steady-state CPU is then (14.3 + 1.5) / 25 = 63%.
 Step 5 is the storage floor.
 40 TiB / (5 TiB x 0.70) = 11.4, rounded to 12 nodes per cluster, so CPU dominates and storage does not bind.
 Step 6 is the price.
-Nodes: 2 x 25 x $0.65 x 730 = $23,725/month (Google Cloud pricing, as of 2026-10).
-Storage: 40,960 GB x $0.17 x 2 replicas = $13,926/month.
-The subtotal is about $37,650/month, plus cross-region replication network charges at the published network rate, which this chapter does not state (UNVERIFIED).
+Nodes: 2 x 25 x $0.65 x 730 = $23,725/month (Google Cloud pricing, as of 2026-11).
+Storage: 40,960 GiB x $0.17 x 2 replicas = $13,926/month.
+The subtotal is about $37,650/month, plus cross-region replication network charges of $0.01/GiB between US regions, with higher rates elsewhere and no charge within one region (Google Cloud pricing, as of 2026-11).
+If 200,000 writes/s of 1 KB rows were sustained all month, a US region pair would replicate about 500,000 GiB for about $5,000/month before any compression, so treat that as an upper bound for this workload.
 Step 7 is a sanity check against HDD.
 50,000 reads/s / 500 reads/s per node = 100 nodes for reads alone, so HDD fails on CPU long before storage savings matter.
 Step 8 is the hidden assumption.
@@ -490,12 +514,12 @@ A query across all entities for one time window becomes a scatter-gather of N pr
 Global counters, a "config" row, and a celebrity user's row cannot be split, because split points are row keys.
 The ceiling is one node's CPU for that row, and ReadModifyWrite contention adds latency on top.
 Mitigations: shard the counter into K rows (`counter#00`..`counter#K-1`) and sum on read, or aggregate in a stream processor and write periodically.
-The Enterprise Plus in-memory tier (Preview) improves read hotspot resistance but does nothing for write hotspots (Google Cloud docs, as of 2026-10).
+The Enterprise Plus in-memory tier (Preview) improves read hotspot resistance but does nothing for write hotspots (Google Cloud docs, as of 2026-11).
 
 ### Fat rows and unbounded versions
 
 Wide rows that grow by appending a new qualifier per event drift toward the 100 MB recommended and 256 MB hard row limits.
-They also make every whole-row read pay for the entire row (Google Cloud docs, as of 2026-10).
+They also make every whole-row read pay for the entire row (Google Cloud docs, as of 2026-11).
 Columns without a GC policy accumulate versions, which inflates storage and read amplification.
 Because GC runs during compaction, old versions remain visible until compacted, so correctness must come from read filters, not from the policy.
 
@@ -509,15 +533,15 @@ Use DropRowRange for prefix deletes, and prefer time-to-live by GC policy over e
 
 A freshly created, unsplit table may begin with very few tablets, and load-based splits take minutes to converge.
 A five-minute load test against an empty table therefore measures the splitter, not the cluster.
-Autoscaling reacts to sustained CPU and storage signals, and after nodes are added, rebalancing takes a few more minutes (Google Cloud docs, as of 2026-10).
+Autoscaling reacts to CPU and storage signals, and after nodes are added, it can take up to 20 minutes under load before performance significantly improves (Google Cloud docs, as of 2026-11).
 Spikes shorter than that window must be absorbed by headroom.
-Because max nodes cannot exceed 10x min nodes, a cluster with min=1 cannot autoscale beyond 10 nodes during an incident (Google Cloud docs, as of 2026-10).
+Because max nodes cannot exceed 10x min nodes, a cluster with min=1 cannot autoscale beyond 10 nodes during an incident (Google Cloud docs, as of 2026-11).
 
 ### Batch scans on the serving cluster
 
 A full-table scan from a batch job competes for the same node CPU and block cache as user-facing point reads.
 Two isolation options exist:
-- a second cluster with a single-cluster-routing app profile for the batch traffic (Google Cloud docs, as of 2026-10);
+- a second cluster with a single-cluster-routing app profile for the batch traffic (Google Cloud docs, as of 2026-11);
 - Data Boost, which serves reads on serverless compute instead of cluster nodes.
 Running both workloads through one multi-cluster profile defeats both isolation mechanisms.
 
@@ -525,7 +549,7 @@ Running both workloads through one multi-cluster profile defeats both isolation 
 
 Under multi-cluster routing, a client that times out against cluster A retries in cluster B.
 Any write that A acknowledged but had not yet replicated is not visible there.
-If the application does read-then-write in B, last-write-wins will keep one of the conflicting cells and discard the other with no error (Google Cloud docs, as of 2026-10).
+If the application does read-then-write in B, the two writes conflict with no error: an identical four-tuple resolves by last-write-wins on server-side time, and different timestamps leave only the newest cell visible to latest-value reads (Google Cloud docs, as of 2026-11).
 This is how "counter decreased" and "lost cart item" bugs reach production.
 Retries amplify it: aggressive client deadlines cause faster failover, which causes more cross-cluster divergence windows (see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Retries, Jitter, and Circuit Breakers]]).
 
@@ -564,7 +588,8 @@ Use predefined roles at the narrowest resource that supports them:
 - `roles/bigtable.viewer` for metadata-only visibility;
 - `roles/bigtable.admin` reserved for the platform team.
 Grant data roles to workload identities on specific tables rather than at project level.
-Pin app profile usage per workload so that a compromised batch identity cannot silently use the serving profile.
+Keep one app profile per workload for routing and monitoring, but do not treat it as a security boundary.
+The access-control docs list IAM levels for project, instance, table, backup, authorized view, and continuous materialized view, with no per-app-profile data-access scope, so per these docs a data role does not restrict which profile an identity names (Google Cloud docs, as of 2026-11).
 Service account key governance and federation patterns are in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]].
 
 ### Encryption hierarchy
@@ -572,7 +597,7 @@ Service account key governance and federation patterns are in [[17-Cloud-AI-Engi
 Data at rest is encrypted by default with Google-managed keys.
 With CMEK, a Cloud KMS key encrypts the data encryption keys protecting the tablet files, which is envelope encryption.
 Disabling or destroying the key version makes the data unreadable, and that is both the compliance feature and a production outage vector.
-Each cluster's key must live in a KMS location compatible with that cluster's region (UNVERIFIED as of 2026-10).
+Each cluster's CMEK key must be in the same region as that cluster (Google Cloud docs, as of 2026-11).
 Key rotation, separation of duties, and the KMS availability dependency are covered in [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_15_Security_and_Confidential_Computing_Cloud_KMS|Cloud KMS]] and [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Envelope Encryption]].
 
 ### Network perimeter
@@ -587,10 +612,10 @@ Turn on Data Access audit logs deliberately, because their volume and cost scale
 ### Unit-economics levers
 
 - Nodes are paid for CPU. Fix hotspots before adding nodes, because a hotspot leaves paid nodes idle.
-- Storage is billed per replica at physical size (Google Cloud pricing, as of 2026-10), so every added cluster multiplies storage cost.
+- Storage is billed per replica at physical size (Google Cloud pricing, as of 2026-11), so every added cluster multiplies storage cost.
 - Short family names and qualifiers, client-side compression of large values, and strict GC policies reduce both stored bytes and per-request CPU.
-- HDD and infrequent access storage cost $0.026/GB-month versus $0.17 for SSD (Google Cloud pricing, as of 2026-10). They only make sense for scan-dominant or write-dominant data with rare point reads, given the 500 and 100 reads/s per node ceilings.
-- Committed use discounts apply to node spend for one or three years (Google Cloud docs, as of 2026-10). Exact discount percentages are UNVERIFIED here; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Commitment Discounts]].
+- HDD and infrequent access storage (the latter in Preview through tiered storage) cost $0.026/GiB-month versus $0.17 for SSD (Google Cloud pricing, as of 2026-11). They only make sense for scan-dominant or write-dominant data with rare point reads, given the 500 and 100 reads/s per node ceilings.
+- Committed use discounts apply to node spend for one or three years, at 20% and 40% off list: $0.52 and $0.39/node-hour Enterprise, $0.68 and $0.51/node-hour Enterprise Plus in us-central1, and they do not cover Data Boost (Google Cloud pricing, as of 2026-11). See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Commitment Discounts]].
 - Data Boost turns a scheduled analytics scan from always-on cluster capacity into per-use serverless spend, which usually beats keeping a second cluster sized for nightly scans.
 
 ## Interview Questions and Model Answers
@@ -675,7 +700,7 @@ Under multi-cluster routing, replication between clusters is asynchronous, and c
 During a blip the client's request deadline expires against region A and the request fails over to region B.
 Any write A acknowledged but had not yet replicated is not yet visible in B.
 The application reads the stale balance in B, computes a new value, and writes it.
-When replication catches up, one of the two cells wins by timestamp and the other increment disappears.
+When replication catches up, the increment is lost either way: an identical four-tuple keeps one value by last-write-wins on server-side time, and different timestamps leave only the newest cell visible to a latest-value read.
 That is a lost update, not a database bug.
 Bigtable also forbids CheckAndMutate and ReadModifyWrite under multi-cluster routing, precisely because they cannot be made safe there.
 I would offer three redesigns:

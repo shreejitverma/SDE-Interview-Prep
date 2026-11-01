@@ -18,6 +18,33 @@ sources:
   - "https://github.com/Netflix/concurrency-limits"
   - "https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/adaptive_concurrency_filter"
   - "https://kubernetes.io/docs/concepts/cluster-administration/flow-control/"
+  - "https://www.rfc-editor.org/rfc/rfc8289.txt"
+  - "https://arxiv.org/abs/1806.04075"
+  - "https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s11-bronson.pdf"
+  - "https://www.usenix.org/conference/osdi20/presentation/cho"
+  - "https://docs.kernel.org/networking/ip-sysctl.html"
+  - "https://blog.cloudflare.com/syn-packet-handling-in-the-wild/"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/scaling-behavior.html"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/lambda-managed-instances.html"
+  - "https://docs.aws.amazon.com/apigateway/latest/developerguide/limits.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/burst-adaptive-capacity.html"
+  - "https://docs.cloud.google.com/run/docs/about-concurrency"
+  - "https://docs.cloud.google.com/run/docs/troubleshooting"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/application-load-balancers.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/target-group-health-checks.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/target-group-register-targets.html"
+  - "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rule-statement-type-rate-based-high-level-settings.html"
+  - "https://docs.cloud.google.com/apigee/docs/api-platform/reference/policies/spike-arrest-policy"
+  - "https://docs.cloud.google.com/load-balancing/docs/backend-service"
+  - "https://cloud.google.com/blog/products/identity-security/how-it-works-the-novel-http2-rapid-reset-ddos-attack"
+  - "https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/"
+  - "https://raw.githubusercontent.com/kubernetes/kubernetes/master/staging/src/k8s.io/apiserver/pkg/server/filters/priority-and-fairness.go"
+  - "https://docs.aws.amazon.com/app-mesh/latest/userguide/what-is-app-mesh.html"
+  - "https://aws.amazon.com/message/12721/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-token-burndown.html"
+  - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/dynamic-shared-quota"
 ---
 
 # Load Shedding, Backpressure, and Admission Control
@@ -121,12 +148,12 @@ Adaptive limiters borrow from TCP congestion control.
 The Netflix [concurrency-limits](https://github.com/Netflix/concurrency-limits) library implements AIMD, Vegas, and gradient variants.
 Vegas-style limiters estimate queue size as `limit x (1 - minRTT / sampleRTT)` and shrink the limit when that estimate exceeds a threshold.
 Gradient limiters compute `gradient = minRTT / sampleRTT`, clamp it, and set `newLimit = limit x gradient + headroom`, with headroom around sqrt(limit) so the limit can grow when latency is flat.
-The Envoy [adaptive concurrency filter](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/adaptive_concurrency_filter) uses the same gradient idea and periodically re-measures minRTT.
-Those details are from the projects' documentation and source as I recall them and were not re-verified in this pass (see the UNVERIFIED list).
+That is the library's `GradientLimit`, which clamps the gradient to [0.5, 1.0] and defaults its queue allowance to a square-root function, while its `Gradient2Limit` replaces minRTT with a long-term average RTT and defaults the allowance to 4 ([source](https://github.com/Netflix/concurrency-limits), as of 2026-11).
+The Envoy [adaptive concurrency filter](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/adaptive_concurrency_filter) uses the same gradient idea as `gradient = (minRTT + B) / sampleRTT`, pins headroom to sqrt(limit), and periodically re-measures minRTT (Envoy docs, as of 2026-11).
 
 The mechanism that getting-started guides skip is how the minRTT baseline is obtained and how it goes wrong.
 
-- A gradient controller needs a true unloaded latency. Envoy obtains it by periodically dropping the limit to a tiny value for a measurement window, which is a deliberate, jittered, self-inflicted brownout.
+- A gradient controller needs a true unloaded latency. Envoy obtains it by periodically dropping the limit to a tiny value (`min_concurrency`, 3 by default) for a measurement window, which is a deliberate, jittered, self-inflicted brownout that the docs warn can produce a noticeable increase in 503s.
 - Mixed request classes poison the baseline. If minRTT is sampled from cheap requests and sampleRTT from expensive ones, the gradient stays below 1 permanently and the limit decays toward its floor, rejecting even cheap requests. Run one limiter per cost class or route.
 - Latency is shared with the dependency. A slow downstream shrinks the limit for requests that never touch it.
 - CFS CPU throttling in containers inflates latency in 100 ms scheduler quanta and looks like overload to the limiter.
@@ -139,7 +166,7 @@ CoDel (Nichols and Jacobson, "Controlling Queue Delay", [ACM Queue 2012](https:/
 It distinguishes a good queue (absorbs a burst, drains within an interval) from a bad queue (never drains) by tracking the minimum sojourn time over a sliding interval.
 If the minimum stays above `target` for a full `interval`, CoDel enters a dropping state.
 Drops then occur at times `t_next = t_prev + interval / sqrt(count)`, so the drop rate ramps up the longer the queue stays bad.
-The paper's defaults are target 5 ms and interval 100 ms, derived from Internet round-trip times, and both must be rescaled for an RPC service with a 50 ms service time.
+The defaults are target 5 ms and interval 100 ms ([RFC 8289](https://www.rfc-editor.org/rfc/rfc8289.txt), as of 2026-11), derived from Internet round-trip times, and both must be rescaled for an RPC service with a 50 ms service time.
 
 The caveat is that CoDel was designed for closed-loop senders, namely TCP flows that halve their window after a drop.
 RPC traffic is typically open-loop: users and upstream services keep sending at the same rate regardless of drops.
@@ -167,19 +194,19 @@ The label travels with the request so a downstream service can shed a SHEDDABLE 
 
 Priority alone is not enough, because shedding must also be consistent.
 Dropping 33% of requests at random means a user transaction that makes three sequential calls succeeds with probability (2/3)^3, about 30%.
-WeChat's DAGOR overload control (Zhou et al., SoCC 2018) addresses this with an admission level derived from a business priority and a user priority, where the user priority is a hash of the user ID that rotates periodically.
+WeChat's DAGOR overload control (Zhou et al., SoCC 2018) addresses this with an admission level derived from a business priority and a user priority, where the user priority is a hash of the user ID and the hash function changes every hour.
 The admission threshold is adjusted from the average queueing time at each service, and the threshold is propagated upstream so callers stop sending requests that downstream services will refuse.
 The key properties are that the same user is admitted or refused consistently across the call graph, and that wasted upstream work is avoided.
-I recall the 20 ms queueing-time threshold from the paper but did not re-verify it.
+WeChat sets the average queueing-time threshold for overload at 20 ms, refreshed every second or every 2,000 requests ([Zhou et al.](https://arxiv.org/abs/1806.04075)).
 
 Fairness between tenants is a separate mechanism from priority.
 The Kubernetes API server's API Priority and Fairness (APF) is a clear public implementation (see the [flow control documentation](https://kubernetes.io/docs/concepts/cluster-administration/flow-control/)).
 
 - A `FlowSchema` classifies each request into a flow (schema plus a distinguisher such as user or namespace) and assigns it to a `PriorityLevelConfiguration`.
 - Each priority level owns a share of the server's total concurrency (`nominalConcurrencyShares`), and can lend a fraction (`lendablePercent`) to other levels and borrow from them.
-- Within a level, a flow is hashed to `handSize` candidate queues out of `queues`, and the request joins the shortest. This is shuffle sharding (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]]), so a noisy flow fills only a few queues and the chance that a quiet flow collides with it on all of its candidates is small.
+- Within a level, a flow is hashed to `handSize` candidate queues out of `queues`, and the request joins the least loaded of them, weighted by cost rather than plain length ([KEP-1040](https://github.com/kubernetes/enhancements/tree/master/keps/sig-api-machinery/1040-priority-and-fairness), as of 2026-11). This is shuffle sharding (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]]), so a noisy flow fills only a few queues and the chance that a quiet flow collides with it on all of its candidates is small.
 - Requests are charged in "seats" according to estimated width. An expensive LIST occupies many seats for its estimated duration, and queues are dispatched by a fair-queueing virtual-time discipline over that cost. Charging by cost rather than by count is the same lesson as cost-weighted token buckets.
-- Rejections return HTTP 429 with a `Retry-After` header.
+- Rejections return HTTP 429 with a `Retry-After` header ([apiserver source](https://raw.githubusercontent.com/kubernetes/kubernetes/master/staging/src/k8s.io/apiserver/pkg/server/filters/priority-and-fairness.go), as of 2026-11).
 
 The same structure (classify, assign class share, shuffle-shard flows into queues, weight by cost) is what a multi-tenant LLM gateway needs.
 The AWS Builders' Library [Fairness in multi-tenant systems](https://aws.amazon.com/builders-library/fairness-in-multi-tenant-systems/) article covers the AWS-side reasoning.
@@ -206,7 +233,7 @@ The retry mechanics (backoff, jitter, circuit breakers, deadline propagation) ar
 
 Backpressure exists at every layer, and the invisible ones cause most surprises.
 
-- The Linux accept queue is a hidden FIFO. `listen(fd, backlog)` is capped by `net.core.somaxconn`. When the accept queue is full, with default `tcp_abort_on_overflow=0` the kernel drops the final ACK or SYN, and the client retransmits the SYN after 1 s, then 3 s, then 7 s (cumulative, exponential). Your application sees none of that waiting, so application-level sojourn metrics read healthy while clients see multi-second connect latency.
+- The Linux accept queue is a hidden FIFO. `listen(fd, backlog)` is capped by `net.core.somaxconn`. When the accept queue is full, with default `tcp_abort_on_overflow=0` the kernel drops inbound SYNs and final handshake ACKs, and the peer must resend them ([Cloudflare](https://blog.cloudflare.com/syn-packet-handling-in-the-wild/), 2018). A client whose SYN was dropped retransmits at about 1, 2, 3, 4, 5, then 7 s cumulative under `tcp_syn_linear_timeouts=4`, the default since Linux 6.5, and at 1, 3, then 7 s on older kernels with plain exponential backoff ([kernel docs](https://docs.kernel.org/networking/ip-sysctl.html), as of 2026-11). Your application sees none of that waiting, so application-level sojourn metrics read healthy while clients see multi-second connect latency.
 - TCP flow control (receive window) propagates slow consumers to producers over a single connection but cannot signal per-request priority.
 - HTTP/2 and gRPC have per-stream and per-connection flow-control windows and a `SETTINGS_MAX_CONCURRENT_STREAMS` limit. That setting is an admission limit enforced by the protocol, and the "Rapid Reset" attack (CVE-2023-44487, October 2023) abused the gap where a reset stream stopped counting against it while the server still did work.
 - Pull-based consumers (Kafka consumers, SQS pollers) are natural backpressure because the consumer sets its own rate, but a deep backlog reintroduces the delay problem. See [[04-System-Design/06-Messaging-and-Streaming/Apache-Kafka|Apache Kafka]] and the Builders' Library [Avoiding insurmountable queue backlogs](https://aws.amazon.com/builders-library/avoiding-insurmountable-queue-backlogs/).
@@ -214,45 +241,45 @@ Backpressure exists at every layer, and the invisible ones cause most surprises.
 
 ## Numbers to Know
 
-All entries tagged UNVERIFIED are recalled from memory of the cited source and were not re-checked against current documentation in this authoring pass.
-Treat them as pointers to confirm, not as authoritative limits.
+Entries were checked against the cited source on the date shown.
+Provider defaults and quotas change, so confirm them against current documentation before relying on them as limits.
 
 | Quantity | Value | Source and date |
 |---|---|---|
-| CoDel default target and interval | 5 ms and 100 ms, tuned for Internet RTTs; rescale for RPC | Nichols and Jacobson, ACM Queue 2012 (as of 2026-10) |
-| CoDel drop schedule | next drop at interval / sqrt(count) after the previous | Nichols and Jacobson, ACM Queue 2012 (as of 2026-10) |
-| Adaptive client throttle multiplier | K = 2, `p = max(0, (requests - K x accepts) / (requests + 1))` | Google SRE book, Handling Overload (as of 2026-10) |
-| Retry budget guidance | about 10% retry ratio per client, limited attempts per request | Google SRE book (as of 2026-10, UNVERIFIED exact figure) |
+| CoDel default target and interval | 5 ms and 100 ms, tuned for Internet RTTs; rescale for RPC | RFC 8289, by the CoDel authors (as of 2026-11) |
+| CoDel drop schedule | next drop at interval / sqrt(count) after the previous | RFC 8289 control law (as of 2026-11) |
+| Adaptive client throttle multiplier | K = 2, `p = max(0, (requests - K x accepts) / (requests + 1))` | Google SRE book, Handling Overload (as of 2026-11) |
+| Retry budget guidance | retry ratio below 10% per client, up to three attempts per request | Google SRE book, Handling Overload (as of 2026-11) |
 | M/M/1 latency multiplier at utilization | 50%: 2x, 80%: 5x, 90%: 10x, 95%: 20x, 99%: 100x of service time | Queueing theory, S / (1 - rho) |
 | Goodput collapse time | queue of C x T items at excess (L - C); 200 rps, T = 1 s, L = 300 rps gives about 2 s | Little's Law, derived in this chapter |
-| Linux accept queue cap | `net.core.somaxconn` default 4096 since kernel 5.4 | Linux kernel docs (as of 2026-10, UNVERIFIED) |
-| SYN retransmit schedule | 1 s, then 3 s, then 7 s cumulative | RFC 6298 and Linux TCP behavior (as of 2026-10, UNVERIFIED) |
-| Kubernetes APF status | GA (`flowcontrol.apiserver.k8s.io/v1`) since 1.29 | Kubernetes docs (as of 2026-10, UNVERIFIED) |
-| Legacy API server in-flight limits | 400 non-mutating and 200 mutating, summed to size APF total concurrency | Kubernetes docs (as of 2026-10, UNVERIFIED) |
-| Amazon API Gateway default throttle | 10,000 rps steady-state and 5,000 burst per account per region, token bucket | AWS docs (as of 2026-10, UNVERIFIED) |
-| AWS Lambda default concurrency and scale rate | 1,000 concurrent executions per Region by default; 1,000 new execution environments per 10 s per function | AWS docs (as of 2026-10, UNVERIFIED) |
-| DynamoDB provisioned burst | up to 300 s of unused capacity retained | AWS docs (as of 2026-10, UNVERIFIED) |
-| Cloud Run request concurrency per instance | default 80, maximum 1000 | Google Cloud docs (as of 2026-10, UNVERIFIED) |
-| ALB idle timeout default | 60 s | AWS docs (as of 2026-10, UNVERIFIED) |
-| AWS WAF rate-based rule windows | 1, 2, 5, or 10 minutes, so not a sub-second capacity protector | AWS docs (as of 2026-10, UNVERIFIED) |
-| HTTP/2 Rapid Reset peak | 398 million rps reported by Google | Google Cloud blog, October 2023 (as of 2026-10, UNVERIFIED) |
-| Llama 3 70B KV cache per token (fp16) | 2 x 80 layers x 8 KV heads x 128 dim x 2 bytes = 327,680 bytes | Model architecture arithmetic (as of 2026-10) |
+| Linux accept queue cap | `net.core.somaxconn` default 4096 since kernel 5.4 (128 before) | Linux kernel docs (as of 2026-11) |
+| SYN retransmit schedule | about 1, 2, 3, 4, 5, then 7 s cumulative with `tcp_syn_linear_timeouts=4` (default since Linux 6.5); 1, 3, then 7 s on older kernels | Linux kernel docs and the v6.4 and v6.5 source trees; RFC 6298 for the 1 s initial RTO and doubling (as of 2026-11) |
+| Kubernetes APF status | GA (`flowcontrol.apiserver.k8s.io/v1`) since 1.29 | Kubernetes docs (as of 2026-11) |
+| Legacy API server in-flight limits | 400 non-mutating and 200 mutating, summed to size APF total concurrency | kube-apiserver reference (as of 2026-11) |
+| Amazon API Gateway default throttle | 10,000 rps steady-state and 5,000 burst per account per Region, token bucket; 2,500 rps and 1,250 burst in the Regions the quota page lists | AWS docs (as of 2026-11) |
+| AWS Lambda default concurrency and scale rate | 1,000 concurrent executions per Region by default; 1,000 new execution environments per 10 s per function; requests per second capped at 10x the concurrency quota | AWS docs (as of 2026-11) |
+| DynamoDB provisioned burst | up to 300 s of unused capacity retained, and the docs say this detail may change | AWS docs (as of 2026-11) |
+| Cloud Run request concurrency per instance | default 80 x vCPUs for new services deployed with gcloud or Terraform, 80 from the console; maximum 1,000 | Google Cloud docs (as of 2026-11) |
+| ALB idle timeout default | 60 s | AWS docs (as of 2026-11) |
+| AWS WAF rate-based rule windows | 1, 2, 5, or 10 minutes (default 5), so not a sub-second capacity protector | AWS docs (as of 2026-11) |
+| HTTP/2 Rapid Reset peak | above 398 million rps reported by Google | Google Cloud blog, October 2023 (as of 2026-11) |
+| Llama 3 70B KV cache per token (fp16) | 2 x 80 layers x 8 KV heads x 128 dim x 2 bytes = 327,680 bytes | Arithmetic from the published [Llama 3.3 70B config](https://huggingface.co/unsloth/Llama-3.3-70B-Instruct/raw/main/config.json), via a public mirror (as of 2026-11) |
 | Simulation, 1.5x overload, unbounded FIFO vs sojourn cap | 19 rps vs 201 rps goodput on a 200 rps server | This chapter's `shed_sim.py`, seed 7 |
-| List prices | not tabulated; WAF, API Gateway, and Cloud Armor pricing is per request or per rule and was not verified | UNVERIFIED |
+| List prices | rates not tabulated; AWS WAF bills per web ACL, per rule, and per request, API Gateway per million requests, and Cloud Armor Standard per security policy, per rule, and per request | [AWS WAF](https://aws.amazon.com/waf/pricing/), [API Gateway](https://aws.amazon.com/api-gateway/pricing/), and [Cloud Armor](https://cloud.google.com/armor/pricing) pricing pages (as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Layer | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
-| Edge per-key rate limit | AWS WAF rate-based rules over a multi-minute evaluation window, with custom aggregation keys (UNVERIFIED) | Cloud Armor rate limiting with throttle and rate-based-ban actions (UNVERIFIED) | Both are coarse, seconds-to-minutes mechanisms for abuse and tenant quota. Neither replaces server-side concurrency control. |
-| API front door | API Gateway stage, method, and usage-plan throttles (token bucket, rate and burst) | Apigee spike arrest and quota; API Gateway and Cloud Endpoints quotas (UNVERIFIED) | API Gateway documents token-bucket semantics. Apigee spike arrest is, as I recall, a smoothing limiter that spaces requests, not a burst-permitting bucket (UNVERIFIED). |
-| L7 load balancing | ALB: least-outstanding-requests algorithm, slow start, 503 when no healthy target, fails open if all targets are unhealthy (UNVERIFIED) | Global external ALB with RATE, UTILIZATION, or CONNECTION balancing modes and per-backend capacity settings; overflow to other regions when backends are full (UNVERIFIED) | ALB has no per-target in-flight cap. GCP lets you declare a capacity per backend that the balancer enforces and spills over. See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_05_Cloud_Load_Balancing_GFEs_and_Maglev\|Cloud Load Balancing: GFEs and Maglev]]. |
-| Serverless concurrency | Lambda reserved and provisioned concurrency; 429 `TooManyRequestsException` on synchronous throttling | Cloud Run `max-instances` and per-instance concurrency; 429 when no capacity (UNVERIFIED) | Lambda is one request per environment, so concurrency equals environments. Cloud Run multiplexes requests into one instance, so the in-flight limit and CPU saturation interact. See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_05_Serverless_Compute_and_Lambda_Internals\|Serverless Compute and Lambda Internals]] and [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_08_Cloud_Run_and_Serverless_Container_Execution\|Cloud Run and Serverless Container Execution]]. |
-| Data-store throttling | DynamoDB per-partition token buckets with burst credit; `ProvisionedThroughputExceededException` and on-demand throttling | Bigtable and Spanner have no per-key token bucket; overload shows as latency and `RESOURCE_EXHAUSTED` or `UNAVAILABLE` (UNVERIFIED) | DynamoDB gives an explicit, client-visible quota signal. Spanner and Bigtable rely more on server-side priority (Spanner request priority) and autoscaling of nodes. |
-| Mesh and proxy | Envoy-based meshes (App Mesh reached end of support in September 2026, UNVERIFIED), VPC Lattice, self-managed Envoy or Istio | Cloud Service Mesh, GKE Gateway, Envoy | Envoy local rate limit, adaptive concurrency, and overload manager work identically in both, so the limiter design is portable even when the managed wrapper is not. |
+| Edge per-key rate limit | AWS WAF rate-based rules over a 1 to 10 minute evaluation window, with custom aggregation keys (AWS docs, as of 2026-11) | [Cloud Armor rate limiting](https://docs.cloud.google.com/armor/docs/rate-limiting-overview) with throttle and rate-based-ban actions (Google Cloud docs, as of 2026-11) | Both are coarse, seconds-to-minutes mechanisms for abuse and tenant quota. Neither replaces server-side concurrency control. |
+| API front door | API Gateway stage, method, and usage-plan throttles (token bucket, rate and burst) | Apigee spike arrest and quota; [API Gateway](https://docs.cloud.google.com/api-gateway/docs/quotas) and [Cloud Endpoints](https://docs.cloud.google.com/endpoints/docs/openapi/quotas-overview) quotas (Google Cloud docs, as of 2026-11) | API Gateway documents token-bucket semantics. Apigee spike arrest smooths by default, enforcing `5ps` as one request per 200 ms, and `UseEffectiveCount=true` removes that smoothing within the configured rate (Apigee docs, as of 2026-11). |
+| L7 load balancing | ALB: least-outstanding-requests algorithm, slow start, 503 when a target group has no registered targets or all are unused, fails open if all registered targets are unhealthy (AWS docs, as of 2026-11) | Global external ALB with RATE, UTILIZATION, or CUSTOM_METRICS balancing modes, plus IN_FLIGHT for the long traffic duration setting, and per-backend target capacity; `WATERFALL_BY_REGION` by default, spilling to other zones and regions at target capacity (Google Cloud docs, as of 2026-11) | ALB's optional Target Optimizer enforces a strict per-target concurrency cap through an agent on each target, can be enabled only at target group creation, and returns 503 when no target is ready. GCP lets you declare a capacity per backend, but the docs state it "isn't a circuit breaker": at target capacity traffic spills over, and when all zones are full the balancer overfills proportionally, so the backend still needs its own limit. See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_05_Cloud_Load_Balancing_GFEs_and_Maglev\|Cloud Load Balancing: GFEs and Maglev]]. |
+| Serverless concurrency | Lambda reserved and provisioned concurrency; 429 `TooManyRequestsException` on synchronous throttling | Cloud Run `max-instances` and per-instance concurrency; 429 on reaching the maximum instance limit (Google Cloud docs, as of 2026-11) | Lambda's default compute type is one request per environment, so concurrency equals environments, whereas Lambda Managed Instances run multiple concurrent invocations per environment (AWS docs, as of 2026-11). Cloud Run multiplexes requests into one instance, so the in-flight limit and CPU saturation interact. See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_05_Serverless_Compute_and_Lambda_Internals\|Serverless Compute and Lambda Internals]] and [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_08_Cloud_Run_and_Serverless_Container_Execution\|Cloud Run and Serverless Container Execution]]. |
+| Data-store throttling | DynamoDB per-partition token buckets with burst credit; `ProvisionedThroughputExceededException` and on-demand throttling | Bigtable and Spanner have no per-key token bucket (UNVERIFIED: a negative that no doc states directly); overload shows as latency, as `RESOURCE_EXHAUSTED` on [overloaded Spanner nodes](https://docs.cloud.google.com/spanner/docs/error-codes), and as `UNAVAILABLE` on [Bigtable](https://docs.cloud.google.com/bigtable/docs/status-codes) (Google Cloud docs, as of 2026-11) | DynamoDB gives an explicit, client-visible quota signal. Spanner and Bigtable rely more on server-side priority (Spanner request priority) and autoscaling of nodes. |
+| Mesh and proxy | Envoy-based meshes (App Mesh support ended on September 30, 2026, AWS docs, as of 2026-11), VPC Lattice, self-managed Envoy or Istio | Cloud Service Mesh, GKE Gateway, Envoy | Envoy local rate limit, adaptive concurrency, and overload manager work identically in both, so the limiter design is portable even when the managed wrapper is not. |
 | Kubernetes control plane | EKS API server uses APF | GKE API server uses APF | Same upstream mechanism. Managed providers set total server concurrency, so tenants configure only shares and queues. See [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_01_Kubernetes_Control_Loop_Internals\|Kubernetes Control Loop Internals]]. |
-| Managed model inference | Bedrock per-model request and token quotas, `ThrottlingException` (HTTP 429), cross-Region inference profiles | Vertex AI quotas, dynamic shared quota for Gemini, Provisioned Throughput, 429 `RESOURCE_EXHAUSTED` (UNVERIFIED) | Both throttle on tokens as well as requests. Clients must treat 429 as a pacing signal. See [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_09_Managed_Inference_Amazon_Bedrock_vs_Vertex_AI\|Managed Inference: Amazon Bedrock vs Vertex AI]]. |
-| Status code semantics | HTTP 429 for throttling, 503 for service overload | HTTP 429 and gRPC `RESOURCE_EXHAUSTED` for quota, 503 and `UNAVAILABLE` for overload | Libraries retry 503 and `UNAVAILABLE` by default. Quota errors usually should not be retried immediately, so choose the status code deliberately. |
+| Managed model inference | Bedrock per-model request and token quotas, `ThrottlingException` (HTTP 429), cross-Region inference profiles | Vertex AI, whose current docs use the name Gemini Enterprise Agent Platform: Standard PayGo with usage tiers (served at the old dynamic-shared-quota URL), Priority PayGo, Provisioned Throughput, and [error code 429](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/error-code-429) with "Resource exhausted, please try again later" (Google Cloud docs, as of 2026-11) | Both throttle on tokens as well as requests. Clients must treat 429 as a pacing signal. See [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_09_Managed_Inference_Amazon_Bedrock_vs_Vertex_AI\|Managed Inference: Amazon Bedrock vs Vertex AI]]. |
+| Status code semantics | HTTP 429 for throttling, 503 for service overload | HTTP 429 and gRPC `RESOURCE_EXHAUSTED` for quota, 503 and `UNAVAILABLE` for overload | Client defaults differ: [AWS SDKs](https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html) automatically retry transient and throttling errors, while [gRPC](https://grpc.io/docs/guides/retry/) has no default retry policy and only retries transparently on low-level races (as of 2026-11). Quota errors usually should not be retried immediately, so choose the status code deliberately. |
 
 ## Worked Example: Overload Policy Simulator and Capacity Sizing
 
@@ -499,7 +526,7 @@ if __name__ == "__main__":
         print()
 ```
 
-Output from running this script (Python 3.11, seed 7, about 1 s of runtime):
+Output from running this script (re-run on Python 3.15.2, seed 7, about 1 s of runtime):
 
 ```text
 retries=False  capacity=200 rps, offered logical=300 rps in window
@@ -518,15 +545,15 @@ policy               offered   goodput    reject   timeout   waste%    p50ms    
 fifo_unbounded           834        19         0       814     91.0      533      991      6.3
 fifo_bounded_100         623       203       420         0      0.2      531      756     67.7
 fifo_bounded_10          633       200       432         0      0.0       83      276     66.7
-fifo_deadline            827        25         0       801     90.9      599     1000     16.9
+fifo_deadline            827        25         0       801     90.9      599     1000      8.4
 fifo_sojourn_cap         582       201       381         0      0.0      130      321     66.9
 lifo_deadline            611       200         0       411      0.0       37      229     66.7
 codel_fifo               814        37       197       580     89.6      896     1000     12.2
 codel_lifo               605       200       197       208      0.0       38      228     66.7
 ```
 
-The retries=True `fifo_deadline` row printed `25`, `827`, `801`, `90.9`, `599` and `8.4` in an earlier run before I fixed the retry bookkeeping, so use the code as written above rather than treating that single row as a reference.
-I re-ran seeds 1, 2, and 3 for the policies that work: goodput stayed between 197 and 204 rps for `fifo_sojourn_cap`, `lifo_deadline`, and `codel_lifo`.
+The table above is the verbatim output of the code as written, including the retries=True `fifo_deadline` row.
+Re-running seeds 1, 2, and 3 for the policies that work, with and without retries, kept goodput between 197 and 204 rps for `fifo_sojourn_cap`, `lifo_deadline`, and `codel_lifo`.
 
 What the table shows:
 
@@ -610,10 +637,8 @@ kind delete cluster --name shed-lab
 
 The AWS [summary of the December 7, 2021 us-east-1 event](https://aws.amazon.com/message/12721/) describes congestion on network devices between the internal network and the main AWS network, triggered by an automated scaling activity.
 Retries and a surge of connection attempts from internal clients then sustained the congestion and slowed recovery, which is the metastable pattern: the trigger ended, the load did not.
-The AWS summary of the October 2025 us-east-1 event ([message 101925](https://aws.amazon.com/message/101925/)) describes a DynamoDB DNS failure followed by an EC2 internal management subsystem entering congestive collapse, with recovery requiring deliberate throttling of work.
-I recalled the specifics of that event without re-reading it, so confirm them against the document.
-Google Cloud's incident report for the June 12, 2025 Service Control outage, as I recall it, attributes the slow recovery in one region partly to the absence of randomized exponential backoff in restarting tasks, which created a herd on a shared dependency.
-Cite it from the original report rather than from this paraphrase.
+The AWS summary of the October 2025 us-east-1 event ([message 101925](https://aws.amazon.com/message/101925/)) describes a DynamoDB DNS failure followed by an EC2 internal management subsystem (DropletWorkflow Manager) entering congestive collapse, with recovery requiring engineers to throttle incoming work and selectively restart hosts.
+Google Cloud's [incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW) for the June 12, 2025 Service Control outage attributes the slow recovery in us-central1 partly to the absence of randomized exponential backoff in restarting tasks, which created a herd on a shared Spanner table.
 These are the cases to read for the sustaining-effect analysis, together with the "Metastable Failures in the Wild" taxonomy.
 Cross-reference [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
@@ -622,7 +647,7 @@ Cross-reference [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_
 A load balancer health check that goes through the same overloaded admission path will be rejected along with user traffic.
 The balancer then ejects the overloaded instances, concentrating load on the survivors, which also fail their checks, which is the cascading failure described in the SRE book's [Addressing Cascading Failures](https://sre.google/sre-book/addressing-cascading-failures/) chapter.
 Keep health checks shallow (process alive, not dependency health), exempt them from shedding and from priority queues, and never let a check fail because the instance is "busy".
-Check how your balancer behaves when every target is unhealthy: ALB fails open and routes to all targets (UNVERIFIED), which masks the problem rather than fixing it.
+Check how your balancer behaves when every target is unhealthy: ALB fails open and routes to all targets (AWS docs, as of 2026-11), which masks the problem rather than fixing it.
 
 ### Rejection that costs as much as service
 
@@ -645,7 +670,8 @@ Put floors and ceilings on the limit, run one limiter per cost class, require a 
 
 ### Metrics that hide the shedding
 
-The Builders' Library load-shedding article warns that availability computed only over accepted requests looks too good when many are rejected.
+The Builders' Library load-shedding article warns that fast rejections pollute latency metrics: a service shedding 60 percent of its traffic can show an excellent median latency while its successful requests are slow.
+Availability computed only over accepted requests hides the shedding in the same way.
 Count shed requests in SLIs for the traffic class that should have been served, exclude only intentionally shed lower-priority classes and track them separately, and alert on rejection rate and on queue sojourn directly.
 See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_01_SLIs_SLOs_and_Error_Budget_Engineering|SLIs, SLOs, and Error Budget Engineering]].
 
@@ -669,11 +695,11 @@ Shedding monitoring and control-plane traffic first is a classic self-inflicted 
 - Request-count limits ignore token cost. One long-context request can monopolize the KV cache and trigger preemption by recomputation, which thrashes throughput.
 - Client disconnects must cancel generation. If a proxy with a 60 s idle timeout drops a stream and the engine keeps decoding, the server spends decode capacity on output no one reads.
 - Managed 429s from Bedrock or Vertex AI are quota signals, and immediate retries burn the same quota. Honor `Retry-After`, add jitter, and shift to another Region or model only through a deliberate failover policy.
-- Reserve output tokens in the admission estimate (max_tokens), then refund the difference on completion. Managed services meter this way too, with model-specific output-token burndown multipliers (UNVERIFIED), so an unset max_tokens can exhaust quota far faster than average output length suggests.
+- Reserve output tokens in the admission estimate (max_tokens), then refund the difference on completion. Amazon Bedrock meters this way too, deducting input tokens plus max_tokens at the start of a request and replenishing the unused part at the end, with model-specific output-token burndown multipliers of 1x up to 15x ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-token-burndown.html), as of 2026-11), so an unset max_tokens can exhaust quota far faster than average output length suggests.
 
 ### Kernel-level queues
 
-Backlog overflow, SYN retransmits at 1 s and 3 s, and full receive buffers all add delay invisible to application metrics.
+Backlog overflow, SYN retransmits starting at 1 s, and full receive buffers all add delay invisible to application metrics.
 Export `ListenOverflows` and `ListenDrops` from `nstat`, and measure client-side connect time as an SLI input.
 
 ## Security and Cost Angles
@@ -697,7 +723,7 @@ Treat these quotas as dependencies with their own admission control and separate
 - Shedding versus overprovisioning is an explicit trade. Headroom costs money every hour, while shedding costs availability only during rare peaks. Size steady-state utilization for the failure you must absorb (for example 2/3 for a 3-AZ fleet that must survive losing one AZ with zero shedding) and use shedding for everything beyond it.
 - Per-tenant token budgets (tokens per minute) are both the fairness mechanism and the cost-control mechanism for LLM gateways, because spend is proportional to tokens processed.
 - Cost per useful response rises sharply in collapse: you pay for 100% utilization while goodput approaches zero.
-- Rejections still cost data transfer, logs, and WAF or API request charges, which are priced per request (prices UNVERIFIED and not tabulated). Sample shed logs rather than writing every one, but keep exact counters.
+- Rejections still cost data transfer, logs, and WAF or API request charges, which are priced per request (provider pricing pages, as of 2026-11; rates not tabulated here). Sample shed logs rather than writing every one, but keep exact counters.
 - Cross-cloud and cross-Region failover on 429 can create egress charges and latency, so budget it. See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics|GPU and TPU Unit Economics]].
 
 ## Interview Questions and Model Answers
@@ -914,7 +940,7 @@ Some requests fan out to many services, and one slow leaf is optional. How shoul
 - [Scaling your API with rate limiters](https://stripe.com/blog/rate-limiters) (Stripe): a four-limiter production design that separates rate, concurrency, and load shedding.
 - [Netflix concurrency-limits](https://github.com/Netflix/concurrency-limits) and the Envoy [adaptive concurrency filter](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/adaptive_concurrency_filter) documentation: reference implementations of adaptive limits and their minRTT mechanics.
 - [Kubernetes API Priority and Fairness](https://kubernetes.io/docs/concepts/cluster-administration/flow-control/): shuffle-sharded fair queueing with seat-based cost, a public model for multi-tenant admission.
-- "Overload Control for Scaling WeChat Microservices" (Zhou et al., SoCC 2018) and "Breakwater: Overload Control for mu s-scale RPCs with Delay-based Credit" (Cho et al., OSDI 2020): priority-consistent shedding and server-driven credit-based admission.
+- "Overload Control for Scaling WeChat Microservices" (Zhou et al., SoCC 2018) and "Overload Control for mu s-scale RPCs with Breakwater" (Cho et al., OSDI 2020): priority-consistent shedding and server-driven credit-based admission.
 - "SEDA: An Architecture for Well-Conditioned, Scalable Internet Services" (Welsh, Culler, and Brewer, SOSP 2001): staged bounded queues as the origin of backpressure-by-design.
 - [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_01_SLIs_SLOs_and_Error_Budget_Engineering|SLIs, SLOs, and Error Budget Engineering]]: how to account for shed traffic in objectives.
 - [[13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_12_Production_Engineering/Chapter_06_Capacity_and_Quotas|Capacity and Quotas]] and [[13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_12_Production_Engineering/Chapter_04_Reliability_Patterns|Reliability Patterns]]: the application-side view of quotas and resilience for agent workloads.

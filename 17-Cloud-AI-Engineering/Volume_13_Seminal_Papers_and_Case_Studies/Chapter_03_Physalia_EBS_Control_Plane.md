@@ -2,7 +2,7 @@
 type: paper
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/conference/nsdi20/presentation/brooker-physalia"
@@ -15,16 +15,29 @@ sources:
   - "https://www.usenix.org/system/files/fast24-zhang-weidong.pdf"
   - "https://aws.amazon.com/builders-library/static-stability-using-availability-zones/"
   - "https://aws.amazon.com/builders-library/workload-isolation-using-shuffle-sharding/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://aws.amazon.com/ebs/general-purpose/"
+  - "https://aws.amazon.com/blogs/storage/migrate-your-amazon-ebs-volumes-from-gp2-to-gp3-and-save-up-to-20-on-costs/"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/what-is-ebs.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVolumeStatus.html"
+  - "https://docs.cloud.google.com/compute/docs/disks/high-availability-regional-persistent-disk"
+  - "https://docs.cloud.google.com/compute/docs/disks/regional-persistent-disk"
+  - "https://docs.cloud.google.com/spanner/docs/replication"
+  - "https://static.googleusercontent.com/media/research.google.com/en//archive/chubby-osdi06.pdf"
+  - "https://research.google.com/pubs/archive/43438.pdf"
+  - "https://www.usenix.org/system/files/atc22-elhemali.pdf"
+  - "https://www.usenix.org/system/files/conference/atc13/atc13-cidon.pdf"
+  - "https://brooker.co.za/blog/publications.html"
 ---
 
-# Physalia: Millions of Distributed Databases (2020 NSDI)
+# Physalia: Millions of Tiny Databases (2020 NSDI)
 
 ## TL;DR
 
 Physalia is the configuration master for Amazon EBS chain replication, described in the NSDI 2020 paper "Millions of Tiny Databases" by Brooker, Chen, and Ping. It is a transactional key-value store split into millions of small Paxos cells, usually one cell per volume or per small set of volumes.
 In the EBS installation each cell runs Paxos over seven nodes, and each node is shared by many cells. A colony is the set of cells and nodes that serves one availability zone.
 The goal is not to be available to every client. The goal is to be available to the three parties that need a given key - the EC2 instance, the primary, and the replica - by placing each cell near them in the power and network topology.
-Blast radius is limited in three ways. Cells never coordinate with each other. Each node holds a different mix of cells, so a poison-pill transaction kills at most one cell. Physalia's own control plane is a separate system and is not on the request path.
+Blast radius is limited in three ways. Cells never coordinate with each other. Each node holds a different mix of cells, so a poison-pill transaction should cost only one cell. Physalia's own control plane is a separate system and is not on the request path.
 The cost is that durability now depends on correct local Paxos persistence across dirty reboots, because data is kept local instead of spread across datacenters. Placement, deployment, and repair also become hard problems that the operator has to keep solving.
 
 ## Mental Model
@@ -106,7 +119,7 @@ The NSDI slides describe a cell as a replicated state machine that holds the con
 Each EBS volume gets a unique partition key when it is created, and all operations for that volume happen within that key ([Demirbas, 2020](http://muratbuffalo.blogspot.com/2020/03/millions-of-tiny-databases.html)).
 One installation was designed to "support an entire EBS availability zone" ([Brooker et al., NSDI 2020](https://assets.amazon.science/c4/11/de2606884b63bf4d95190a3c2390/millions-of-tiny-databases.pdf)). Because the colony is scoped to a zone, its largest possible blast radius is aligned with the AZ failure domain covered in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]].
 
-The authors considered sharing infrastructure across cells, for example a shared coordination layer. They rejected it because it was "at odds with our focus on blast radius". They chose "to keep our cells completely independent, and implement the control plane as a separate system" ([Brooker et al., NSDI 2020](https://assets.amazon.science/c4/11/de2606884b63bf4d95190a3c2390/millions-of-tiny-databases.pdf)).
+The authors evaluated designs that avoid a separate control plane and repair workflow, such as elastic replication and Scatter. They rejected them because the added complexity and the "additional communication and dependencies between shards" were "at odds with our focus on blast radius". They chose "to keep our cells completely independent, and implement the control plane as a separate system" ([Brooker et al., NSDI 2020](https://assets.amazon.science/c4/11/de2606884b63bf4d95190a3c2390/millions-of-tiny-databases.pdf)).
 This is the cell-based architecture of [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]] taken to its limit: the cell count is close to the key count.
 
 ### Data model: misuse resistance
@@ -141,7 +154,7 @@ That is why placement matters more than cell size.
 
 ### Placement: maximise availability as seen by the client
 
-When a cell is created, the control plane uses "its knowledge of the power and network topology of the datacenter (discovered from AWS's datacenter automation systems)" to choose its nodes ([paper, as quoted by ApproachAI](https://approachai.com/gewuzhiyong/millions-of-tiny-databases)).
+When a cell is created, the control plane uses "its knowledge of the power and network topology of the datacenter (discovered from AWS's datacenter automation systems)" to choose its nodes ([Brooker et al., NSDI 2020](https://www.usenix.org/system/files/nsdi20-paper-brooker.pdf)).
 Two goals pull against each other. Nodes should be close to their clients, so that distant failures do not break the cell. They should also be diverse enough that small local failures do not break it either ([Demirbas, 2020](http://muratbuffalo.blogspot.com/2020/03/millions-of-tiny-databases.html)).
 In the paper's words, fewer network devices between Physalia and its clients means fewer chances for a partition between them, simply because there is less to go wrong ([Colyer, 2020](https://blog.acolyer.org/2020/03/04/millions-of-tiny-databases/)).
 In the EBS deployment Physalia runs on many nodes spread widely across the datacenter, which gives the control plane more placement options ([Brooker et al., NSDI 2020](https://www.cs.purdue.edu/homes/csjgwang/CloudNativeDB/PhysaliaNSDI20.pdf)).
@@ -149,6 +162,7 @@ In the EBS deployment Physalia runs on many nodes spread widely across the datac
 #### Deeper mechanism 1: conditional availability and fate-sharing
 
 Getting-started material treats availability as a single number per service. Physalia instead optimises a conditional probability: P(the cell has a reachable quorum | the client is alive).
+The paper writes it as P(Av | Ai), the availability of the volume given the availability of the instance ([Brooker et al., NSDI 2020](https://www.usenix.org/system/files/nsdi20-paper-brooker.pdf)).
 That changes which failures count.
 If a cell is co-located with its client and a row-level power event kills both, the cell's "unavailability" costs nothing, because no living client needed it.
 If a cell is spread across the whole AZ, the same event kills cells whose clients are still alive elsewhere. Those clients are then stuck if their storage chain also broke.
@@ -162,7 +176,7 @@ Losing more cells in absolute terms while delivering better availability to the 
 
 Physalia "tries to ensure that each node contains a different mix of cells, which reduces the probability of correlated failure due to load or poison pill transitions" ([Demirbas, 2020](http://muratbuffalo.blogspot.com/2020/03/millions-of-tiny-databases.html)).
 A poison pill is an input that deterministically crashes every replica that processes it. In a replicated state machine, every member processes the same log, so a poison transition kills all members of its cell at once.
-The goal, as one summary paraphrases the paper, is that if "a poisonous transition crashes the node software on each node in the cell, only that cell should be lost" ([ApproachAI summary](https://approachai.com/gewuzhiyong/millions-of-tiny-databases)).
+The paper states the goal directly: if "a poisonous transition crashes the node software on each node in the cell, only that cell should be lost" ([Brooker et al., NSDI 2020](https://www.usenix.org/system/files/nsdi20-paper-brooker.pdf)).
 Here is a tension that interviewers rarely expect candidates to know.
 The Copysets work (Cidon et al., USENIX ATC 2013) shows that random replica placement maximises the number of distinct replica groups, and so maximises the chance that some group loses all its members under simultaneous random failures. Their recommendation for durability is to use *few* fixed groups.
 Physalia's poison-pill defence pushes the other way: many distinct groups, so that killing one group's nodes rarely takes a quorum of any other group.
@@ -171,18 +185,27 @@ Physalia can lean towards diversity because seven replicas already give it a lar
 
 #### Deeper mechanism 3: placement constrains deployment
 
-This section is the chapter's own analysis. It is not a procedure described in the paper.
-Say a colony has 1,000,000 cells of 7 on 2,000 nodes. Each node then holds about 3,500 cells and shares a cell with about 21,000 node-slots drawn from 1,999 peers. The chance that two given nodes share *no* cell is about e^-10.5, roughly 3e-5.
+The co-membership arithmetic and the rack-based rollout below are the chapter's own analysis, not a procedure described in the paper.
+The paper's published mechanism, colors, closes this section.
+Say a colony has 1,000,000 cells of 7 on 2,000 nodes, with unconstrained random mixes. Each node then holds about 3,500 cells and shares a cell with about 21,000 node-slots drawn from 1,999 peers. The chance that two given nodes share *no* cell is about e^-10.5, roughly 3e-5.
 So the co-membership graph is effectively complete. A deployment rule of "never touch two members of any cell at once" collapses into a one-node-at-a-time rollout, which at 2,000 nodes is operationally impossible.
-The fix is to make placement and deployment agree on a topology unit. If placement allows at most two members of a cell per rack, then deploying one rack at a time takes at most two of seven members offline. That leaves five, still above the quorum of four, with one more failure tolerated.
+One fix is to make placement and deployment agree on a topology unit. If placement allows at most two members of a cell per rack, then deploying one rack at a time takes at most two of seven members offline. That leaves five, still above the quorum of four, with one more failure tolerated.
 If cells are confined to one network domain (rows in the model), racks in different rows can be deployed in parallel because their cell sets do not overlap.
-The paper says its goals "required careful attention in the design of the data model, replication mechanism, cluster management and even operational and deployment procedures" ([Brooker et al., NSDI 2020](https://assets.amazon.science/c4/11/de2606884b63bf4d95190a3c2390/millions-of-tiny-databases.pdf)). The exact EBS deployment unit is UNVERIFIED.
+The paper says its goals "required careful attention in the design of the data model, replication mechanism, cluster management and even operational and deployment procedures" ([Brooker et al., NSDI 2020](https://assets.amazon.science/c4/11/de2606884b63bf4d95190a3c2390/millions-of-tiny-databases.pdf)).
+The paper's actual deployment unit is the *color*, not a rack: each cell is assigned a color and is built only from nodes of that color, and the control plane spreads colors evenly around the datacenter so that color choice minimally constrains locality ([Brooker et al., NSDI 2020](https://www.usenix.org/system/files/nsdi20-paper-brooker.pdf)).
+Deployments and other operations proceed color-by-color, and monitoring looks for anomalies in single colors.
+Nodes of different colors do not communicate, which makes it significantly less likely that a poison pill or overload spreads across colors.
+So the near-complete co-membership graph above can exist only within one color; nodes of different colors never share a cell.
+The paper also warns that fault tolerance hides bad builds: a failure may not be evident until new code reaches half of all hosts, and positive validation reduces that risk without eliminating it.
 
 ### Reconfiguration and pipeline depth
 
 Physalia also reconfigures its own cells, for example to replace failed nodes or to move a cell closer to a client that has moved ([Demirbas, 2020](http://muratbuffalo.blogspot.com/2020/03/millions-of-tiny-databases.html)).
 In classic multi-Paxos, membership can be stored in the replicated log itself. Lamport's "Paxos Made Simple" describes a configuration change at slot i taking effect at slot i+alpha, where alpha is the bound on how many instances may be in flight at once.
-This chapter infers that Physalia's small pipeline depths keep that window short, so a reconfiguration takes effect quickly and per-item work stays bounded during recovery. That link is an inference, and the exact reconfiguration protocol is UNVERIFIED.
+Physalia follows this pattern and "does not innovate on reconfiguration": per-cell configuration lives in the state machine and is updated by a transition passed with the existing jury, a pattern the paper credits to Lampson, and a change accepted at log position i takes effect at i + alpha, where alpha is the maximum pipeline length ([Brooker et al., NSDI 2020](https://www.usenix.org/system/files/nsdi20-paper-brooker.pdf)).
+The paper keeps alpha small, typically 3, and simply waits for natural traffic to make a change take effect instead of stuffing no-ops into the log.
+Reconfiguration is frequent because the control plane actively moves cells towards their clients, one node at a time with catch-up, and a move typically completes within a minute.
+New or returning members catch up through teaching, outside the core consensus protocol: bulk snapshot, log shipping, or a "whack-a-mole" mode that proposes no-ops into persistent log holes with substantial jitter.
 Keep three separate things in mind. The *control plane* decides that a cell should move. The *cell* commits the membership change through its own consensus. Clients find the new membership through discovery. Each layer can fail on its own, and the data path should depend only on the cell.
 
 ### Physalia's own control plane and static stability
@@ -219,7 +242,7 @@ Comparing the two systems shows the trade-off. A hierarchical manager is simpler
 | Poison-pill blast, mean share of cells lost | monolithic: 100%; copyset-40: 2.5%; diverse mix: 0.005% | Simulation in worked example |
 | 2011 trigger time | 12:47 AM PDT, 2011-04-21, one us-east-1 AZ | (AWS PIR 65648) |
 | 2011 cross-zone effect | two periods of high EBS API errors across the whole US East Region | (AWS PIR 65648) |
-| EBS gp3 storage list price, us-east-1 | USD 0.08 per GB-month | UNVERIFIED (not re-checked this batch) |
+| EBS gp3 storage list price, us-east-1 | USD 0.08 per GB-month | ([AWS gp3 page](https://aws.amazon.com/ebs/general-purpose/) and [AWS Storage Blog, us-east-1 comparison](https://aws.amazon.com/blogs/storage/migrate-your-amazon-ebs-volumes-from-gp2-to-gp3-and-save-up-to-20-on-costs/), as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -228,10 +251,10 @@ Google has not published a Physalia-equivalent paper for Persistent Disk or Hype
 | Mechanism | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
 | Configuration master for block-volume replication | Physalia: per-volume Paxos cells, 7 nodes, AZ-scoped colony (Brooker et al., NSDI 2020) | Persistent Disk and Hyperdisk control-plane internals not publicly documented | No primary-source basis for comparing internal blast radius; do not claim parity in interviews |
-| Volume replication failure domain | EBS volume replicated within one AZ, UNVERIFIED (not re-checked this batch) | Zonal PD within one zone; Regional PD replicates synchronously across two zones, UNVERIFIED (not re-checked this batch) | GCP exposes a cross-zone synchronous block product; on AWS, cross-AZ durability is an application or snapshot concern |
-| Failover authority under partition | Storage server wins a conditional write in its cell before serving alone | Regional PD failover via force-attach to an instance in the other zone, UNVERIFIED (not re-checked this batch) | AWS automates in-AZ failover inside the service; the GCP cross-zone path involves an operator or automation action |
-| General coordination and lock service | No public internal equivalent; customers build on DynamoDB conditional writes | Chubby: coarse-grained lock service, a cell of typically five replicas (Burrows, OSDI 2006) | Chubby is a few large shared cells per datacenter; Physalia is millions of tiny per-key cells |
-| Per-shard consensus in managed databases | DynamoDB: Paxos replication groups per partition (USENIX ATC 2022) | Spanner: Paxos group per split, plus TrueTime (OSDI 2012) | Both shard consensus by key, but optimise for global reachability, not client-relative locality |
+| Volume replication failure domain | EBS volume data replicated across multiple servers within one AZ (AWS docs, as of 2026-11) | Zonal PD within one zone; Regional PD and Hyperdisk Balanced High Availability replicate synchronously across two zones (Google Cloud docs, as of 2026-11) | GCP exposes a cross-zone synchronous block product; on AWS, cross-AZ durability is an application or snapshot concern |
+| Failover authority under partition | Storage server wins a conditional write in its cell before serving alone | Regional PD handles storage failures transparently; VM failover is triggered by user-defined health checks and includes force-attaching the disk to a VM in the other zone (Google Cloud docs, as of 2026-11) | AWS automates in-AZ failover inside the service; the GCP cross-zone path involves customer health checks and an operator or automation action |
+| General coordination and lock service | No public internal equivalent; customers build on DynamoDB conditional writes | Chubby: coarse-grained lock service, a cell of typically five replicas (Burrows, OSDI 2006) | Chubby typically runs one shared cell for a data centre of several thousand machines, plus a global cell (Burrows, OSDI 2006); Physalia is millions of tiny per-key cells |
+| Per-shard consensus in managed databases | DynamoDB: Paxos replication groups per partition (USENIX ATC 2022) | Spanner: Paxos replica sets that each replicate a set of splits (Google Cloud docs, as of 2026-11), plus TrueTime (OSDI 2012) | Both shard consensus by key, but optimise for global reachability, not client-relative locality |
 | Topology-aware placement | Physalia placement from datacenter power and network topology (Brooker et al., NSDI 2020) | Borg spreads tasks across failure domains such as machines and racks (Verma et al., EuroSys 2015) | Borg spreads for job availability; Physalia trades spread against nearness to a specific client |
 | Blast-radius discipline | Cells, shuffle sharding, AZ independence (AWS Builders' Library) | Zonal and regional isolation in Google Cloud Architecture Framework | AWS has published the most detailed per-key cell design; Google has published comparatively less on block-storage control planes |
 | Alternative published hyperscaler design | n/a | n/a (Alibaba EBS: two-level Federated BlockManager, FAST 2024) | A hierarchical coordinator is simpler to operate but reintroduces a shared component |
@@ -413,7 +436,7 @@ if __name__ == "__main__":
     main()
 ```
 
-Run it with `python3 /tmp/physalia/blast_radius_sim.py`. It completes in about six seconds on one core.
+Run it with `python3 /tmp/physalia/blast_radius_sim.py`. It completes in a few seconds on one core (about 2 seconds when re-run, as of 2026-11).
 
 Verified output with the default seed:
 
@@ -478,6 +501,7 @@ gcloud compute disks list --format="table(name,zone.basename(),status)"
 ```
 
 Neither API exposes Physalia or its GCP counterpart. They show only the result, impaired or IO-disabled volumes, so alarms should be keyed on volume status per AZ rather than on any assumption about internals.
+Volume status is not volume state: it does not indicate volumes in the `error` state ([AWS API reference](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVolumeStatus.html), as of 2026-11).
 
 ## Failure Modes and Pitfalls
 
@@ -492,7 +516,9 @@ For mitigation, audit every synchronous call a cell or its clients make during f
 
 A deterministic bug triggered by a specific log entry crashes every member of the cell that applies it, and each restart replays the same entry, so the cell crash-loops.
 Diverse mixes stop the spread to other cells, as the simulation shows, but they do not save the victim cell.
-The victim needs an operator path, such as skipping or quarantining the entry under a reviewed procedure, plus input validation in the state machine so malformed transitions are rejected before they are proposed.
+The victim needs an operator path, such as skipping or quarantining the entry under a reviewed procedure.
+Validation at proposal time is not enough: the paper defines a poison pill as a transaction that passes validation and is accepted into the log, because pipelining validates transactions before the state they execute on is fully known ([Brooker et al., NSDI 2020](https://www.usenix.org/system/files/nsdi20-paper-brooker.pdf)).
+The paper's durable fix is to fully specify the transaction logic ("what does dividing by zero do?"), which brings its own backward-compatibility challenges.
 Copyset-style placement makes poison pills much worse. Do not adopt copysets for consensus metadata without modelling this.
 
 ### Placement drift and repair storms
@@ -500,6 +526,8 @@ Copyset-style placement makes poison pills much worse. Do not adopt copysets for
 Node replacements and client migrations slowly wear down locality and diversity. A cell can end up with three members in one rack, or far from a client that live-migrated.
 When the control plane comes back from an outage, a backlog of repairs can saturate nodes with snapshot and catch-up traffic during a period of already reduced redundancy.
 Rate-limit repairs per node and per rack, and order them by how close each cell is to losing quorum.
+The saturation risk is about backlog, not steady state: the paper reports that reconfiguration is an insignificant share of overall datacenter traffic because cell data is small.
+The paper's own control-plane incident points the same way: after a rollback bug made corrupted cells look empty and the control plane deleted them, the team added rate limiting and a "big red button" that temporarily stops control-plane actions ([Brooker et al., NSDI 2020](https://www.usenix.org/system/files/nsdi20-paper-brooker.pdf)).
 
 ### Durability violations after dirty reboots
 
@@ -510,8 +538,8 @@ Test with fault-injected power loss, not just process kills. See [[17-Cloud-AI-E
 
 ### Deployment coupling through co-membership
 
-A rollout that ignores cell membership can take a quorum of many cells offline at once. Because the co-membership graph is near-complete, this is likely, not a corner case.
-Deploy by the same topology unit that placement limits, and gate each wave on per-cell quorum health.
+A rollout that ignores cell membership can take a quorum of many cells offline at once. Because the co-membership graph is near-complete under unconstrained random mixes, this is likely, not a corner case.
+Deploy by a unit that placement constrains, which is color in the paper or a topology unit such as a rack in this chapter's model, and gate each wave on per-cell quorum health.
 See [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_06_Progressive_Delivery_and_Deployment_Pipelines|Progressive Delivery and Deployment Pipelines]].
 
 ### Metastable failover loops
@@ -521,7 +549,7 @@ Cells with small batches and bounded pipelines limit per-cell queueing. Clients 
 
 ### Lease and control-plane congestion in adjacent systems
 
-AWS's October 2025 us-east-1 post-incident summary describes a DynamoDB DNS automation race followed by congestive collapse in an EC2 component that manages host leases. These specifics are UNVERIFIED (not re-checked this batch).
+AWS's October 2025 us-east-1 post-incident summary describes a latent race condition in DynamoDB DNS automation that left an empty record for the regional endpoint, followed by congestive collapse in DropletWorkflow Manager, the EC2 subsystem that maintains leases on physical hosts ([AWS PIR, 2025-10-19 to 20](https://aws.amazon.com/message/101925/)).
 The lesson carries over to Physalia-like designs. Any layer that must re-establish state for many keys after a dependency recovers needs bounded, prioritised recovery work, or recovery itself becomes the outage.
 
 ### Treating a zonal service as regional
@@ -638,6 +666,7 @@ You own deployments for a colony of 2,000 nodes and about one million cells. Des
 First, do the co-membership arithmetic. At about 3,500 cells per node with random mixes, almost every pair of nodes shares a cell, so the rule "never touch two members of any cell" degenerates into one node at a time.
 The way out is to make placement and deployment agree on a topology unit. If placement guarantees at most two members per rack, a rack-at-a-time rollout takes at most two of seven members of any cell offline. Five remain, quorum is four, and one extra failure is still tolerated.
 If cells are confined to one network domain, racks in different domains have disjoint cell sets and can be deployed in parallel.
+The paper's own answer is colors: each cell is built only from nodes of one color and rollouts proceed color-by-color, which gives the same isolation without tying the rollout unit to a physical rack.
 Each wave is gated on per-cell health: no cell below five healthy members, Paxos commit latency within bounds, and no crash loops. The bake time must be long enough to hit rare transition types.
 Poison-pill builds are the main risk. A new version that crashes on a particular transition crashes only the two upgraded members in each affected cell, so nothing is lost, and the wave's crash signal triggers automatic rollback.
 Last, the deployment system itself must not be a synchronous dependency of cells. If it fails mid-wave, the colony must stay stable with mixed versions, which requires wire and log compatibility in both directions.
@@ -716,5 +745,5 @@ How would you fence a zombie writer in the failed zone that comes back after the
 - Cidon et al., "Copysets: Reducing the Frequency of Data Loss in Cloud Storage", USENIX ATC 2013 - The opposing placement argument; read it to understand what diverse mixes cost.
 - Bronson et al., "Metastable Failures in Distributed Systems", HotOS 2021 - A model for the retry-driven failover storms that Physalia's bounded per-cell work is built to resist.
 - Burrows, "The Chubby lock service for loosely-coupled distributed systems", OSDI 2006 - Google's coarse-grained coordination service; contrast its few large cells with Physalia's millions of small ones.
-- Marc Brooker, "High Availability for Bad Days" (guest lecture, May 2020) - The author's longer explanation of availability conditioned on failure.
+- Marc Brooker, "High Availability for Bad Days" (guest talk for CS380D, May 2020, listed on his [publications page](https://brooker.co.za/blog/publications.html)) - The author's longer explanation of availability conditioned on failure.
 - Related chapters: [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_02_Amazon_Aurora|Amazon Aurora (2017 SIGMOD)]], [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_04_Firecracker_MicroVM|Firecracker: Lightweight Virtualization (2020 NSDI)]], [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_01_Dynamo_and_DynamoDB|Dynamo and DynamoDB]], [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_05_Constant_Work_and_Workload_Smoothing|Constant Work and Workload Smoothing]], [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fault_Tolerance_and_Fleet_Resiliency_at_Scale|Fault Tolerance and Fleet Resiliency at Scale]].

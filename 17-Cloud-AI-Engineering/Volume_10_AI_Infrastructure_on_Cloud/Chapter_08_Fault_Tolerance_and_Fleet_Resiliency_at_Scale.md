@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/abs/2407.21783"
@@ -19,6 +19,32 @@ sources:
   - "https://arxiv.org/pdf/2502.06982"
   - "https://aws.amazon.com/message/41926/"
   - "https://research.google/pubs/the-tail-at-scale/"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-blocks.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/capacity-blocks-pricing-billing.html"
+  - "https://docs.aws.amazon.com/cli/latest/reference/ec2/describe-capacity-block-offerings.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-reservations.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/monitoring-instances-status-check_sched.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ena-express.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-resiliency-node-recovery.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-resiliency-node-labels.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-resiliency-slurm-auto-resume.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-resiliency-slurm-replace-faulty-instance.html"
+  - "https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/"
+  - "https://doi.org/10.1109/MM.2020.3016891"
+  - "https://docs.cloud.google.com/compute/docs/instances/spot"
+  - "https://docs.cloud.google.com/compute/docs/instances/provisioning-models"
+  - "https://docs.cloud.google.com/ai-hypercomputer/docs/consumption-models"
+  - "https://docs.cloud.google.com/compute/docs/instances/live-migration-process"
+  - "https://docs.cloud.google.com/compute/docs/instances/reservations-overview"
+  - "https://docs.cloud.google.com/compute/docs/gpus/gpu-network-bandwidth"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/node-auto-repair"
+  - "https://docs.cloud.google.com/ai-hypercomputer/docs/cluster-director"
+  - "https://docs.cloud.google.com/cluster-director/docs/overview"
+  - "https://docs.cloud.google.com/tpu/docs/queued-resources"
+  - "https://github.com/AI-Hypercomputer/ml-goodput-measurement"
+  - "https://status.cloud.google.com/incident/cloud-networking/19009"
+  - "https://www.usenix.org/system/files/nsdi24-jiang-ziheng.pdf"
 ---
 
 # Fault Tolerance and Fleet Resiliency at Scale
@@ -81,7 +107,8 @@ The Llama 3 405B report gives the cleanest public calibration point: [during a 5
 Dividing 419 failures by 16,384 GPUs x 1,296 hours gives lambda = 1.97e-5 per GPU-hour, so a single GPU fails about once every 50,700 hours (5.8 years).
 The same fleet fails as a job every 3.1 hours.
 The report attributes [about 78% of unexpected interruptions to confirmed or suspected hardware issues, with GPU issues the largest category at 58.7%](https://bytez.com/docs/arxiv/2407.21783/paper) (Llama 3 paper, 2024-07).
-[148 interruptions (30.1%) came from faulty GPUs including NVLink, 72 (17.2%) from HBM3, and only two CPUs failed in 54 days](https://www.tomshardware.com/tech-industry/artificial-intelligence/faulty-nvidia-h100-gpus-and-hbm3-memory-caused-half-of-the-failures-during-llama-3-training-one-failure-every-three-hours-for-metas-16384-gpu-training-cluster) (Tom's Hardware summary of the Llama 3 paper, 2024-07).
+[148 interruptions came from faulty GPUs, 72 (17.2%) from HBM3, and only two CPUs failed in 54 days](https://arxiv.org/abs/2407.21783) (Llama 3 paper, Table 5, 2024-07).
+Table 5 prints the faulty-GPU share as 30.1%, but 148 / 419 is 35.3%, and its GPU rows sum to 268 / 419 = 64%, not the stated 58.7%; trust the counts over the printed shares.
 The team still [achieved higher than 90% effective training time while absorbing automated firmware and kernel upgrades](https://bytez.com/docs/arxiv/2407.21783/paper) (Llama 3 paper, 2024-07).
 
 Failure rates differ a lot between fleets, so treat any published lambda as a prior, not a constant.
@@ -120,7 +147,7 @@ The corruption is laundered into a state that is consistent across replicas but 
 A cross-replica parameter checksum therefore cannot catch corruption that happens before the reduction.
 It can catch only corruption that happens after it: in the optimizer update, in HBM holding parameters or optimizer state, or in a parameter shard broadcast.
 That limitation is stated directly in the literature: checksumming parameters across replicas, as [Elsen et al. recommend](https://arxiv.org/html/2604.00726v1), does [not address corruption that arises during the forward or backward pass and propagates through gradient aggregation](https://arxiv.org/html/2604.00726v1) (arXiv 2604.00726, 2026-04).
-NVIDIA's OCP whitepaper describes the same cascade: [in synchronous training a corrupting device with a persistent SDC will continue to corrupt the iteration](https://www.opencompute.org/documents/sdc-in-ai-ocp-whitepaper-ver-1-1-final-pdf/) across all accelerators (OCP SDC in AI whitepaper, 2025).
+The OCP whitepaper, whose authors come from NVIDIA, Meta, Google, AMD, Intel, ARM and Microsoft, describes the same cascade: [in synchronous training a corrupting device with a persistent SDC will continue to corrupt the iteration](https://www.opencompute.org/documents/sdc-in-ai-ocp-whitepaper-ver-1-1-final-pdf/) across all accelerators (OCP SDC in AI whitepaper v1.1, 2025-12).
 
 **Detection therefore needs two layers.**
 Layer one is cheap invariants that run continuously.
@@ -144,8 +171,8 @@ Step time in synchronous training is the maximum over ranks, which is the traini
 Suppose each rank independently has a 1e-5 chance of being slow on a given step.
 Then 1 - (1 - 1e-5)^16384 = 15% of steps contain at least one slow rank, and at 100,000 ranks that rises to 63%.
 ByteDance's five-month trace study found that [stragglers are not trivially always caused by hardware failures, but can arise from multiple complex factors](https://www.usenix.org/conference/osdi25/presentation/lin-jinkun) (Lin et al., OSDI 2025).
-A secondary summary of that paper reports about [42.5% of jobs with at least a 10% slowdown and 10.4% of allocated GPU-hours lost](https://lacuna.tiptreesystems.com/work/understanding-stragglers-in-large-model-training-using-what-if-analysis/wrk_9fedb3167f3b1f9b6f3566442dece50f).
-The main causes it names are pipeline-stage imbalance, sequence-length variation and uncoordinated Python garbage collection.
+The paper reports [42.5% of jobs at least 10% slower because of stragglers and 10.4% of allocated GPU-hours wasted](https://www.usenix.org/system/files/osdi25-lin-jinkun.pdf).
+The main causes it names are pipeline-stage imbalance, sequence-length imbalance and garbage-collection pauses, while server hardware or software problems were not a significant cause in its traces.
 The study's method is worth copying.
 Log every operation with step, microbatch, PP rank and DP rank, then [simulate an alternative timeline without stragglers](https://www.usenix.org/system/files/osdi25-lin-jinkun.pdf) to attribute lost time to specific causes.
 
@@ -163,10 +190,10 @@ This matters because the cause determines the fix:
 - If a different rank is slow each step, the cause is the data: sequence-length skew. Fix the batching (token-budget packing), not the fleet.
 - If all ranks stall periodically in lockstep, the cause is a periodic process: GC, checkpoint stalls, logging. Disable automatic GC and collect synchronously every N steps.
 
-MegaScale reports that a dedicated diagnosis and straggler toolchain at scale sustained [55.2% MFU training a 175B model on 12,288 GPUs](https://dl.acm.org/doi/10.5555/3691825.3691866) (Jiang et al., NSDI 2024).
+MegaScale reports that a dedicated diagnosis and straggler toolchain at scale sustained [55.2% MFU training a 175B model on 12,288 GPUs](https://www.usenix.org/system/files/nsdi24-jiang-ziheng.pdf) (Jiang et al., NSDI 2024).
 
 Network gray failure is the cloud-specific variant.
-On AWS, EFA's SRD transport sprays packets across many paths and handles retransmission in the Nitro card, so a single congested or flapping path degrades throughput instead of stalling a flow ([Shalev et al., IEEE Micro 2020](https://ieeexplore.ieee.org/document/9167399); mechanism description UNVERIFIED in this pass).
+On AWS, EFA's SRD transport sprays packets across many paths, is implemented in the Nitro card, and handles reordering and most retransmits below the application, so a single congested or flapping path degrades throughput instead of stalling a flow ([Shalev et al., IEEE Micro 2020](https://doi.org/10.1109/MM.2020.3016891); [AWS ENA Express docs on SRD](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ena-express.html), as of 2026-11).
 That masking cuts both ways.
 It hides single-path faults from the job, but a degraded NIC or a bad cable on one host still produces a persistent per-rank straggler, and only per-rank arrival timing will find it.
 
@@ -191,7 +218,7 @@ The same rules apply to GPU evacuation:
 
 **Reconfigurable topology is a different answer to evacuation.**
 Google's TPU v4 supercomputer uses SDN-managed optical circuit switches so the [ICI fabric can be dynamically reconfigured to route around machine, chip and link failures](https://www.usenix.org/conference/nsdi24/presentation/zu).
-That reached [99.98% system availability, with hardware outages experienced by about 1% of training jobs](https://dl.acm.org/doi/10.5555/3691825.3691867) (Zu et al., NSDI 2024).
+Combined with fault-tolerant ICI routing, that reached [99.98% system availability, with hardware outages experienced by about 1% of training jobs](https://www.usenix.org/conference/nsdi24/presentation/zu) (Zu et al., NSDI 2024).
 The mechanism here is about allocation.
 With a static torus, a slice needs a contiguous set of fully healthy cubes.
 With OCS, a slice can be assembled from any healthy 4x4x4 cubes, so one bad host makes its cube unusable but does not block contiguous allocation across the pod.
@@ -209,16 +236,17 @@ The mean number of nodes out of service equals the node failure rate times the r
 For 2,048 nodes at the Llama 3 rate (7.8 failures per day), a 24-hour turnaround means about 7.8 nodes out on average, which needs 15 spares for P99 coverage.
 A 2-hour turnaround means 0.65 nodes out and only 3 spares.
 Turnaround is the lever.
-That is why managed services that replace nodes automatically from reserved spare capacity (SageMaker HyperPod, GKE node auto-repair) change the economics: they shrink turnaround, not failure rate.
-Product specifics are in the parity table and are UNVERIFIED as of 2026-10.
+That is why managed services that replace nodes automatically (SageMaker HyperPod automatic node recovery, GKE node auto-repair, Cluster Director autohealing) change the economics: they shrink turnaround, not failure rate.
+Check the real turnaround before assuming 2 hours: HyperPod says [replacement time depends on the instances available in your Availability Zone](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-resiliency-slurm-replace-faulty-instance.html), and a new node with deep health checks enabled first runs a [roughly 2-hour stress test](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-resiliency-node-labels.html) (AWS docs, as of 2026-11).
+Product specifics are in the parity table (vendor docs, as of 2026-11).
 
 ## Numbers to Know
 
 | Quantity | Value | Source and date |
 |---|---|---|
 | Llama 3 405B interruptions, 54 days | 466 total; 47 planned; 419 unexpected | Llama 3 paper, arXiv 2407.21783, 2024-07 |
-| Llama 3 unexpected interruptions attributed to hardware | ~78%; GPU issues 58.7% | Llama 3 paper, 2024-07 |
-| Llama 3 faulty GPU / HBM3 interruptions | 148 (30.1%) / 72 (17.2%) | Llama 3 paper via Tom's Hardware, 2024-07 |
+| Llama 3 unexpected interruptions attributed to hardware | ~78%; GPU issues 58.7% as printed (Table 5 counts give 268 / 419 = 64%) | Llama 3 paper, 2024-07 |
+| Llama 3 faulty GPU / HBM3 interruptions | 148 (printed 30.1%; 148 / 419 = 35.3%) / 72 (17.2%) | Llama 3 paper, Table 5, 2024-07 |
 | Llama 3 effective training time | > 90% | Llama 3 paper, 2024-07 |
 | Derived per-GPU failure rate (H100, Llama 3) | 1.97e-5 per GPU-hour, MTBF ~50,700 h | Derived from Llama 3 paper figures, computed 2026-10 |
 | Derived job MTBF at 16,384 GPUs | ~3.1 h | Derived, 2026-10 |
@@ -229,13 +257,14 @@ Product specifics are in the parity table and are UNVERIFIED as of 2026-10.
 | Gemini 2.5 replayed steps / genuine SDC among replays | ~0.25% / 6% | Gemini 2.5 report, arXiv 2507.06261, 2025-07 |
 | Gemini 2.5 elastic reconfiguration cost | tens of seconds vs 10+ min; ~97% throughput during recovery | Gemini 2.5 report, 2025-07 |
 | Gemini 2.5 TPU v5p pod size | 8,960 chips | Gemini 2.5 report, 2025-07 |
-| TPU v4 system availability with OCS reconfiguration | 99.98% | Zu et al., NSDI 2024 |
+| TPU v4 system availability with OCS reconfiguration and fault-tolerant routing | 99.98% | Zu et al., NSDI 2024 |
 | MegaScale MFU, 175B on 12,288 GPUs | 55.2% | Jiang et al., NSDI 2024 |
-| ByteDance GPU-hours lost to stragglers | ~10.4% (secondary summary) | Lin et al., OSDI 2025 |
-| EC2 Spot interruption notice | 2 minutes | AWS docs, UNVERIFIED as of 2026-10 |
-| Compute Engine preemption notice | 30 seconds | Google Cloud docs, UNVERIFIED as of 2026-10 |
-| EC2 Capacity Block duration and advance window | 1 to 14 days (longer terms announced), purchasable up to 8 weeks ahead | AWS docs, UNVERIFIED as of 2026-10 |
-| DWS flex-start maximum run duration | 7 days | Google Cloud docs, UNVERIFIED as of 2026-10 |
+| ByteDance GPU-hours lost to stragglers | 10.4% | Lin et al., OSDI 2025 |
+| EC2 Spot interruption notice | 2 minutes, best effort | AWS docs, as of 2026-11 |
+| Compute Engine Spot preemption notice | Configurable: 0 s (default) or 120 s, then a best-effort shutdown period of up to 30 s | Google Cloud docs, as of 2026-11 |
+| EC2 Capacity Block duration and advance window | 1 to 14 days in 1-day steps, then 7-day steps up to 182 days; start up to 8 weeks ahead | AWS CLI reference and docs, as of 2026-11 |
+| EC2 Capacity Block size limits | 64 instances per block; 256 instances across an organization on a given date | AWS docs, as of 2026-11 |
+| DWS flex-start run duration | 10 minutes minimum, 7 days maximum | Google Cloud docs, as of 2026-11 |
 | GPU list prices | not stated; use your current pricing page | prices change too often to state here |
 
 ## AWS vs GCP Mechanism Parity
@@ -243,13 +272,13 @@ Product specifics are in the parity table and are UNVERIFIED as of 2026-10.
 | Concern | AWS mechanism | Google Cloud mechanism | Critical difference |
 |---|---|---|---|
 | Scale-up fault domain | NVLink domain within a P5/P6 instance or NVL rack | TPU ICI slice; GPU NVLink domain on A3/A4 | TPU ICI faults are handled by OCS reconfiguration at cube granularity (Zu et al., NSDI 2024); NVLink faults usually take out the whole node |
-| Scale-out transport under gray failure | EFA with SRD multipath spraying and Nitro-side retransmit (UNVERIFIED in this pass) | GPU: GPUDirect-TCPXO / RDMA variants; TPU: ICI within a slice, DCN across slices (UNVERIFIED in this pass) | SRD hides single-path flaps from the job; a per-host NIC fault still shows up as a straggler |
-| Managed cluster resiliency | SageMaker HyperPod: deep health checks, health-monitoring agent, automatic node replacement, job auto-resume (UNVERIFIED as of 2026-10) | GKE with node auto-repair; Cluster Director for GPU clusters; multi-host TPU slices repaired as a unit (UNVERIFIED as of 2026-10) | Replacement capacity on both comes from your reservation; with no spare inside it, repair stalls |
-| Host maintenance on accelerator VMs | EC2 scheduled events and instance status checks (UNVERIFIED) | GPU VMs cannot live-migrate and terminate on host maintenance, with advance notice (UNVERIFIED) | Neither cloud live-migrates GPU state; maintenance windows must line up with checkpoint boundaries |
-| Short-term guaranteed capacity | EC2 Capacity Blocks for ML: prepaid, fixed window, UltraCluster-colocated (UNVERIFIED as of 2026-10) | DWS calendar mode / future reservations; DWS flex-start; TPU queued resources (UNVERIFIED as of 2026-10) | Capacity Blocks terminate at end time; flex-start obtains capacity when available; both must be planned around checkpoints |
-| Open-ended guaranteed capacity | On-Demand Capacity Reservations plus Savings Plans for discount (UNVERIFIED) | Zonal reservations plus committed use discounts (UNVERIFIED) | On both, the reservation guarantees capacity and the commitment buys the discount; they are separate instruments, see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs\|Commitment Discounts]] |
-| Interruption signal for preemptible capacity | Spot 2-minute notice (UNVERIFIED) | Spot/preemptible 30-second notice (UNVERIFIED) | A 30-second notice is shorter than most checkpoint persist times, so you must rely on periodic checkpoints |
-| Goodput instrumentation | Customer-built from CloudWatch and job logs | ML Goodput measurement tooling ([arXiv 2502.06982](https://arxiv.org/pdf/2502.06982) describes Google's internal metric; product status UNVERIFIED) | Google publishes a decomposed goodput metric; on AWS you build ETTR yourself |
+| Scale-out transport under gray failure | EFA with SRD multipath spraying implemented in the Nitro card (Shalev et al., IEEE Micro 2020) | GPU: GPUDirect-TCPX (A3 High), GPUDirect-TCPXO (A3 Mega), GPUDirect RDMA (A3 Ultra, A4, A4X); TPU: ICI within a slice, DCN across slices (Google Cloud docs, as of 2026-11) | SRD hides single-path flaps from the job; a per-host NIC fault still shows up as a straggler |
+| Managed cluster resiliency | SageMaker HyperPod: deep health checks, health-monitoring agent, automatic node recovery (reboot or replace), job auto-resume (AWS docs, as of 2026-11) | GKE node auto-repair, which recreates the entire node pool for a multi-host TPU slice; Cluster Director autohealing for GPU clusters (Google Cloud docs, as of 2026-11) | HyperPod replacement time depends on instances available in the AZ; Compute Engine managed mode holds back part of your reserved capacity for restarts, while all-capacity mode leaves failures to you (vendor docs, as of 2026-11) |
+| Host maintenance on accelerator VMs | EC2 scheduled events: instance-stop, instance-retirement, instance-reboot, system-reboot, system-maintenance (AWS docs, as of 2026-11) | GPU VMs cannot live-migrate and must stop on host maintenance, with 60-minute notice for most GPUs and 10-minute notice for A4X, A4 and A3 Ultra; Cloud TPUs do not live-migrate either (Google Cloud docs, as of 2026-11) | Google documents no GPU live migration, and AWS's event types document none; maintenance windows must line up with checkpoint boundaries |
+| Short-term guaranteed capacity | EC2 Capacity Blocks for ML: prepaid, fixed window, placed automatically in UltraClusters, no cancellation, no placement groups, no Savings Plans or RI discount (AWS docs, as of 2026-11) | Future reservations in calendar mode (up to 80 VMs for up to 90 days); future reservations for capacity blocks; DWS flex-start; TPU queued resources, whose Cloud TPU API is no longer under active development and does not support TPU7x and later (Google Cloud docs, as of 2026-11) | Capacity Block instance termination begins at 11:00 UTC on the final day and the block ends at 11:30 UTC; flex-start obtains capacity when available and stops or deletes VMs at the end of the run; both must be planned around checkpoints |
+| Open-ended guaranteed capacity | On-Demand Capacity Reservations, which support cluster placement groups, plus Savings Plans for discount (AWS docs, as of 2026-11) | Zonal reservations, billed at the on-demand rate, plus committed use discounts (Google Cloud docs, as of 2026-11) | On both, the reservation guarantees capacity and the commitment buys the discount; they are separate instruments, see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs\|Commitment Discounts]] |
+| Interruption signal for preemptible capacity | Spot 2-minute notice, best effort (AWS docs, as of 2026-11) | Spot: 0 s notice by default or 120 s if configured, then a best-effort shutdown period of up to 30 s; preemptible VMs: shutdown period of up to 30 s (Google Cloud docs, as of 2026-11) | Set the 120 s notice on Compute Engine Spot explicitly; even then the window is shorter than most checkpoint persist times, so you must rely on periodic checkpoints |
+| Goodput instrumentation | Customer-built from CloudWatch and job logs | Open-source [`ml-goodput-measurement`](https://github.com/AI-Hypercomputer/ml-goodput-measurement) library (Apache-2.0, v0.2.3 as of 2026-08), not a managed service; [arXiv 2502.06982](https://arxiv.org/pdf/2502.06982) describes Google's fleet metric | Google publishes a decomposed goodput metric and a client library; on AWS you build ETTR yourself |
 
 ## Worked Example: Goodput, Checkpoint Cadence, and Spare-Pool Sizing
 
@@ -426,7 +455,7 @@ The demo shows that rank with 0 ms collective wait against a 150 ms median.
 ### Read-only capacity discovery (optional)
 
 These calls only list offerings and create nothing.
-Flags are UNVERIFIED against the current CLI reference as of 2026-10.
+Flags match the [AWS CLI reference](https://docs.aws.amazon.com/cli/latest/reference/ec2/describe-capacity-block-offerings.html) and the gcloud reference (as of 2026-11); only `--capacity-duration-hours` is required, and it must fall on the allowed day increments.
 
 ```bash
 aws ec2 describe-capacity-block-offerings \
@@ -435,12 +464,12 @@ aws ec2 describe-capacity-block-offerings \
 gcloud compute reservations list --project "$PROJECT_ID"
 ```
 
-Purchasing a Capacity Block is a prepaid, non-cancellable commitment (UNVERIFIED as of 2026-10), so treat `purchase-capacity-block` as a change-managed action, not a lab step.
+Purchasing a Capacity Block is a prepaid, non-cancellable commitment (AWS docs, as of 2026-11), so treat `purchase-capacity-block` as a change-managed action, not a lab step.
 
 ### Cost estimate, budget alarm, and teardown
 
 The lab as written costs $0, since the script is local and the list calls are read-only.
-Create guard budgets before experimenting with any purchase path; AWS Budgets pricing is UNVERIFIED as of 2026-10.
+Create guard budgets before experimenting with any purchase path; [AWS Budgets monitoring and notifications are free](https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/), and only action-enabled budgets beyond the first two cost $0.10 per day (AWS pricing page, as of 2026-11).
 
 ```bash
 cat > /tmp/budget.json <<'EOF'
@@ -472,7 +501,7 @@ rm -f /tmp/budget.json /tmp/notif.json
 **Evacuation storms.**
 A health check with a bad threshold, or a driver rollout that triggers spurious errors, can make the remediation controller drain healthy nodes faster than any hardware fault would.
 The S3 2017 PIR is the canonical lesson: [capacity removal tooling must run slowly and refuse to cross minimum-capacity floors](https://aws.amazon.com/message/41926/) (AWS PIR, 2017-03).
-Google's June 2019 networking incident showed automation descheduling control-plane jobs across several locations after a configuration was applied more broadly than intended ([Google Cloud incident 19009](https://status.cloud.google.com/incident/cloud-networking/19009), URL not re-fetched in this pass).
+Google's June 2, 2019 networking incident showed a maintenance-automation bug descheduling independent network control-plane clusters in several locations at once, instead of only those at the site under maintenance ([Google Cloud incident 19009](https://status.cloud.google.com/incident/cloud-networking/19009)).
 Mitigations:
 
 - Run every new check in dry-run mode first.
@@ -481,9 +510,11 @@ Mitigations:
 
 **Spares outside the placement domain.**
 Replacement nodes that land outside the UltraCluster spine or the compact placement group satisfy the world size but add cross-spine hops to collectives, which creates a permanent straggler that no health check flags.
+Capacity Blocks do not support placement groups at all; AWS places their instances inside UltraClusters automatically, so the placement-group control applies to Capacity Reservations (AWS docs, as of 2026-11).
 
 **Reservation cliffs.**
 Fixed-window capacity (Capacity Blocks, calendar-mode reservations) ends at a fixed time whether or not your checkpoint has finished persisting.
+On a Capacity Block, [instance termination begins at 11:00 UTC on the final day, 30 minutes before the block ends](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-blocks.html), and P6e-GB200 UltraServer blocks require you to terminate at least 60 minutes before the end (AWS docs, as of 2026-11).
 Schedule a forced checkpoint and a drain well before the end, and verify the upload, not just the snapshot.
 
 **Async checkpoint false safety.**
@@ -504,7 +535,7 @@ If you treat data-dependent slowness (sequence-length skew) as hardware, you wil
 
 **Power and thermal coupling.**
 Thousands of GPUs moving in lockstep between compute and idle, at checkpoint or collective boundaries, cause large facility power swings.
-The Llama 3 report discusses this, along with diurnal throughput variation driven by temperature (UNVERIFIED in this pass).
+The Llama 3 report describes [instant power fluctuations on the order of tens of megawatts, along with a diurnal 1-2% throughput variation driven by mid-day temperatures](https://arxiv.org/abs/2407.21783) (Llama 3 paper, 2024-07).
 Treat the datacenter as a component of the job.
 
 **Planned maintenance counted as "free".**
@@ -612,8 +643,10 @@ Plan capacity for a 90-day, 4,096-GPU pretraining run. Choose instruments on AWS
 
 The run is gang-scheduled and sensitive to topology, so it needs guaranteed capacity inside one placement domain for the whole 90 days.
 I would separate capacity guarantee from price.
-On AWS that means an open-ended capacity reservation, or chained fixed-window blocks, combined with a commitment discount.
-On GCP it means a zonal reservation or calendar-mode capacity combined with a committed use discount.
+On AWS that means an On-Demand Capacity Reservation combined with a Savings Plan.
+Capacity Blocks do not fit: they cap at 64 instances per block and 256 per organization on a date, and Savings Plans do not apply to them (AWS docs, as of 2026-11).
+On GCP it means a zonal reservation or a future reservation for capacity blocks, combined with a committed use discount.
+Calendar mode allows 90 days but caps at 80 VMs, too small for 512 nodes (Google Cloud docs, as of 2026-11).
 Both instrument sets need verification of current terms before purchase.
 For spares: 512 nodes at the Llama 3 rate fail about 1.9 times per day.
 With a 24-hour repair turnaround the mean out of service is 1.9, so P99 coverage needs 6 spares; with 2-hour automated replacement it needs 2.
@@ -659,7 +692,7 @@ Leadership plans a 100,000-accelerator run next year. Explain why checkpoint-res
 #### Model Answer
 
 At the Llama 3 failure rate, 100,000 accelerators give an MTBF of about 30 minutes.
-Even with 5 s checkpoints, a 3-minute restart caps ETTR at about 83%, which is roughly $1.6 million per day of waste at an illustrative $4 per accelerator-hour.
+Even with 5 s checkpoints, a 3-minute restart caps ETTR at about 83%, which is roughly $1.7 million per day of waste at an illustrative $4 per accelerator-hour.
 Restart has to stop meaning reschedule.
 I would require in-job recovery: elastic data parallelism at slice or replica granularity, which Gemini 2.5 reports cuts interruption cost to tens of seconds at about 97% throughput.
 I would add hot spares that join a rebuilt communicator without reloading from object storage, and in-memory peer-replicated checkpoints, with durable uploads off the critical path.
@@ -681,7 +714,7 @@ The CFO wants to cut reserved GPU capacity by 30% and backfill with Spot or flex
 
 I would split the workload portfolio by tolerance to interruption, rather than argue about the total.
 Gang-scheduled pretraining needs contiguous, topology-local, guaranteed capacity.
-On Spot, a 30-second or 2-minute notice is shorter than a durable checkpoint, so that work stays reserved.
+On Spot, a notice of at most 2 minutes (and on Compute Engine, 0 s by default plus a best-effort 30 s shutdown) is shorter than a durable checkpoint, so that work stays reserved.
 Eval sweeps, data processing, small fine-tunes and batch inference can tolerate preemption and should move to flex or Spot capacity.
 The spare pool inside the reservation already acts as preemptible backfill, so its utilization should be counted when judging whether the reservation is idle.
 I would quantify with ETTR x price per useful accelerator-hour, not list price.

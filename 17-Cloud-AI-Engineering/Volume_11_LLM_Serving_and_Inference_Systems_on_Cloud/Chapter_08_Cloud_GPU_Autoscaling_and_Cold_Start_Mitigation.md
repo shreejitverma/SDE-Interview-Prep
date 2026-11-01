@@ -18,6 +18,25 @@ sources:
   - "https://research.google/pubs/the-tail-at-scale/"
   - "https://aws.amazon.com/builders-library/static-stability-using-availability-zones/"
   - "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/"
+  - "https://docs.vllm.ai/en/latest/design/metrics.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/initalize-volume.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volumes-multi.html"
+  - "https://docs.cloud.google.com/storage/docs/cloud-storage-fuse/file-caching"
+  - "https://www.usenix.org/conference/osdi24/presentation/fu"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/auto-change.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/ml-inference-load-serve-model.html"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/hyperdisk"
+  - "https://docs.cloud.google.com/compute/docs/disks/sharing-disks-between-vms"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/compute/disks/update"
+  - "https://github.com/run-ai/runai-model-streamer/blob/master/docs/src/env-vars.md"
+  - "https://docs.vllm.ai/en/latest/models/extensions/runai_model_streamer/"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-blocks.html"
+  - "https://docs.cloud.google.com/compute/docs/instances/future-reservations-calendar-mode-overview"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://aws.amazon.com/blogs/aws/announcing-up-to-45-price-reduction-for-amazon-ec2-nvidia-gpu-accelerated-instances/"
+  - "https://calculator.holori.com/aws/ec2/p5.48xlarge/us-east-1"
 ---
 
 # Cloud GPU Autoscaling and Cold-Start Mitigation
@@ -76,7 +95,7 @@ In practice, the replicas you need to survive losing a zone or region must alrea
 LLM serving saturates on KV-cache memory and on batch slots, not on "GPU busy".
 NVIDIA's coarse utilization counter reports the fraction of time any kernel was running, so a decode loop running a memory-bound GEMV at small batch reads close to 100 percent while the SMs have plenty of arithmetic headroom.
 A better leading indicator is queue depth at the engine (vLLM exposes `vllm:num_requests_waiting`) combined with KV-cache occupancy, because a growing wait queue at high KV occupancy means admission is blocked on memory, which more replicas fix (see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_03_KV_Cache_Management_and_PagedAttention|KV-Cache Management and PagedAttention]]).
-The exact name of the KV-usage gauge has changed across vLLM versions, so pin it against the engine version you run (UNVERIFIED for current naming).
+The exact name of the KV-usage gauge has changed across vLLM versions: current docs list `vllm:kv_cache_usage_perc`, while older releases exposed `vllm:gpu_cache_usage_perc`, so pin it against the engine version you run ([vLLM metrics docs, as of 2026-10](https://docs.vllm.ai/en/latest/design/metrics.html)).
 Kubernetes HPA evaluates on a sync loop (15 s by default) and applies a default 300 s scale-down stabilization window, so your scale-in behavior is already damped unless you override it.
 That damping is usually what you want for GPUs, as explained under Failure Modes.
 
@@ -98,7 +117,7 @@ The zran technique from zlib solves this by decompressing the stream once and sa
 A reader seeks to the nearest checkpoint, primes the inflater with the saved bits and dictionary (`inflatePrime()` and `inflateSetDictionary()`), and decompresses forward only as far as the requested file.
 SOCI builds this checkpoint table plus a tar table of contents into an external index stored next to the image, so the image digest, the registry, and the signatures do not change ([SOCI paper, arXiv 2607.06868, as of 2026-10](https://arxiv.org/html/2607.06868v1)).
 At runtime a FUSE-backed snapshotter turns each file read into byte-range GETs against the registry blob, so startup cost scales with the working set rather than the image size.
-The SOCI authors report 7-9x lower pull time on cold starts (about 2.8 s versus 20-25 s), and in one example only 10.9 percent of image bytes were fetched at pull time ([SOCI paper, as of 2026-10](https://arxiv.org/html/2607.06868v1)).
+The SOCI authors report 7.4-9.3x lower pull time on cold starts (about 2.8 s versus about 20 s for a 1.3 GB image, and 9.3x on a 2.5 GB image), and in one example only 10.9 percent of image bytes were fetched at pull time ([SOCI paper, as of 2026-10](https://arxiv.org/html/2607.06868v1)).
 They also report SOCI lazy loading on ECS Fargate, which launched 18.4 million tasks per day during Prime Day 2025 ([SOCI paper, as of 2026-10](https://arxiv.org/html/2607.06868v1)).
 GKE Image streaming follows the same idea: GKE mounts a remote filesystem as the container's root filesystem and streams image data from it as the container needs it ([Ray docs describing GKE Image streaming, as of 2026-10](https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/reduce-image-pull-latency.html)).
 GKE Autopilot turns Image streaming on by default for eligible images in Artifact Registry ([Google Cloud docs, as of 2026-10](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/startup-latency-reduction-strategies)).
@@ -128,9 +147,9 @@ GKE extends containerd with plugins that read images from the secondary disk, an
 Disks created from an image that is already in use in the same zone are created faster ([Google Cloud docs, as of 2026-10](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/data-container-image-preloading)).
 The trade-off is a build pipeline: every base-layer change requires a new disk image and a node-pool update, and a mismatch fails silently, because containerd falls back to pulling from the registry.
 GKE also documents a standby-buffer pattern in which a DaemonSet pre-pulls workload images onto the boot disk during a node-initialization window (annotation `buffer.gke.io/standby-capacity-init-time`) before the node is suspended ([Google Cloud docs, as of 2026-10](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/startup-latency-reduction-strategies)).
-Check the launch stage of standby buffers for your GKE version before relying on them (launch stage UNVERIFIED).
+Standby capacity buffers are a Preview feature, so do not treat them as GA for production capacity plans ([Google Cloud docs, as of 2026-10](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/startup-latency-reduction-strategies)).
 On AWS the closest equivalent is baking images into a custom AMI.
-EBS volumes restored from snapshots fetch blocks from S3 the first time they are read unless Fast Snapshot Restore or provisioned initialization is used, so a baked AMI can still be slow on first touch (UNVERIFIED in this session).
+EBS volumes created from snapshots must download their blocks from S3 during volume initialization, with higher I/O latency until that finishes, unless the snapshot has fast snapshot restore enabled or you specify a Provisioned Rate for Volume Initialization (100-300 MiB/s), so a baked AMI can still be slow on first touch ([EBS docs, as of 2026-10](https://docs.aws.amazon.com/ebs/latest/userguide/initalize-volume.html)).
 
 ### Weight transport: four topologies
 
@@ -152,7 +171,7 @@ With an illustrative TTFB of 50 ms and 100 MB/s per connection (both assumptions
 Once chunks are large enough that efficiency is near 1, adding parallelism only moves the bottleneck to the NIC, host memory bandwidth, or PCIe.
 That matches AWS's result on p5: 256 MiB chunks at concurrency 256 loaded in 13.98 s, and 4 GiB chunks at concurrency 17 loaded in 13.35 s ([AWS Containers blog, as of 2026-10](https://aws.amazon.com/blogs/containers/fast-model-loading-for-ai-inference-on-amazon-eks/)).
 The EKS guidance is `concurrency = ceil(model_size_GB / chunk_size_GB)`, which gives 17 for a 67 GB model with 4 GB chunks ([EKS docs, as of 2026-10](https://docs.aws.amazon.com/eks/latest/userguide/ml-inference-fast-model-loading.html)).
-Default streamer concurrency is 8 for object storage and 16 for filesystems, and the CPU buffer cap defaults to unlimited in distributed mode and 40 GiB otherwise ([Azure SDK blog, as of 2026-10](https://devblogs.microsoft.com/azure-sdk/eliminate-llm-cold-starts-load-models-up-to-6x-faster-with-azure-blob-storage-and-runai-model-streamer/)).
+Default streamer concurrency is 8 for object storage, while filesystem reads default to a queue depth of 64 for the asynchronous readers and 16 for the `sync_buffered` reader, and the CPU buffer cap (`RUNAI_STREAMER_MEMORY_LIMIT`) defaults to 40 GB, which under distributed streaming is a node total divided between the ranks on that node ([Run:ai Model Streamer docs, as of 2026-10](https://github.com/run-ai/runai-model-streamer/blob/master/docs/src/env-vars.md)).
 
 ### Order statistics: why the tail decides load time
 
@@ -161,7 +180,7 @@ Setting `F(t)^N = 0.5` gives `F(t) = 0.5^(1/N)`, which is 0.960 at N=17, so the 
 The p99 load corresponds to `0.99^(1/17) = 0.99941`, the p99.94 of a single worker.
 Large chunks cut the number of round trips, but each long request is then exposed to a stall for longer.
 A single TCP flow stuck in retransmission backoff, or a slow storage node behind one request, can hold a 4 GiB chunk for tens of seconds while every other worker sits idle.
-This is why AWS paired the 4 GiB chunk recommendation with aggressive timeouts and retries for S3 tail latency and stalled connections ([AWS Containers blog summary, as of 2026-10](https://aws-news.com/article/2026-09-01-fast-model-loading-for-ai-inference-on-amazon-eks)).
+This is why AWS paired the 4 GiB chunk recommendation with killing and retrying slow requests, following the S3 guidance to retry slow requests aggressively ([AWS Containers blog, as of 2026-10](https://aws.amazon.com/blogs/containers/fast-model-loading-for-ai-inference-on-amazon-eks/)).
 The design rule comes from "The Tail at Scale": set a per-chunk deadline from the observed size-normalized latency (for example 3x the p50 of `bytes / duration`), cancel the request, and re-issue the remaining byte range on a new connection instead of waiting for TCP to recover.
 
 ### The host-to-device hop
@@ -177,7 +196,7 @@ A safetensors file is an 8-byte little-endian header length, then a JSON header 
 The default loader `mmap`s the file and materializes tensors by touching pages, which works well on a local NVMe page cache.
 Put that file behind a FUSE mount of object storage (Mountpoint for Amazon S3, Cloud Storage FUSE), and page faults become small, poorly pipelined range reads issued in the order the model touches tensors.
 That defeats readahead and leaves you with the "one worker, serial small requests" pattern described above.
-Either use a streaming loader that reads the whole file with large parallel ranges, or use the FUSE layer's whole-file cache so the first access copies the file to local disk in bulk (Cloud Storage FUSE file cache and parallel downloads, current flags UNVERIFIED).
+Either use a streaming loader that reads the whole file with large parallel ranges, or use the FUSE layer's whole-file cache so the first access copies the file to local disk in bulk (Cloud Storage FUSE: set `--cache-dir` to enable the file cache, and parallel downloads are on automatically with the file cache from version 2.12, or via `--file-cache-enable-parallel-downloads` on older versions; [Google Cloud docs, as of 2026-10](https://docs.cloud.google.com/storage/docs/cloud-storage-fuse/file-caching)).
 
 ### Shared read-only block: Hyperdisk ML
 
@@ -192,13 +211,13 @@ Converting a volume to read-only sharing is one-way, so a new model version mean
 ### Compilation and warmup
 
 torch.compile produces fused Triton and CUDA kernels on first startup, and those artifacts can be cached.
-AWS showed that caching torch.compile artifacts on an NVMe-backed persistent volume removes about 53 s of recompilation, so a second launch of a 64 GiB model on the same node took 16 s instead of 82 s ([AWS Containers blog, as of 2026-10](https://aws.amazon.com/blogs/containers/fast-model-loading-for-ai-inference-on-amazon-eks/)).
+AWS showed that caching torch.compile artifacts on node-local NVMe (a hostPath that survives pod restarts) cuts compilation from 53 s to 4 s, so with tuned streaming a second launch of a 64 GiB model on the same node took 16 s instead of 82 s, while the first pod on a fresh node still pays the full compile unless the cache is pre-warmed across nodes ([AWS Containers blog, as of 2026-10](https://aws.amazon.com/blogs/containers/fast-model-loading-for-ai-inference-on-amazon-eks/)).
 The cache key includes the model graph, engine version, compiler version, and GPU architecture, so an engine upgrade invalidates the whole fleet's cache at once.
 Plan engine upgrades as cold-start events and pre-warm the compile cache in a canary before the rollout.
 
 ### Research lineage
 
-ServerlessLLM (OSDI 2024) argued that inference servers should exploit multi-tier local storage, use a checkpoint format optimized for loading, and make scheduling decisions locality-aware so replicas start where weights are already cached (UNVERIFIED: citation not re-fetched this session).
+ServerlessLLM (OSDI 2024) argued that inference servers should exploit multi-tier local storage, use a checkpoint format optimized for loading, and make scheduling decisions locality-aware so replicas start where weights are already cached, and it adds live migration of in-flight inference ([Fu et al., OSDI 2024](https://www.usenix.org/conference/osdi24/presentation/fu)).
 In cloud products, that locality idea shows up as node-local caches, secondary boot disks, and shared read-only volumes.
 A fleet scheduler can do the same thing by preferring nodes whose NVMe already holds the target model's digest.
 
@@ -208,17 +227,17 @@ A fleet scheduler can do the same thing by preferring nodes whose NVMe already h
 | --- | --- | --- |
 | Share of container start time spent pulling, and share of pulled data read | 76 percent and 6.4 percent | [Slacker, FAST 2016](https://www.usenix.org/conference/fast16/technical-sessions/presentation/harter) |
 | Borg median task startup | about 25 s | [Borg EuroSys 2015, via The Morning Paper](https://blog.acolyer.org/2016/05/02/slacker-fast-distribution-with-lazy-docker-containers/) |
-| SOCI lazy-load pull time reduction on cold start | 7-9x (about 2.8 s versus 20-25 s) | [SOCI paper, as of 2026-10](https://arxiv.org/html/2607.06868v1) |
+| SOCI lazy-load pull time reduction on cold start | 7.4-9.3x (about 2.8 s versus about 20 s on a 1.3 GB image) | [SOCI paper, as of 2026-10](https://arxiv.org/html/2607.06868v1) |
 | containerd 2.2 in-memory parallel pull daemon memory | 4.1-19.2 GiB (images up to 48.5 GiB) | [DBPP paper, as of 2026-10](https://arxiv.org/html/2607.05596v1) |
 | Disk-backed parallel pull daemon memory | 243 MiB-1.02 GiB | [DBPP paper, as of 2026-10](https://arxiv.org/html/2607.05596v1) |
 | EKS Auto Mode SOCI parallel pull default for G, P, Trn with NVMe | on since 2025-11-19 | [EKS docs, as of 2026-10](https://docs.aws.amazon.com/eks/latest/userguide/auto-change.html) |
 | Weights load, 64 GiB model, p5.48xlarge, default streamer | about 29 s (plus about 53 s torch.compile) | [AWS Containers blog, as of 2026-10](https://aws.amazon.com/blogs/containers/fast-model-loading-for-ai-inference-on-amazon-eks/) |
 | Weights load, 203 GiB model, TP=4, default streamer | about 423 s, 92 percent of startup | [AWS Containers blog, as of 2026-10](https://aws.amazon.com/blogs/containers/fast-model-loading-for-ai-inference-on-amazon-eks/) |
 | Tuned startup, 64 GiB model, first launch and same-node relaunch | 82 s to 65 s and 82 s to 16 s | [AWS Containers blog, as of 2026-10](https://aws.amazon.com/blogs/containers/fast-model-loading-for-ai-inference-on-amazon-eks/) |
-| Tuned startup, 203 GiB model | 457 s to 32 s | [AWS blog summary, as of 2026-10](https://aws-news.com/article/2026-09-01-fast-model-loading-for-ai-inference-on-amazon-eks) |
+| Tuned startup, 203 GiB model, fresh node and warm compile cache | 457 s to 59 s, and 457 s to 32 s | [AWS Containers blog, as of 2026-10](https://aws.amazon.com/blogs/containers/fast-model-loading-for-ai-inference-on-amazon-eks/) |
 | Two-hop versus direct, 200 GB model | about 45 s versus about 25 s | [AWS Containers blog, as of 2026-10](https://aws.amazon.com/blogs/containers/fast-model-loading-for-ai-inference-on-amazon-eks/) |
 | Chunk size versus load time (64 GiB) | 256 MiB/c=256: 13.98 s, 4 GiB/c=17: 13.35 s | [AWS Containers blog, as of 2026-10](https://aws.amazon.com/blogs/containers/fast-model-loading-for-ai-inference-on-amazon-eks/) |
-| Run:ai streamer default concurrency | 8 (object storage), 16 (filesystem) | [Azure SDK blog, as of 2026-10](https://devblogs.microsoft.com/azure-sdk/eliminate-llm-cold-starts-load-models-up-to-6x-faster-with-azure-blob-storage-and-runai-model-streamer/) |
+| Run:ai streamer default concurrency | 8 (object storage); filesystem queue depth 64 (async) or 16 (`sync_buffered`) | [Run:ai Model Streamer docs, as of 2026-10](https://github.com/run-ai/runai-model-streamer/blob/master/docs/src/env-vars.md) |
 | g6e.4xlarge sustained network, and observed 10.4 GB stream | 20 Gbps, about 5 s | [EKS docs, as of 2026-10](https://docs.aws.amazon.com/eks/latest/userguide/ml-inference-load-serve-model.html) |
 | Hyperdisk ML max throughput per volume | 2 TiB/s (2,097,152 MiB/s) | [Compute Engine docs, as of 2026-10](https://docs.cloud.google.com/compute/docs/disks/hd-types/hyperdisk-ml) |
 | Hyperdisk ML IOPS per MiB/s provisioned | 16 | [Compute Engine docs, as of 2026-10](https://docs.cloud.google.com/compute/docs/disks/hd-types/hyperdisk-ml) |
@@ -228,8 +247,8 @@ A fleet scheduler can do the same thing by preferring nodes whose NVMe already h
 | Hyperdisk ML size range | 4 GiB to 64 TiB | [Compute Engine docs, as of 2026-10](https://docs.cloud.google.com/compute/docs/disks/add-hyperdisk) |
 | GKE secondary boot disk minimum version | COS 1.30.1-gke.1329000, Ubuntu 1.35.0-gke.1403000 | [GKE docs, as of 2026-10](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/data-container-image-preloading) |
 | HPA default sync period and scale-down stabilization | 15 s and 300 s | Kubernetes upstream defaults (stable) |
-| S3 request rate per partitioned prefix | 5,500 GET/HEAD per second | UNVERIFIED in this session |
-| GPU instance list prices | Query the Pricing API at run time (see lab) | not stated; prices not verified in this session |
+| S3 request rate per partitioned prefix | at least 5,500 GET/HEAD per second (3,500 PUT/COPY/POST/DELETE) | [S3 docs, as of 2026-10](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html) |
+| p5.48xlarge On-Demand, us-east-1, Linux | about USD 55.04 per hour, after AWS's June 2025 P5 On-Demand cut of 44 percent | third-party trackers ([Holori](https://calculator.holori.com/aws/ec2/p5.48xlarge/us-east-1)) and the [AWS price-cut announcement](https://aws.amazon.com/blogs/aws/announcing-up-to-45-price-reduction-for-amazon-ec2-nvidia-gpu-accelerated-instances/), as of 2026-10; confirm with the Pricing API |
 
 The two Hyperdisk ML throughput figures above differ: the Compute Engine page quotes 2 TiB/s per volume, while the GKE page quotes 1.2 TiB/s across 2,500 nodes.
 Treat the per-instance limit for your machine type as the binding number.
@@ -240,12 +259,12 @@ Treat the per-instance limit for your machine type as the binding number.
 | --- | --- | --- | --- |
 | Lazy image loading | SOCI lazy mode with an external zran index, on EKS and Fargate | GKE Image streaming from Artifact Registry, on by default in Autopilot for eligible images | SOCI works with unmodified images in any OCI registry, while Image streaming is tied to Artifact Registry eligibility |
 | Fast full pull | SOCI parallel pull/unpack, default in EKS Auto Mode for G, P, Trn with NVMe since 2025-11 | Standard containerd pull, or a DaemonSet pre-pull on standby nodes | AWS parallelized the pull itself, while GCP mostly avoids the pull by pre-materializing images |
-| Image baked into node storage | Custom AMI, EBS snapshot with lazy hydration (UNVERIFIED) | Secondary boot disk from a disk image, created in parallel with the node | GKE has first-class containerd integration for preloaded images, while AWS AMI baking needs a custom pipeline |
-| Direct weight streaming | Run:ai Model Streamer from S3 in vLLM/SGLang, and SageMaker fast model loading | Run:ai Model Streamer from GCS (GCS support UNVERIFIED in this session) | SageMaker adds offline pre-sharding into equal chunks as a managed step |
-| Shared read-only block for weights | No direct equivalent at Hyperdisk ML scale (EBS Multi-Attach limits UNVERIFIED) | Hyperdisk ML READ_ONLY_MANY, up to 2 TiB/s per volume, 100 attaches per 30 s | GCP offers block-level fan-out, while AWS steers you to S3 streaming or FSx for Lustre |
+| Image baked into node storage | Custom AMI, EBS snapshot with lazy volume initialization unless fast snapshot restore or a provisioned initialization rate is used (EBS docs, as of 2026-10) | Secondary boot disk from a disk image, created in parallel with the node | GKE has first-class containerd integration for preloaded images, while AWS AMI baking needs a custom pipeline |
+| Direct weight streaming | Run:ai Model Streamer from S3 in vLLM/SGLang, and SageMaker fast model loading | Run:ai Model Streamer from GCS (`gs://` URIs, supported in vLLM; vLLM docs, as of 2026-10) | SageMaker adds offline pre-sharding into equal chunks as a managed step |
+| Shared read-only block for weights | No direct equivalent at Hyperdisk ML scale (EBS Multi-Attach is io1/io2 only, up to 16 Nitro instances in one AZ; EBS docs, as of 2026-10) | Hyperdisk ML READ_ONLY_MANY, up to 2 TiB/s per volume, 100 attaches per 30 s | GCP offers block-level fan-out, while AWS steers you to S3 streaming or FSx for Lustre |
 | POSIX view of object storage | Mountpoint for Amazon S3 | Cloud Storage FUSE with file cache | On both, mmap over FUSE is pathological without a whole-file cache |
 | Node provisioning | Karpenter or EKS Auto Mode on EC2 Fleet | GKE node auto-provisioning and custom compute classes | Both depend on the instance-launch control plane, so neither is statically stable during launch impairment |
-| Capacity assurance | On-Demand Capacity Reservations, Capacity Blocks for ML (current terms UNVERIFIED) | Reservations, Dynamic Workload Scheduler (current modes UNVERIFIED) | Reservations bill whether used or not, which is the price of static stability |
+| Capacity assurance | On-Demand Capacity Reservations, Capacity Blocks for ML (start up to 8 weeks ahead, up to 64 instances per block, no cancellation; EC2 docs, as of 2026-10) | Reservations, Dynamic Workload Scheduler Flex-start VMs and calendar-mode future reservations (calendar mode GA for GPUs since 2025-12, 1-90 days; Compute Engine docs, as of 2026-10) | Reservations bill whether used or not, which is the price of static stability |
 | Compile cache persistence | NVMe-backed persistent volume, shown by AWS for torch.compile | Local SSD or Hyperdisk-backed PV (same pattern) | Mechanism is engine-level and cloud-agnostic |
 | Private path to weights | S3 gateway endpoint, ECR interface endpoints | Private Google Access, VPC Service Controls perimeter | GCP perimeters are API-level, AWS endpoints are route- and policy-level |
 
@@ -259,7 +278,7 @@ The instance terminates itself after uploading the results, and a dead-man shutd
 
 ### Cost estimate
 
-One `c6in.4xlarge`-class instance for about 1 hour, 16 GiB of S3 Standard for under a day, and a few tens of thousands of GET requests should cost under USD 2 in total, but the underlying prices are UNVERIFIED in this session.
+One `c6in.4xlarge`-class instance for about 1 hour, 16 GiB of S3 Standard for under a day, and a few tens of thousands of GET requests should cost under USD 2 in total (UNVERIFIED: a rough estimate, not derived from the Pricing API).
 Get the current instance price with the Pricing API before running.
 
 ```bash
@@ -540,7 +559,7 @@ python3 -m vllm.entrypoints.openai.api_server \
 
 ### Optional GCP parity: Hyperdisk ML volume for read-only fan-out
 
-The `--access-mode` update flag below follows the documented READ_ONLY_MANY workflow, but its exact gcloud spelling is UNVERIFIED in this session.
+The `--access-mode` flag of `gcloud compute disks update` accepts `READ_ONLY_MANY`, `READ_WRITE_MANY`, or `READ_WRITE_SINGLE` ([gcloud reference, as of 2026-10](https://docs.cloud.google.com/sdk/gcloud/reference/compute/disks/update)).
 
 ```bash
 gcloud billing budgets create --billing-account=BILLING_ACCOUNT_ID \
@@ -572,13 +591,14 @@ Scenario: a chat service serves a 203 GiB model at TP=4, two replicas per 8-GPU 
 The morning ramp adds demand at 2 replicas per minute for 30 minutes.
 Every phase duration below is a planning assumption unless it carries a source.
 Untuned time-to-ready: node acquisition and boot 240 s (assumption), default image pull of a 20 GB image 180 s (assumption), and pod startup of 457 s with default streamer settings (AWS measured), for a total of 877 s, about 14.6 minutes.
-Tuned time-to-ready: 240 s node, 30 s image with SOCI parallel pull onto NVMe (assumption), and 32 s tuned pod startup (AWS measured), for a total of 302 s, about 5 minutes.
+Tuned time-to-ready: 240 s node, 30 s image with SOCI parallel pull onto NVMe (assumption), and 59 s tuned pod startup on a fresh node without a compile cache (AWS measured), for a total of 329 s, about 5.5 minutes.
+The 32 s tuned figure AWS reports for this model needs a warm torch.compile cache, which a brand-new node has only if you add custom cross-node cache pre-warming ([AWS Containers blog, as of 2026-10](https://aws.amazon.com/blogs/containers/fast-model-loading-for-ai-inference-on-amazon-eks/)).
 To avoid shedding during a ramp, the warm buffer must be at least `ramp x T_ready`.
 Untuned, that is 2 x 14.6 = 29.2, so 30 replicas or 15 nodes.
-Tuned, it is 2 x 5 = 10 replicas, or 5 nodes.
-The difference is 10 nodes held around the clock, which is 240 node-hours per day.
-At an illustrative USD 55 per node-hour (UNVERIFIED, use the Pricing API), that is about USD 13,200 per day, or about USD 396,000 per month, of buffer you can stop paying for.
-After tuning, the 240 s node-acquisition assumption is about 80 percent of `T_ready`, so the next lever is capacity placement (reservations, standby nodes, in-region spare pools), not more byte-pipe work.
+Tuned, it is 2 x 5.48 = 10.97, so 11 replicas, or 6 nodes.
+The difference is 9 nodes held around the clock, which is 216 node-hours per day.
+At USD 55 per node-hour, close to the p5.48xlarge us-east-1 On-Demand rate in Numbers to Know (confirm with the Pricing API), that is about USD 11,880 per day, or about USD 356,400 per 30-day month, of buffer you can stop paying for.
+After tuning, the 240 s node-acquisition assumption is about 73 percent of `T_ready`, so the next lever is capacity placement (reservations, standby nodes, in-region spare pools), not more byte-pipe work.
 A step change in demand, such as absorbing a failed region, is different from a ramp: no cold-start optimization removes the need for warm capacity equal to the step if you require zero shedding in the first `T_ready` seconds.
 In that case you are choosing between pre-positioned capacity and deliberate load shedding (see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control|Load Shedding, Backpressure, and Admission Control]]).
 
@@ -588,20 +608,20 @@ In that case you are choosing between pre-positioned capacity and deliberate loa
 
 A region-level failover that starts 300 replicas of a 64 GiB model at once has to move 18.75 TiB.
 To do that in 120 s, the fleet needs about 160 GiB/s of aggregate read throughput.
-With 8 MiB chunks that is 2,457,600 GETs in 120 s, about 20,480 GET/s, roughly 4x the commonly cited per-prefix S3 GET rate (UNVERIFIED in this session), which leads to `503 SlowDown` and retry amplification.
+With 8 MiB chunks that is 2,457,600 GETs in 120 s, about 20,480 GET/s, roughly 4x the documented baseline of 5,500 GET/HEAD per second per partitioned prefix ([S3 docs, as of 2026-10](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html)), which leads to `503 SlowDown` and retry amplification.
 With 4 GiB chunks the same transfer is 4,800 GETs total, so chunk size is also a request-rate control.
 Spread weights across multiple prefixes, add jitter to replica start times, and use exponential backoff with full jitter (see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Resilient Communication: Retries, Jitter, and Circuit Breakers]]).
 
 ### KMS request amplification
 
-With SSE-KMS and no S3 Bucket Key, S3 calls KMS for decryption on object reads, so a burst of small range GETs can turn into a burst of KMS requests that hits the account's shared KMS request quota (UNVERIFIED: per-range-request behavior not re-verified in this session).
+With SSE-KMS and no S3 Bucket Key, S3 calls KMS for decryption on object reads, so a burst of small range GETs can turn into a burst of KMS requests that hits the account's shared KMS request quota, because without a Bucket Key S3 calls KMS every time a request is made against a KMS-encrypted object ([S3 docs, as of 2026-10](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html)).
 The symptom is weight loading failing with access or throttling errors while S3 itself looks healthy, and unrelated services that share the KMS quota fail at the same time.
 Enable S3 Bucket Keys on weight buckets and size chunks so the request count stays small.
 
 ### One stalled connection stalls the load
 
 Because load completion is the maximum over workers, a single stuck TCP flow holds every GPU on the node idle.
-AWS explicitly recommends aggressive timeouts and retries for S3 tail latency and stalled connections ([AWS blog summary, as of 2026-10](https://aws-news.com/article/2026-09-01-fast-model-loading-for-ai-inference-on-amazon-eks)).
+AWS explicitly recommends killing and retrying slow requests, following the S3 guidance to retry slow requests aggressively ([AWS Containers blog, as of 2026-10](https://aws.amazon.com/blogs/containers/fast-model-loading-for-ai-inference-on-amazon-eks/)).
 Default SDK read timeouts are often 60 s or more, far longer than a healthy 4 GiB chunk transfer on a fast node.
 
 ### Probe misconfiguration and crash-loop amplification
@@ -637,7 +657,7 @@ See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_03_Sp
 ### Control-plane impairment during the event you scaled for
 
 AWS's post-event summary of the 2021-12-07 us-east-1 event describes how automated scaling activity in AWS's internal network caused a surge of connection activity that congested internal devices and degraded control-plane APIs ([AWS PES](https://aws.amazon.com/message/12721/)).
-AWS's summary of the October 2025 us-east-1 event reports that a DynamoDB DNS failure cascaded into impaired EC2 instance launches and network configuration of new instances for hours ([AWS PES](https://aws.amazon.com/message/101925/)) (UNVERIFIED: details not re-fetched in this session).
+AWS's summary of the 2025-10-19/20 us-east-1 event reports that a latent race condition in DynamoDB's DNS management left the regional endpoint with an empty DNS record, and the cascade made new EC2 instance launches fail from about 02:25 to 10:36 PDT on 2025-10-20, with network-configuration propagation for new instances delayed for roughly five hours, while existing instances kept running ([AWS PES, as of 2026-10](https://aws.amazon.com/message/101925/)).
 In both cases, a design that depends on launching new GPU nodes during the incident fails exactly when it is needed.
 Pre-provisioned or reserved capacity in a second region keeps working while launches are impaired, and so does a cache that survives pod restarts (see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]]).
 
@@ -680,7 +700,7 @@ On GCP, Private Google Access lets nodes without external IPs reach Cloud Storag
 Buffer cost equals ramp rate times time-to-ready times node price, so a 3x reduction in `T_ready` is a 3x reduction in ramp buffer.
 A warm node without a loaded replica costs the same as a warm node with one, so "keep nodes, drop pods" saves nothing for scale-out.
 It only helps rollouts and crash restarts, where the node-local cache turns an 82 s start into 16 s ([AWS Containers blog, as of 2026-10](https://aws.amazon.com/blogs/containers/fast-model-loading-for-ai-inference-on-amazon-eks/)).
-Suspended standby nodes change this calculation only if suspended capacity is billed below running capacity, so check the pricing for that state (UNVERIFIED).
+Suspended standby nodes change this calculation because GKE charges no VM compute while a node is suspended, only Persistent Disk storage for the boot disk and saved memory state, though the feature is in Preview ([Google Cloud docs, as of 2026-10](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/startup-latency-reduction-strategies)).
 Object-storage request charges are negligible with large chunks and become noticeable with small chunks multiplied by churn.
 See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics|GPU and TPU Unit Economics]] for turning these into cost per million tokens.
 
@@ -728,7 +748,7 @@ Queue depth is near zero most of the day and spikes within seconds, so how do yo
 ### Question 3 (L6 - Staff)
 
 A colleague says the weight loader should use 8 MiB chunks with 1,024 parallel requests because more parallelism always uses the network better.
-AWS's own measurements show 256 MiB at concurrency 256 and 4 GiB at concurrency 17 within half a second of each other, so explain why, and design the loader's request policy.
+AWS's own measurements show 256 MiB at concurrency 256 and 4 GiB at concurrency 17 within about 0.6 s (under 5 percent) of each other, so explain why, and design the loader's request policy.
 
 #### Model Answer
 
@@ -775,7 +795,7 @@ When would you choose lazy image loading (SOCI index or GKE Image streaming) ove
 #### Model Answer
 
 Lazy loading helps when the startup working set is a small fraction of the image and the rest is touched rarely or never.
-Examples are CPU-side routers, tokenizer services, and sidecars, where SOCI-style indexes cut pull time by 7-9x.
+Examples are CPU-side routers, tokenizer services, and sidecars, where SOCI-style indexes cut pull time by about 7.4-9.3x.
 It hurts when the working set is large and touched in bursts at startup, which is exactly the CUDA, cuBLAS, and NCCL footprint of a GPU engine.
 It also hurts when runtime I/O latency matters, because a page fault deep in a request path becomes a registry round trip.
 Parallel pull pays the full byte cost up front but uses multiple connections per layer, concurrent unpack, and fast local NVMe, and once the container starts its performance is deterministic.
@@ -797,7 +817,7 @@ Present a strategy that treats cold-start latency as a financial instrument, and
 
 Required warm buffer is `ramp_rate x T_ready` for ramps, plus the largest step you refuse to shed for steps.
 That makes `T_ready` a multiplier on idle GPU spend, and I can put a dollar value on each second.
-In a representative case, going from about 14.6 to about 5 minutes of time-to-ready cuts a ramp buffer from 15 nodes to 5, which is hundreds of thousands of dollars a month at 8-GPU node prices.
+In a representative case, going from about 14.6 to about 5.5 minutes of time-to-ready cuts a ramp buffer from 15 nodes to 6, which is hundreds of thousands of dollars a month at 8-GPU node prices.
 I would fund the byte-pipe work first (parallel image pull, tuned direct streaming, compile caching), because it is cheap configuration with large returns.
 I would then expect node acquisition to dominate what remains, at which point the levers are contractual and architectural, not engineering: a reserved floor, standby or suspended capacity if it is billed below running capacity, and cross-zone or cross-region spare pools.
 I would stop investing when the marginal second removed from `T_ready` saves less than its engineering and operational cost.

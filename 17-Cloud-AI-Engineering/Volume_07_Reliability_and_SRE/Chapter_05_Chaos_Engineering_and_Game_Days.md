@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://principlesofchaos.org/"
@@ -17,6 +17,34 @@ sources:
   - "https://www.usenix.org/conference/osdi14/technical-sessions/presentation/yuan"
   - "https://www.usenix.org/conference/osdi18/presentation/veeraraghavan"
   - "https://sre.google/sre-book/testing-reliability/"
+  - "https://docs.aws.amazon.com/fis/latest/userguide/fis-quotas.html"
+  - "https://docs.aws.amazon.com/fis/latest/userguide/experiment-options.html"
+  - "https://docs.aws.amazon.com/fis/latest/userguide/experiment-report-configuration.html"
+  - "https://docs.aws.amazon.com/fis/latest/userguide/eks-pod-actions.html"
+  - "https://docs.aws.amazon.com/fis/latest/userguide/doc-history.html"
+  - "https://docs.aws.amazon.com/fis/latest/userguide/getting-started-iam-service-role.html"
+  - "https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AWSFaultInjectionSimulatorNetworkAccess.html"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/nacl-basics.html"
+  - "https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-autoshift.how-it-works.html"
+  - "https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-autoshift.how-it-works.how-traffic-shifted.html"
+  - "https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-shift.resource-types.html"
+  - "https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-shift.resource-types.app-load-balancers.html"
+  - "https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-shift.resource-types.network-load-balancers.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2023/11/route-53-application-recovery-zonal-autoshift/"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/alarms-and-missing-data.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-cloudwatch-metrics.html"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://aws.amazon.com/message/41926/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://status.cloud.google.com/incidents/dS9ps52MUnxQfyDGPfkY"
+  - "https://docs.cloud.google.com/fault-injection-testing/overview"
+  - "https://docs.cloud.google.com/fault-injection-testing/release-notes"
+  - "https://docs.cloud.google.com/fault-injection-testing/stop-experiment"
+  - "https://cloud.google.com/blog/products/networking/introducing-google-cloud-fault-injection-testing-in-preview"
+  - "https://docs.cloud.google.com/firewall/docs/firewalls"
+  - "https://docs.cloud.google.com/load-balancing/docs/https/traffic-management-global"
+  - "https://docs.cloud.google.com/bigtable/docs/replication-overview"
+  - "https://docs.cloud.google.com/load-balancing/docs/backend-service"
 ---
 
 # Chaos Engineering and Game Days
@@ -74,9 +102,9 @@ Mechanically this is a `CreateNetworkAcl`, a series of `CreateNetworkAclEntry` c
 
 Consequences you can derive from that mechanism:
 
-- **Stateless, per-packet, silent.** Network ACLs are stateless filters evaluated on every packet crossing the subnet boundary (recalled from AWS VPC docs, UNVERIFIED in this revision). A deny entry drops packets with no ICMP unreachable and no TCP reset. Established TCP flows do not close, they stall and retransmit until the application's timeout or the kernel's retransmission limit fires. This is why the AZ Power Interruption scenario is described as forcing timeouts and DNS refreshes (AWS docs, as of 2026-10; [AZ Availability: Power Interruption](https://docs.aws.amazon.com/fis/latest/userguide/az-availability-scenario.html)). A client with a 30 s read timeout and no connect timeout will hold a connection for 30 s per attempt, which is much worse than a connection refused.
+- **Stateless, per-packet, silent.** Network ACLs are stateless filters evaluated when traffic enters and leaves the subnet (AWS VPC docs, as of 2026-11; [network ACL basics](https://docs.aws.amazon.com/vpc/latest/userguide/nacl-basics.html)). A deny entry drops packets with no ICMP unreachable and no TCP reset. Established TCP flows do not close, they stall and retransmit until the application's timeout or the kernel's retransmission limit fires. The AZ Power Interruption scenario uses this action to approximate how traffic is dropped during a real event while DNS updates (AWS docs, as of 2026-11; [AZ Availability: Power Interruption](https://docs.aws.amazon.com/fis/latest/userguide/az-availability-scenario.html)). A client with a 30 s read timeout and no connect timeout will hold a connection for 30 s per attempt, which is much worse than a connection refused.
 - **Subnet boundary only.** Scope `all` <cite>denies all traffic entering and leaving the subnet but allows intra-subnet traffic</cite> (AWS docs, as of 2026-10; [actions reference](https://docs.aws.amazon.com/fis/latest/userguide/fis-actions-reference.html)). If your app and database share a subnet, the drill does not sever that path, so you under-inject. Target every subnet in the AZ, including data and endpoint subnets, or the drill proves less than you think.
-- **Not everything is filtered.** NACLs do not filter some VPC infrastructure traffic such as the Amazon-provided DNS resolver and instance metadata (recalled from AWS docs, UNVERIFIED). A "total blackhole" still leaves name resolution and IMDS working, so DNS-based failure behavior is not fully exercised.
+- **Not everything is filtered.** NACLs do not filter traffic to Amazon DNS (the Route 53 Resolver), DHCP, EC2 instance metadata, ECS task metadata endpoints, Windows license activation, Amazon Time Sync, or the default VPC router's reserved addresses (AWS VPC docs, as of 2026-11; [network ACL basics](https://docs.aws.amazon.com/vpc/latest/userguide/nacl-basics.html)). A "total blackhole" still leaves name resolution and IMDS working, so DNS-based failure behavior is not fully exercised.
 - **Entry and subnet limits.** When scope is not `all`, <cite>the maximum number of entries in network ACLs is 20</cite>, and for scope `availability-zone` <cite>the maximum number of subnets that can be targeted in a VPC is 30</cite> (AWS docs, as of 2026-10; [actions reference](https://docs.aws.amazon.com/fis/latest/userguide/fis-actions-reference.html)).
 - **Association swap races with IaC.** `ReplaceNetworkAclAssociation` returns a new association ID, so a concurrent Terraform or CloudFormation apply that reads the old association can fight the experiment or fail to converge. Freeze network IaC pipelines during drills (inference from the API semantics).
 - **Permissions are network-admin-grade.** The role needs permissions such as `ec2:CreateNetworkAcl`, which is a problem in centralized-network organizations. AWS documents an SCP pattern that allows a dedicated experiment-executor role to make those calls while denying everyone else (AWS Cloud Operations blog, as of 2026-10; [Scaling FIS across your organization](https://aws.amazon.com/blogs/mt/scaling-aws-fault-injection-service-across-your-organization-using-account-controls/)).
@@ -90,14 +118,15 @@ Related actions in the same family include `aws:network:route-table-disrupt-cros
 
 Faults that need to run inside a compute unit (CPU stress, packet loss, latency, I/O stress, process kill) are delivered differently.
 For ECS task actions FIS uses an SSM agent sidecar container, and as of 2026-09-29 AWS ships a non-root variant of that sidecar image with the fault-injection dependencies pre-installed (AWS docs, as of 2026-10; [FIS document history](https://docs.aws.amazon.com/fis/latest/userguide/doc-history.html)).
-The action catalog includes `aws:ecs:task-network-latency`, `aws:ecs:task-network-packet-loss`, `aws:ecs:task-kill-process`, `aws:eks:pod-network-latency`, and `aws:eks:pod-io-stress` (names from the FIS quota list, as of 2026-10; [secondary mirror](https://awsfundamentals.com/limits/fis)).
-For EKS pod actions, FIS injects through an ephemeral container added to the target pod using Kubernetes RBAC you grant to a service account (recalled from FIS docs, UNVERIFIED in this revision).
+The action catalog includes `aws:ecs:task-network-latency`, `aws:ecs:task-network-packet-loss`, `aws:ecs:task-kill-process`, `aws:eks:pod-network-latency`, and `aws:eks:pod-io-stress` (AWS FIS quotas, as of 2026-11; [quotas and limitations](https://docs.aws.amazon.com/fis/latest/userguide/fis-quotas.html)).
+For EKS pod actions other than `aws:eks:pod-delete`, FIS creates a FIS Pod in the cluster, which injects through an ephemeral container added to the target pod using Kubernetes RBAC you grant to a service account (AWS docs, as of 2026-11; [EKS pod actions](https://docs.aws.amazon.com/fis/latest/userguide/eks-pod-actions.html)).
 The trade-off is that these faults run with elevated capabilities in your workload's network namespace, so the same hardening review you apply to debug containers applies here.
 
 ### Service-side API faults
 
-FIS also has actions that inject errors at the service API layer for calls made by specific IAM roles, such as internal-error, throttle, and unavailable responses scoped to a Region or AZ (recalled from FIS docs, action names `aws:fis:inject-api-internal-error`, `aws:fis:inject-api-throttle-error`, `aws:fis:inject-api-unavailable-error`, UNVERIFIED in this revision).
-The scenario library's AZ Power Interruption experiment also includes <cite>no re-scaling of compute in the AZ</cite>, alongside loss of zonal EC2, EKS, and ECS compute, subnet connectivity loss, RDS and ElastiCache failover, and unresponsive EBS volumes (AWS What's New, as of 2023-11; [launch post](https://aws.amazon.com/about-aws/whats-new/2023/11/aws-fault-injection-service-two-requested-scenarios/)).
+FIS also has actions that inject errors at the service API layer for calls made by a target IAM role: `aws:fis:inject-api-internal-error`, `aws:fis:inject-api-throttle-error`, and `aws:fis:inject-api-unavailable-error`, each with `percentage` and `operations` parameters and a `service` parameter limited to `ec2` and `kinesis` (AWS docs, as of 2026-11; [actions reference](https://docs.aws.amazon.com/fis/latest/userguide/fis-actions-reference.html)).
+AZ scoping lives on a separate pair, `aws:ec2:api-insufficient-instance-capacity-error` and `aws:ec2:asg-insufficient-instance-capacity-error`, which take `availabilityZoneIdentifiers` (AWS docs, as of 2026-11; [AZ Availability: Power Interruption](https://docs.aws.amazon.com/fis/latest/userguide/az-availability-scenario.html)).
+The scenario library's AZ Power Interruption experiment also includes <cite>no re-scaling of compute in the AZ</cite>, alongside loss of zonal EC2, EKS, and ECS compute, subnet connectivity loss, RDS and ElastiCache failover, impaired access to S3 Express One Zone directory buckets, and unresponsive EBS volumes (AWS docs, as of 2026-11; [AZ Availability: Power Interruption](https://docs.aws.amazon.com/fis/latest/userguide/az-availability-scenario.html)).
 The "no re-scaling" element is the one most teams never test by hand, and it is the one that kills autoscaling-dependent designs, because it encodes the static-stability rule that recovery must not require new control-plane work.
 
 ### Stop conditions and the abort-latency model
@@ -113,22 +142,26 @@ t_detect   ~ (datapoints_to_alarm * period) + publish_delay + eval_delay
 
 Two design rules fall out of this.
 First, if the action `duration` is shorter than `t_detect`, the stop condition cannot save you, and `duration` is the only real blast-radius control. The AZ Power Interruption scenario blocks connectivity for 2 minutes by default (AWS docs, as of 2026-10), which is on the order of the detection latency of a standard alarm.
-Second, a stop condition built on a metric that disappears when the system is down is decorative. If error-rate is computed from request counts and traffic collapses to zero, the metric has no datapoints, and the default missing-data handling does not produce ALARM. Set `TreatMissingData=breaching` on the stop alarm so "no data" means "stop", and test the alarm by forcing it into ALARM before trusting it.
+Second, a stop condition built on a metric that disappears when the system is down is decorative. If error-rate is computed from request counts and traffic collapses to zero, the metric has no datapoints, and the default missing-data handling does not produce ALARM: the default `missing` treatment moves the alarm to INSUFFICIENT_DATA when all datapoints in the evaluation range are missing (CloudWatch docs, as of 2026-11; [missing data](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/alarms-and-missing-data.html)). Set `TreatMissingData=breaching` on the stop alarm so "no data" means "stop", and test the alarm by forcing it into ALARM before trusting it.
 
 ### The mitigation under test: zonal shift and autoshift
 
 For single-Region multi-AZ drills the thing you actually want to rehearse is the mitigation.
 ARC zonal shift moves traffic away from one AZ for supported resources, and zonal autoshift lets AWS do it automatically: <cite>when AWS internal telemetry detects an AZ impairment that could impact customers, ARC starts shifting traffic for configured resources to healthy AZs</cite> (AWS docs, as of 2026-10; [ARC single-Region recovery](https://aws.amazon.com/application-recovery-controller/single-region-recovery/)).
 At launch it supported Application and Network Load Balancers with cross-zone load balancing disabled (AWS What's New, as of 2023-11; [zonal autoshift launch](https://aws.amazon.com/about-aws/whats-new/2023/11/route-53-application-recovery-zonal-autoshift/)).
-The cross-zone-disabled requirement is the mechanism, not a footnote: shifting works at the zonal load-balancer-node level (removing the zone from DNS answers and routing), so a cross-zone-enabled load balancer would still forward to the impaired zone's targets (mechanism recalled from ARC docs, UNVERIFIED in this revision).
+That cross-zone-disabled requirement no longer applies: ARC now supports Application and Network Load Balancers with cross-zone load balancing enabled or disabled, plus EC2 Auto Scaling groups and EKS (ARC docs, as of 2026-11; [supported resources](https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-shift.resource-types.html)).
+The mechanism is a forced Route 53 health check failure that withdraws the zone's load balancer IP addresses from DNS, so new connections go to other zones (ARC docs, as of 2026-11; [how traffic is shifted](https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-autoshift.how-it-works.how-traffic-shifted.html)).
+With cross-zone enabled, the load balancer also stops routing to targets in the shifted-away zone: an ALB blocks all traffic to them, and an NLB treats them as disabled (ARC docs, as of 2026-11; [ALB](https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-shift.resource-types.app-load-balancers.html), [NLB](https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-shift.resource-types.network-load-balancers.html)).
+Load balancers need the `zonal_shift.config.enabled` attribute, a shift has no effect on a load balancer that is failing open, and a shift on a cross-zone-enabled load balancer drops target capacity for every load balancer sharing those targets (ARC docs, as of 2026-11).
 Practice runs are the built-in game day: <cite>when a resource has a practice run configuration, ARC starts weekly zonal shifts to shift traffic away from an Availability Zone</cite>, to verify the application tolerates losing one AZ (AWS docs, as of 2026-10; [UpdateZonalAutoshiftConfiguration](https://docs.aws.amazon.com/arc-zonal-shift/latest/api/API_UpdateZonalAutoshiftConfiguration.html)).
 Because shifting is DNS-mediated, clients holding cached answers or long-lived connections keep sending to the shifted-away zone until TTL expiry or connection turnover, so measure the tail of traffic, not the median.
+ALB HTTP client keepalive defaults to 3,600 s, and AWS suggests lowering it toward your recovery time goal, for example 300 s, while existing NLB connections persist until they close (ARC docs, as of 2026-11).
 
 ### Fault selection: why random is not enough
 
 Three results from the literature determine which faults to inject.
 
-- **Lineage-driven fault injection.** Alvaro, Rosen, and Hellerstein (SIGMOD 2015) reason backward from a successful execution's lineage to find the minimal sets of faults that could falsify the success, and only inject those. This matters because blind search explodes: for a request touching 50 independent calls there are C(50,2) = 1,225 two-fault and C(50,3) = 19,600 three-fault combinations (derived), and most are redundant. Netflix applied the approach to production-scale failure testing (Basiri et al., "Automating Failure Testing Research at Internet Scale", SoCC 2016).
+- **Lineage-driven fault injection.** Alvaro, Rosen, and Hellerstein (SIGMOD 2015) reason backward from a successful execution's lineage to find the minimal sets of faults that could falsify the success, and only inject those. This matters because blind search explodes: for a request touching 50 independent calls there are C(50,2) = 1,225 two-fault and C(50,3) = 19,600 three-fault combinations (derived), and most are redundant. Netflix applied the approach to production-scale failure testing (Alvaro et al., "Automating Failure Testing Research at Internet Scale", SoCC 2016).
 - **Gray failure.** Huang et al. (HotOS 2017) define gray failure as differential observability: the component looks healthy to its health checker while applications see it as failed. Instance-stop tests cannot produce this. Latency injection, partial packet loss, and asymmetric partitions can.
 - **Metastable failures.** Huang et al. (OSDI 2022, "Metastable Failures in the Wild") show that a transient trigger can push a system into a self-sustaining overload state, typically driven by retry amplification or cache-miss storms, that persists after the trigger is removed. Fault drills must therefore include the recovery phase: run the fault, remove it, and keep measuring for at least several multiples of the longest client timeout. See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Resilient Communication: Retries, Jitter, and Circuit Breakers]] and [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control|Load Shedding, Backpressure, and Admission Control]].
 
@@ -143,14 +176,15 @@ Without cells, you are limited to the coarse knobs: target count (`COUNT(n)`), p
 
 ### What exists on Google Cloud
 
-As of this revision I could not verify a first-party managed fault injection service on Google Cloud equivalent to FIS, so treat that as UNVERIFIED.
-The practical toolbox is a composition of primitives:
+Google Cloud now has a first-party managed service, Fault Injection Testing (FIT), but it is in Preview: Pre-GA, offered "as is", with access requested through your account team (Google Cloud docs, as of 2026-11; [overview](https://docs.cloud.google.com/fault-injection-testing/overview), [release notes](https://docs.cloud.google.com/fault-injection-testing/release-notes)).
+Its documented faults are Failover Cloud SQL, Degrade Application Traffic (latency and HTTP errors through an Application Load Balancer), and Fail Compute, with experiment templates, a read-only dry run, and a manual Stop and Revert action (Google Cloud, as of 2026-11; [launch blog](https://cloud.google.com/blog/products/networking/introducing-google-cloud-fault-injection-testing-in-preview), [stop an experiment](https://docs.cloud.google.com/fault-injection-testing/stop-experiment)).
+Because it is Pre-GA with a small fault catalog, the practical production toolbox is still a composition of primitives:
 
-- **Application-layer faults.** Envoy-based Cloud Load Balancing URL maps and Cloud Service Mesh support request delay and abort fault injection by percentage (recalled from Google Cloud docs, UNVERIFIED). This is the closest analog to FIS API-error injection, and it is the safest way to test client timeout and retry behavior because it is per-route and per-percentage.
-- **Platform failover primitives.** `gcloud compute instances simulate-maintenance-event`, Cloud SQL HA failover (`gcloud sql instances failover`), and Memorystore failover are documented ways to trigger the real recovery path (command names recalled, UNVERIFIED in this revision).
+- **Application-layer faults.** Envoy-based Application Load Balancer URL maps support delay and abort injection for a user-defined share of requests through `faultInjectionPolicy` (Google Cloud docs, as of 2026-11; [global external ALB traffic management](https://docs.cloud.google.com/load-balancing/docs/https/traffic-management-global)), and Cloud Service Mesh routes expose the same concept (Google Cloud client reference, as of 2026-11; [GrpcRoute.FaultInjectionPolicy](https://docs.cloud.google.com/php/docs/reference/cloud-networkservices/latest/V1.GrpcRoute.FaultInjectionPolicy)). This is the closest analog to FIS API-error injection, and it is the safest way to test client timeout and retry behavior because it is per-route and per-percentage.
+- **Platform failover primitives.** [`gcloud compute instances simulate-maintenance-event`](https://docs.cloud.google.com/sdk/gcloud/reference/compute/instances/simulate-maintenance-event), Cloud SQL HA failover ([`gcloud sql instances failover`](https://docs.cloud.google.com/sdk/gcloud/reference/sql/instances/failover)), and Memorystore for Redis standard-tier failover ([`gcloud redis instances failover`](https://docs.cloud.google.com/sdk/gcloud/reference/redis/instances/failover)) are documented ways to trigger the real recovery path (gcloud reference, as of 2026-11).
 - **Kubernetes-level chaos.** Chaos Mesh and LitmusChaos run in GKE and inject pod kill, network, and I/O faults.
-- **Network partition.** Because the Google Cloud VPC is global and firewall rules are VPC-scoped, a zonal blackhole is built by targeting network tags or service accounts of one zone's instance group with a high-priority deny rule. GCP firewall rules are stateful, so established connections may survive a newly added deny rule until their tracking entries expire, which is a different failure shape than the NACL drop (behavior recalled from VPC firewall docs, UNVERIFIED in this revision, and it must be tested empirically before you rely on it). See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_04_Global_VPC_Andromeda_SDN_and_Network_Tiers|Global VPC, Andromeda SDN, and Network Tiers]].
-- **Organizational practice.** Google's DiRT (Disaster Recovery Testing) program and the SRE practices of "Wheel of Misfortune" and disaster role-playing are the process model (Krishnan, "Weathering the Unexpected", ACM Queue 2012; Google SRE book chapter on testing for reliability).
+- **Network partition.** Because the Google Cloud VPC is global and firewall rules are VPC-scoped, a zonal blackhole is built by targeting network tags or service accounts of one zone's instance group with a high-priority deny rule. GCP firewall rules are stateful, and a new or changed deny rule is enforced only on new connections, so existing connections persist unaffected, with tracking state staying active while at least one packet flows every 10 minutes, which is a different failure shape than the NACL drop (Google Cloud docs, as of 2026-11; [Cloud NGFW firewall rules](https://docs.cloud.google.com/firewall/docs/firewalls); test it empirically before you rely on it). See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_04_Global_VPC_Andromeda_SDN_and_Network_Tiers|Global VPC, Andromeda SDN, and Network Tiers]].
+- **Organizational practice.** Google's DiRT (Disaster Recovery Testing) program and the SRE practices of "Wheel of Misfortune" and disaster role-playing are the process model (Krishnan, "Weathering the Unexpected", ACM Queue 2012; [Google SRE book, "Accelerating SREs to On-Call and Beyond"](https://sre.google/sre-book/accelerating-sre-on-call/)).
 
 ### Game day design
 
@@ -176,19 +210,19 @@ With C = 60 s and a cluster MTBF of 4 hours, that is sqrt(2 * 60 * 14,400) = abo
 | FIS price per action-minute | $0.10, plus $0.10 per action-minute for each additional account | (AWS FIS pricing, as of 2026-10) |
 | FIS price in GovCloud (US-East, US-West) | $0.12 per action-minute, plus $0.12 per additional account | (AWS FIS pricing, as of 2026-10) |
 | FIS experiment report | $5 per report | (AWS FIS pricing, as of 2026-10) |
-| Action-minute rounding | Duration from start to stop, rounded to the nearest minute | (AWS Resilience Hub pricing docs, as of 2026-10) |
+| Action-minute rounding | Duration from start to stop, rounded to the nearest minute | (AWS FIS pricing, as of 2026-11) |
 | Parallel actions are billed independently | 2 actions x 20 min + 1 action x 10 min = 50 action-minutes = $5 | (AWS FIS pricing example, as of 2026-10) |
 | AZ Power Interruption scenario default connectivity block | 2 minutes for all subnets tagged in the AZ | (AWS docs, as of 2026-10) |
 | NACL entries when scope is not `all` | Max 20 | (AWS FIS docs, as of 2026-10) |
 | Subnets per VPC for scope `availability-zone` | Max 30 | (AWS FIS docs, as of 2026-10) |
-| Target subnets for `aws:network:disrupt-connectivity` (quota mirror) | 100, which conflicts with the 30 above for AZ scope, so check Service Quotas | (awsfundamentals mirror of Service Quotas, as of 2026-10, UNVERIFIED) |
-| Max experiment duration (quota mirror) | 12 hours | (awsfundamentals mirror of Service Quotas, as of 2026-10, UNVERIFIED) |
-| Parallel actions per experiment (quota mirror) | 10 | (awsfundamentals mirror of Service Quotas, as of 2026-10, UNVERIFIED) |
-| Target account configurations per template (quota mirror) | 40 | (awsfundamentals mirror of Service Quotas, as of 2026-10, UNVERIFIED) |
-| Target pods per `aws:eks:pod-network-latency` (quota mirror) | 1,000 | (awsfundamentals mirror of Service Quotas, as of 2026-10, UNVERIFIED) |
-| Report pre-experiment window | Default 20 min, up to 30 min | (AWS FIS docs, as of 2026-10) |
-| Report post-experiment window | Up to 2 hours | (AWS FIS docs, as of 2026-10) |
-| ARC zonal autoshift practice runs | Weekly, mandatory for autoshift | (AWS docs, as of 2026-10) |
+| Target subnets for `aws:network:disrupt-connectivity`, by tags, per experiment | 100, but values above 5 apply only to scope `all`, so other scopes need a support request | (AWS FIS quotas, as of 2026-11) |
+| Max experiment duration | 12 hours, not adjustable | (AWS FIS quotas, as of 2026-11) |
+| Parallel actions per experiment | 10, not adjustable | (AWS FIS quotas, as of 2026-11) |
+| Target account configurations per template | 40, not adjustable | (AWS FIS quotas, as of 2026-11) |
+| Target pods per `aws:eks:pod-network-latency` | 1,000, not adjustable | (AWS FIS quotas, as of 2026-11) |
+| Report pre-experiment window | Default 20 min, up to 30 min | (AWS FIS docs, as of 2026-11) |
+| Report post-experiment window | Default 20 min, up to 2 hours | (AWS FIS docs, as of 2026-11) |
+| ARC zonal autoshift practice runs | About weekly per resource, and a practice run configuration is required for autoshift | (ARC docs, as of 2026-11) |
 | Surviving-zone load multiplier after losing 1 of N zones | N/(N-1): 1.5x for N=3, 2.0x for N=2, 1.33x for N=4 | (derived) |
 | Alarm-based abort latency, standard 60 s metric, 2-of-2 datapoints | Roughly 2 to 4 minutes | (derived estimate, not an SLA) |
 | Cost of a 5-minute single-action experiment, one account | 5 x $0.10 = $0.50 | (derived from AWS FIS pricing, as of 2026-10) |
@@ -198,14 +232,14 @@ With C = 60 s and a cluster MTBF of 4 hours, that is sqrt(2 * 60 * 14,400) = abo
 
 | Dimension | AWS | Google Cloud |
 | --- | --- | --- |
-| Managed fault injection service | AWS FIS with a scenario library, multi-account experiments, and stop conditions (AWS docs, as of 2026-10) | No first-party equivalent verified in this revision (UNVERIFIED). Compose from load balancer or mesh fault injection, platform failover commands, and Chaos Mesh or LitmusChaos |
-| Zonal network blackhole | `aws:network:disrupt-connectivity` clones and swaps the subnet NACL. Stateless, so established flows stall and time out | Deny firewall rule scoped by tag or service account on a global VPC. Stateful firewall, so established flows may persist until tracking entries expire (UNVERIFIED), so verify empirically |
+| Managed fault injection service | AWS FIS with a scenario library, multi-account experiments, and stop conditions (AWS docs, as of 2026-10) | Fault Injection Testing, in Preview (Pre-GA, as of 2026-11), with Failover Cloud SQL, Degrade Application Traffic, and Fail Compute faults (Google Cloud docs). For production, compose from load balancer or mesh fault injection, platform failover commands, and Chaos Mesh or LitmusChaos |
+| Zonal network blackhole | `aws:network:disrupt-connectivity` clones and swaps the subnet NACL. Stateless, so established flows stall and time out | Deny firewall rule scoped by tag or service account on a global VPC. Stateful firewall, and a new deny rule applies only to new connections, so established flows persist (Google Cloud docs, as of 2026-11), so verify empirically |
 | Blast-radius unit | Subnet, tag, AZ, account, `COUNT(n)` | Network tag, instance group, zone, project, mesh route percentage |
-| Request-level faults | FIS API fault injection scoped by IAM role (UNVERIFIED), ECS and EKS network latency and loss via sidecar or ephemeral container | Envoy fault injection (delay, abort) via URL map or Cloud Service Mesh (UNVERIFIED), Istio-style semantics |
-| Abort mechanism | CloudWatch alarm stop conditions. Latency bounded by alarm period and datapoints | No built-in equivalent. Build with Cloud Monitoring alert policy triggering a Pub/Sub-driven rollback function, and measure the added latency |
-| Mitigation under test | ARC zonal shift and zonal autoshift with weekly practice runs, ALB and NLB with cross-zone disabled (AWS docs, as of 2026-10) | Regional managed instance groups and global load balancing health-based failover. Drain by setting backend capacity scaler to 0 (UNVERIFIED) |
-| Stateful failover triggers | FIS RDS and ElastiCache failover actions in the AZ scenario (AWS docs, as of 2023-11) | `gcloud sql instances failover`, Memorystore failover, Spanner and Bigtable are multi-zone by default so the drill is client behavior (UNVERIFIED) |
-| Cross-region isolation | Cross-Region: Connectivity scenario covers VPC peering, public endpoints, LB and API gateway endpoints, S3 CRR, and DynamoDB global tables replication (AWS What's New, as of 2023-11) | Compose VPC firewall or hierarchical firewall policy deny between regions, plus load balancer region drain. Cross-region replication fault tests are manual |
+| Request-level faults | FIS API fault injection scoped by IAM role for `ec2` and `kinesis` APIs (AWS docs, as of 2026-11), ECS and EKS network latency and loss via sidecar or ephemeral container | Envoy fault injection (delay, abort) via URL map or Cloud Service Mesh (Google Cloud docs, as of 2026-11), Istio-style semantics. FIT Degrade Application Traffic is the Preview managed path |
+| Abort mechanism | CloudWatch alarm stop conditions. Latency bounded by alarm period and datapoints | FIT (Preview) documents timer expiry and manual Stop and Revert, with no alarm-based stop condition described in its docs (as of 2026-11). Otherwise build with Cloud Monitoring alert policy triggering a Pub/Sub-driven rollback function, and measure the added latency |
+| Mitigation under test | ARC zonal shift and zonal autoshift with weekly practice runs, ALB and NLB with cross-zone enabled or disabled, plus EC2 Auto Scaling groups and EKS (ARC docs, as of 2026-11) | Regional managed instance groups and global load balancing health-based failover. Drain by setting backend capacity scaler to 0, which is not allowed when the backend service has only one backend (Google Cloud docs, as of 2026-11) |
+| Stateful failover triggers | FIS RDS and ElastiCache failover actions in the AZ scenario (AWS docs, as of 2026-11) | `gcloud sql instances failover`, `gcloud redis instances failover`, and FIT Failover Cloud SQL (Preview). Regional Spanner keeps three read-write replicas in different zones so the drill is client behavior, but a Bigtable cluster is zonal, so zone tolerance needs a multi-cluster instance (Google Cloud docs, as of 2026-11) |
+| Cross-region isolation | Cross-Region: Connectivity scenario blocks outbound traffic from the experiment Region over transit gateways, VPC peering, and public AWS IP blocks including LB and API Gateway addresses, and pauses S3 CRR, DynamoDB global table, and MemoryDB multi-Region replication (AWS docs, as of 2026-11) | Compose VPC firewall or hierarchical firewall policy deny between regions, plus load balancer region drain. Cross-region replication fault tests are manual |
 | Control-plane dependency of the injector | Injection and rollback use EC2 APIs via the experiment role, so the injector can fail when the control plane is impaired | Firewall and Compute APIs have the same property |
 | Organizational model | Management-account SCPs gate who can run network actions. Dedicated executor role | Org policy and custom IAM roles. Add VPC Service Controls boundaries for drill tooling |
 | Process framework | AWS Well-Architected Reliability pillar and Resilience Hub | Google DiRT and SRE disaster role-playing |
@@ -259,7 +293,7 @@ EOF
 
 aws iam create-role --role-name chaos-drill-fis \
   --assume-role-policy-document file:///tmp/fis-trust.json
-# Managed policy name recalled from FIS docs; verify before use.
+# Managed policy ARN per the FIS IAM docs (as of 2026-11).
 aws iam attach-role-policy --role-name chaos-drill-fis \
   --policy-arn arn:aws:iam::aws:policy/service-role/AWSFaultInjectionSimulatorNetworkAccess
 
@@ -436,9 +470,9 @@ if __name__ == "__main__":
 
 Three details in the script are deliberate and are the kind of thing a getting-started guide does not tell you.
 
-- **`FILL(m1,0)` in the expression.** Load balancer error counters are published only when non-zero (recalled from CloudWatch ALB docs, UNVERIFIED). Without `FILL`, the healthy state has missing datapoints, and with `TreatMissingData=breaching` the alarm would fire immediately.
-- **Two error counters.** When targets in a blackholed AZ stop answering, the load balancer itself generates 5xx responses (`HTTPCode_ELB_5XX_Count`), which do not appear in the target-generated counter. An alarm on only `HTTPCode_Target_5XX_Count` can stay green during the outage (recalled behavior, UNVERIFIED).
-- **`emptyTargetResolutionMode` set to `fail`, plus the script's own check.** The scenario library's default is to skip an action if no valid subnets are found (AWS docs, as of 2026-10; [AZ Availability: Power Interruption](https://docs.aws.amazon.com/fis/latest/userguide/az-availability-scenario.html)), which means a mistagged environment produces a green "experiment" that injected nothing. Parameter values for this option are recalled, UNVERIFIED.
+- **`FILL(m1,0)` in the expression.** `HTTPCode_ELB_5XX_Count` is reported only when non-zero, and the load balancer reports no metrics at all when no requests flow (AWS ALB docs, as of 2026-11; [CloudWatch metrics](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-cloudwatch-metrics.html)). Without `FILL`, the healthy state has missing datapoints, and with `TreatMissingData=breaching` the alarm would fire immediately.
+- **Two error counters.** When targets in a blackholed AZ stop answering, the load balancer itself generates 5xx responses (`HTTPCode_ELB_5XX_Count`), which do not appear in the target-generated counter, because each metric excludes the other's response codes (AWS ALB docs, as of 2026-11). An alarm on only `HTTPCode_Target_5XX_Count` can therefore stay green during the outage (inference from the metric definitions).
+- **`emptyTargetResolutionMode` set to `fail`, plus the script's own check.** The scenario library's default is to skip an action if no valid subnets are found (AWS docs, as of 2026-10; [AZ Availability: Power Interruption](https://docs.aws.amazon.com/fis/latest/userguide/az-availability-scenario.html)), which means a mistagged environment produces a green "experiment" that injected nothing. The option accepts `fail` or `skip`, `fail` is the default for templates that do not set it, and the scenario templates set `skip` explicitly (AWS docs, as of 2026-11; [experiment options](https://docs.aws.amazon.com/fis/latest/userguide/experiment-options.html)).
 
 ### Step 5: run it
 
@@ -489,7 +523,7 @@ If it returns a clone, the experiment did not complete rollback, and the associa
 
 ### Experiments that injected nothing
 
-Default skip behavior when targets are empty produces false confidence (AWS docs, as of 2026-10).
+The `skip` empty-target mode, which scenario library templates set by default even though the experiment option itself defaults to `fail`, produces false confidence (AWS docs, as of 2026-11; [experiment options](https://docs.aws.amazon.com/fis/latest/userguide/experiment-options.html)).
 Every drill report should state how many targets were resolved and which actions actually ran.
 Make the pre-flight check part of the automation, not a human step.
 
@@ -538,7 +572,7 @@ For GPU instance families the probability is higher because the pools are small.
 
 ### Hidden zonal dependencies
 
-Common findings are: a shared dashboard or log pipeline in the failed zone, a single-AZ NAT gateway used by all zones, a zonal EFS or EBS-backed state store, a CI runner in the failed AZ, an on-call paging webhook hosted in the failed zone, and a cross-zone-enabled load balancer that keeps sending to the impaired zone and defeats zonal shift.
+Common findings are: a shared dashboard or log pipeline in the failed zone, a single-AZ NAT gateway used by all zones, a zonal EFS or EBS-backed state store, a CI runner in the failed AZ, an on-call paging webhook hosted in the failed zone, a load balancer failing open, on which a zonal shift has no effect, and cross-zone-enabled load balancers sharing targets, where a shift on one drops target capacity for all (ARC docs, as of 2026-11).
 The AZ Power Interruption scenario also notes that AWS services may take up to a few minutes to update DNS to reflect unavailable private endpoints, so lookups may return inaccessible addresses in the interim (AWS docs, as of 2026-10), which is why clients need connect timeouts and DNS re-resolution, not just retry.
 
 ### Drill and IaC collisions
@@ -556,12 +590,12 @@ A program that only reports passes has usually stopped looking for failures.
 
 ### Public incident reviews relevant to drills
 
-These are summarized from memory of the public post-incident reviews and were not re-verified in this revision, so treat each as UNVERIFIED and read the original.
+These are summarized from the public post-incident reviews, checked against the originals as of 2026-11, and the drill lessons are this chapter's inference, not the vendors' wording.
 
-- **AWS S3 us-east-1, 2017-02-28.** An operator command removed more capacity than intended, and the restart of core subsystems took longer than expected. The lesson for drills is that operator actions need rate limits and minimum-capacity floors, and that recovery paths of large, old subsystems must be exercised (UNVERIFIED).
-- **AWS us-east-1, 2025-10-19 and 20.** A race condition in DynamoDB's DNS management produced an empty regional endpoint record and cascaded into dependent services. The lesson is that regional-endpoint unreachability is a drill scenario, and the FIS `dynamodb` scope exists for it (UNVERIFIED).
-- **Google Cloud, 2025-06-12.** A global policy-data change propagated without a staged rollout and crash-looped a core API-management component across regions, with long recovery in at least one region from overload (UNVERIFIED).
-- **Google Cloud europe-west9, 2023-04.** A water-related incident in a Paris datacenter took a zone fully offline for an extended period, and multi-zone customers with static headroom fared better than those relying on re-scaling (UNVERIFIED).
+- **AWS S3 us-east-1, 2017-02-28.** An operator command with a mistyped input removed more capacity than intended, and the restart of the index and placement subsystems took longer than expected because they had not been fully restarted in years ([AWS summary](https://aws.amazon.com/message/41926/)). The lesson for drills is that operator actions need rate limits and minimum-capacity floors, and that recovery paths of large, old subsystems must be exercised.
+- **AWS us-east-1, 2025-10-19 and 20 (PDT).** A latent race condition in DynamoDB's DNS management produced an empty regional endpoint record and cascaded into dependent services ([AWS summary](https://aws.amazon.com/message/101925/)). The lesson is that regional-endpoint unreachability is a drill scenario, and the FIS `dynamodb` scope exists for it.
+- **Google Cloud, 2025-06-12.** A policy change with blank fields replicated globally within seconds and hit a Service Control code path that lacked error handling and a feature flag, crash-looping binaries in every region, and us-central1 took up to about 2 hours 40 minutes to recover because restarting tasks overloaded their Spanner dependency ([Google incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
+- **Google Cloud europe-west9, 2023-04-25.** A cooling water pipe leak in a Paris datacenter reached a battery room and started a fire, europe-west9-a recovery took days, and the loss of regional Spanner quorum disrupted control planes across the region ([Google incident report](https://status.cloud.google.com/incidents/dS9ps52MUnxQfyDGPfkY)). The lesson is that a zonal event can also take out the regional control plane, so designs that need re-scaling during the event are exposed, which favors static headroom.
 
 See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]] for the full treatment.
 
@@ -578,7 +612,7 @@ Experiments that target multiple accounts use per-account roles, and the AWS pri
 ### Key hierarchies and logging
 
 Experiment reports and logs may contain resource identifiers, error messages, and dashboards with business metrics.
-Write reports to an S3 bucket with SSE-KMS using a key whose policy limits decrypt to the resilience team, and enable experiment logging to CloudWatch Logs or S3 (recalled from FIS docs, UNVERIFIED).
+Write reports to an S3 bucket with SSE-KMS using a key whose policy limits decrypt to the resilience team, and enable experiment logging to CloudWatch Logs or S3 (AWS docs, as of 2026-11; [FIS document history](https://docs.aws.amazon.com/fis/latest/userguide/doc-history.html)).
 Reports support a CloudWatch dashboard snapshot with a configurable pre-window (default 20 minutes) and post-window (AWS FIS docs, as of 2026-10), which is the evidence artifact for audits. See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_07_Compliance_Auditing_and_Non_Repudiation|Compliance, Auditing, and Non-Repudiation]].
 
 ### Network boundaries
@@ -611,7 +645,7 @@ Choose a small, reversible fault first, such as stopping a `COUNT(1)` instance w
 Set the blast radius explicitly: one account, one AZ, one cell or a canary cohort, off-peak window, with a freeze on deployments.
 Add a stop condition on the user-facing error-rate alarm, using metric math that includes load-balancer-generated 5xx, `FILL` for sparse counters, and `TreatMissingData=breaching`.
 Force that alarm to ALARM once before the experiment to prove the abort path.
-Confirm that the target set is non-empty before starting, because empty target resolution can silently skip actions.
+Confirm that the target set is non-empty before starting, because `emptyTargetResolutionMode` set to `skip`, as scenario library templates do, silently skips actions with no targets.
 Cap `duration` from your tolerance for user impact, because with a 60 s two-datapoint alarm the abort latency is about 2 to 4 minutes (derived), so the stop condition cannot protect a 2-minute run.
 Record the timeline and keep measuring after the fault ends to detect slow recovery.
 
@@ -732,7 +766,7 @@ Your platform runs the same service on AWS and GCP. Design a drill strategy that
 
 Define the drill by its observable contract, not by the cloud's primitive: "from t0, all traffic between zone Z's compute and everything outside Z is dropped, for D minutes, with the remaining zones carrying peak load", then implement it per cloud and validate the fidelity of each implementation with the same measurements.
 On AWS, the implementation is the NACL clone-and-swap on all subnets in the AZ, which drops packets statelessly, so established flows stall.
-On GCP, the implementation is a deny firewall rule targeted at the zone's instances, but GCP firewall rules are stateful, so established connections may survive the rule until tracking entries expire (UNVERIFIED), which makes the GCP drill less severe at the start unless you also recycle connections or inject at the application layer with mesh fault injection.
+On GCP, the implementation is a deny firewall rule targeted at the zone's instances, but GCP firewall rules are stateful, and a new deny rule applies only to new connections, so established connections persist (Google Cloud docs, as of 2026-11), which makes the GCP drill less severe at the start unless you also recycle connections or inject at the application layer with mesh fault injection.
 Therefore do not trust a pass until you have measured, on each cloud, a calibration test: a synthetic client with a long-lived TCP connection to a target in the zone, and check whether data flow stops at t0 on both clouds.
 Calibrate the severity metrics: time until the first client timeout, fraction of established flows broken at t0 + 5 s, and DNS or health-check convergence time.
 Differences that remain are real and must go into the report: GCP's global VPC and global load balancing change what a "zone" is for traffic steering, and AWS's ARC zonal shift has no direct GCP twin, so the mitigation path under test differs.
@@ -777,10 +811,10 @@ The drill shows recovery to full redundancy takes 40 minutes because of weight p
 - [ARC single-Region recovery: zonal shift and autoshift](https://aws.amazon.com/application-recovery-controller/single-region-recovery/) - the mitigation that practice runs rehearse.
 - [AWS Builders' Library: Static stability using Availability Zones](https://aws.amazon.com/builders-library/static-stability-using-availability-zones/) - the design principle that zonal drills verify.
 - Alvaro, Rosen, Hellerstein, "Lineage-driven Fault Injection", SIGMOD 2015 - principled fault selection by reasoning backward from success.
-- Basiri et al., "Automating Failure Testing Research at Internet Scale", SoCC 2016 - production-scale application of lineage-driven fault selection at Netflix.
+- Alvaro et al., "Automating Failure Testing Research at Internet Scale", SoCC 2016 - production-scale application of lineage-driven fault selection at Netflix.
 - Huang et al., "Gray Failure: The Achilles' Heel of Cloud-Scale Systems", HotOS 2017 - why health checks and instance-kill tests miss real failures.
 - [Huang et al., "Metastable Failures in the Wild", OSDI 2022](https://www.usenix.org/conference/osdi22/presentation/huang-lexiang) - why drills must measure the recovery phase.
 - [Yuan et al., "Simple Testing Can Prevent Most Critical Failures", OSDI 2014](https://www.usenix.org/conference/osdi14/technical-sessions/presentation/yuan) - error-handling bugs as the cheap-to-find majority of catastrophic failures.
 - [Veeraraghavan et al., "Maelstrom", OSDI 2018](https://www.usenix.org/conference/osdi18/presentation/veeraraghavan) - datacenter drain drills at Facebook scale.
 - Krishnan, "Weathering the Unexpected", ACM Queue 2012 - Google's DiRT program and how large-scale disaster testing is run as an organization.
-- [Google SRE book: Testing for Reliability](https://sre.google/sre-book/testing-reliability/) - the testing taxonomy that places fault injection among configuration, stress, and canary tests.
+- [Google SRE book: Testing for Reliability](https://sre.google/sre-book/testing-reliability/) - the testing taxonomy of configuration, stress, and canary tests, with Chaos Monkey and Jepsen noted as statistical techniques and a section on testing disaster recovery tools.

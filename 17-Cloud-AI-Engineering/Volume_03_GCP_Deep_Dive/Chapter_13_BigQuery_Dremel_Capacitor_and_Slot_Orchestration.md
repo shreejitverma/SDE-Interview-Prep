@@ -14,6 +14,26 @@ sources:
   - "https://docs.cloud.google.com/bigquery/docs/reservations-workload-management"
   - "https://cloud.google.com/bigquery/pricing"
   - "https://www.amazon.science/publications/amazon-redshift-re-invented"
+  - "https://docs.cloud.google.com/bigquery/quotas"
+  - "https://docs.cloud.google.com/bigquery/docs/release-notes"
+  - "https://docs.cloud.google.com/bigquery/docs/reservations-tasks"
+  - "https://docs.cloud.google.com/bigquery/docs/reservations-assignments"
+  - "https://docs.cloud.google.com/bigquery/docs/clustered-tables"
+  - "https://docs.cloud.google.com/bigquery/docs/editions-intro"
+  - "https://docs.cloud.google.com/bigquery/docs/global-queries"
+  - "https://docs.cloud.google.com/bigquery/docs/locations"
+  - "https://docs.cloud.google.com/bigquery/docs/information-schema-reservation-timeline"
+  - "https://docs.cloud.google.com/bigquery/docs/reference/mcp/tools_list/get_job"
+  - "https://cloud.google.com/blog/products/gcp/google-bigquery-cuts-historical-data-storage-cost-in-half-and-accelerates-many-queries-by-10x"
+  - "https://cloud.google.com/blog/products/data-analytics/introducing-new-bigquery-pricing-editions"
+  - "https://storage.googleapis.com/gweb-research2023-media/pubtools/7810.pdf"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://aws.amazon.com/athena/pricing/"
+  - "https://aws.amazon.com/redshift/pricing/"
+  - "https://docs.aws.amazon.com/athena/latest/ug/engine-versions-reference-0003.html"
+  - "https://docs.aws.amazon.com/redshift/latest/dg/c_columnar_storage_disk_mem_mgmnt.html"
+  - "https://docs.aws.amazon.com/redshift/latest/dg/t_Sorting_data.html"
+  - "https://docs.aws.amazon.com/redshift/latest/mgmt/test-cluster-multi-az.html"
 ---
 
 # BigQuery: Dremel, Capacitor, and Slot Orchestration
@@ -22,9 +42,9 @@ sources:
 
 BigQuery is Dremel run as a multi-tenant service on Borg, Colossus, and Jupiter: stateless compute workers ("slots") read columnar Capacitor files from Colossus and exchange intermediate data through a separate in-memory shuffle tier.
 Shuffle is a separate tier, and that one decision is what makes the rest possible: dynamic query plans, fine-grained preemption, fair scheduling across tenants, and recovery from worker loss without rerunning the whole query.
-On-demand billing charges for bytes scanned ($6.25 per TiB, first 1 TiB per month free) and runs each project on a shared pool of roughly 2,000 slots, while Editions bill slot-hours ($0.04 / $0.06 / $0.10 for Standard / Enterprise / Enterprise Plus pay-as-you-go in US) (Google Cloud pricing, as of 2026-10).
+On-demand billing charges for bytes scanned ($6.25 per TiB, first 1 TiB per month free) and runs each project on a shared pool of roughly 2,000 slots, while Editions bill slot-hours ($0.04 / $0.06 / $0.10 for Standard / Enterprise / Enterprise Plus pay-as-you-go in US) (Google Cloud pricing, as of 2026-11).
 Pick the model with one measured number, compute intensity in slot-hours per TiB, compared against the breakeven of $6.25 divided by the slot-hour price: about 156 for Standard, 104 for Enterprise, and 62.5 for Enterprise Plus.
-The scheduler shares slots evenly across projects first and across jobs second, and autoscaling grows in 50-slot steps with a 60-second scale-down window unless fluid scaling is enabled; most "BigQuery is slow" or "BigQuery is expensive" incidents come from misreading those two rules.
+The scheduler shares slots evenly across projects first and across jobs second, and autoscaling scales in multiples of 50 slots with a 60-second scale-down window unless fluid scaling is enabled; most "BigQuery is slow" or "BigQuery is expensive" incidents come from misreading those two rules.
 
 ## Mental Model
 
@@ -46,7 +66,7 @@ flowchart LR
 
 Treat a BigQuery query as a DAG of stages whose only durable boundary between stages is the shuffle tier, not the workers.
 Workers hold no state that outlives a unit of work: they pull column blocks from Colossus across the datacenter fabric, write their output partitions into remote memory, and are free again.
-Because intermediate state lives outside the workers, the scheduler can move slots between queries every few seconds, the coordinator can change the shape of the plan halfway through, and a lost worker costs one work unit, not the query.
+Because intermediate state lives outside the workers, the scheduler can re-allocate slots whenever a query arrives, finishes, or changes its demand (Google Cloud docs, as of 2026-11), the coordinator can change the shape of the plan halfway through, and a lost worker costs one work unit, not the query.
 Storage, shuffle, and compute scale independently and fail independently, which is why there is no cluster to size, only a slot budget to allocate.
 
 ## Internals
@@ -64,20 +84,22 @@ For the paper itself, see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and
 
 Table data lives in Colossus, the successor to GFS that uses distributed metadata and Reed-Solomon erasure coding, covered in [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_09_Cloud_Storage_and_Colossus_Filesystem|Cloud Storage and Colossus]].
 Each table is a set of immutable Capacitor files, and a DML statement or a background compaction writes new files and swaps the metadata pointers atomically instead of editing files in place.
-Capacitor replaced the earlier ColumnIO format, and Google's engineering blog post on it ([Inside Capacitor, 2016](https://cloud.google.com/blog/products/bigquery/inside-capacitor-bigquerys-next-generation-columnar-storage-format)) describes three mechanisms you will not find in a getting-started guide.
+Capacitor replaced the earlier ColumnIO format ([Google Cloud blog, March 2016](https://cloud.google.com/blog/products/gcp/google-bigquery-cuts-historical-data-storage-cost-in-half-and-accelerates-many-queries-by-10x)), and Google's engineering blog post on it ([Inside Capacitor, April 2016](https://cloud.google.com/blog/products/bigquery/inside-capacitor-bigquerys-next-generation-columnar-storage-format)) together with section 6 of the Decade paper describes three mechanisms you will not find in a getting-started guide.
 
 Mechanism 1 is evaluation on compressed data.
-Columns are dictionary-encoded and run-length-encoded, and a predicate such as `country = 'PL'` is evaluated once per dictionary entry and once per run, not once per row.
-A filter over a 1-billion-row column with 200 distinct values and long runs touches a few thousand runs, not a billion values.
+Columns are dictionary-encoded and run-length-encoded, and Capacitor can operate directly on compressed data instead of decompressing it first (Google Cloud blog, March 2016).
+A predicate such as `country = 'PL'` is evaluated over the small set of dictionary values, not once per row (Melnik et al., PVLDB 2020).
+Per-run evaluation is the technique from Abadi et al., SIGMOD 2006, which the Decade paper says Capacitor's evaluator mostly follows.
+As an illustration, a filter over a 1-billion-row column with 200 distinct values and long runs touches a few thousand runs, not a billion values.
 
 Mechanism 2 is row reordering.
 Run-length encoding works best when equal values sit next to each other, but the order of rows in a table carries no meaning.
 Capacitor therefore reorders the rows inside a file to lengthen runs across several columns at once.
-Finding the best order is NP-complete, so the writer uses a heuristic informed by column statistics.
+Finding the best order is NP-complete, so the writer uses sampling and heuristics to build an approximate model (Melnik et al., PVLDB 2020).
 This is why the same data can compress very differently depending on its cardinality profile, and why clustering, which sorts data by up to four columns, makes both pruning and compression better.
 
 Mechanism 3 is embedded statistics.
-Every file and block carries min/max values and other statistics that the reader uses to skip whole blocks before decompressing them.
+Capacitor keeps per-column statistics that eliminate partitions with no matching rows, and a column header index over individually compressed segments lets the reader skip segments with no hits without decompressing them (Melnik et al., PVLDB 2020).
 
 Metadata at BigQuery scale is a big-data problem in its own right.
 [Edara and Pasumansky, "Big Metadata: When Metadata is Big Data", PVLDB 14(12), 2021](https://www.vldb.org/pvldb/vol14/p3083-edara.pdf) describes storing per-block, per-column statistics in a columnar form and having Dremel process them with the same distributed execution it uses for data.
@@ -86,14 +108,14 @@ The consequence is that partition pruning and block pruning for a predicate on a
 ### Ingestion: write-optimized to read-optimized
 
 Streaming rows from the Storage Write API do not go straight into Capacitor, because writing a columnar file per small append would produce millions of tiny files.
-[Vortex (Edara et al., SIGMOD 2024 industry track)](https://dl.acm.org/doi/10.1145/3626246.3653396) describes BigQuery's stream-oriented storage engine: appends land in a write-optimized, log-like representation that queries can read immediately, and background processes convert it into read-optimized Capacitor files.
+[Vortex (Edara, Forbes, and Li, SIGMOD Companion 2024)](https://dl.acm.org/doi/10.1145/3626246.3653396) describes BigQuery's stream-oriented storage engine: appends land in a write-optimized, log-like representation that queries can read immediately, and background processes convert it into read-optimized Capacitor files.
 This is a classic LSM-style trade: freshness is immediate, but recently streamed data is scanned less efficiently until conversion finishes.
 The same pattern appears in Bigtable's MemTable-to-SSTable flush, covered in [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_11_Cloud_Bigtable_LSM_Storage_and_Tablet_Serving|Cloud Bigtable]].
 
 ### Execution: workers, stages, and the in-memory shuffle
 
 A query is compiled into stages, and each stage is cut into many work units, for example "scan these 40 Capacitor blocks, apply the filter, partially aggregate, and hash-partition the output into 10,000 buckets".
-A slot is the scheduling unit that runs one work unit at a time; the documentation describes a slot as a virtual CPU used to execute SQL (Google Cloud docs, as of 2026-10).
+A slot is the scheduling unit that runs one work unit at a time; the slots documentation describes a slot as a virtual compute unit used to execute SQL, and the pricing page calls slots virtual CPUs (Google Cloud docs, as of 2026-11).
 Workers write their output partitions to the shuffle tier, a distributed transient store held mostly in RAM on separate machines, and the next stage's workers read the partitions they own.
 The Decade paper reports that moving shuffle out of the workers cut shuffle latency by an order of magnitude, made order-of-magnitude larger shuffles possible, and lowered the service's resource cost by more than 20% (Melnik et al., PVLDB 2020).
 
@@ -107,8 +129,9 @@ For the same reason a slot can be taken from query A and given to query B at a w
 
 The coordinator does not lock in a plan before execution.
 Because stage outputs land in shuffle, it can inspect real cardinalities and sizes after a stage completes and then change the plan for later stages.
-The Decade paper gives examples: picking the number of partitions for the next stage from the data actually produced, and switching a join from hash-partitioned to broadcast when one side turns out to be small.
-This is why BigQuery's "Execution details" view shows the number of work units per stage varying from run to run, and why the scheduler documentation refers to a query's "dynamic DAG" changing its slot demand while the query runs (Google Cloud docs, as of 2026-10).
+The Decade paper's example starts a hash join by shuffling both sides, then cancels the second shuffle and runs a broadcast join if one side finishes fast and falls below a size threshold.
+The slots documentation adds that BigQuery can dynamically repartition a stage to reach better parallelism (Google Cloud docs, as of 2026-11).
+This is why BigQuery's "Execution details" view shows the number of work units per stage varying from run to run, and why the scheduler documentation refers to a query's "dynamic DAG" changing its slot demand while the query runs (Google Cloud docs, as of 2026-11).
 The trade-off is lower predictability: two runs of the same query can get different plans and different slot-time, which makes per-query cost estimates on capacity billing noisy.
 
 ### Control plane versus data plane
@@ -116,20 +139,23 @@ The trade-off is lower predictability: two runs of the same query can get differ
 The control plane is the Jobs API, the Reservations API, IAM, metadata, and the scheduler's allocation state.
 The data plane is workers, shuffle, and Colossus reads.
 Reservations are regional (or multi-regional) resources owned by an administration project; an assignment binds a project, folder, or organization to a reservation for a job type such as QUERY.
-A query runs where its data lives, and joins across locations fail, so the location is a hard partition boundary for both data and compute.
-If the control plane is unavailable, queries already running keep executing on their allocated slots, but new jobs cannot be admitted, which is the read-only degradation pattern described in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
+A query runs where its data lives, and a job whose location does not match its datasets returns an error, so the location is a hard partition boundary for both data and compute (Google Cloud docs, as of 2026-11).
+The exception is global queries, which reference data in more than one location by transferring it between regions, and which are in Preview (Google Cloud docs and release notes, as of 2026-11).
+If the control plane is unavailable, queries already running keep executing on their allocated slots, but new jobs cannot be admitted (UNVERIFIED: inferred from the architecture, not stated in Google docs), which is the read-only degradation pattern described in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
 
 ### Slot orchestration: the scheduling hierarchy
 
-Within one reservation, BigQuery uses fair scheduling: slots are split evenly across projects that have running queries, then evenly across jobs within each project, and fairness is eventual, so a job can get a disproportionate share for short periods (Google Cloud docs, as of 2026-10).
+Within one reservation, BigQuery uses fair scheduling: slots are split evenly across projects that have running queries, then evenly across jobs within each project, and fairness is eventual, so a job can get a disproportionate share for short periods (Google Cloud docs, as of 2026-11).
 When a query finishes, its slots become available to other queries immediately.
 Baseline slots are always held by the reservation and billed continuously.
-Autoscaled slots are added only after the baseline and any available idle slots are in use, are rounded up to the next 50-slot increment, are billed per second with a one-minute minimum, and are kept for a 60-second scale-down window that restarts at each new peak (Google Cloud docs, as of 2026-10).
-Fluid scaling is a GA opt-in at the reservation level that switches autoscaled capacity to per-second billing with no minimum duration (Google Cloud docs and release notes, as of 2026-10).
-Autoscaling is not reserved capacity: the documentation warns that capacity constraints during periods of high demand can delay scale-up (Google Cloud docs, as of 2026-10).
-Idle slots, meaning unused baseline or committed capacity, can be lent to other reservations, but only to reservations created in the same administration project (Google Cloud docs, as of 2026-10).
-With reservation fairness enabled, idle slots are split evenly across reservations in that admin project, regardless of how many projects each reservation contains, and reservation predictability, which requires fairness, sets an absolute ceiling on the slots a reservation can consume (Google Cloud docs, as of 2026-10).
-Per-assignee project caps (`scheduling_policy_max_slots`, minimum 100 and only approximately enforced, and `scheduling_policy_concurrency`, applied only at admission) let you stop one project from taking over a shared reservation (Google Cloud docs, as of 2026-10; GA status UNVERIFIED).
+Autoscaled slots are added only after the baseline and any available idle slots are in use, are rounded up to the next 50-slot increment, are billed per second with a one-minute minimum, and are kept for a 60-second scale-down window that restarts at each new peak (Google Cloud docs, as of 2026-11).
+Fluid scaling, GA since 2026-06-03, is an opt-in at the reservation level that switches autoscaled capacity to per-second billing with no minimum duration (Google Cloud docs and release notes, as of 2026-11).
+Autoscaling is not reserved capacity: the documentation warns that capacity constraints during periods of high demand can delay scale-up (Google Cloud docs, as of 2026-11).
+Idle slots, meaning unused baseline or committed capacity, can be lent to other reservations, but only to reservations of the same edition created in the same administration project (Google Cloud docs, as of 2026-11).
+With reservation fairness enabled, idle slots are split evenly across reservations in that admin project, regardless of how many projects each reservation contains (Google Cloud docs, as of 2026-11).
+Fairness applies only to Enterprise and Enterprise Plus, and it is on by default only for administration projects created after 2026-10-10 (Google Cloud docs, as of 2026-11).
+Reservation predictability, which requires fairness, sets a maximum on the slots a reservation can consume, but the documentation calls it best-effort and warns that usage might still exceed the maximum (Google Cloud docs, as of 2026-11).
+Project caps are in Preview: per-assignee limits (`scheduling_policy_max_slots`, minimum 100 and only approximately enforced, and `scheduling_policy_concurrency`, applied only at admission) let you stop one project from taking over a shared reservation (Google Cloud docs and release notes, as of 2026-11).
 
 The weighting rule to remember is that fair share is per project, not per query.
 A project with one running query gets the same share as a project with 100 running queries, so splitting or merging projects changes performance even when nothing else changes.
@@ -138,22 +164,22 @@ A project with one running query gets the same share as a project with 100 runni
 
 | Quantity | Value | Source |
 |---|---|---|
-| On-demand compute price | $6.25 per TiB scanned, first 1 TiB per month free | (Google Cloud pricing, as of 2026-10) |
-| On-demand concurrency | Up to about 2,000 concurrent slots shared by all queries in a project, with transient burst | (Google Cloud pricing and slots docs, as of 2026-10) |
-| Editions pay-as-you-go, US | Standard $0.04, Enterprise $0.06, Enterprise Plus $0.10 per slot-hour | (Google Cloud pricing, as of 2026-10) |
-| Commitments | 1-year and 3-year commitments for Enterprise and Enterprise Plus | (Google Cloud pricing, as of 2026-10) |
-| Autoscale granularity | Rounded up to the next 50 slots | (Google Cloud docs, as of 2026-10) |
-| Autoscale billing | Per second, 1-minute minimum, 60-second scale-down window; fluid scaling removes the minimum | (Google Cloud docs, as of 2026-10) |
-| Project cap minimum | `scheduling_policy_max_slots` must be at least 100 | (Google Cloud docs, as of 2026-10) |
-| Free tier storage | 10 GiB per month | (Google Cloud pricing, as of 2026-10) |
-| Flat-rate and Flex Slots | Retired 2023-07-05, replaced by Editions | (DoiT analysis, as of 2026-10) |
+| On-demand compute price | $6.25 per TiB scanned, first 1 TiB per month free | (Google Cloud pricing, as of 2026-11) |
+| On-demand concurrency | Up to 2,000 concurrent slots shared by all queries in a project, with burst above that subject to availability, and a 20,000-slot cap per organization | (Google Cloud quotas, as of 2026-11) |
+| Editions pay-as-you-go, US | Standard $0.04, Enterprise $0.06, Enterprise Plus $0.10 per slot-hour | (Google Cloud pricing, as of 2026-11) |
+| Commitments | 1-year and 3-year slot commitments for Enterprise ($0.048 / $0.036 per slot-hour) and Enterprise Plus ($0.08 / $0.06), 50-slot minimum and increments; none for Standard | (Google Cloud pricing, as of 2026-11) |
+| Autoscale granularity | Rounded up to the next 50 slots | (Google Cloud docs, as of 2026-11) |
+| Autoscale billing | Per second, 1-minute minimum, 60-second scale-down window; fluid scaling removes the minimum | (Google Cloud docs, as of 2026-11) |
+| Project cap minimum (Preview) | `scheduling_policy_max_slots` must be at least 100 | (Google Cloud docs, as of 2026-11) |
+| Free tier storage | 10 GiB per month | (Google Cloud pricing, as of 2026-11) |
+| Flat-rate and Flex Slots | New purchases ended 2023-07-05, replaced by Editions; existing commitments were left to migrate | ([Google Cloud blog](https://cloud.google.com/blog/products/data-analytics/introducing-new-bigquery-pricing-editions), as of 2026-11) |
 | Breakeven intensity | 156.25 / 104.2 / 62.5 slot-hours per TiB (Standard / Enterprise / Enterprise Plus) | Derived: $6.25 divided by slot-hour price |
-| Logical storage | Active about $0.02, long-term about $0.01 per GiB-month, US | UNVERIFIED |
-| Physical storage | Active about $0.04, long-term about $0.02 per GiB-month, US | UNVERIFIED |
-| Long-term storage trigger | 90 consecutive days without modification | UNVERIFIED |
-| Query execution time limit | 6 hours | UNVERIFIED |
-| On-demand minimum billing | 10 MB per table referenced | UNVERIFIED |
-| Clustering columns | Up to 4 | UNVERIFIED |
+| Logical storage | Active about $0.023, long-term about $0.016 per GiB-month, us-central1 (listed hourly as $0.000031507 and $0.000021918, x 730 hours) | (Google Cloud pricing, as of 2026-11) |
+| Physical storage | Active about $0.04, long-term about $0.02 per GiB-month, us-central1 (listed hourly as $0.000054795 and $0.000027397, x 730 hours) | (Google Cloud pricing, as of 2026-11) |
+| Long-term storage trigger | 90 consecutive days without modification, tracked per partition | (Google Cloud pricing, as of 2026-11) |
+| Query execution time limit | 6 hours per attempt; BigQuery can retry up to three times internally, so total runtime can reach 18 hours | (Google Cloud quotas, as of 2026-11) |
+| On-demand minimum billing | 10 MB per table referenced and 10 MB per query | (Google Cloud pricing, as of 2026-11) |
+| Clustering columns | Up to 4 | (Google Cloud docs, as of 2026-11) |
 | Full SELECT * over 1 PiB, on-demand | 1,024 TiB x $6.25 = $6,400 | Derived |
 
 ## AWS vs GCP Mechanism Parity
@@ -162,14 +188,14 @@ A project with one running query gets the same share as a project with 100 runni
 |---|---|---|---|
 | Lineage | Dremel (VLDB 2010, 2020) | ParAccel-derived MPP, re-architected ([SIGMOD 2022](https://www.amazon.science/publications/amazon-redshift-re-invented)) | Presto / Trino |
 | Storage | Capacitor on Colossus, managed by the service | Redshift Managed Storage on S3 with local SSD cache | Your S3 objects (Parquet, ORC, Iceberg) |
-| Columnar tricks | Dictionary + RLE, evaluation on compressed data, row reordering, Big Metadata pruning | Per-column compression encodings, zone maps over 1 MB blocks (UNVERIFIED block size) | Parquet / ORC footers and row-group stats, partition projection |
+| Columnar tricks | Dictionary + RLE, evaluation on compressed data, row reordering, Big Metadata pruning | Per-column compression encodings, zone maps (per-block min/max metadata) over 1 MB blocks (AWS docs, as of 2026-11) | Parquet / ORC footers and row-group stats, partition projection |
 | Shuffle | Disaggregated in-memory shuffle tier; acts as a stage checkpoint | Data redistribution between compute-node slices over the network; no separate shuffle tier | Pipelined worker-to-worker exchange |
-| Worker loss | Retry one work unit | Query fails or retries, depending on case (UNVERIFIED detail) | Query typically fails and is retried by the client (UNVERIFIED for current engine) |
+| Worker loss | Retry one work unit | In-flight queries might be dropped on Multi-AZ failover and can be retried immediately by the client (AWS docs, as of 2026-11) | Query typically fails and is retried by the client; engine version 3 does not support Trino fault-tolerant execution (AWS docs, as of 2026-11) |
 | Unit of capacity | Slot (virtual CPU), shared across tenants | Node (provisioned) or RPU (Serverless) | DPU (provisioned capacity) or per-TB scanned |
-| Elasticity | Slot reallocation every few seconds; autoscale in 50-slot steps | Concurrency scaling clusters; Serverless RPU scaling | Fully serverless per query |
+| Elasticity | Slot re-allocation as queries arrive and finish; autoscale in multiples of 50 slots | Concurrency scaling clusters; Serverless RPU scaling | Fully serverless per query |
 | Multi-tenant scheduling | Fair share reservation -> project -> job, idle slot lending | WLM queues, query priorities, short query acceleration | Workgroups with per-query data limits |
-| Scan pricing | $6.25 per TiB (as of 2026-10) | Spectrum about $5 per TB (UNVERIFIED) | About $5 per TB (UNVERIFIED) |
-| Capacity pricing | $0.04 to $0.10 per slot-hour (as of 2026-10) | Serverless about $0.375 per RPU-hour (UNVERIFIED) | Provisioned about $0.30 per DPU-hour (UNVERIFIED) |
+| Scan pricing | $6.25 per TiB (as of 2026-11) | Spectrum $5 per TB, us-east-1 (AWS pricing examples, as of 2026-11) | $5 per TB (AWS pricing examples, as of 2026-11) |
+| Capacity pricing | $0.04 to $0.10 per slot-hour (as of 2026-11) | Serverless $0.375 per RPU-hour, us-east-1 (AWS pricing examples, as of 2026-11) | Provisioned $0.30 per DPU-hour (AWS pricing examples, as of 2026-11) |
 | Perimeter | VPC Service Controls around the API | VPC placement, security groups, PrivateLink | VPC endpoints, S3 bucket policies |
 | Translation notes | [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_05_Messaging_Streaming_and_Analytics_Translation\|Analytics Translation]] | [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_04_Storage_and_Database_Translation\|Storage Translation]] | [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter\|Data Perimeter]] |
 
@@ -308,20 +334,21 @@ resource "google_billing_budget" "bq_lab" {
 }
 ```
 
-To turn on fluid scaling or reservation predictability, use the `bq mk` / `bq update` flags shown in the docs (`--max_slots`, `--scaling_mode`) or the console, because Terraform provider support for those fields was not verified for this chapter.
+To turn on fluid scaling, list the reservation in the administration project's `preflight_fluid_autoscaling_reservations` option with `ALTER PROJECT ... SET OPTIONS` (Google Cloud docs, as of 2026-11).
+To create a predictable reservation, use the `bq mk --reservation` flags `--max_slots` and `--scaling_mode`, or the Terraform arguments `max_slots` and `scaling_mode`, which the docs show with the `google-beta` provider, and note that one section of the docs still labels the flags Preview (Google Cloud docs, as of 2026-11).
 
 ```bash
 tofu init && tofu apply \
   -var admin_project=my-admin -var query_project=my-analytics -var billing_account=000000-000000-000000
 python measure_intensity.py my-analytics us     # now billed as slot-seconds, not bytes
-# Inspect reservation behavior per second:
+# Inspect reservation behavior per minute (the per_second_details array holds per-second autoscale data):
 bq query --use_legacy_sql=false --project_id=my-admin \
  'SELECT period_start, reservation_id, slots_assigned, autoscale.current_slots
   FROM `region-us`.INFORMATION_SCHEMA.RESERVATIONS_TIMELINE
   WHERE period_start > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR) ORDER BY 1'
 ```
 
-Budget alerts only send notifications and do not cap spend; the hard guardrails are `maximum_bytes_billed` per job on on-demand and the reservation's `max_slots` on capacity billing.
+Budget alerts only send notifications and do not cap spend; the guardrails are `maximum_bytes_billed` per job on on-demand, a hard per-job limit, and the reservation's `max_slots` on capacity billing, which is best-effort under reservation predictability, so usage might still exceed it (Google Cloud docs, as of 2026-11).
 
 ### Teardown
 
@@ -332,7 +359,7 @@ bq ls --reservation_assignment --project_id=my-admin --location=US
 bq ls --reservation --project_id=my-admin --location=US
 ```
 
-Deleting the assignment moves `my-analytics` back to on-demand billing immediately, so check that no scheduled queries in that project depended on capacity pricing.
+Deleting the assignment moves new jobs in `my-analytics` back to on-demand billing unless a parent folder or organization assignment applies, while jobs already running finish on their reservation (Google Cloud docs, as of 2026-11), so check that no scheduled queries in that project depended on capacity pricing.
 
 ## Failure Modes and Pitfalls
 
@@ -345,17 +372,17 @@ A full scan of a 1 PiB table costs $6,400 on-demand; the guards are `maximum_byt
 
 Because shares are per project, an ETL project running 200 concurrent queries and a dashboard project running 5 split a reservation 50/50, but each dashboard query gets 1/5 of half while each ETL query gets 1/200 of half.
 Teams often "fix" a slow pipeline by splitting it across 10 projects; under fair scheduling that grabs 10 shares and starves everyone else.
-Use separate reservations, project caps, or reservation predictability, not project sprawl.
+Use separate reservations, project caps (Preview, as of 2026-11), or reservation predictability, not project sprawl.
 
 ### Autoscale is not capacity
 
-Zero-baseline reservations depend on the autoscaler acquiring slots, and the documentation states that scale-up can be delayed under high demand (Google Cloud docs, as of 2026-10).
+Zero-baseline reservations depend on the autoscaler acquiring slots, and the documentation states that scale-up can be delayed under high demand (Google Cloud docs, as of 2026-11).
 On the first business day of a month or quarter, region-wide demand peaks line up, and that is exactly when a zero-baseline reservation for financial close is most likely to wait.
 Critical windows need baseline or committed slots, sized against the RESERVATIONS_TIMELINE history.
 
 ### Idle-slot fragmentation across admin projects
 
-Idle slots are shared only inside one administration project (Google Cloud docs, as of 2026-10).
+Idle slots are shared only inside one administration project (Google Cloud docs, as of 2026-11).
 Organizations that let each business unit create its own admin project strand idle capacity: one unit's unused commitment cannot absorb another unit's burst, and both pay autoscale prices.
 Centralize commitments and reservations in a single admin project per region, as part of the landing-zone design in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_06_Multi_Account_and_Multi_Project_Landing_Zones|Landing Zones]].
 
@@ -368,8 +395,9 @@ A global `ORDER BY` without `LIMIT` over a huge result funnels into a final merg
 
 ### Location and DML concurrency
 
-Joins across dataset locations fail, so a multi-region analytics layer needs explicit replication (dataset replicas or scheduled copies), not federation at query time.
-Mutating DML against one table is serialized and queued, so high-frequency MERGE micro-batches from many writers turn into a queue; batch them, or use the Storage Write API for appends.
+Joins across dataset locations fail unless global queries are enabled, and those are in Preview, cost extra for the data transfer, and are limited to 180 TB per day per region pair (Google Cloud docs and quotas, as of 2026-11).
+So a multi-region analytics layer needs explicit replication (dataset replicas or scheduled copies), not federation at query time.
+BigQuery runs up to 2 concurrent mutating DML statements per table, queues up to 20 more, and fails anything beyond that (Google Cloud quotas, as of 2026-11), so high-frequency MERGE micro-batches from many writers turn into a queue and then into errors; batch them, or use the Storage Write API for appends.
 
 ### Platform-level incidents
 
@@ -379,8 +407,8 @@ Orchestrators should treat job-insertion failures as retryable with jittered bac
 
 ### Storage-billing surprises
 
-Any modification to a partition resets its long-term storage clock (UNVERIFIED 90-day threshold), so a careless backfill that rewrites old partitions doubles their storage price.
-Under physical-bytes billing, time travel and fail-safe bytes are billed too (UNVERIFIED), so high-churn tables can cost more on physical billing despite better compression.
+Any modification to a partition resets its 90-day long-term storage clock (Google Cloud pricing, as of 2026-11), so a careless backfill that rewrites old partitions doubles their storage price on physical billing and raises it by about 44% on logical billing in us-central1.
+Under physical-bytes billing, time travel and fail-safe bytes are billed too, and under logical billing they are not (Google Cloud pricing, as of 2026-11), so high-churn tables can cost more on physical billing despite better compression.
 
 ## Security and Cost Angles
 
@@ -502,10 +530,10 @@ I would separate visibility, guardrails, and allocation.
 For visibility, an organization-level view over `INFORMATION_SCHEMA.JOBS_BY_ORGANIZATION` gives slot-ms and bytes billed per project, user, label, and query hash, which surfaces the top 20 query fingerprints, since in practice a small number of recurring queries usually drive most spend.
 Combine that with the billing export in BigQuery for showback per business unit, as in [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_06_FinOps_Organizational_Practices_and_Automation|FinOps Practices]].
 Guardrails differ by billing model: on-demand projects get per-user and per-project daily query-usage custom quotas plus `maximum_bytes_billed` enforced in shared client libraries, while capacity projects are bounded by reservation maximums and reservation predictability.
-For allocation, all reservations go in one admin project per region so idle slots flow across units, with a reservation per workload class (interactive, batch, ML feature engineering) instead of per business unit, and project caps stop one project from taking over a class.
+For allocation, all reservations go in one admin project per region so idle slots flow across units, with a reservation per workload class (interactive, batch, ML feature engineering) instead of per business unit, and project caps (Preview, as of 2026-11) stop one project from taking over a class.
 Commitments cover only the organization-wide floor of demand.
 Policy as code checks Terraform for large baselines, `ignore_idle_slots = true`, and missing `require_partition_filter` on tables above a size threshold.
-The failure mode to watch is that hard caps turn cost incidents into availability incidents, so caps need alerting at 80% and a documented break-glass path.
+The failure mode to watch is that caps turn cost incidents into availability incidents, so caps need alerting at 80% and a documented break-glass path.
 
 #### Follow-up Interviewer Question
 
@@ -523,7 +551,7 @@ For data, I would use dataset-per-tenant inside a small number of shared project
 Row-level security on shared tables is cheaper to operate, but a single policy bug is a cross-tenant breach, and clustering on tenant_id cannot fully stop one large tenant's data from widening another tenant's scans.
 For compute, fair scheduling works per project, so the project is the real compute-isolation unit.
 Putting 3,000 tenants in 3,000 projects in one reservation would give each tenant with a running query an equal share regardless of plan tier, which is wrong for a tiered SLO.
-So I would use cells: groups of about 50 to 200 tenants per project, with a reservation per service tier (premium tenants on a baseline-backed reservation, standard tenants on autoscale-only), project caps so one tenant's runaway query cannot drain a cell, and per-query `maximum_bytes_billed` or slot caps derived from the tenant's plan.
+So I would use cells: groups of about 50 to 200 tenants per project, with a reservation per service tier (premium tenants on a baseline-backed reservation, standard tenants on autoscale-only), project caps (Preview, as of 2026-11) so one tenant's runaway query cannot drain a cell, and per-query `maximum_bytes_billed` or a per-job `maxSlots` target (documented as not yet GA, as of 2026-11) derived from the tenant's plan.
 The largest tenants get dedicated projects in the premium reservation.
 This is the cell pattern from [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture]] mapped onto BigQuery's scheduling hierarchy.
 For cost, every job carries a tenant label, and slot-ms from `INFORMATION_SCHEMA.JOBS` multiplied by the blended slot-second price gives per-tenant COGS, with idle baseline allocated by tier as overhead.
@@ -544,9 +572,9 @@ Frame the decision.
 
 I would frame it as data gravity and egress, then workload shape, then operating model, and only then price lists.
 Data gravity: if 70% of event data is produced in AWS, replicating it to GCP costs internet or interconnect egress per byte, plus a freshness lag, every month for as long as the system runs, and that often outweighs any engine-level price difference; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Egress Economics]].
-Workload shape: BigQuery's disaggregated shuffle and second-level slot reallocation favor spiky, high-concurrency, ad hoc workloads with very large joins, while provisioned Redshift with good distribution keys favors steady, predictable dashboards with co-located joins, and Athena favors infrequent scans of open-format lakes.
+Workload shape: BigQuery's disaggregated shuffle and continuous slot re-allocation favor spiky, high-concurrency, ad hoc workloads with very large joins, while provisioned Redshift with good distribution keys favors steady, predictable dashboards with co-located joins, and Athena favors infrequent scans of open-format lakes.
 Operating model: BigQuery removes cluster sizing, vacuum, and distribution-key design, but adds reservation and fair-share design.
-Redshift Serverless narrows that gap, but its RPU scaling is coarser than slot reallocation (UNVERIFIED as a measured comparison).
+Redshift Serverless narrows that gap, but its RPU scaling is coarser than slot re-allocation (UNVERIFIED: no published measured comparison found).
 Lock-in: open table formats (Iceberg) with BigLake on GCP or Athena and Redshift Spectrum on AWS reduce engine lock-in and make the choice reversible.
 My recommendation would be to keep the system of record and the lake in the cloud where data is produced, choose the engine per workload class, and require a two-week benchmark of the top 50 real query fingerprints on both engines, measured in cost per query and p95 latency, before committing.
 Multi-cloud is justified only if the data does not have to move, as discussed in [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_07_Multi_Cloud_and_Hybrid_Architecture_Reality|Multi-Cloud Reality]].
@@ -560,7 +588,7 @@ The benchmark shows BigQuery 35% cheaper per query but egress adds $60,000 per m
 - [Melnik et al., "Dremel: Interactive Analysis of Web-Scale Datasets", VLDB 2010](http://www.vldb.org/pvldb/vldb2010/papers/R29.pdf) - The origin of nested columnar encoding with repetition and definition levels, and of the serving-tree execution model.
 - [Melnik et al., "Dremel: A Decade of Interactive SQL Analysis at Web Scale", PVLDB 2020](https://www.vldb.org/pvldb/vol13/p3461-melnik.pdf) - The authoritative account of disaggregated storage and shuffle, serverless scheduling, and dynamic query execution in BigQuery.
 - [Edara and Pasumansky, "Big Metadata: When Metadata is Big Data", PVLDB 2021](https://www.vldb.org/pvldb/vol14/p3083-edara.pdf) - Explains how block-level column statistics are stored and queried at scale to drive pruning.
-- [Edara et al., "Vortex: A Stream-oriented Storage Engine For Big Data Analytics", SIGMOD 2024](https://dl.acm.org/doi/10.1145/3626246.3653396) - The ingestion path behind the Storage Write API and the conversion from write-optimized to read-optimized storage.
+- [Edara, Forbes, and Li, "Vortex: A Stream-oriented Storage Engine For Big Data Analytics", SIGMOD Companion 2024](https://dl.acm.org/doi/10.1145/3626246.3653396) - The ingestion path behind the Storage Write API and the conversion from write-optimized to read-optimized storage.
 - [Inside Capacitor, BigQuery's next-generation columnar storage format](https://cloud.google.com/blog/products/bigquery/inside-capacitor-bigquerys-next-generation-columnar-storage-format) - First-party description of evaluation on compressed data and row reordering.
 - [BigQuery docs: Understand slots](https://docs.cloud.google.com/bigquery/docs/slots) - Canonical rules for fair scheduling, autoscaling granularity, scale-down windows, and fluid scaling.
 - [BigQuery docs: Understand reservations](https://docs.cloud.google.com/bigquery/docs/reservations-workload-management) - Reservation fairness, predictability, project caps, and idle-slot sharing boundaries.

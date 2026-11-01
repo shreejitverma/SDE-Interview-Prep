@@ -16,6 +16,35 @@ sources:
   - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-express-one-zone.html"
   - "https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html"
   - "https://cloud.google.com/storage/docs/request-rate"
+  - "https://aws.amazon.com/blogs/aws/up-to-85-price-reductions-for-amazon-s3-express-one-zone/"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3/current/us-east-1/index.csv"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-1/index.csv"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes-enforce.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-express-differences.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-express-create-session.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-express-optimizing-performance-design-patterns.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-express-Regions-and-Zones.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/manage-versioning-examples.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication-time-control.html"
+  - "https://aws.amazon.com/s3/features/replication/"
+  - "https://aws.amazon.com/s3/faqs/"
+  - "https://aws.amazon.com/about-aws/whats-new/2020/12/amazon-s3-now-delivers-strong-read-after-write-consistency-automatically-for-all-applications/"
+  - "https://aws.amazon.com/about-aws/whats-new/2018/07/amazon-s3-announces-increased-request-rate-performance/"
+  - "https://docs.cloud.google.com/storage/docs/release-notes"
+  - "https://docs.cloud.google.com/storage/quotas"
+  - "https://cloud.google.com/storage/pricing"
+  - "https://cloud.google.com/blog/products/gcp/how-google-cloud-storage-offers-strongly-consistent-object-listing-thanks-to-spanner"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/12/amazon-s3-maximum-object-size-50-tb/"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-s3-up-1-million-buckets-per-aws-account/"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-s3-express-one-zone-append-data-object/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/06/amazon-s3-express-one-zone-atomic-renaming-objects-api/"
+  - "https://aws.amazon.com/about-aws/whats-new/2023/04/amazon-s3-security-best-practices-buckets-default/"
+  - "https://aws.amazon.com/blogs/aws/new-amazon-s3-express-one-zone-high-performance-storage-class/"
+  - "https://aws.amazon.com/blogs/aws/twenty-years-of-amazon-s3-and-building-whats-next/"
 ---
 
 # S3 Deep Dive: Consistency and ShardStore
@@ -25,7 +54,7 @@ sources:
 - Since December 2020, S3 gives strong read-after-write consistency for object PUT, GET, HEAD, and LIST within a single bucket, at no extra cost. Bucket configuration, replication, lifecycle, and event delivery are still eventually consistent or asynchronous.
 - Strong consistency is a cache-coherence protocol: a write-notified, in-memory "witness" acts as a read barrier in front of the metadata cache. It is not a rewrite of the storage tier, so it adds no ordering or isolation, and concurrent writers still get last-writer-wins unless you use conditional writes (`If-None-Match`, `If-Match`).
 - The S3 key index is range-partitioned and splits automatically under sustained load. The documented budget is roughly 3,500 writes/s and 5,500 reads/s per partitioned prefix, so key design decides whether traffic can spread across partitions or piles onto a hot tail.
-- ShardStore is the Rust storage-node engine under S3. It is an LSM index over append-only disk extents and gets crash consistency from soft-updates-style write ordering instead of a write-ahead log. Its main contribution is how it was validated: executable reference models, property-based conformance testing, crash-state enumeration, and stateless model checking (SOSP 2021).
+- ShardStore is the Rust storage-node engine under S3. It is an LSM index over append-only disk extents and gets crash consistency from soft-updates-style write ordering instead of a write-ahead log. Its main contribution is how it was validated: executable reference models, property-based conformance testing, generated crash-state testing, and stateless model checking (SOSP 2021).
 - S3 Express One Zone moves the request path into one Availability Zone. It uses directory buckets, zonal endpoints, and session-based auth via `CreateSession`, which buys single-digit-millisecond latency at the price of AZ-scoped durability, unsorted LIST, per-GB request surcharges, and up to session-lifetime permission revocation lag.
 
 ## Mental Model
@@ -73,7 +102,7 @@ The front-end fleet (DNS, load balancers, request authentication and authorizati
 
 The storage fleet holds object data as erasure-coded shards on hard drives, and ShardStore is the per-node engine that manages those shards ([Bornholt et al., SOSP 2021](https://doi.org/10.1145/3477132.3483540)).
 
-S3 Standard stores data redundantly across a minimum of three Availability Zones (AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10).
+S3 Standard stores data redundantly across a minimum of three Availability Zones (AWS S3 storage classes docs, as of 2026-11).
 
 The control plane (CreateBucket, PutBucketPolicy, PutBucketVersioning, lifecycle and replication configuration) is a separate path, and its state reaches the data plane asynchronously.
 
@@ -91,7 +120,7 @@ Overwrites, DELETEs, and LIST were eventually consistent.
 
 That caveat is a fingerprint of the mechanism: the staleness came from a metadata cache that could hold a negative entry ("key does not exist") or an old version, sitting in front of an authoritative persistence tier.
 
-Werner Vogels' 2021 deep dive confirms this framing and describes the fix ([All Things Distributed, 2021-04, verified 2026-10](https://www.allthingsdistributed.com/2021/04/s3-strong-consistency.html)).
+Werner Vogels' 2021 deep dive confirms the metadata cache as the main source of eventual consistency and describes the fix; the negative-entry detail is an inference from the documented caveat, not a statement in that post ([All Things Distributed, 2021-04, verified 2026-11](https://www.allthingsdistributed.com/2021/04/s3-strong-consistency.html)).
 
 AWS added a new component to the metadata subsystem that witnesses writes.
 
@@ -105,7 +134,7 @@ The witness keeps a small amount of state, in memory only, which is what lets it
 
 AWS states that it treated correctness of the coherence protocol as a hard requirement, and that the witness design had to keep S3's existing availability.
 
-AWS also describes using formal reasoning to check the protocol before relying on it at S3 scale.
+AWS also describes checking the protocol with integration tests, deductive proofs of the coherence algorithm, and model checking of the design, extended to runnable code (All Things Distributed, 2021-04).
 
 #### Inferred model of the witness protocol
 
@@ -133,7 +162,7 @@ The latency budget you pay for strong consistency is one extra in-memory RPC per
 
 - It does not give isolation: two concurrent PUTs to one key both succeed, and readers see one of them (last writer wins by S3's internal ordering).
 - It does not serialize across keys: there are no multi-key transactions, and a reader can observe key A's new version and key B's old version.
-- It does not cover bucket configuration: AWS recommends waiting 15 minutes after enabling versioning before issuing writes (AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10).
+- It does not cover bucket configuration: AWS says enabling versioning for the first time can take up to 15 minutes to propagate, and recommends waiting that long before issuing PUT or DELETE, because GETs of objects written in the window can return `404 NoSuchKey` (AWS S3 versioning docs, as of 2026-11).
 - It does not cover replication: Cross-Region and Same-Region Replication are asynchronous, so a read through a Multi-Region Access Point that routes to a replica can return an older version.
 - It does not cover event notifications: S3 Event Notifications are delivered at least once and can arrive out of order, and the `sequencer` field exists so consumers can order events for the same key.
 - It does not cover caches you add yourself: CloudFront, Mountpoint metadata caching, and client-side caches each bring their own staleness windows.
@@ -142,15 +171,17 @@ The latency budget you pay for strong consistency is one extra in-memory RPC per
 
 Strong consistency made a compare-and-swap primitive possible, and AWS shipped it in two steps.
 
-Put-if-absent (`If-None-Match: *` on PutObject and CompleteMultipartUpload) arrived in August 2024 ([Barking Iguana summary, verified 2026-10](https://barkingiguana.com/writing/how-s3-actually-works/)).
+Put-if-absent (`If-None-Match: *` on PutObject and CompleteMultipartUpload) arrived in August 2024 ([AWS What's New, 2024-08](https://aws.amazon.com/about-aws/whats-new/2024/08/amazon-s3-conditional-writes/)).
 
-Compare-and-swap on ETag (`If-Match`) arrived in November 2024 (same source).
+Compare-and-swap on ETag (`If-Match`) arrived on 2024-11-25, for both general purpose and directory buckets ([AWS What's New, 2024-11](https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-s3-functionality-conditional-writes/)).
 
-The same source reports conditional copy in October 2025, and bucket-level enforcement of conditional writes through bucket policy.
+Conditional copy followed in October 2025 ([AWS What's New, 2025-10](https://aws.amazon.com/about-aws/whats-new/2025/10/amazon-s3-conditional-write-functionality-copy-operations/)), and bucket-policy enforcement of conditional writes on general purpose buckets arrived in November 2024 ([AWS What's New, 2024-11](https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-s3-enforcement-conditional-write-operations-general-purpose-buckets/)).
 
-If the precondition fails, S3 returns `412 Precondition Failed`.
+If the precondition fails, S3 returns `412 Precondition Failed`, and when several conditional writes race on one key the first to finish succeeds and the later ones get 412 (AWS conditional writes docs, as of 2026-11).
 
-If concurrent conditional requests race on the same key, S3 can return `409 ConditionalRequestConflict`, and the client must re-read and retry (AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10).
+If a conflicting operation occurs during the upload, S3 can return `409 ConditionalRequestConflict`: retry a PutObject, fetching the current ETag first for `If-Match`, but a CompleteMultipartUpload must restart from CreateMultipartUpload (AWS PutObject API reference and conditional writes docs, as of 2026-11).
+
+An `If-Match` write also gets `404 Not Found` if a concurrent delete removed the key first (AWS conditional writes docs, as of 2026-11).
 
 This is what lets table formats and checkpoint managers commit a manifest pointer atomically without an external lock service such as DynamoDB.
 
@@ -164,9 +195,9 @@ That ordering is what lets LIST return keys in UTF-8 binary order for general pu
 
 When a key range sees sustained high request rates, S3 splits the partition.
 
-The documented steady-state budget is at least 3,500 PUT/COPY/POST/DELETE and 5,500 GET/HEAD requests per second per partitioned prefix, with no limit on the number of prefixes (AWS S3 performance docs, last confirmed 2025; UNVERIFIED as of 2026-10).
+The documented steady-state budget is at least 3,500 PUT/COPY/POST/DELETE and 5,500 GET/HEAD requests per second per partitioned prefix, with no limit on the number of prefixes (AWS S3 performance docs, as of 2026-11).
 
-The July 2018 update that raised these numbers also removed the old advice to randomize key prefixes for performance (AWS News Blog, 2018-07; UNVERIFIED as of 2026-10).
+The 2018-07-17 update that raised these numbers also removed the old advice to randomize key prefixes for performance, and said logical or sequential naming no longer has performance implications ([AWS What's New, 2018-07](https://aws.amazon.com/about-aws/whats-new/2018/07/amazon-s3-announces-increased-request-rate-performance/)).
 
 Several consequences of the mechanism are not in the getting-started guides.
 
@@ -180,11 +211,13 @@ A single key is the smallest unit that can be split, so one object cannot exceed
 
 Monotonic keys such as `logs/2026/10/20/12/...` or ULIDs put every new write at the tail of the key space, creating a moving hot spot that splitting has to keep chasing.
 
+That hot-spot argument is an inference from range partitioning at very high write rates, not current AWS guidance, which is the 2018 statement above; Google's docs do state it explicitly for GCS (Google Cloud request-rate docs, as of 2026-11).
+
 Putting a high-cardinality token early in the key, as in `logs/<hash4>/2026/10/20/...`, spreads writes from the start and costs you the ability to range-LIST by time.
 
 A sudden traffic shift onto a cold key range is the classic 503 storm: an hourly job that writes 50,000 objects/s into a brand-new prefix at the top of the hour has no partition history to lean on.
 
-Historically, AWS Support could pre-partition buckets for known launch events (UNVERIFIED as of 2026-10).
+Historically, AWS Support could pre-partition buckets for known launch events (UNVERIFIED: only an anecdotal re:Post answer, not in current AWS docs, as of 2026-11).
 
 ### Heat management and erasure coding
 
@@ -198,17 +231,17 @@ Erasure coding splits each object into k data shards plus parity shards placed o
 
 That gives two levers: reads can avoid a busy or failed drive by reconstructing from other shards, and one customer's working set gets spread over a very large number of spindles.
 
-The keynote states that many customers have data spread across over a million drives, which is why one tenant's burst is absorbed as noise across the fleet.
+The keynote write-up states that tens of thousands of customers have buckets spread across millions of drives, and that one burst can be served by over a million disks, which is why one tenant's burst is absorbed as noise across the fleet.
 
 That decorrelation, together with the per-prefix index budget, is what S3 sells.
 
-It is also why S3 Standard first-byte latency is tens of milliseconds and variable: a GET may wait on a drive seek, a remote shard, or a cache miss.
+It is also why S3 Standard first-byte latency is variable, with AWS citing roughly 100-200 ms for small objects (AWS S3 performance docs, as of 2026-11): a GET may wait on a drive seek, a remote shard, or a cache miss.
 
 ### ShardStore: the storage node engine
 
 ShardStore is the key-value store that runs on S3 storage nodes and maps shard identifiers to shard data ([Bornholt et al., SOSP 2021](https://doi.org/10.1145/3477132.3483540)).
 
-The paper describes it as over 40,000 lines of Rust (as reported in the paper; not re-verified in this pass).
+The paper describes it as over 40,000 lines of Rust (Bornholt et al., SOSP 2021, checked 2026-11).
 
 #### Data layout
 
@@ -220,7 +253,7 @@ An LSM tree maps each shard ID to the list of chunk locators that make up the sh
 
 The LSM tree's own SSTables are stored as chunks in extents too, so the whole engine runs on a single append-only allocation discipline.
 
-A superblock records extent ownership and the persisted write pointers.
+A superblock on extent 0 records extent ownership and the persisted soft write pointers, which ShardStore tracks in memory so it can run on both zoned and conventional disks.
 
 Space is reclaimed by evacuating live chunks from a victim extent, rewriting them elsewhere, updating the index to point at the new locations, and only then resetting the victim extent's write pointer.
 
@@ -234,7 +267,7 @@ It uses a soft-updates-style approach in which each write returns a Dependency o
 
 The I/O scheduler issues writes to disk only in an order that respects the dependency graph.
 
-For a shard PUT, the chunk data write must persist before the index entry that references it, and the index entry must persist before the superblock and write-pointer update that makes it reachable.
+For a shard PUT, the chunk data write must persist before the index entry that references it, and the index entry must persist before the LSM-tree metadata update that makes it reachable; each extent append also updates that extent's soft write pointer in the superblock (Bornholt et al., SOSP 2021, Figure 2).
 
 During reclamation, the index update that points at a relocated chunk must persist before the old extent's write pointer is reset, or a crash would leave the index pointing at overwritten bytes.
 
@@ -256,7 +289,9 @@ The test generator is biased toward interesting arguments, such as reusing recen
 
 Failing sequences are automatically minimized to short reproducers.
 
-Crash consistency is checked by injecting crashes, enumerating the disk states that the outstanding dependency graph permits, and checking two properties after recovery.
+Crash consistency is checked by adding a dirty reboot to the generated operation sequences, with each component (such as the LSM tree) randomly flushed or not and explicit flush operations interleaved, and checking two properties after recovery.
+
+The paper's block-level crash-state enumeration variant found no additional bugs and was dramatically slower, so it is not used by default (Bornholt et al., SOSP 2021).
 
 Persistence: if a Dependency reported itself persistent before the crash, its data must be readable afterward.
 
@@ -264,17 +299,17 @@ Forward progress: after a clean shutdown, every write must eventually become per
 
 Concurrency is checked with stateless model checking: Loom exhaustively explores interleavings for small harnesses, and AWS's open-source Shuttle uses randomized scheduling for larger ones ([Shuttle](https://github.com/awslabs/shuttle)).
 
-The paper reports that this approach stopped 16 issues, including subtle crash-consistency and concurrency bugs, from reaching production (as reported in the paper; not re-verified in this pass).
+The paper reports that this approach stopped 16 issues, including subtle crash-consistency and concurrency bugs, from reaching production (Bornholt et al., SOSP 2021, checked 2026-11).
 
-It is honest about the limits: the reference models are not proven correct, the properties only cover what the models specify, and liveness and performance bugs are mostly out of scope.
+It is honest about the limits: the reference models are not proven correct, the properties only cover what the models specify, and availability and performance properties are out of scope.
 
 The deeper treatment lives in [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_05_Amazon_S3_ShardStore_Formal_Methods|Validating Amazon S3 ShardStore with Formal Methods (2021 SOSP)]].
 
 ### S3 Express One Zone
 
-S3 Express One Zone launched at re:Invent in November 2023 as a storage class for directory buckets, which live in a single AZ that you choose (AWS News Blog, 2023-11; UNVERIFIED as of 2026-10).
+S3 Express One Zone launched on 2023-11-28 as a storage class for directory buckets, which live in a single AZ that you choose ([AWS News Blog, 2023-11](https://aws.amazon.com/blogs/aws/new-amazon-s3-express-one-zone-high-performance-storage-class/)).
 
-AWS positioned it as delivering consistent single-digit-millisecond request latency, up to 10x faster than S3 Standard (launch claim, AWS News Blog, 2023-11; UNVERIFIED as of 2026-10).
+AWS positioned it as delivering consistent single-digit-millisecond request latency, up to 10x faster than S3 Standard, a vendor claim the current storage class docs still repeat (AWS News Blog, 2023-11; AWS S3 storage classes docs, as of 2026-11).
 
 #### Mechanisms that differ from general purpose buckets
 
@@ -282,11 +317,13 @@ A directory bucket name embeds the AZ ID, in the form `base-name--use1-az4--x-s3
 
 It uses the AZ ID, not the account-specific AZ name, because AZ names map to different physical zones in different accounts.
 
-Data-plane requests go to a zonal endpoint, while bucket-level control-plane operations go to a regional `s3express-control` endpoint (AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10).
+Data-plane requests go to a zonal endpoint, while bucket-level control-plane operations go to a regional `s3express-control` endpoint (AWS directory bucket docs, as of 2026-11).
 
 Authorization is session-based.
 
-The client calls `CreateSession`, which evaluates IAM and bucket policy once and returns short-lived session credentials (documented lifetime 5 minutes), and then signs data requests with those credentials (AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10).
+The client calls `CreateSession`, which evaluates IAM and bucket policy once and returns short-lived session credentials (documented lifetime 5 minutes), and then signs data requests with those credentials (AWS CreateSession docs, as of 2026-11).
+
+`CopyObject` and `HeadBucket` are the exceptions: they are signed with IAM credentials but still authorized by `s3express:CreateSession` (AWS CreateSession docs, as of 2026-11).
 
 AWS SDKs cache and refresh sessions transparently, which is why `s3express:CreateSession` is the IAM action that gates object access in directory buckets.
 
@@ -294,11 +331,11 @@ The namespace is hierarchical: directories are real entities, created implicitly
 
 Prefixes in LIST requests must end in the delimiter `/`.
 
-ListObjectsV2 results from directory buckets are not returned in lexicographic order, which breaks any code that relies on `StartAfter` or on sorted listing for merges (AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10).
+ListObjectsV2 results from directory buckets are not returned in lexicographic order and `StartAfter` is not supported, which breaks any code that relies on `StartAfter` or on sorted listing for merges (AWS ListObjectsV2 API reference, as of 2026-11).
 
-Later additions include appending to existing objects through a write-offset header (reported 2024-11) and an atomic RenameObject API (reported 2025-06); both UNVERIFIED as of 2026-10.
+Later additions include appending to existing objects through the `x-amz-write-offset-bytes` header ([AWS What's New, 2024-11](https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-s3-express-one-zone-append-data-object/)) and an atomic RenameObject API ([AWS What's New, 2025-06](https://aws.amazon.com/about-aws/whats-new/2025/06/amazon-s3-express-one-zone-atomic-renaming-objects-api/)).
 
-Features available on general purpose buckets, such as versioning, Object Lock, and replication, have historically not been available on directory buckets; check the current feature matrix before designing around them (UNVERIFIED as of 2026-10).
+Versioning, Object Lock, replication, Multi-Region Access Points, and S3 Event Notifications are among the features directory buckets do not support; check the current feature matrix before designing around them (AWS directory bucket docs, as of 2026-11).
 
 #### Why it is faster, mechanically
 
@@ -306,7 +343,9 @@ The request path stays inside one AZ, which removes cross-AZ network round trips
 
 Session auth takes per-request IAM policy evaluation off the hot path, which for small-object workloads is a meaningful slice of total request latency.
 
-Directory buckets scale request capacity per bucket rather than requiring the index to learn prefix splits from traffic, so there is no prefix-warming period to design around (AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10).
+Directory buckets support up to 2,000,000 GET and 200,000 PUT requests/s per bucket, directories are designed to support that full rate and scale instantaneously, and objects are distributed automatically, so there is no prefix-warming period to design around (AWS S3 Express performance docs, as of 2026-11).
+
+The same docs warn against hash entropy in key prefixes on directory buckets, the opposite of the general purpose advice, because sparse directories slow mutations and LIST.
 
 AWS describes purpose-built hardware and software but has not published media details in the sources used here, so do not assert "it is SSD" in an interview without a citation.
 
@@ -314,57 +353,58 @@ AWS describes purpose-built hardware and software but has not published media de
 
 Durability and availability are scoped to one AZ: data is stored redundantly on multiple devices in the zone, but losing the zone means losing access and possibly losing data.
 
-The designed availability is 99.95% versus 99.99% for S3 Standard (AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10).
+The designed availability is 99.95% versus 99.99% for S3 Standard (AWS S3 storage classes docs, as of 2026-11).
 
 Session credentials mean permission revocation can lag by up to the session lifetime for clients holding a valid session.
 
-That last point follows from the session model; it is an inference, so confirm the current documented behavior.
+That last point follows from the session model and the documented 5-minute credential expiry; it is an inference, because the docs checked do not state revocation behavior directly.
 
 ## Numbers to Know
 
 | Quantity | Value | Source and date |
 |---|---|---|
-| Strong read-after-write consistency for objects and LIST | GA December 2020, automatic, no added cost | AWS News Blog 2020-12; UNVERIFIED as of 2026-10 |
-| Witness state | In-memory, minimal, scale-out fleet | All Things Distributed 2021-04, verified 2026-10 |
-| Conditional writes | `If-None-Match` 2024-08, `If-Match` 2024-11, conditional copy 2025-10 | Secondary summary of AWS launches, verified 2026-10 |
-| Per partitioned prefix | >= 3,500 writes/s and >= 5,500 reads/s | AWS S3 performance docs, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| Number of prefixes per bucket | Unlimited | AWS S3 performance docs, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| Max object size | 5 TB long-standing; an increase to 50 TB was reported in late 2025 | AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| Single PUT max | 5 GB | AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| Multipart limits | 10,000 parts, 5 MiB to 5 GiB per part (last part may be smaller) | AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| LIST page size | Up to 1,000 keys per ListObjectsV2 response | AWS API reference, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| Designed durability | 99.999999999% (S3 Standard, multi-AZ) | AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| Designed availability | 99.99% Standard, 99.95% Express One Zone | AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| Versioning propagation guidance | Wait 15 minutes after enabling before writes | AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| Replication Time Control | 99.99% of objects replicated within 15 minutes (SLA-backed) | AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| Default general purpose bucket quota | 10,000 per account (raised from 100 in 2024-11) | AWS News, last confirmed 2025; UNVERIFIED as of 2026-10 |
+| Strong read-after-write consistency for objects and LIST | Announced 2020-12-01, automatic, no added cost | AWS What's New 2020-12; AWS S3 FAQ, as of 2026-11 |
+| Witness state | In-memory, minimal, scale-out fleet | All Things Distributed 2021-04, verified 2026-11 |
+| Conditional writes | `If-None-Match` 2024-08, `If-Match` 2024-11, conditional copy 2025-10 | AWS What's New posts, as of 2026-11 |
+| Per partitioned prefix | >= 3,500 writes/s and >= 5,500 reads/s | AWS S3 performance docs, as of 2026-11 |
+| Number of prefixes per bucket | Unlimited | AWS S3 performance docs, as of 2026-11 |
+| Express directory bucket request rate | Up to 2,000,000 GET/s and 200,000 PUT/s per bucket | AWS S3 Express performance docs, as of 2026-11 |
+| Max object size | 50 TB since 2025-12 (5 TB before); the multipart limits give exactly 48.8 TiB, about 53.7 TB; a single GET above 5 TB is rejected, so use ranged or part GETs | AWS What's New 2025-12; AWS multipart limits docs and S3 user guide, as of 2026-11 |
+| Single PUT max | 5 GB | AWS S3 FAQ, as of 2026-11 |
+| Multipart limits | 10,000 parts, 5 MiB to 5 GiB per part (last part may be smaller) | AWS multipart limits docs, as of 2026-11 |
+| LIST page size | Up to 1,000 keys per ListObjectsV2 response | AWS ListObjectsV2 API reference, as of 2026-11 |
+| Designed durability | 99.999999999% (S3 Standard, multi-AZ) | AWS S3 storage classes docs, as of 2026-11 |
+| Designed availability | 99.99% Standard, 99.95% Express One Zone | AWS S3 storage classes docs, as of 2026-11 |
+| Versioning propagation guidance | Wait 15 minutes after first enabling before PUT or DELETE | AWS S3 versioning docs, as of 2026-11 |
+| Replication Time Control | Designed for 99.99% of objects within 15 minutes; the SLA commitment is 99.9% per region pair per billing month | AWS S3 replication features page, as of 2026-11 |
+| Default general purpose bucket quota | 10,000 per account (raised from 100 in 2024-11), up to 1 million on request | AWS What's New 2024-11; AWS S3 quotas docs, as of 2026-11 |
 | HDD random IOPS | About 120 per drive, roughly flat across generations | All Things Distributed 2023-07 |
-| Fleet scale (2023) | 280 trillion objects, over 100 million requests/s | All Things Distributed 2023-07; newer figures UNVERIFIED |
-| Express session lifetime | 5 minutes | AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| S3 Standard storage, us-east-1 | $0.023/GB-month first 50 TB | AWS pricing, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| S3 Standard requests, us-east-1 | PUT/COPY/POST/LIST $0.005 per 1,000; GET $0.0004 per 1,000 | AWS pricing, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| Express One Zone storage, us-east-1 | $0.11/GB-month after the 2025-04 price cut (was $0.16) | AWS News Blog 2025-04; UNVERIFIED as of 2026-10 |
-| Express One Zone requests, us-east-1 | PUT $0.00113 per 1,000; GET $0.00003 per 1,000 | AWS News Blog 2025-04; UNVERIFIED as of 2026-10 |
-| Express per-GB request charges | Upload $0.0032/GB and retrieval $0.0006/GB for bytes beyond 512 KB per request | AWS News Blog 2025-04; UNVERIFIED as of 2026-10 |
-| NAT Gateway data processing, us-east-1 | $0.045/GB (avoid for S3 with gateway endpoints) | AWS pricing, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| GCS initial bucket capacity | About 1,000 writes/s and 5,000 reads/s, ramp by doubling every 20 minutes | Google Cloud docs, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| GCS same-object write rate | About 1 write per second per object name | Google Cloud docs, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| GCS Standard storage, us-central1 | $0.020/GB-month | Google Cloud pricing, last confirmed 2025; UNVERIFIED as of 2026-10 |
-| ShardStore size and yield | Over 40k lines of Rust; 16 issues stopped before production | SOSP 2021 paper |
+| Fleet scale | More than 500 trillion objects and more than 200 million requests/s (2026-03); was 280 trillion and over 100 million requests/s in 2023-07 | AWS News Blog 2026-03; All Things Distributed 2023-07 |
+| Express session lifetime | 5 minutes | AWS CreateSession docs, as of 2026-11 |
+| S3 Standard storage, us-east-1 | $0.023/GB-month first 50 TB | AWS Price List, published 2026-10-15 |
+| S3 Standard requests, us-east-1 | PUT/COPY/POST/LIST $0.005 per 1,000; GET $0.0004 per 1,000 | AWS Price List, published 2026-10-15 |
+| Express One Zone storage, us-east-1 | $0.11/GB-month after the 2025-04 price cut (was $0.16) | AWS News Blog 2025-04; AWS Price List, published 2026-10-15 |
+| Express One Zone requests, us-east-1 | PUT $0.00113 per 1,000; GET $0.00003 per 1,000 | AWS News Blog 2025-04; AWS Price List, published 2026-10-15 |
+| Express per-GB request charges | Upload $0.0032/GB and retrieval $0.0006/GB on all bytes transferred (before 2025-04 only on bytes above 512 KB per request) | AWS News Blog 2025-04; AWS Price List, published 2026-10-15 |
+| NAT Gateway data processing, us-east-1 | $0.045/GB (avoid for S3 with gateway endpoints) | AWS Price List, published 2026-10-15 |
+| GCS initial bucket capacity | About 1,000 writes/s and 5,000 reads/s, ramp no faster than doubling over 20 minutes | Google Cloud request-rate docs, as of 2026-11 |
+| GCS same-object write rate | 1 write per second per object name | Google Cloud quotas docs, as of 2026-11 |
+| GCS Standard storage, us-central1 | $0.000027397/GiB-hour, about $0.020/GiB-month | Google Cloud pricing page, as of 2026-11 |
+| ShardStore size and yield | Over 40k lines of Rust; 16 issues stopped before production | SOSP 2021 paper, checked 2026-11 |
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | AWS S3 | Google Cloud Storage | Critical difference |
 |---|---|---|---|
 | Object consistency | Strong read-after-write for PUT, GET, HEAD, LIST since 2020-12 | Strong for object writes, reads, metadata, and listing | Both strong for objects; both keep configuration and IAM propagation eventual |
-| How consistency is achieved | Witness read barrier in front of the metadata cache | Metadata reported to live on Spanner (UNVERIFIED) | GCS inherits strong consistency from a transactional store; S3 retrofitted it onto a cached index |
+| How consistency is achieved | Witness read barrier in front of the metadata cache | Metadata migrated to Spanner in 2017 (Google Cloud blog, 2018-02) | GCS inherits strong consistency from a transactional store; S3 retrofitted it onto a cached index |
 | Optimistic concurrency token | ETag with `If-Match` and `If-None-Match: *` | Object `generation` and `metageneration` with `ifGenerationMatch` (0 means create-only) | GCS has offered generation preconditions for many years; S3 got CAS in 2024 |
-| Request scaling unit | Partitioned key-range prefix, split reactively | Bucket-level initial capacity plus auto-scaling under gradual ramp | Both punish sequential key names and step-function traffic |
-| Hot single object | Bounded by one partition's budget | About 1 write/s per object name | GCS's per-object mutation cap bites lock and counter patterns much sooner |
+| Request scaling unit | Partitioned key-range prefix, split reactively | Bucket-level initial capacity plus auto-scaling under gradual ramp | Both punish step-function traffic; Google's docs warn against sequential names, while for S3 that is an inference (AWS's 2018 post says sequential naming has no performance implications) |
+| Hot single object | Bounded by one partition's budget | 1 write/s per object name | GCS's per-object mutation cap bites lock and counter patterns much sooner |
 | Durability topology | Standard spans >= 3 AZs; One Zone classes are single-AZ | Regional, dual-region, and multi-region location types | GCS dual-region turbo replication targets a 15-minute RPO; S3 uses CRR with RTC |
-| Low-latency zonal tier | S3 Express One Zone with directory buckets (GA) | Rapid Storage zonal buckets, announced 2025-04 (Preview then; status UNVERIFIED) | Check GA status before treating the GCS tier as production-grade |
-| Hierarchical namespace | Directory buckets (Express only), unsorted LIST | Hierarchical namespace buckets with atomic folder rename (GA 2024, UNVERIFIED) | GCS HNS applies to regional storage; S3 hierarchy is tied to the Express class |
-| Read caching near compute | Mountpoint for S3 local cache; Express as a cache tier | Anywhere Cache, a zonal SSD cache in front of buckets (GA, UNVERIFIED) | GCS cache is managed and transparent; on AWS you assemble the tier yourself |
+| Low-latency zonal tier | S3 Express One Zone with directory buckets (GA) | Rapid Bucket zonal buckets (formerly Rapid Storage), GA 2026-03-10 (Google Cloud release notes, as of 2026-11) | Both are GA; Rapid Bucket has a listed 1 TB per project per zone storage quota and requires hierarchical namespace (Google Cloud docs, as of 2026-11) |
+| Hierarchical namespace | Directory buckets (single-zone), unsorted LIST | Hierarchical namespace buckets with atomic folder rename (GA 2024-10-15, Google Cloud release notes, as of 2026-11) | GCS HNS is a creation-time bucket option, not a storage class (location limits UNVERIFIED: not stated in docs checked); S3 hierarchy is tied to directory buckets |
+| Read caching near compute | Mountpoint for S3 local cache; Express as a cache tier | Rapid Cache (Anywhere Cache until the 2026-03-24 rename), a zonal SSD cache in front of buckets, GA 2025-03-13 (Google Cloud release notes, as of 2026-11) | GCS cache is managed and transparent; on AWS you assemble the tier yourself |
 | Authentication on hot path | SigV4 per request; `CreateSession` for directory buckets | OAuth 2.0 bearer tokens, cached for token lifetime | GCS token model is already session-like; S3 general purpose evaluates per request |
 | Private access | Gateway endpoint (free) or interface endpoint (PrivateLink) | Private Google Access, Private Service Connect | S3 gateway endpoints are route-table entries, not ENIs |
 | Exfiltration perimeter | SCPs, RCPs, endpoint policies, `aws:ResourceOrgID` | VPC Service Controls perimeters | VPC SC is a single API-level perimeter; AWS is a composition of policies |
@@ -391,7 +431,7 @@ Run the benchmark from an EC2 instance in the AZ whose ID matches the directory 
 
 Find the AZ name for an AZ ID with `aws ec2 describe-availability-zones --region us-east-1 --zone-ids use1-az4 --query 'AvailabilityZones[0].ZoneName' --output text`.
 
-Express One Zone is only offered in specific AZ IDs per region; pass one listed in the current docs (the commonly cited us-east-1 IDs are use1-az4, use1-az5, and use1-az6, UNVERIFIED as of 2026-10).
+Express One Zone is only offered in specific AZ IDs per region; pass one listed in the current docs (the us-east-1 IDs are use1-az4, use1-az5, and use1-az6, AWS directory bucket endpoints docs, as of 2026-11).
 
 Use a boto3 release from 2025 or later, because directory buckets, `IfNoneMatch`, and `IfMatch` were added to the SDK across late 2023 and 2024.
 
@@ -644,15 +684,15 @@ Design for 2x headroom by spreading keys over at least 8 high-cardinality leadin
 
 Step 3, request cost on S3 Standard: 20,000 x 86,400 = 1.728 billion GETs/day, which is 1.728e9 / 1,000 x $0.0004 = $691/day.
 
-Step 4, request cost on Express One Zone: 1.728e9 / 1,000 x $0.00003 = $51.84/day, and the per-GB retrieval charge does not apply because each request is under 512 KB.
+Step 4, request cost on Express One Zone: 1.728e9 / 1,000 x $0.00003 = $51.84/day, plus the per-GB retrieval charge, which since 2025-04 applies to all bytes: 1.728e9 x 150 KB = 259,200 GB/day x $0.0006 = $155.52/day, for a total of $207.36/day.
 
 Step 5, storage: 7.5 TB on Standard is 7,500 x $0.023 = $172.50/month, and on Express it is 7,500 x $0.11 = $825/month.
 
 Step 6, the shard alternative: pack samples into 256 MB WebDataset tar shards, giving 7.5e12 / 256e6, about 29,300 objects.
 
-An epoch then costs about 29,300 GETs (a few cents) on Standard, with no partition pressure, at the price of coarser shuffling and some engineering effort.
+An epoch then costs about 29,300 GETs (about one cent) on Standard, with no partition pressure, at the price of coarser shuffling and some engineering effort.
 
-Decision: per-sample objects on Standard burn about $20,700/month in GETs, Express cuts that to about $1,560/month plus $650/month of extra storage, and sharding on Standard makes request cost negligible.
+Decision: per-sample objects on Standard burn about $20,700/month in GETs, Express cuts that to about $6,220/month (requests plus retrieval) plus $650/month of extra storage, and sharding on Standard makes request cost negligible.
 
 The principal-level answer is to shard on Standard for the durable copy, and to use Express only as an AZ-local staging tier when random access or low latency is a real requirement.
 
@@ -662,7 +702,7 @@ A 70B-parameter model with mixed-precision Adam state is about 16 bytes/param, s
 
 With 64 MiB multipart parts that is about 16,700 PUTs (sharded across at least 2 object keys, or using 128 MiB parts to respect S3's 10,000-part limit per object), roughly $0.08 in request charges on Standard and well within one partition's write budget if parts spread across keys.
 
-On Express, PUT charges are trivial ($0.02), but the per-GB upload charge for bytes beyond 512 KB adds about 1,120 x $0.0032 = $3.58 per checkpoint.
+On Express, PUT charges are trivial ($0.02), but the per-GB upload charge on all bytes adds about 1,120 x $0.0032 = $3.58 per checkpoint.
 
 At 10 checkpoints/day that is about $36/day in upload fees, before storage at $0.11/GB-month.
 
@@ -728,15 +768,15 @@ SSE-KMS without Bucket Keys turns every PUT and GET into a KMS call, which can h
 
 Grant object-level actions on `arn:aws:s3:::bucket/prefix/*` and `s3:ListBucket` with an `s3:prefix` condition, not `s3:*` on `*` ([[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]]).
 
-For directory buckets, object access is gated by `s3express:CreateSession`, and session mode (ReadWrite vs ReadOnly) can be constrained in policy with the `s3express:SessionMode` condition key (AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10).
+For directory buckets, object access is gated by `s3express:CreateSession`, and session mode (ReadWrite vs ReadOnly) can be constrained in policy with the `s3express:SessionMode` condition key (AWS CreateSession docs, as of 2026-11).
 
 Because session credentials outlive the policy check, an emergency revocation can take effect only after outstanding sessions expire; size incident runbooks for that window.
 
-Bucket policies can require conditional writes through condition keys, so uncoordinated writers cannot overwrite shared manifests (reported 2024-2025; exact keys UNVERIFIED as of 2026-10).
+Bucket policies on general purpose buckets can require conditional writes through the `s3:if-none-match` and `s3:if-match` condition keys, with `s3:ObjectCreationOperation` exempting the multipart calls that take no conditional header, so uncoordinated writers cannot overwrite shared manifests (AWS conditional write enforcement docs, as of 2026-11).
 
 ### Encryption hierarchy
 
-All new objects have been encrypted with SSE-S3 by default since January 2023 (AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10).
+All new objects have been encrypted, with SSE-S3 as the base level, since 2023-01-05 (AWS default encryption FAQ, as of 2026-11).
 
 With SSE-KMS, S3 asks KMS for a data key under your KMS key, encrypts the object with it, and stores the wrapped data key with the object; reads call KMS Decrypt to unwrap it.
 
@@ -754,7 +794,7 @@ Endpoint policies that restrict to `aws:ResourceOrgID` stop principals inside yo
 
 Bucket policies that require `aws:SourceVpce` or `aws:PrincipalOrgID` stop stolen credentials from being used off-network.
 
-Block Public Access and disabled ACLs have been defaults for new buckets since April 2023 (AWS docs, last confirmed 2025; UNVERIFIED as of 2026-10).
+Block Public Access and disabled ACLs have been defaults for new buckets since a rollout that began on 2023-04-05 (AWS What's New 2023-04, as of 2026-11).
 
 The full composition is in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
 
@@ -792,7 +832,7 @@ This removes a dependency and a failure mode, since the lock table can no longer
 
 Its limits: it covers exactly one key, so a commit that touches several objects must be structured as "write immutable data files first, then CAS a single pointer."
 
-Under heavy contention, latency and retry cost rise because each attempt is a full GET plus PUT round trip at tens of milliseconds.
+Under heavy contention, latency and retry cost rise because each attempt is a full GET plus PUT round trip, at tens to a couple of hundred milliseconds each (AWS cites roughly 100-200 ms for small objects).
 
 #### Follow-up Interviewer Question
 
@@ -814,7 +854,7 @@ I would ramp traffic over tens of minutes before peak, because partitions split 
 
 On the client, I would use SDK adaptive retry with capped exponential backoff and jitter, a bounded retry budget, and connection pools large enough for the target concurrency.
 
-The concurrency math is Little's law: at 30 ms mean latency, 120,000 x 0.03 = 3,600 requests in flight across the fleet.
+The concurrency math is Little's law: at an assumed 30 ms mean latency, 120,000 x 0.03 = 3,600 requests in flight across the fleet, and at AWS's documented 100-200 ms for small objects it is 12,000 to 24,000, so I would measure before sizing pools.
 
 Cost is 120,000 x 86,400 / 1,000 x $0.0004 = about $4,150/day in GETs, which is the number that should trigger the next design conversation.
 
@@ -870,9 +910,9 @@ Durability: a directory bucket lives in one AZ, so Express cannot be the only co
 
 The system of record stays on S3 Standard, which spans at least three AZs.
 
-Price shape: Express storage is about $0.11/GB-month versus $0.023, but GET requests are about 13x cheaper, and there is a per-GB charge for bytes beyond 512 KB per request.
+Price shape: Express storage is about $0.11/GB-month versus $0.023, but GET requests are about 13x cheaper, and since 2025-04 there is a per-GB upload and retrieval charge on all bytes.
 
-Request-dominated, small-object, random-access workloads, such as per-sample image reads, win: for 20,000 GET/s of 150 KB samples, GET cost falls from about $691/day to about $52/day.
+Request-dominated, small-object, random-access workloads, such as per-sample image reads, win: for 20,000 GET/s of 150 KB samples, read cost falls from about $691/day to about $207/day ($52 in requests plus $156 in retrieval).
 
 Byte-dominated workloads such as large checkpoints lose on price: a 1.12 TB checkpoint carries about $3.58 in upload fees on Express versus about $0.08 in PUT fees on Standard.
 
@@ -914,9 +954,9 @@ If the protected resource is itself S3, I would make the critical write a CAS on
 
 Clock skew only shifts safety margins, because takeover correctness comes from CAS, not clocks.
 
-Operationally, the lease key's request rate is tiny, but every attempt costs a GET and a PUT at tens of milliseconds, so this fits leader election, not fine-grained locking.
+Operationally, the lease key's request rate is tiny, but every attempt costs a GET and a PUT at tens to a couple of hundred milliseconds each, so this fits leader election, not fine-grained locking.
 
-On GCS the same design uses `ifGenerationMatch`, with the extra constraint of about one write per second per object name.
+On GCS the same design uses `ifGenerationMatch`, with the extra constraint of one write per second per object name.
 
 #### Follow-up Interviewer Question
 
@@ -946,7 +986,7 @@ The cost is that correctness now lives in a large, implicit dependency graph tha
 
 I would only approve the design together with ShardStore-style validation as a release gate.
 
-That means executable reference models in the same language and repository, property-based conformance tests with biased generators and automatic minimization, crash-state enumeration checking persistence and forward progress, and stateless model checking of concurrent paths with Loom for small exhaustive cases and Shuttle for randomized coverage.
+That means executable reference models in the same language and repository, property-based conformance tests with biased generators and automatic minimization, generated crash-state tests checking persistence and forward progress, and stateless model checking of concurrent paths with Loom for small exhaustive cases and Shuttle for randomized coverage.
 
 I would be explicit about what this does not prove: model bugs, performance cliffs, firmware lies about flush semantics, and fleet-level emergent behavior.
 
@@ -1004,9 +1044,9 @@ That is the price of the hot-tail problem for monotonic keys.
 
 The data side is different: erasure-coded shards are deliberately spread across a huge number of drives, so for most workloads per-drive IOPS are not visible at the prefix level.
 
-Express changes the model because the hierarchy is explicit: directories are first-class, LIST does not promise lexicographic order, and per-bucket capacity is provisioned rather than learned from traffic.
+Express changes the model because the hierarchy is explicit: directories are first-class, LIST does not promise lexicographic order, and capacity is stated per bucket, with directories designed to scale instantaneously rather than learn from traffic.
 
-Dropping global ordering removes the constraint that forces range partitioning, which lets the service shard metadata more evenly and avoid split-warming.
+Dropping global ordering removes the constraint that forces range partitioning, which lets the service shard metadata more evenly and avoid split-warming; AWS's docs state that automatic even distribution is why keys are not stored lexicographically.
 
 Keeping the path within one AZ and amortizing auth per session takes the remaining fixed costs off each request.
 

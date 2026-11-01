@@ -20,13 +20,37 @@ sources:
   - "https://aws.amazon.com/blogs/database/monitor-amazon-aurora-dsql-costs-with-the-aurora-dsql-console-and-cloudwatch-alarms/"
   - "https://aws.amazon.com/blogs/database/pagination-patterns-in-amazon-aurora-dsql/"
   - "https://aws.amazon.com/blogs/database/amazon-aurora-dsql-for-global-scale-financial-transactions/"
+  - "https://brooker.co.za/blog/2024/12/03/aurora-dsql.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/CHAP_quotas.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/what-is-aurora-dsql.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-postgresql-compatibility-migration-guide.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-concurrency-control.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-foreign-key-constraints.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/multi-region-aws-cli.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/SECTION_authentication-token.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/using-database-and-iam-roles.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/data-encryption.html"
+  - "https://docs.aws.amazon.com/cli/latest/reference/dsql/create-cluster.html"
+  - "https://aws.amazon.com/rds/aurora/dsql/pricing/"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/12/amazon-aurora-dsql-preview/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/05/amazon-aurora-dsql-generally-available"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/07/amazon-aurora-dsql-adds-multi-region-clusters-four-more-regions/"
+  - "https://aws.amazon.com/blogs/database/working-with-foreign-key-constraints-in-aurora-dsql/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://docs.cloud.google.com/spanner/docs/isolation-levels"
+  - "https://docs.cloud.google.com/spanner/docs/concurrency-control"
+  - "https://docs.cloud.google.com/spanner/docs/release-notes"
+  - "https://docs.cloud.google.com/spanner/docs/replication"
+  - "https://docs.cloud.google.com/spanner/docs/postgresql-interface"
+  - "https://docs.cloud.google.com/spanner/docs/compute-capacity"
+  - "https://docs.cloud.google.com/spanner/quotas"
 ---
 
 # Aurora DSQL: Multi-Region Active-Active SQL
 
 ## TL;DR
 
-Aurora DSQL is a disaggregated, PostgreSQL-compatible OLTP database: stateless query processors (QPs) in Firecracker microVMs, range-sharded MVCC storage, scale-out adjudicators that detect conflicts, and a Paxos-replicated Journal that makes commits durable.
+Aurora DSQL is a disaggregated, PostgreSQL-compatible OLTP database: stateless query processors (QPs) in Firecracker microVMs, range-sharded MVCC storage, scale-out adjudicators that detect conflicts, and a replicated Journal (chain replication within a Region, a Paxos variant across Regions) that makes commits durable.
 Coordination happens once per transaction, at COMMIT, and never once per statement: reads run at a precision-clock start timestamp with no locks, and writes are buffered inside the QP until commit.
 The isolation level is strong snapshot isolation (snapshot isolation plus linearizability, equivalent to PostgreSQL REPEATABLE READ), so transactions abort only on write-write conflicts, with SQLSTATE 40001 / OC000, and write skew is still possible.
 Multi-Region means two full Regions plus a witness Region that holds only Journal state: commits pay cross-Region latency, reads stay in-Region, and on a partition the endpoint on the minority side stops serving reads and writes.
@@ -39,7 +63,7 @@ flowchart LR
   C[PostgreSQL client] -->|SQL over TLS, IAM token| QP[Query Processor - Firecracker microVM, no durable state]
   QP -->|reads at t_start, pushed-down scans| ST[(Storage - range shards by PK, MVCC versions, N read replicas)]
   QP -->|COMMIT: write set plus t_start| ADJ[Adjudicators - one owner per key range, transient state only]
-  ADJ -->|accept, assign t_commit| J[Journal - Paxos log, quorum across AZs or Regions incl. witness]
+  ADJ -->|accept, assign t_commit| J[Journal - chain replication in-Region, Paxos variant cross-Region incl. witness]
   J -->|ordered commit stream| X[Crossbar - merges journals into per-shard feeds]
   X -->|apply versions| ST
   ADJ -->|reject| E[40001 / OC000 to client, client retries]
@@ -86,8 +110,9 @@ This is the same idea as Spanner's `t_safe` in [Corbett et al., OSDI 2012](https
 Spanner, however, derives `t_safe` from Paxos leader state and pending two-phase-commit prepares.
 DSQL derives it from Journal stream progress, because a transaction never reaches a Journal until the adjudicator has accepted it, so there are no pending prepares to wait on.
 The operational consequence is that an unhealthy Journal-to-storage pipeline shows up as higher read latency in the affected Region, not as stale reads.
-The exact watermark bookkeeping is not published in this form.
-The paragraphs above are a synthesis from the published component contracts and the Spanner analogy, and the precise implementation is marked UNVERIFIED.
+The paper confirms the core mechanism: in a multi-Region cluster, storage nodes must see that Journals from all Regions have advanced past the read timestamp before serving data, and a node that is behind makes the reader wait ([arXiv 2607.13276](https://arxiv.org/pdf/2607.13276)).
+The progress signal comes from adjudicators, which promise never to commit at an earlier timestamp and use a heartbeat protocol to move their commit points forward with the physical clock ([arXiv 2607.13276](https://arxiv.org/pdf/2607.13276)).
+The `min(...)` formula and the Spanner comparison are this chapter's synthesis, not the paper's wording.
 
 ### Data plane: the write and commit path
 
@@ -101,13 +126,17 @@ The QP sends the write set and `t_start` to the adjudicator that owns those keys
 The adjudicator rejects the transaction if any key in the write set was committed by another transaction after `t_start`.
 Otherwise it accepts, assigns `t_commit`, and records the new last-write time for those keys so that later conflicting transactions are rejected.
 Each key belongs to at most one adjudicator at any moment, and adjudicators scale by sharding the key space ([arXiv 2607.13276](https://arxiv.org/pdf/2607.13276)).
-When a write set spans several adjudicators, a cross-adjudicator coordination protocol runs, which Brooker's vignette deliberately leaves unexplained ([Brooker, Transactions and Durability](https://brooker.co.za/blog/2024/12/05/inside-dsql-writes.html)).
-Treat multi-adjudicator commits as costing more than single-adjudicator commits, by an amount AWS has not published.
+When a write set spans several adjudicators, a cross-adjudicator coordination protocol runs, which Brooker's vignette deliberately leaves unexplained ([Brooker, Transactions and Durability](https://brooker.co.za/blog/2024/12/05/inside-dsql-writes.html)) and the paper later described.
+It is a two-phase commit variant: the QP broadcasts the prepare, each adjudicator sends its vote, current time and a time-limited promise to one chosen adjudicator, and that adjudicator writes the transaction to its own Journal at the maximum of those times ([arXiv 2607.13276](https://arxiv.org/pdf/2607.13276)).
+The paper calls this atomic voting on candidacy rather than atomic commitment, because the single Journal write provides the atomicity ([arXiv 2607.13276](https://arxiv.org/pdf/2607.13276)).
+Treat multi-adjudicator commits as costing more than single-adjudicator commits: the paper says commit latency grows with the number of adjudicators involved, with no hard limit on how many a transaction may span ([arXiv 2607.13276](https://arxiv.org/pdf/2607.13276)).
 
 Accepted transactions are written to the Journal, a distributed transaction log that AWS also uses inside MemoryDB ([Brooker, Personal Story](https://brooker.co.za/blog/2024/12/03/aurora-dsql.html)).
-The Journal replicates a log with a Paxos variant and sits as its own component, separate from storage nodes, which is what allows reads and writes to scale independently and allows atomic commits across shards ([Brooker, Dynamo, DynamoDB, and Aurora DSQL](https://brooker.co.za/blog/2025/08/15/dynamo-dynamodb-dsql.html)).
+The Journal uses a variant of chain replication within a Region and a variant of Paxos across Regions ([arXiv 2607.13276](https://arxiv.org/pdf/2607.13276)).
+It sits as its own component, separate from storage nodes, which is what allows reads and writes to scale independently and allows atomic commits across shards ([Brooker, Dynamo, DynamoDB, and Aurora DSQL](https://brooker.co.za/blog/2025/08/15/dynamo-dynamodb-dsql.html)).
 A whole commit goes into one Journal however many rows it touches, which settles atomicity and durability without a two-phase commit across logs ([Vogels, Just make it scale](https://www.allthingsdistributed.com/2025/05/just-make-it-scale-an-aurora-dsql-story.html), 2025-05).
 Journals scale per transaction: each transaction lands atomically in a single Journal, and the system can run as many Journals as it needs ([arXiv 2607.13276](https://arxiv.org/pdf/2607.13276)).
+At the physical level the paper adds that data is erasure coded 2-of-3 across three Journals, mainly to reduce latency variance ([arXiv 2607.13276](https://arxiv.org/pdf/2607.13276)).
 For the general consensus mechanics see [[08-Distinguished-Engineering/02-Distributed-Systems-Internals/Raft-Consensus|Raft Consensus]].
 
 ### Beyond the getting-started guide: the conflict window is not the transaction duration
@@ -118,7 +147,9 @@ In a multi-Region cluster the adjudicator leader for a shard lives in only one R
 A transaction started in Region B that writes keys whose adjudicator leader sits in Region A therefore has a `W` that includes a cross-Region round trip before the decision is made.
 The Journal quorum write that follows adjudication adds commit latency, but it does not widen `W` for later conflicts, because the key's last-write time was already recorded at acceptance.
 This asymmetry is why the same schema can show a higher 40001 rate in one Region than the other, and why traffic that keeps writers of a key range in the Region where its adjudicator leader currently sits lowers abort rates.
-Adjudicator leader placement is managed by the service and is not a customer-visible API (as of 2026-10).
+That conclusion is this chapter's inference from the mechanism, because AWS publishes no per-Region abort data.
+The paper treats adjudicator placement as a control-plane optimization based on workload patterns and warns that optimal placement may not be possible for active-active workloads with keys spread across Regions ([arXiv 2607.13276](https://arxiv.org/pdf/2607.13276)).
+No customer-visible placement API appears in the docs reviewed for this revision (as of 2026-11).
 
 ### Isolation: strong snapshot isolation
 
@@ -127,7 +158,8 @@ It is equivalent to PostgreSQL REPEATABLE READ, and transactions abort only on w
 The paper's argument is that most OLTP writes are also reads, so serializable OCC would abort far more often ([arXiv 2607.13276](https://arxiv.org/pdf/2607.13276)).
 On Kleppmann's Hermitage tests DSQL's level behaves like PostgreSQL REPEATABLE READ ([Brooker, Personal Story](https://brooker.co.za/blog/2024/12/03/aurora-dsql.html); [Hermitage](https://github.com/ept/hermitage)).
 The anomaly you keep is write skew from [Berenson et al., 1995](https://arxiv.org/abs/cs/0701157): two transactions read an overlapping set, write disjoint rows, and together break an invariant that neither broke alone.
-Conflicts surface at COMMIT as `ERROR: change conflicts with another transaction, please retry: (OC000)` with SQLSTATE 40001 ([AWS Heroes walkthrough](https://dev.to/aws-heroes/optimistic-concurrency-control-alice-and-bob-couldnt-sit-together-5bh), 2024-12).
+Reads join adjudication only when you ask: `SELECT ... FOR UPDATE` adjudicates the selected rows as if they were written, and foreign-key checks implicitly apply `KEY SHARE` to referenced rows ([AWS docs, concurrency control](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-concurrency-control.html); [AWS docs, foreign keys](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-foreign-key-constraints.html), as of 2026-11).
+Conflicts surface at COMMIT as `ERROR: change conflicts with another transaction (OC000) (SQLSTATE 40001)`, and a stale schema catalog returns `ERROR: schema has been updated by another transaction (OC001) (SQLSTATE 40001)` ([AWS docs, concurrency control](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-concurrency-control.html), as of 2026-11).
 
 ### Control plane versus data plane
 
@@ -135,7 +167,9 @@ The control plane is the `dsql` management API (CreateCluster, UpdateCluster, Ge
 The data plane is the PostgreSQL wire endpoint plus the QP, adjudicator, Journal, crossbar and storage fleets behind it.
 Token generation is a local SigV4 presign, so a control-plane brownout does not block new connections as long as IAM credentials are already cached.
 That is a static-stability property in the sense of [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]].
-The local-presign claim rests on how the SDK implements `generate_db_connect_admin_auth_token` and is marked UNVERIFIED for DSQL specifically.
+AWS documents token generation as a local signing operation that does not contact AWS, so expired or invalid credentials still produce a token and fail only at connection time ([AWS docs, authentication tokens](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/SECTION_authentication-token.html), as of 2026-11).
+An established connection also stays valid after its token expires, and the default token lifetime is 15 minutes ([AWS docs, authentication tokens](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/SECTION_authentication-token.html), as of 2026-11).
+The static-stability reading is this chapter's inference from that behavior, not an AWS guarantee.
 
 ### Replication topology and failure domains
 
@@ -153,52 +187,53 @@ The paper groups Spanner and CockroachDB as pessimistic designs that coordinate 
 A commit is absorbed by the Journal, crossbar and storage as one indivisible unit, so a huge commit stalls the readers and writers queued behind it.
 Capping write size bounds that tail-latency effect, and the caps apply only to writes, never to how many rows a read can scan ([Brooker, DSQL: Simplifying Architectures](https://brooker.co.za/blog/2025/11/02/thinking-dsql.html), 2025-11).
 AWS also presents the 5-minute and 3,000-row caps as what allows automatic garbage collection of old MVCC versions with no VACUUM ([AWS DEV308 recap](https://dev.to/aws/dev-track-spotlight-build-modern-applications-with-amazon-aurora-dsql-dev308-4g5o), 2025-12).
-The mechanism: a 5-minute maximum transaction age gives a hard upper bound on the oldest `t_start` that can still be reading, so versions older than roughly `now - 5 min` that have been superseded can be reclaimed without tracking each reader.
+The mechanism: a 5-minute maximum transaction age gives a hard upper bound on the oldest `t_start` that can still be reading, so versions older than roughly `now - 5 min` that have been superseded can be reclaimed without tracking each reader, and a read older than that expiry is rejected ([arXiv 2607.13276](https://arxiv.org/pdf/2607.13276)).
 
 ## Numbers to Know
 
 | Quantity | Value | Source and date |
 | --- | --- | --- |
-| Preview / GA dates | Preview 2024-12-03, GA 2025-05-27 | [AWS What's New](https://aws.amazon.com/about-aws/whats-new/2025/05/amazon-aurora-dsql-generally-available), as of 2026-10 |
-| Design availability | 99.99% single-Region, 99.999% multi-Region | AWS What's New, as of 2026-10 |
-| Regional footprint | Multi-Region clusters in 16 Regions, single-Region in 20 | [AWS What's New 2026-07](https://aws.amazon.com/about-aws/whats-new/2026/07/amazon-aurora-dsql-adds-multi-region-clusters-four-more-regions/), as of 2026-10 |
-| In-Region read latency | As low as 1.2 ms | Brooker blog 2024-12, vendor figure |
-| Max connections per cluster | 10,000 (adjustable), error 53300 | [awslabs DSQL starter kit quotas](https://awslabs.github.io/aurora-dsql-starter-kit/quotas-and-limits.html), as of 2026-10 |
-| Connection rate | 100/s refill, burst bucket 1,000, not adjustable, error 53400 | awslabs quotas, as of 2026-10 |
-| Rows modified per transaction | 3,000, error 54000 | awslabs quotas; AWS Database Blog, as of 2026-10 |
-| Data modified per transaction | 10 MiB, error 54000 | awslabs quotas, as of 2026-10 |
-| Max transaction duration | 5 minutes (300 s), error 54000 | awslabs quotas, as of 2026-10 |
-| Indexes per table | 24 | awslabs quotas, as of 2026-10 |
-| Schemas per database | 10 | awslabs quotas, as of 2026-10 |
-| Max session duration | 1 hour | Secondary source from the preview era, UNVERIFIED for GA |
-| Preview-era row limit (historical) | 10,000 rows per transaction | awsfundamentals.com, 2024-12 |
-| DPU price | USD 8.00 per 1M DPU (us-east-1, us-east-2) | AWS Database Blog 2026-10, as of 2026-10 |
-| Storage price | USD 0.33 per GB-month, one logical copy per Region | AWS Database Blog, as of 2026-10 |
-| Multi-Region write surcharge | MultiRegionWriteDPU equal to the originating WriteDPU | usage.ai citing the AWS pricing page, as of 2026-10 |
-| Free tier | 100,000 DPU + 1 GB per month, does not expire | AWS Database Blog, as of 2026-10 |
-| Budget alarm conversion | USD 100/month = 12.5M DPU = ~17,123 DPU/hour | AWS Database Blog, as of 2026-10 |
+| Preview / GA dates | Preview 2024-12-03, GA 2025-05-27 | [AWS What's New, preview](https://aws.amazon.com/about-aws/whats-new/2024/12/amazon-aurora-dsql-preview/); [AWS What's New, GA](https://aws.amazon.com/about-aws/whats-new/2025/05/amazon-aurora-dsql-generally-available), as of 2026-11 |
+| Design availability | 99.99% single-Region, 99.999% multi-Region | AWS What's New, GA, as of 2026-11 |
+| Regional footprint | Multi-Region clusters in 17 Regions across three Region sets with no cross-continent clusters, single-Region in 20 | [AWS docs, Region availability](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/what-is-aurora-dsql.html), as of 2026-11; [AWS What's New 2026-07-31](https://aws.amazon.com/about-aws/whats-new/2026/07/amazon-aurora-dsql-adds-multi-region-clusters-four-more-regions/) listed 16, and the docs add Hong Kong |
+| In-Region read latency | As low as 1.2 ms; p99 about 2 ms for primary-key SELECT | Brooker blog 2024-12, vendor figure; [arXiv 2607.13276](https://arxiv.org/pdf/2607.13276) Figure 6 (us-east-1 and us-east-2, witness us-west-2), vendor microbenchmark |
+| COMMIT latency | p99 about 30 ms multi-Region, 7.4 ms single-Region | [arXiv 2607.13276](https://arxiv.org/pdf/2607.13276) Figure 6 (same setup), vendor microbenchmark |
+| Max connections per cluster | 10,000 (adjustable), error 53300 | [AWS docs, quotas](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/CHAP_quotas.html), as of 2026-11 |
+| Connection rate | 100/s refill, burst bucket 1,000, not adjustable, error 53400 | AWS docs, quotas, as of 2026-11 |
+| Rows modified per transaction | 3,000 regardless of the number of secondary indexes, error 54000 | AWS docs, quotas and [migration guide](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-postgresql-compatibility-migration-guide.html), as of 2026-11 |
+| Data modified per transaction | 10 MiB, error 54000 | AWS docs, quotas, as of 2026-11 |
+| Max transaction duration | 5 minutes (300 s), error 54000 | AWS docs, quotas, as of 2026-11 |
+| Indexes per table | 24 | AWS docs, quotas, as of 2026-11 |
+| Schemas per database | 10 | AWS docs, quotas, as of 2026-11 |
+| Max session duration | 1 hour (listed as maximum connection duration of 60 minutes, not adjustable) | AWS docs, quotas, as of 2026-11 |
+| Preview-era row limit (historical) | 10,000 rows per transaction (UNVERIFIED: only third-party posts, no AWS source found, and the cited awsfundamentals.com page no longer resolves) | awsfundamentals.com, 2024-12 |
+| DPU price | USD 8.00 per 1M DPU (us-east-1, us-east-2) | [AWS Database Blog, 2026-10-13](https://aws.amazon.com/blogs/database/monitor-amazon-aurora-dsql-costs-with-the-aurora-dsql-console-and-cloudwatch-alarms/); [AWS pricing](https://aws.amazon.com/rds/aurora/dsql/pricing/), as of 2026-11 |
+| Storage price | USD 0.33 per GB-month, one logical copy per Region | AWS pricing; AWS Database Blog, as of 2026-11 |
+| Multi-Region write surcharge | MultiRegionWriteDPU equal to the originating writes, billed in the originating Region, no separate data transfer charge, no DPU or storage charge for the witness Region | AWS pricing, as of 2026-11 |
+| Free tier | 100,000 DPU + 1 GB each month, per management account in AWS Organizations | AWS pricing, as of 2026-11 |
+| Budget alarm conversion | USD 100/month = 12.5M DPU = ~17,123 DPU/hour | AWS Database Blog, as of 2026-11 |
 | Spanner TrueTime uncertainty | epsilon sawtooth ~1-7 ms, leader leases 10 s | Corbett et al., OSDI 2012 (paper values) |
 
 ## AWS vs GCP Mechanism Parity
 
 Google Cloud's closest counterpart is Cloud Spanner (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_10_Cloud_Spanner_TrueTime_and_External_Consistency\|Cloud Spanner: TrueTime and External Consistency]]).
 AlloyDB is a single-writer engine and does not belong in this comparison.
-GCP-side figures that change over time were not re-verified in this revision and are tagged.
+GCP-side features and limits were checked against [Google Cloud Spanner docs](https://docs.cloud.google.com/spanner/docs/isolation-levels) (as of 2026-11); protocol details come from the 2012 paper and may not describe the current implementation.
 
 | Dimension | Aurora DSQL | Cloud Spanner | Critical difference |
 | --- | --- | --- | --- |
-| Concurrency control | OCC: no locks during execution, validation at COMMIT by adjudicators | Pessimistic 2PL with wound-wait at Paxos leaders for read-write transactions (OSDI 2012) | DSQL aborts at commit, while Spanner blocks or wounds during execution |
-| Default isolation | Strong snapshot isolation only (PostgreSQL REPEATABLE READ) | Serializable with external consistency (paper), other levels UNVERIFIED as of 2026-10 | DSQL allows write skew and Spanner does not |
+| Concurrency control | OCC: no locks during execution, validation at COMMIT by adjudicators | Pessimistic 2PL with wound-wait at Paxos leaders for read-write transactions (OSDI 2012), still the serializable default; repeatable read defaults to optimistic, and serializable can be configured for it ([Spanner docs](https://docs.cloud.google.com/spanner/docs/concurrency-control), as of 2026-11) | DSQL aborts at commit, while default Spanner blocks or wounds during execution |
+| Default isolation | Strong snapshot isolation only (PostgreSQL REPEATABLE READ) | Serializable by default; repeatable read is GA since 2026-04-17 ([Spanner docs](https://docs.cloud.google.com/spanner/docs/isolation-levels); [release notes](https://docs.cloud.google.com/spanner/docs/release-notes), as of 2026-11) | DSQL always allows write skew, while Spanner prevents it at its default and allows it only if you choose repeatable read |
 | Coordination frequency | Once per transaction, at COMMIT | Per statement for lock acquisition, plus 2PC across groups at commit | DSQL statements stay in-Region, while Spanner locking reads go to the leader |
-| Clock role | Precision EC2 time picks `t_start` and orders commits | TrueTime interval `[earliest, latest]`, commit wait ~2 epsilon | Spanner exposes uncertainty in the protocol, while DSQL's use of clock bounds is not published in detail |
-| Replicated log | Journal (Paxos variant), separate from storage, one Journal per commit | Paxos group per split, colocated with tablet storage | DSQL scales the log independently of the data |
-| Cross-shard atomicity | Single-Journal write, no cross-log 2PC; cross-adjudicator protocol for decisions | 2PC with a coordinator Paxos group | DSQL takes 2PC off the durability path |
+| Clock role | Precision EC2 time picks `t_start` and orders commits | TrueTime interval `[earliest, latest]`, commit wait ~2 epsilon | Spanner waits out uncertainty in the protocol, while DSQL uses clock error bounds and loses linearizability, but not isolation, if skew exceeds them ([arXiv 2607.13276](https://arxiv.org/pdf/2607.13276)) |
+| Replicated log | Journal (chain replication in-Region, Paxos variant cross-Region), separate from storage, one Journal per commit | Paxos group per split, colocated with tablet storage | DSQL scales the log independently of the data |
+| Cross-shard atomicity | Single-Journal write, no cross-log 2PC; 2PC-variant vote among adjudicators for decisions | 2PC with a coordinator Paxos group | DSQL takes 2PC off the durability path |
 | Read path | Any caught-up replica at `t_start`, no leader | Snapshot reads at any replica with `t <= t_safe` | Equivalent watermark idea with different safe-time inputs |
-| Multi-Region topology | Two full Regions + witness Region (Journal only) | Multi-Region configs with read-write, read-only and witness replicas (UNVERIFIED as of 2026-10) | Spanner offers more topologies, DSQL offers two writable endpoints |
+| Multi-Region topology | Two full Regions + witness Region (Journal only) | Multi-Region configs with read-write, read-only and witness replicas ([Spanner docs](https://docs.cloud.google.com/spanner/docs/replication), as of 2026-11) | Spanner offers more topologies, DSQL offers two writable endpoints |
 | Partition behavior | Minority-side endpoint stops serving, majority continues | Minority replicas cannot serve strong reads or writes | Both choose CP, and DSQL rebuilds adjudicator state from the log |
-| SQL surface | PostgreSQL wire protocol and dialect subset | GoogleSQL plus a PostgreSQL interface (UNVERIFIED as of 2026-10) | Neither is a drop-in PostgreSQL |
-| Capacity model | Serverless DPU, scales to zero | Provisioned compute capacity with optional autoscaling (UNVERIFIED as of 2026-10) | DSQL has no idle compute floor |
-| Per-transaction caps | 3,000 rows, 10 MiB, 5 min | Mutation-count and commit-size limits exist, values UNVERIFIED as of 2026-10 | DSQL caps are stricter and shape batch design |
+| SQL surface | PostgreSQL wire protocol and dialect subset | GoogleSQL plus a PostgreSQL interface ([Spanner docs](https://docs.cloud.google.com/spanner/docs/postgresql-interface), as of 2026-11) | Neither is a drop-in PostgreSQL |
+| Capacity model | Serverless DPU, scales to zero | Provisioned compute capacity in nodes or processing units, with optional autoscaling ([Spanner docs](https://docs.cloud.google.com/spanner/docs/compute-capacity), as of 2026-11) | DSQL has no idle compute floor |
+| Per-transaction caps | 3,000 rows, 10 MiB, 5 min | 80,000 mutations per commit including indexes (Mutation API), 100 MiB commit size ([Spanner quotas](https://docs.cloud.google.com/spanner/quotas), as of 2026-11) | DSQL caps are stricter and shape batch design |
 | AuthN to the data plane | Short-lived IAM SigV4 token used as the Postgres password | IAM, plus database roles and fine-grained access control | DSQL removes static DB passwords entirely |
 | Private access | AWS PrivateLink | Private Service Connect / Private Google Access, VPC Service Controls perimeter | GCP has a perimeter primitive with no direct AWS counterpart (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters\|VPC Service Controls]]) |
 
@@ -207,7 +242,7 @@ GCP-side figures that change over time were not re-verified in this revision and
 ### Lab cost estimate
 
 An idle cluster bills no DPU, only storage.
-A lab that writes a few thousand rows and runs a few thousand transactions stays well inside the 100,000 DPU and 1 GB monthly free tier (AWS Database Blog, as of 2026-10).
+A lab that writes a few thousand rows and runs a few thousand transactions stays well inside the 100,000 DPU and 1 GB monthly free tier (AWS pricing, as of 2026-11).
 Expected spend is under USD 1 if you tear down the same day.
 In a multi-Region cluster storage bills in each Region, so a 1 GB test dataset costs about 2 x USD 0.33 per month before the free tier.
 
@@ -253,7 +288,8 @@ echo "A=$A_ID ($R1)  B=$B_ID ($R2)"
 echo "Endpoints: $A_ID.dsql.$R1.on.aws and $B_ID.dsql.$R2.on.aws"
 ```
 
-The `--multi-region-properties` JSON shape and the `<id>.dsql.<region>.on.aws` endpoint format follow the GA API as best known at the time of writing; check them against `aws dsql help` before running (listed as UNVERIFIED).
+The `--multi-region-properties` JSON shape and the two-sided peering flow match the [AWS CLI guide for multi-Region clusters](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/multi-region-aws-cli.html), and the `<id>.dsql.<region>.on.aws` endpoint format matches the [authentication token docs](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/SECTION_authentication-token.html) (as of 2026-11).
+Clusters stay in `PENDING_SETUP` until peered and then move through `CREATING` to `ACTIVE`, and the commands were not run against a live account in this revision.
 Each cluster id is written to `~/.dsql_lab_env` before the next command, and `ACCOUNT_ID` is read in this step, so a later failure still leaves teardown the identifiers.
 
 ### Step 3: schema designed for range sharding and OCC
@@ -275,7 +311,7 @@ CREATE TABLE transfers (
 );
 ```
 
-Run each DDL statement in its own transaction, because DSQL does not allow DDL and DML in the same transaction (secondary source; recheck current docs).
+Run each DDL statement in its own transaction, because DSQL requires DDL and DML in separate transactions and allows only one DDL statement per transaction ([AWS docs, migration guide](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-postgresql-compatibility-migration-guide.html), as of 2026-11).
 
 ### Step 4: Python client with token auth and bounded jittered retries
 
@@ -338,8 +374,7 @@ aws cloudwatch put-metric-alarm --region us-east-1 --alarm-name dsql-lab-dpu \
   --threshold 13699 --comparison-operator GreaterThanThreshold
 ```
 
-The metric name `TotalDPU` and the threshold arithmetic come from the AWS Database Blog (as of 2026-10).
-The namespace and dimension name are UNVERIFIED and should be checked in the CloudWatch console.
+The metric name `TotalDPU`, the namespace `AWS/AuroraDSQL`, the `ClusterId` dimension and the threshold arithmetic come from the AWS Database Blog (as of 2026-11).
 
 ### Step 6: teardown
 
@@ -368,8 +403,8 @@ Size pools for the p99 lifetime and the burst factor, not the mean.
 The binding connection constraint is the 100 connections/s refill rate, not the 10,000-connection cap.
 Hot-key ceiling: with conflict window `W`, a single row cannot sustain much more than `1/W` successful read-modify-write commits per second.
 Under Poisson competition at rate `lambda`, the abort probability is about `1 - exp(-lambda x W)`.
-For a single-Region `W` of 6.5 ms and 50 competing commits/s on one row, aborts are about 28%.
-If `W` widens to 18.5 ms because the adjudicator leader is remote, the same load aborts about 60% of the time, so hot rows must be sharded (for example into bucketed counters) before they reach that regime.
+For an assumed single-Region `W` of 6.5 ms (ASSUMPTION, not a published figure) and 50 competing commits/s on one row, aborts are about 28%.
+If `W` widens to an assumed 18.5 ms because the adjudicator leader is remote, the same load aborts about 60% of the time, so hot rows must be sharded (for example into bucketed counters) before they reach that regime.
 
 ## Failure Modes and Pitfalls
 
@@ -384,17 +419,18 @@ Export the 40001 count as a first-class SLI, because a rising abort ratio is the
 
 The textbook case is two on-call engineers who each check that someone else is on call and then each remove themselves; they modify different rows, so snapshot isolation sees no conflict ([andrewbaker.ninja](https://andrewbaker.ninja/2025/11/19/amazon-aurora-dsql-performance-limits-architecture/), 2025-11).
 Fix it by materializing the conflict: have every participating transaction write a shared guard row (for example, increment `shift.version`), which turns the read-write dependency into a write-write conflict that the adjudicator does detect.
+`SELECT ... FOR UPDATE` on the rows you depend on has the same effect without an extra write, since DSQL adjudicates those rows as if they were written ([AWS docs, concurrency control](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-concurrency-control.html), as of 2026-11).
 
 ### Batch jobs and ORMs exceeding transaction caps
 
 A single `INSERT ... SELECT` followed by a `DELETE` over an unbounded predicate fails once it passes 3,000 rows ([AWS Database Blog, pagination](https://aws.amazon.com/blogs/database/pagination-patterns-in-amazon-aurora-dsql/), 2026-06).
-Library defaults break silently: one open-source project found that a 1,000-entity batch already writes 3,000 rows once you count change-log and guard rows, and the resulting SQLSTATE 54000 surfaced as an HTTP 500 ([GitHub issue](https://github.com/Lychee-Technology/forma/issues/692), 2026-10).
+Library defaults can break silently: a code review in one open-source project concluded that a 1,000-entity batch already writes 3,000 rows once you count change-log and guard rows, and that the unclassified limit error would surface as an HTTP 500, though the issue says this was not run against a cluster ([GitHub issue](https://github.com/Lychee-Technology/forma/issues/692), 2026-10).
 Count physical rows written, including secondary tables, not logical entities, and run batches through keyset pagination in idempotent chunks.
-Foreign keys with `ON DELETE CASCADE` over unbounded fan-out can hit the same ceiling, because cascaded rows count against the 3,000 limit ([daily.dev summary of the AWS FK launch](https://daily.dev/posts/aurora-dsql-adds-foreign-key-constraints-enforced-with-optimistic-concurrency-control-8xxxqhspg), 2026-10).
+Foreign keys with `ON DELETE CASCADE` over unbounded fan-out can hit the same ceiling, because the transaction row limit applies to cascading actions, and AWS recommends `NO ACTION` or `RESTRICT` when child-row counts are unbounded ([AWS Database Blog, foreign keys](https://aws.amazon.com/blogs/database/working-with-foreign-key-constraints-in-aurora-dsql/), 2026-10-01).
 
 ### Connection storms
 
-When thousands of Lambda functions or pods cold-start together, the cluster connection rate (100/s refill, 1,000 burst) runs out long before the 10,000-connection cap, and clients receive 53400 (awslabs quotas, as of 2026-10).
+When thousands of Lambda functions or pods cold-start together, the cluster connection rate (100/s refill, 1,000 burst) runs out long before the 10,000-connection cap, and clients receive 53400 (AWS docs, quotas, as of 2026-11).
 Hold long-lived pools, reconnect before the session cap, and add jitter to reconnects after deploys.
 
 ### Monotonic primary keys on a range-sharded store
@@ -417,8 +453,8 @@ Use a transactional outbox row and publish it after the commit succeeds (see [[1
 
 ### Public incident lessons
 
-No public post-incident review specific to Aurora DSQL was found as of 2026-10.
-The closest lesson is the AWS us-east-1 event of 2025-10-19/20, in which a race in DynamoDB's DNS automation removed a regional endpoint record and the failure cascaded into dependent services (UNVERIFIED in this revision; see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]]).
+No public post-incident review specific to Aurora DSQL was found as of 2026-11.
+The closest lesson is the AWS us-east-1 event of 2025-10-19/20, in which a race in DynamoDB's DNS automation left the regional endpoint's DNS record empty and the failure cascaded through EC2 launches and Network Load Balancer health checks ([AWS post-event summary](https://aws.amazon.com/message/101925/); see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]]).
 For DSQL designers the takeaway is that multi-Region data replication does nothing for you if failover depends on a control plane or DNS automation in the impaired Region.
 
 ## Security and Cost Angles
@@ -426,19 +462,20 @@ For DSQL designers the takeaway is that multi-Region data replication does nothi
 ### Identity
 
 There are no static database passwords: the client presents a short-lived SigV4-signed token as the Postgres password.
-The IAM action `dsql:DbConnectAdmin` gates the `admin` role, and `dsql:DbConnect` gates custom database roles mapped to IAM roles (action names UNVERIFIED as of 2026-10; see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]]).
+The IAM action `dsql:DbConnectAdmin` gates the `admin` role, and `dsql:DbConnect` gates custom database roles mapped to IAM roles ([AWS docs, database and IAM roles](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/using-database-and-iam-roles.html), as of 2026-11; see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]]).
 Restrict `DbConnectAdmin` to break-glass roles, scope `DbConnect` by cluster ARN, and deny the management API's `DeleteCluster` with an SCP outside the platform pipeline.
 Workloads should obtain AWS credentials through [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]] patterns such as EKS Pod Identity, so the token chain never touches a long-lived key.
 
 ### Encryption and network boundary
 
-At GA, DSQL listed integration with AWS KMS, AWS PrivateLink, CloudTrail, CloudFormation and AWS Backup ([aws-news GA summary](https://aws-news.com/article/01971309-9066-883d-510a-dff50286c8bd), 2025-05).
-Use customer-managed KMS keys when key revocation is a compliance requirement, and expect a revoked key to make the cluster inaccessible, which is the intended behavior and also an availability risk (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]]).
+At GA, DSQL listed integration with AWS KMS, AWS PrivateLink, CloudTrail, CloudFormation and AWS Backup ([AWS What's New, GA](https://aws.amazon.com/about-aws/whats-new/2025/05/amazon-aurora-dsql-generally-available), 2025-05).
+Use customer-managed KMS keys when key revocation is a compliance requirement, and expect a revoked key to move the cluster to `KMS_KEY_INACCESSIBLE` so that users cannot connect, which is the intended behavior and also an availability risk ([AWS docs, data encryption](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/data-encryption.html), as of 2026-11).
+In a multi-Region cluster each peer has its own key, and losing one key takes only that peer offline while the other continues ([AWS docs, data encryption](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/data-encryption.html), as of 2026-11; see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]]).
 Put connection traffic on PrivateLink interface endpoints and enforce endpoint-scoped access with the data-perimeter approach in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
 
 ### Unit economics levers
 
-DPU combines compute, read I/O, write I/O, multi-Region write and CDC streaming into a single meter (AWS Database Blog, as of 2026-10).
+DPU combines compute, read I/O, write I/O, multi-Region write and CDC streaming into a single meter (AWS Database Blog; AWS pricing, as of 2026-11).
 Multi-Region doubles the write component, so put only the tables that need active-active RPO=0 into the peered cluster and keep high-volume, low-value writes (telemetry, sessions) elsewhere.
 Every OCC abort spends DPU without producing a commit, so lowering the abort rate is a cost lever as well as a latency lever.
 Pushed-down, index-covered reads cost fewer DPU than broad scans, so composite indexes that match the access pattern pay for themselves.
@@ -473,7 +510,7 @@ You need to purge 40 million expired rows from a DSQL table every night. Design 
 #### Model Answer
 
 A single `DELETE` fails because DSQL caps a transaction at 3,000 modified rows, 10 MiB of modified data and 5 minutes.
-I iterate with keyset pagination on an index whose leading column is the expiry predicate, and delete chunks of about 1,000 to 2,000 primary keys, leaving headroom for index maintenance and any cascades.
+I iterate with keyset pagination on an index whose leading column is the expiry predicate, and delete chunks of about 1,000 to 2,000 primary keys, leaving headroom for any cascades and the 10 MiB cap, since secondary indexes do not add to the 3,000-row count (AWS docs, as of 2026-11).
 Each chunk is its own transaction, which keeps each OCC window short and lets a failed chunk retry on its own.
 The job is idempotent because deleting a key that is already gone is a no-op, and it records a resume cursor so it can restart after interruption.
 40 million rows divided by 2,000 is 20,000 transactions, so finishing in one hour needs about 5.6 commits/s.
@@ -492,7 +529,7 @@ A reader in us-east-2 begins a transaction 2 ms after a writer in us-east-1 rece
 #### Model Answer
 
 The writer's commit was acknowledged only after the adjudicator accepted it with some `t_commit` and the Journal replicated it to a quorum spanning Regions, so `t_commit` is earlier than the acknowledgment.
-The reader picks `t_start` from EC2 precision time, and with tightly bounded clock error, `t_start` falls after the writer's `t_commit` (the exact clock-bound handling is unpublished).
+The reader picks `t_start` from EC2 precision time, and with tightly bounded clock error, `t_start` falls after the writer's `t_commit` (the paper says the correct edge of the clock error bound is chosen in each case, and skew beyond the bounds would lose linearizability but not isolation).
 The storage replica in us-east-2 may serve a read at `t_start` only once its crossbar-fed stream shows that every Journal contributing to that key range has advanced past `t_start`.
 So it either already holds the version, or it waits until replication delivers it.
 The read never contacts a leader or the other Region.
@@ -536,7 +573,7 @@ They fail in different ways.
 On Spanner, 2PL at the split leader queues the writers.
 Throughput is about `1 / (lock hold time)`, and lock hold time includes the Paxos commit plus commit wait, so tail latency grows and wound-wait aborts younger transactions.
 On DSQL nothing blocks: all 5,000 run in parallel, and at COMMIT the adjudicator accepts the first per key per window and rejects the rest.
-With a conflict window of 6.5 ms the row tops out near 150 commits/s.
+With an assumed conflict window of 6.5 ms the row tops out near 150 commits/s.
 The abort probability is about `1 - exp(-lambda x W)`, which is close to 1 at this load, so DPU is spent on work that gets thrown away.
 The right design is the same on both: split stock into N bucket rows (for example N = 64), have clients choose a random bucket with a conditional decrement and `CHECK (qty >= 0)`, and treat a 40001 or zero-rows result as "try another bucket".
 A periodic rebalancer moves stock between buckets, and the total is the sum, so the invariant "never oversell" is enforced per bucket by the constraint.
@@ -555,7 +592,7 @@ The CFO asks why a "two-Region active-active" ledger needs a third Region, and w
 For the executive: with only two sites, when the link between them fails, neither site can tell a dead peer from a severed link.
 Either both keep writing and the ledger diverges, or both stop and we are down.
 A third site acting as a tie-breaker lets exactly one side keep going safely.
-DSQL's witness Region stores only Journal state, so it costs little and holds no queryable data.
+DSQL's witness Region stores only a limited window of encrypted transaction logs, so AWS charges no DPU or storage for it and it holds no queryable data (AWS docs and pricing, as of 2026-11).
 For the board: commits are acknowledged only after the Journal reaches quorum across Regions, so any acknowledged transaction survives the loss of a full Region, and RPO for acknowledged writes is zero.
 On a partition, the minority-side endpoint stops serving reads and writes, and the majority side keeps going once adjudicator leadership moves.
 Adjudicators carry no durable state and rebuild from committed history, so that move is quick, but its duration is not published, and I would measure it in a game day rather than promise a number.

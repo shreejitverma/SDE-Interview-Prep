@@ -20,6 +20,31 @@ sources:
   - "https://aws.amazon.com/builders-library/avoiding-fallback-in-distributed-systems/"
   - "https://cloud.google.com/docs/security/encryption-in-transit/application-layer-transport-security"
   - "https://spiffe.io/docs/latest/spiffe-about/spiffe-concepts/"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/pod-id-how-it-works.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/pod-id-abac.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/pod-id-assign-target-role.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/service-accounts.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/vpc-interface-endpoints.html"
+  - "https://docs.aws.amazon.com/eks/latest/APIReference/API_auth_AssumeRoleForPodIdentity.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/06/amazon-eks-pod-identity-cross-account-access/"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_region-endpoints.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_iam-condition-keys.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_revoke-sessions.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_outbound_getting_started.html"
+  - "https://aws.amazon.com/blogs/aws/simplify-access-to-external-services-using-aws-iam-outbound-identity-federation/"
+  - "https://github.com/boto/botocore/blob/develop/botocore/credentials.py"
+  - "https://github.com/googleapis/google-auth-library-python/blob/main/google/auth/aws.py"
+  - "https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-other-clouds"
+  - "https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-other-providers"
+  - "https://docs.cloud.google.com/iam/docs/manage-workload-identity-pools-providers"
+  - "https://docs.cloud.google.com/docs/security/compromised-credentials"
+  - "https://docs.cloud.google.com/docs/authentication/token-types"
+  - "https://docs.cloud.google.com/iam/docs/audit-logging/examples-workload-identity"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/supported-products"
+  - "https://docs.github.com/en/actions/reference/security/oidc"
 ---
 
 # Workload Identity Federation
@@ -67,9 +92,9 @@ A pod never holds a long-lived secret.
 The kubelet obtains from the API server a short-lived, audience-scoped JWT that says "I am service account X in namespace Y of cluster Z".
 A cloud-side verifier turns that statement into a cloud credential by checking a signature, an issuer, an audience, and a policy that maps the subject to a role.
 The three mechanisms differ in where verification happens.
-IRSA does it in the global STS control plane using public keys.
+IRSA does it in AWS STS using public keys, and STS is a per-Region service with a legacy global endpoint, `sts.amazonaws.com`, that AWS recommends avoiding ([AWS STS endpoints](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_region-endpoints.html), as of 2026-11).
 Pod Identity does it inside a regional EKS service, with the node's own IAM identity as a second factor.
-GKE does it on the node, attributing calls to pods by network source address.
+GKE does it on the node, attributing calls to pods by network source address (UNVERIFIED: Google docs do not state how the pod is attributed, see the GKE data path below).
 Everything else in this chapter (blast radius, revocation, static stability, interview traps) follows from that choice.
 
 ## Internals
@@ -79,12 +104,14 @@ Everything else in this chapter (blast radius, revocation, static stability, int
 Since the bound-token work in Kubernetes ([KEP-1205](https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/1205-bound-service-account-tokens)), the kubelet requests tokens through the TokenRequest API instead of mounting a never-expiring Secret.
 The token is a JWT signed by the API server's service-account signing key.
 Its claims include `iss` (the cluster's issuer URL), `sub` (`system:serviceaccount:<namespace>:<name>`), `aud`, `iat`, `nbf`, `exp`, and a `kubernetes.io` object carrying the namespace, service account name and UID, and the bound pod name and UID.
-The kubelet rotates the projected file when it is older than 80 percent of its TTL, or after 24 hours (AWS EKS best practices, as of 2026-10).
-On EKS the default token lifetime is 86400 seconds and the API server flag that caps it is not under your control (secondary summary of AWS docs, as of 2026-10).
+The kubelet rotates the projected file when it is older than 80 percent of its TTL, or after 24 hours (AWS EKS best practices, as of 2026-11).
+On EKS the tokens these mechanisms project default to 86400 seconds, for IRSA through the [webhook](https://github.com/aws/amazon-eks-pod-identity-webhook) and for Pod Identity through the injected volume ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/pod-id-how-it-works.html), as of 2026-11).
+Ordinary bound service account tokens used against the Kubernetes API expire in one hour by default ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/service-accounts.html), as of 2026-11).
+The API server flag that caps token lifetime is not under your control (UNVERIFIED: secondary summary only, not stated in the AWS pages checked).
 The audience is what separates the mechanisms.
 IRSA tokens use `sts.amazonaws.com`.
-Pod Identity tokens use `pods.eks.amazonaws.com` (secondary summary of AWS docs, as of 2026-10).
-GKE tokens use an audience derived from the workload pool (UNVERIFIED this session).
+Pod Identity tokens use `pods.eks.amazonaws.com` (AWS EKS docs, as of 2026-11).
+GKE tokens use an audience derived from the workload pool (UNVERIFIED: not in current Google docs).
 Audience scoping is the only reason one stolen token cannot be replayed to a different verifier.
 
 ### Online versus offline verification
@@ -98,16 +125,17 @@ It cannot know the pod is gone.
 AWS STS `AssumeRoleWithWebIdentity` is an offline verifier.
 It is also an unauthenticated API call, so it needs no AWS credentials and is not governed by any identity policy of the caller.
 STS resolves the issuer URL registered in your IAM OIDC provider, fetches the OIDC discovery document and the JWKS it points to, and evaluates the role's trust policy, typically on the `:sub` and `:aud` condition keys.
-Google STS in an external federation is also an offline verifier, and it can use a JWKS you upload for issuers that are not publicly reachable (UNVERIFIED this session).
-IAM OIDC providers need a publicly reachable HTTPS issuer (UNVERIFIED this session).
+Google STS in an external federation is also an offline verifier, it does not support token introspection, and it accepts an uploaded JWKS of up to eight keys for issuers that are not publicly reachable ([Google Cloud docs](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-other-providers), as of 2026-11).
+IAM OIDC providers need a publicly available HTTPS issuer URL with a discovery document and a `jwks_uri` ([AWS IAM docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html), as of 2026-11).
 The consequence is a stolen-token window.
 An attacker who reads the token file from a compromised pod, or from node disk as root, can exchange it for credentials until `exp`.
 With the EKS default that is up to 24 hours, and pod deletion does not shorten it.
 Each exchange yields a session of up to the role's maximum duration.
 Revocation therefore has to happen on the cloud side, not the cluster side.
-In AWS you attach a deny on `aws:TokenIssueTime` to the role (the console's "revoke active sessions" action does this).
-In Google Cloud you remove the provider mapping or the `workloadIdentityUser` binding, and already issued federated access tokens live until their own expiry (UNVERIFIED this session).
-Whether EKS Auth performs a live pod-existence check for Pod Identity tokens is not something AWS documents in the sources I could verify, so do not design on the assumption that it does (UNVERIFIED).
+In AWS you attach a deny on `aws:TokenIssueTime` to the role; the console's "revoke active sessions" action does this with an inline policy named `AWSRevokeOlderSessions` ([AWS IAM docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_revoke-sessions.html), as of 2026-11).
+In Google Cloud, federated and service account access tokens cannot be revoked individually and stay valid until expiry ([Google Cloud token types](https://docs.cloud.google.com/docs/authentication/token-types), as of 2026-11).
+Disabling a provider only blocks new exchanges, disabling the pool also blocks active tokens, and disabling the impersonated service account or applying an IAM deny policy cuts off active access ([Google Cloud incident guide](https://docs.cloud.google.com/docs/security/compromised-credentials), as of 2026-11).
+The [`AssumeRoleForPodIdentity` API reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_auth_AssumeRoleForPodIdentity.html) documents invalid and expired token errors but no live pod-existence check (as of 2026-11), so do not design on the assumption that EKS Auth performs one.
 
 ### IRSA data path
 
@@ -116,49 +144,53 @@ It adds `AWS_ROLE_ARN` and `AWS_WEB_IDENTITY_TOKEN_FILE` environment variables a
 The AWS SDK's web identity provider then calls `AssumeRoleWithWebIdentity` with the role ARN, a session name, and the token, and re-reads the token file on each refresh.
 The webhook only mutates at admission.
 Annotating a service account later changes nothing for running pods, and a webhook outage with an `Ignore` failure policy yields pods that start with no credentials injected.
-Check `kubectl get mutatingwebhookconfiguration pod-identity-webhook -o yaml` on your cluster for the policy in force (UNVERIFIED default).
-The webhook also supports an `eks.amazonaws.com/token-expiration` annotation to shorten the token TTL (UNVERIFIED this session).
+The project's sample manifest sets `failurePolicy: Ignore` ([webhook repository](https://github.com/aws/amazon-eks-pod-identity-webhook), as of 2026-11), and AWS does not document the value on EKS-managed control planes, so check `kubectl get mutatingwebhookconfiguration pod-identity-webhook -o yaml` on your cluster for the policy in force.
+The webhook also supports an `eks.amazonaws.com/token-expiration` annotation to set the token TTL, defaulting to 86400 ([webhook README](https://github.com/aws/amazon-eks-pod-identity-webhook), as of 2026-11).
 Shortening has a real cost that is derived in the worked example: kubelet TokenRequest load scales inversely with TTL.
 Trust is expressed in the role's trust policy, one `Federated` principal per cluster OIDC provider, with `sub` and `aud` conditions.
-That puts the whole cluster-to-role mapping into a policy document with a default size limit (2,048 characters, roughly four relationships per role) and into an account-level count of IAM OIDC providers (default 100) (secondary summary of AWS IAM quotas, as of 2026-10).
-Each IRSA SDK exchange also consumes STS quota in your account, which is the source of throttling storms at mass restart (secondary summary, as of 2026-10).
+That puts the whole cluster-to-role mapping into a policy document with a default size limit (2,048 characters, typically four relationships per role, per the [AWS EKS comparison](https://docs.aws.amazon.com/eks/latest/userguide/service-accounts.html)) and into an account-level count of IAM OIDC providers (default 100, automatically approved up to 700), with the trust policy limit raisable to 8,192 characters ([IAM quotas](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html), as of 2026-11).
+Each IRSA SDK exchange is a call to STS, and AWS warns that this can produce throttling errors, which is the source of throttling storms at mass restart ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/service-accounts.html), as of 2026-11).
+The IAM quotas page publishes 600 requests per second per account per Region for STS calls made with AWS credentials, and its list of those operations omits `AssumeRoleWithWebIdentity`, so get the limit for this call from AWS Support rather than assuming 600 (as of 2026-11).
 
 ### EKS Pod Identity data path
 
 Pod Identity moves the mapping out of IAM and into the EKS control plane.
 You create an association: (cluster, namespace, service account) maps to an IAM role.
-The role's trust policy trusts the service principal `pods.eks.amazonaws.com` for `sts:AssumeRole` and `sts:TagSession`, with no cluster, namespace, or service account in it (secondary summary of AWS docs, as of 2026-10).
-Pods get `AWS_CONTAINER_CREDENTIALS_FULL_URI` pointing at `http://169.254.170.23/v1/credentials` and an authorization token file, so the SDK's container credential provider talks to the node-local agent (secondary summary of AWS docs, as of 2026-10).
-The `eks-pod-identity-agent` DaemonSet runs on `hostNetwork` and binds `169.254.170.23` and `fd00:ec2::23` on port 80, with a liveness probe on 2703 (secondary summary, as of 2026-10).
+The role's trust policy trusts the service principal `pods.eks.amazonaws.com` for `sts:AssumeRole` and `sts:TagSession`, with no cluster, namespace, or service account in it ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html), as of 2026-11).
+Pods get `AWS_CONTAINER_CREDENTIALS_FULL_URI` pointing at `http://169.254.170.23/v1/credentials` and an authorization token file, so the SDK's container credential provider talks to the node-local agent ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/pod-id-how-it-works.html), as of 2026-11).
+The `eks-pod-identity-agent` DaemonSet runs on `hostNetwork` and occupies ports 80 and 2703 on `169.254.170.23` and `fd00:ec2::23` (AWS EKS docs, as of 2026-11), with 2703 as its probe port ([Datadog Security Labs](https://securitylabs.datadoghq.com/articles/eks-pod-identity-deep-dive/), as of 2026-11).
 The agent calls the EKS Auth API action `eks-auth:AssumeRoleForPodIdentity` with the pod's token.
-The call is signed by the node's IAM role, and that permission is the only one in the managed `AmazonEKSWorkerNodeMinimalPolicy` (secondary summary quoting the AWS User Guide, as of 2026-10).
+The call is signed by the node's IAM role, and that permission is the only one in the managed [`AmazonEKSWorkerNodeMinimalPolicy`](https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonEKSWorkerNodeMinimalPolicy.html) (as of 2026-11).
 That makes the exchange two-factor.
 The caller must hold the node role and present a valid pod token, and EKS Auth resolves the association itself, so the agent never chooses the role.
-Session tags (six of them: cluster, namespace, service account, and pod identifiers) are attached automatically, enabling ABAC in resource policies and permission policies, which IRSA cannot do (secondary summary, as of 2026-10; tag key names UNVERIFIED).
-The exchange consumes no STS quota in your account (secondary summary, as of 2026-10).
-Cross-account access uses a `targetRoleArn` on the association, announced 2025-06-12.
-EKS assumes the pod role in the cluster account, then chains to the target role in the workload account (AWS docs and [Datadog Security Labs](https://securitylabs.datadoghq.com/articles/eks-pod-identity-deep-dive/), as of 2026-10).
-IAM role chaining caps the second-hop session at one hour (AWS IAM docs, UNVERIFIED this session).
+Six transitive session tags (`eks-cluster-arn`, `eks-cluster-name`, `kubernetes-namespace`, `kubernetes-service-account`, `kubernetes-pod-name`, `kubernetes-pod-uid`) are attached automatically, enabling ABAC in resource policies and permission policies, which IRSA cannot do ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/pod-id-abac.html), as of 2026-11).
+The exchange consumes no STS quota in your account ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/service-accounts.html), as of 2026-11).
+Cross-account access uses a `targetRoleArn` on the association, announced [2025-06-12](https://aws.amazon.com/about-aws/whats-new/2025/06/amazon-eks-pod-identity-cross-account-access/).
+EKS assumes the pod role in the cluster account, then chains to the target role in the workload account ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/pod-id-assign-target-role.html) and [Datadog Security Labs](https://securitylabs.datadoghq.com/articles/eks-pod-identity-deep-dive/), as of 2026-11).
+IAM role chaining caps the second-hop session at one hour ([AWS IAM docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html), as of 2026-11).
+The agent caches credentials for 6 hours with no target role and 59 minutes with one, and editing an association does not reset that cache, so a changed role reaches running pods only after expiry or pod recreation (AWS EKS docs, as of 2026-11).
 Authority has also moved.
 With IRSA the resource side (the trust policy) says which cluster, namespace, and service account may assume the role.
-With Pod Identity the caller side decides: whoever holds `eks:CreatePodIdentityAssociation` plus `iam:PassRole` for the role can attach it to any service account (secondary summary, as of 2026-10).
+With Pod Identity the caller side decides: whoever holds `eks:CreatePodIdentityAssociation` plus `iam:PassRole` for the role can attach it to any service account ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/pod-id-assign-target-role.html), as of 2026-11).
 Treat `iam:PassRole` on privileged roles as the security boundary and enforce it with SCPs.
-Associations are eventually consistent with delays of several seconds (AWS EKS docs, as of 2026-10).
-Pods created before an association exists get no injection until restarted (UNVERIFIED detail).
-The agent is not supported on Fargate or Windows EC2 nodes (AWS EKS docs, as of 2026-10).
-Proxy environments must exclude both link-local addresses from `NO_PROXY` or credential fetches fail (secondary summary, as of 2026-10).
+Associations are eventually consistent with delays of several seconds (AWS EKS docs, as of 2026-11).
+Injection happens when a new pod starts, so pods created before an association exists get none until restarted ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/pod-id-how-it-works.html), as of 2026-11).
+The agent is not supported on Fargate or Windows EC2 nodes (AWS EKS docs, as of 2026-11).
+Proxy environments must exclude both link-local addresses from `NO_PROXY` or credential fetches fail ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html), as of 2026-11).
 
 ### GKE Workload Identity Federation for GKE data path
 
 The cluster gets a workload pool named `PROJECT_ID.svc.id.goog`.
-IAM principals are written directly against Kubernetes identity, for example `principal://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/PROJECT_ID.svc.id.goog/subject/ns/NAMESPACE/sa/KSA_NAME`, or a `principalSet` over a namespace (Google Cloud docs, UNVERIFIED this session).
-You can grant roles to that principal directly on a resource ("direct resource access"), or bind it to an IAM service account through `roles/iam.workloadIdentityUser` and impersonate (UNVERIFIED this session).
-Direct access does not work against every Google API, and the supported list changes (UNVERIFIED this session).
-On nodes in `GKE_METADATA` mode, requests to the metadata server address are intercepted by a node-local `gke-metadata-server`.
-That server identifies the calling pod by its source IP, obtains a service account token for it, and exchanges it with Google STS using RFC 8693 token exchange (UNVERIFIED this session).
+IAM principals are written directly against Kubernetes identity, for example `principal://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/PROJECT_ID.svc.id.goog/subject/ns/NAMESPACE/sa/KSA_NAME`, or a `principalSet` over a namespace ([Google Cloud docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/workload-identity), as of 2026-11).
+You can grant roles to that principal directly on a resource ("direct resource access"), or bind it to an IAM service account through `roles/iam.workloadIdentityUser` and impersonate (Google Cloud docs, as of 2026-11).
+Direct access does not work against every Google API, and the supported list changes ([Google Cloud products and limitations](https://docs.cloud.google.com/iam/docs/federated-identity-supported-services), as of 2026-11).
+The pool is per project, so the same namespace and service account name in two clusters of one project are the same identity to IAM unless a conditional policy separates them (Google Cloud docs, as of 2026-11).
+On nodes in `GKE_METADATA` mode, requests to the metadata server address are intercepted by a node-local `gke-metadata-server` DaemonSet.
+That server asks the API server for a service account token identifying the requesting workload and exchanges it with Google STS for a federated access token, cached for its default one-hour life (Google Cloud docs, as of 2026-11).
+It identifies the calling pod by its source IP (UNVERIFIED: Google docs omit how the pod is attributed; this comes from third-party analysis and the design of the open-source [emulator](https://www.github.com/matheuscscp/gke-metadata-server)).
 The pod therefore holds no credential file at all.
 The identity anchor is the node's network attribution.
-`hostNetwork` pods cannot be attributed to a pod and fall back to the node's identity.
+`hostNetwork` pods do not use the federation path, and GKE routes their metadata requests to the Compute Engine metadata server, so they get the node's identity (Google Cloud docs, as of 2026-11).
 This is the inverse trust model of Pod Identity, where the bearer token is in the pod and the node role is a second factor.
 The GKE model depends on CNI anti-spoofing and on the node being trusted to attribute honestly.
 
@@ -166,12 +198,12 @@ The GKE model depends on CNI anti-spoofing and on the node being trusted to attr
 
 Google Cloud's external workload identity federation is a generic [RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693) token exchange.
 The client posts a subject token, its type, and the provider audience (`//iam.googleapis.com/projects/NUM/locations/global/workloadIdentityPools/POOL/providers/PROVIDER`) to Google STS.
-Google STS validates it against the provider and returns a federated access token (UNVERIFIED this session).
+Google STS validates it against the provider and returns a federated access token whose expiry matches the external token ([Google Cloud token types](https://docs.cloud.google.com/docs/authentication/token-types), as of 2026-11), and the validity of active bearer tokens is at most about one hour ([Google Cloud incident guide](https://docs.cloud.google.com/docs/security/compromised-credentials), as of 2026-11).
 Optionally the client then calls IAM Credentials `generateAccessToken` to impersonate a service account, which is needed for APIs that reject federated principals.
 The AWS provider type has an unusual mechanism.
 There is no JWT.
 The subject token is a serialized, SigV4-signed `sts:GetCallerIdentity` request that the workload builds with its AWS credentials but never sends to AWS.
-Google STS replays that request against AWS STS and trusts the response (account, ARN, user ID) as the assertion (UNVERIFIED this session).
+Google Cloud verifies the temporary credentials through that `GetCallerIdentity` request, without ever seeing the secret access key, and uses the result (account, ARN, user ID) as the assertion ([Google Cloud docs](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-other-clouds), as of 2026-11).
 The attribute mapping works on `assertion.arn`, which for an assumed role looks like `arn:aws:sts::ACCOUNT:assumed-role/ROLE/SESSION`.
 You must normalize away the session name, or every pod becomes a distinct principal.
 The practical consequence is that an AWS workload can reach Google Cloud with zero stored keys, and the Google-side trust is only as strong as the attribute condition that pins the AWS role.
@@ -181,10 +213,11 @@ For multi-tenant issuers such as GitHub Actions, a provider with no condition on
 ### Credential provider chain precedence and silent fallback
 
 The SDK chooses a credential source by a fixed ordering, not by what you intended.
-When a pod has both IRSA environment variables and Pod Identity variables, the web identity provider is evaluated before the container provider, so IRSA wins (UNVERIFIED this session; confirm on your SDK versions before relying on it for migration).
-If the container provider fails and the chain falls through (SDK-dependent behavior), the final element is the EC2 instance metadata service, which hands the pod the node role.
+When a pod has both IRSA environment variables and Pod Identity variables, the web identity provider is evaluated before the container provider, so IRSA wins ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/pod-id-how-it-works.html) and [botocore source](https://github.com/boto/botocore/blob/develop/botocore/credentials.py), as of 2026-11).
+If no earlier provider is configured because injection never happened, the chain reaches its final element, the EC2 instance metadata service, which hands the pod the node role.
 That is a silent privilege change from a narrow role to whatever the node can do.
-Defenses: require IMDSv2, set the IMDS hop limit to 1 so pod network namespaces cannot reach it (secondary summary, as of 2026-10), keep the node role at minimum (see above), and on GKE keep metadata concealment semantics (that is, `GKE_METADATA` mode) on every pool.
+A container provider that is configured but failing behaves differently by SDK: in botocore the retrieval error propagates and does not fall through to IMDS (botocore source, as of 2026-11), so test any other SDK you run.
+Defenses: require IMDSv2, set the IMDS hop limit to 1 so pod network namespaces cannot reach it ([AWS EKS best practices](https://docs.aws.amazon.com/eks/latest/best-practices/identity-and-access-management.html), as of 2026-11), keep the node role at minimum (see above), and on GKE keep metadata concealment semantics (that is, `GKE_METADATA` mode) on every pool.
 
 ### Foundational lineage
 
@@ -195,28 +228,30 @@ For the Kubernetes side, see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/C
 
 ## Numbers to Know
 
-Sources: "secondary" means a third-party summary of the AWS documentation that I could read but could not cross-check against the primary page in this session.
-Rows marked UNVERIFIED must be re-checked before this note moves to `status: solid`.
+Sources: rows carry the primary page they were checked against, and "as of" is the check date.
 
 | Quantity | Value | Source |
 |---|---|---|
-| Pod Identity associations per cluster | 5,000, not adjustable in Service Quotas | (AWS EKS docs, as of 2026-10) |
-| Pod Identity association propagation | Eventually consistent, delays of several seconds | (AWS EKS docs, as of 2026-10) |
-| Pod Identity unsupported compute | Fargate (Linux and Windows) and Windows EC2 | (AWS EKS docs, as of 2026-10) |
-| Pod Identity agent endpoints | 169.254.170.23 and fd00:ec2::23, port 80 credentials, 2703 liveness, hostNetwork | (secondary, as of 2026-10) |
-| Node role permission for Pod Identity | `eks-auth:AssumeRoleForPodIdentity`, sole permission in `AmazonEKSWorkerNodeMinimalPolicy` | (secondary quoting AWS User Guide, as of 2026-10) |
-| Pod Identity role trust principal | `pods.eks.amazonaws.com` with `sts:AssumeRole` and `sts:TagSession` | (secondary, as of 2026-10) |
-| Pod Identity automatic session tags | Six | (secondary, as of 2026-10) |
-| Cross-account Pod Identity via `targetRoleArn` | Announced 2025-06-12 | (AWS announcement via secondary and Datadog Security Labs, as of 2026-10) |
-| Projected token default TTL on EKS | 86400 s, kubelet rotates at 80 percent of TTL or after 24 h | (AWS EKS best practices, as of 2026-10) |
-| IAM OIDC providers per account | 100 default | (secondary summary of IAM quotas, as of 2026-10) |
-| Default trust policy size | 2,048 characters, about 4 IRSA relationships | (secondary summary of IAM quotas, as of 2026-10) |
-| STS quota consumed by exchange | IRSA yes, Pod Identity no (from your account) | (secondary, as of 2026-10) |
-| Role chaining max session | 1 hour | (AWS IAM docs, UNVERIFIED this session) |
-| botocore credential refresh windows | Advisory 15 min, mandatory 10 min before expiry | (botocore source, UNVERIFIED this session) |
-| Google federated and impersonated access token lifetime | 1 hour default | (Google Cloud docs, UNVERIFIED this session) |
-| `google.subject` mapped value limit | 127 bytes | (Google Cloud docs, UNVERIFIED this session) |
-| Per-call price of STS, EKS Auth, Google STS | No per-call charge | (AWS and Google Cloud pricing pages, UNVERIFIED this session) |
+| Pod Identity associations per cluster | 5,000 | (AWS EKS docs, as of 2026-11) |
+| Pod Identity association propagation | Eventually consistent, delays of several seconds | (AWS EKS docs, as of 2026-11) |
+| Pod Identity unsupported compute | Fargate (Linux and Windows) and Windows EC2, also Outposts, EKS Anywhere, and self-managed clusters | (AWS EKS docs, as of 2026-11) |
+| Pod Identity agent endpoints | 169.254.170.23 and fd00:ec2::23, port 80 credentials, 2703 probes, hostNetwork | (AWS EKS docs, probe role from Datadog Security Labs, as of 2026-11) |
+| Pod Identity agent credential cache | 6 hours, or 59 minutes with a target role, not reset by editing an association | (AWS EKS docs, as of 2026-11) |
+| Node role permission for Pod Identity | `eks-auth:AssumeRoleForPodIdentity`, sole permission in `AmazonEKSWorkerNodeMinimalPolicy` | (AWS managed policy reference, as of 2026-11) |
+| Pod Identity role trust principal | `pods.eks.amazonaws.com` with `sts:AssumeRole` and `sts:TagSession` | (AWS EKS docs, as of 2026-11) |
+| Pod Identity automatic session tags | Six | (AWS EKS docs, as of 2026-11) |
+| Cross-account Pod Identity via `targetRoleArn` | Announced 2025-06-12 | (AWS What's New, as of 2026-11) |
+| Projected token default TTL on EKS | 86400 s for IRSA and Pod Identity volumes, kubelet rotates at 80 percent of TTL or after 24 h | (AWS EKS docs and best practices, as of 2026-11) |
+| IAM OIDC providers per account | 100 default, automatically approved up to 700 | (AWS IAM quotas, as of 2026-11) |
+| Trust policy size | 2,048 characters default, about 4 IRSA relationships, up to 8,192 characters on request (the EKS comparison still says "typically" a maximum of 8 relationships) | (AWS IAM quotas and EKS docs, as of 2026-11) |
+| STS request quota | 600 per second per account per Region for calls made with AWS credentials, `AssumeRoleWithWebIdentity` not listed among them | (AWS IAM quotas, as of 2026-11) |
+| STS quota consumed by exchange | IRSA calls STS and can be throttled, Pod Identity uses no quota from your account | (AWS EKS docs, as of 2026-11) |
+| Role chaining max session | 1 hour | (AWS IAM docs, as of 2026-11) |
+| botocore credential refresh windows | Advisory 15 min, mandatory 10 min before expiry, failed mandatory refresh raises | (botocore source, as of 2026-11) |
+| Google federated and impersonated access token lifetime | Federated matches the external token, active bearer tokens up to one hour, impersonated 1 hour default and extendable to 12 hours by organization policy | (Google Cloud docs, as of 2026-11) |
+| Google token exchange quota | 6,000 requests per minute, increasable | (Google Cloud GKE docs, as of 2026-11) |
+| `google.subject` mapped value limit | 127 characters | (Google Cloud docs, as of 2026-11) |
+| Per-call price of STS, EKS Auth, Google STS | No charge published: IAM and STS at no additional charge, Pod Identity at no charge, Google IAM API free and identity federation at no additional cost per identity, with Google STS not priced separately | ([AWS IAM docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html), [EKS Pod Identity launch post](https://aws.amazon.com/blogs/aws/amazon-eks-pod-identity-simplifies-iam-permissions-for-applications-on-amazon-eks-clusters/), [Google Cloud IAM](https://cloud.google.com/products/iam?hl=en), as of 2026-11) |
 
 Derived numbers used later (arithmetic, not sourced facts):
 kubelet TokenRequest rate per 20,000 pods is 0.29 per second at a 24-hour TTL, 6.9 per second at 1 hour, and 41.7 per second at 10 minutes.
@@ -224,7 +259,7 @@ IRSA steady-state STS rate for 20,000 pods with a 3,600-second session refreshed
 
 ## AWS vs GCP Mechanism Parity
 
-All Google Cloud column entries are UNVERIFIED this session and come from prior knowledge of the Google documentation.
+Google Cloud column entries were checked against the Google docs cited above (as of 2026-11), except where marked.
 AWS entries carry the tags above.
 
 | Dimension | AWS (IRSA) | AWS (EKS Pod Identity) | Google Cloud (WIF for GKE) |
@@ -232,21 +267,22 @@ AWS entries carry the tags above.
 | Trust anchor | Cluster OIDC issuer, public JWKS, IAM OIDC provider | EKS-managed association plus service principal trust | Workload pool `PROJECT.svc.id.goog` |
 | Verification locus | AWS STS, offline | EKS Auth API, regional, node IAM role as co-factor | Node-local metadata server then Google STS |
 | Credential delivery to pod | Token file plus SDK exchange | Node agent on link-local address, token as bearer | Metadata server, no file |
-| Pod attribution | Possession of JWT | Possession of JWT plus node role | Source IP of the calling pod |
+| Pod attribution | Possession of JWT | Possession of JWT plus node role | Source IP of the calling pod (UNVERIFIED: not in Google docs) |
 | Identity naming | Role ARN, mapping in trust policy `sub` | Role ARN, mapping in EKS association | Direct `principal://` on resources, or impersonated service account |
 | Attribute-based access | None from the exchange | Six session tags usable in policies | `principalSet` over namespace, direct attribute binding |
-| Mapping size limits | Trust policy 2,048 chars, 100 OIDC providers | 5,000 associations per cluster | No trust-policy size pressure |
+| Mapping size limits | Trust policy 2,048 chars default (8,192 max), 100 OIDC providers default (700 max) | 5,000 associations per cluster | No trust-policy size pressure |
 | Cross-account or cross-project | Role in another account trusting the OIDC provider, or manual chain | `targetRoleArn` chaining | Grant the principal in any project |
-| Quota burden | Each exchange hits account STS quota | Not on your STS quota | Google STS and IAM Credentials quotas apply |
+| Quota burden | Each exchange is an STS call and can be throttled | Not on your STS quota | Google STS token exchange 6,000 per minute by default, IAM Credentials quotas apply |
 | Unsupported compute | None (works on Fargate, Windows, anywhere with an OIDC issuer) | Fargate, Windows EC2 | Nodes not in `GKE_METADATA` mode, `hostNetwork` pods |
-| Revocation | Deny on `aws:TokenIssueTime`, or edit trust | Delete association, same deny technique | Remove binding, existing access tokens live to expiry |
+| Revocation | Deny on `aws:TokenIssueTime`, or edit trust | Delete association (the agent cache persists), same deny technique | Disable provider for new exchanges, disable pool or service account or add a deny policy for active tokens |
 | External non-Kubernetes workloads | `AssumeRoleWithWebIdentity` for any OIDC issuer, IAM Roles Anywhere for X.509 | Not applicable | Workload identity pools and providers for AWS, OIDC, SAML |
 
 The most important parity gap is how external issuers are mapped.
-AWS exposes only a subset of JWT claims as IAM condition keys for a given provider.
+AWS exposes only a fixed set of JWT claims as IAM condition keys for a given provider, and for GitHub that set now includes `job_workflow_ref`, `repository_id`, `repository_owner_id`, and `environment`, usable in trust policies but not in the session ([AWS IAM condition keys](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_iam-condition-keys.html), as of 2026-11).
 Google exposes all claims to an attribute mapping and a CEL condition, which makes fine-grained pinning easier but also easier to get wrong by omission.
-AWS has also announced outbound identity federation, so an AWS role can mint an OIDC token for external systems.
-I could not verify its name, API, or GA status this session (UNVERIFIED), so check the current AWS docs before designing around it.
+AWS also has IAM outbound identity federation, launched [2025-11-19](https://aws.amazon.com/blogs/aws/simplify-access-to-external-services-using-aws-iam-outbound-identity-federation/), so an AWS principal can mint an OIDC token for external systems.
+You enable it per account with `EnableOutboundWebIdentityFederation`, then call `sts:GetWebIdentityToken` for a JWT signed with ES384 or RS256 that lives 60 to 3,600 seconds (default 300), on Regional endpoints only ([AWS IAM docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_outbound_getting_started.html), as of 2026-11).
+Google lists it as an alternative to the `GetCallerIdentity` mechanism for AWS workloads ([Google Cloud docs](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-other-clouds), as of 2026-11).
 
 ## Worked Example: Key-Free Pod to Vertex AI Across Clouds
 
@@ -295,7 +331,7 @@ resource "aws_iam_role" "pod" {
   max_session_duration = 3600
 }
 
-# ABAC: each namespace may touch only its own prefix (tag key name UNVERIFIED, check docs).
+# ABAC: each namespace may touch only its own prefix (tag key per AWS EKS docs, as of 2026-11).
 resource "aws_iam_role_policy" "s3" {
   role = aws_iam_role.pod.id
   policy = jsonencode({
@@ -406,7 +442,7 @@ url = f"https://us-central1-aiplatform.googleapis.com/v1/projects/{PROJECT}/loca
 print(session.get(url, timeout=10).status_code)
 ```
 
-The supplier interface in `google-auth` is UNVERIFIED this session, so pin and test your library version.
+The supplier interface used here matches the [`google-auth` source](https://github.com/googleapis/google-auth-library-python/blob/main/google/auth/aws.py) (as of 2026-11), but this script was not executed, so pin and test your library version.
 `boto3` resolves Pod Identity through the container credential provider, so the same code works unchanged under IRSA or Pod Identity.
 
 ### Step 3: Inspect the token you hold
@@ -430,11 +466,11 @@ Run it to confirm the audience and TTL are what you designed, and never log the 
 Assume 20,000 pods, 3,000 distinct service identities, and 40 clusters across 8 accounts.
 
 1. IRSA STS load, steady state. Sessions last 3,600 seconds and the SDK refreshes about 900 seconds early, so each pod exchanges roughly every 2,700 seconds. 20,000 / 2,700 is about 7.4 calls per second, which is low.
-2. IRSA STS load, restart storm. A full rollout of 8,000 pods inside 5 minutes is 8,000 / 300 = 26.7 calls per second, and at 3x retry amplification during throttling it is about 80 per second against one account and region. Compare that with your STS quota in Service Quotas, which I did not verify. Pod Identity removes this load from your quota (secondary, as of 2026-10).
-3. Trust policy sizing. At roughly 450 characters per cluster-namespace-service-account relationship (consistent with the roughly 4 per 2,048 characters noted above), a role shared by 40 clusters needs about 18,000 characters, far above the default. Even a raised limit constrains you to a small number of clusters per role. Pod Identity needs zero characters per relationship. Its constraint is 5,000 associations per cluster, and a 3,000-identity fleet across 40 clusters is roughly 75 per cluster on average, far below it.
-4. OIDC provider ceiling. 40 clusters need 40 IAM OIDC providers across 8 accounts, about 5 per account, which is comfortable. A single shared-services account hosting 100 or more clusters would hit the default of 100.
+2. IRSA STS load, restart storm. A full rollout of 8,000 pods inside 5 minutes is 8,000 / 300 = 26.7 calls per second, and at 3x retry amplification during throttling it is about 80 per second against one account and region. For scale, IAM publishes 600 per second per account per Region for credentialed STS calls, a list that omits `AssumeRoleWithWebIdentity`, so confirm this call's limit with AWS Support (AWS IAM quotas, as of 2026-11). Pod Identity removes this load from your quota (AWS EKS docs, as of 2026-11).
+3. Trust policy sizing. At roughly 450 characters per cluster-namespace-service-account relationship (consistent with the roughly 4 per 2,048 characters noted above), a role shared by 40 clusters needs about 18,000 characters, far above the default. Even the 8,192-character maximum holds only about 18 relationships at that size, so a raised limit still constrains you to a small number of clusters per role. Pod Identity needs zero characters per relationship. Its constraint is 5,000 associations per cluster, and a 3,000-identity fleet across 40 clusters is roughly 75 per cluster on average, far below it.
+4. OIDC provider ceiling. 40 clusters need 40 IAM OIDC providers across 8 accounts, about 5 per account, which is comfortable. A single shared-services account hosting 100 or more clusters would hit the default of 100, which can be raised to 700 (AWS IAM quotas, as of 2026-11).
 5. TokenRequest load versus TTL. The kubelet refreshes at 80 percent of TTL. 20,000 pods at a 24-hour TTL is 20,000 / 69,120 = 0.29 per second. At 1 hour it is 20,000 / 2,880 = 6.9 per second. At 10 minutes it is 20,000 / 480 = 41.7 per second on the API server. Shortening token TTL narrows the stolen-token window but taxes the control plane, and 1 hour is a defensible middle.
-6. Cost. IAM, STS, EKS Pod Identity associations, workload identity pools, and Google STS have no per-call charge (UNVERIFIED this session). The lab creates no compute, so incremental cost is effectively zero. If pods reach STS through a NAT gateway, data processing charges apply, so use an STS interface endpoint in production and check the current price pages (not verified here). The EKS cluster you already run is outside this lab's cost.
+6. Cost. IAM, STS, and EKS Pod Identity are published at no charge, and Google lists identity federation at no additional cost per identity, without pricing Google STS separately (pricing sources in Numbers to Know, as of 2026-11). The lab creates no compute, so incremental cost is effectively zero. If pods reach STS through a NAT gateway, data processing charges apply, so use an STS interface endpoint in production and check the current price pages. The EKS cluster you already run is outside this lab's cost.
 
 ### Budget alarm snippet
 
@@ -453,7 +489,7 @@ tofu destroy -auto-approve \
 aws budgets delete-budget --account-id "$AWS_ACCOUNT_ID" --budget-name wif-lab
 ```
 
-Deleted workload identity pools and providers enter a soft-delete state in Google Cloud, with IDs reserved for a period (UNVERIFIED this session).
+Deleted workload identity pools and providers can be restored for 30 days in Google Cloud, and their IDs cannot be reused until they are permanently deleted ([Google Cloud docs](https://docs.cloud.google.com/iam/docs/manage-workload-identity-pools-providers), as of 2026-11).
 Do not hard-code `workload_identity_pool_id` values you expect to recreate immediately.
 
 ## Failure Modes and Pitfalls
@@ -463,6 +499,7 @@ Do not hard-code `workload_identity_pool_id` values you expect to recreate immed
 IRSA trust policies written with `StringLike` and `system:serviceaccount:*:*`, or with only an `aud` condition, let any service account in the cluster assume the role.
 The same flaw on a Google provider with no attribute condition lets every repository or tenant of a multi-tenant issuer, such as GitHub Actions, authenticate.
 Always pin `sub` with `StringEquals` (IRSA) or a CEL condition (Google), and pin immutable claims where available, for instance repository ID and owner ID rather than names, because names can be released and re-registered.
+GitHub repositories created after 2026-07-15 default to an immutable `sub` format containing those IDs (`repo:OWNER@OWNER-ID/REPO@REPO-ID:...`), older repositories keep the name format unless they opt in, and renames or transfers after that date also move to it, so existing `sub` pins need review ([GitHub docs](https://docs.github.com/en/actions/reference/security/oidc), as of 2026-11).
 
 ### Name-based identity and namespace takeover
 
@@ -479,14 +516,15 @@ Detection must come from CloudTrail: the same role session exercised from an une
 
 ### Silent fallback to the node role
 
-A missing webhook injection, a pod started before an association existed, a proxy that blocks `169.254.170.23`, or an agent that is not yet running on a fresh node can leave the SDK without its intended credentials.
+A missing webhook injection or a pod started before an association existed leaves the SDK with no intended credential source configured.
 If IMDS is reachable from the pod network namespace, the SDK then uses the node role.
-Set the IMDS hop limit to 1, require IMDSv2, and keep node roles minimal (secondary, as of 2026-10).
+A proxy that blocks `169.254.170.23` or an agent that is not yet running on a fresh node is a different case: botocore surfaces a retrieval error rather than falling through to IMDS, and other SDKs need their own test (botocore source, as of 2026-11).
+Set the IMDS hop limit to 1, require IMDSv2, and keep node roles minimal, and note that `hostNetwork` pods always have IMDS access ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html), as of 2026-11).
 The 2019 Capital One incident, an SSRF that reached a web application firewall instance's metadata credentials, is the canonical public case for why this path matters.
 
 ### STS throttling and restart storms
 
-IRSA exchanges use your account's STS quota (secondary, as of 2026-10).
+IRSA exchanges are STS calls made per SDK, and AWS warns that they can be throttled (AWS EKS docs, as of 2026-11).
 Fleet-wide restarts, an HPA scale-out, or Karpenter bin-packing replacement of many nodes at once produce correlated exchanges.
 SDKs retrying throttles without jitter amplify the load, as covered in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Resilient Communication: Retries, Jitter, and Circuit Breakers]].
 Pod Identity removes the quota exposure but adds a regional EKS Auth dependency and a node-local agent dependency.
@@ -497,36 +535,37 @@ The federation hop sits on every pod start and every credential refresh.
 Review public post-incident reports through the lens of identity dependence.
 AWS publishes them at the [AWS post-event summaries index](https://aws.amazon.com/premiumsupport/technology/pes/).
 Two events to study: the AWS us-east-1 event of 2025-10-20 and the Google Cloud global API incident of 2025-06-12.
-Check each report for whether IAM, STS, or sign-in were listed as affected products, because I could not verify that this session (UNVERIFIED).
+The [AWS summary](https://aws.amazon.com/message/101925/) reports STS API errors and latency from 11:51 PM PDT on October 19, a second spike from 8:31 to 9:59 AM PDT, IAM user console sign-in failures, and Redshift nodes whose credentials expired unrefreshed.
+The [Google report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW) lists Identity and Access Management among affected products but does not name Security Token Service.
 The design lesson is independent of any single report.
 Running processes holding unexpired credentials survive a short identity outage, while new pods, restarted pods, and processes whose credentials expire during the outage do not.
 See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]] and [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
 ### Cross-account chain hits the one-hour cap
 
-Pod Identity `targetRoleArn` chaining yields second-hop sessions capped at one hour (AWS IAM docs, UNVERIFIED this session).
+Pod Identity `targetRoleArn` chaining yields second-hop sessions capped at one hour (AWS IAM docs, as of 2026-11), and the agent caches them for 59 minutes (AWS EKS docs, as of 2026-11).
 Long-running batch jobs that assumed a 12-hour session behavior must refresh, so verify that their SDK refreshes credentials rather than caching them at start.
 
 ### Proxy and hostNetwork gotchas
 
-Pod Identity's link-local addresses must be excluded from HTTP proxies (secondary, as of 2026-10).
-On GKE, `hostNetwork` pods cannot be attributed to a pod and use the node's identity (UNVERIFIED this session).
+Pod Identity's link-local addresses must be excluded from HTTP proxies (AWS EKS docs, as of 2026-11).
+On GKE, `hostNetwork` pods do not use the federation path and reach the Compute Engine metadata server, which gives them the node's identity (Google Cloud docs, as of 2026-11).
 In both clouds, a daemon that must run with `hostNetwork` needs its own explicit identity plan.
 
 ### Mapping drift at migration
 
-During IRSA to Pod Identity migration, pods with both mechanisms configured resolve to whichever the SDK chain picks first (UNVERIFIED precedence).
-Migrate by removing the annotation, adding the association, restarting, and verifying the effective role via `sts:GetCallerIdentity` from inside a pod, never from the configuration.
+During IRSA to Pod Identity migration, pods with both mechanisms configured keep using the earlier provider in the chain, which is web identity, so IRSA keeps winning (AWS EKS docs and botocore source, as of 2026-11).
+Migrate by adding the association first, as AWS documents, then removing the annotation, restarting, and verifying the effective role via `sts:GetCallerIdentity` from inside a pod, never from the configuration.
 
 ## Security and Cost Angles
 
 ### IAM permission scoping
 
-For Pod Identity, `iam:PassRole` plus `eks:CreatePodIdentityAssociation` is the privilege-escalation edge (secondary, as of 2026-10).
+For Pod Identity, `iam:PassRole` plus `eks:CreatePodIdentityAssociation` is the privilege-escalation edge ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/pod-id-association.html), as of 2026-11).
 Restrict both with SCPs and with `iam:PassedToService`-style conditions, and require a permissions boundary on roles that Pod Identity may use.
 For IRSA, make the trust policy the narrowest possible: one provider, `StringEquals` on `sub`, and `aud` pinned.
 Run Terraform and policy checks per [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_04_Policy_as_Code_OPA_Sentinel_and_Guardrails|Policy as Code: OPA, Sentinel, and Guardrails]] to reject wildcard `sub` values before apply.
-On Google Cloud, prefer direct principal grants scoped to a specific namespace and service account, restrict who may create providers with the organization policy constraints for workload identity pool providers (constraint names UNVERIFIED this session), and use `iam.workloadIdentityUser` bindings only where impersonation is needed.
+On Google Cloud, prefer direct principal grants scoped to a specific namespace and service account, restrict who may create providers with the organization policy constraints `constraints/iam.workloadIdentityPoolProviders` and `constraints/iam.workloadIdentityPoolAwsAccounts`, which apply only when a provider is created or updated ([Google Cloud docs](https://docs.cloud.google.com/iam/docs/manage-workload-identity-pools-providers), as of 2026-11), and use `iam.workloadIdentityUser` bindings only where impersonation is needed.
 
 ### Key hierarchies
 
@@ -538,22 +577,22 @@ See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter
 ### Private network boundaries
 
 Route STS through an interface VPC endpoint with an endpoint policy that restricts to your organization.
-An EKS Auth interface endpoint exists for the Pod Identity path (UNVERIFIED this session).
-On Google Cloud, decide explicitly whether STS and IAM Credentials calls from outside a VPC Service Controls perimeter are allowed, since workloads in other clouds necessarily arrive from outside (UNVERIFIED behavior).
+An EKS Auth interface endpoint, `com.amazonaws.region-code.eks-auth`, exists for the Pod Identity path ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/vpc-interface-endpoints.html), as of 2026-11), and AWS says nodes in private subnets must use it ([agent setup](https://docs.aws.amazon.com/eks/latest/userguide/pod-id-agent-setup.html), as of 2026-11).
+On Google Cloud, decide explicitly whether STS and IAM Credentials calls from outside a VPC Service Controls perimeter are allowed, since workloads in other clouds necessarily arrive from outside, and both APIs can be protected, with STS exchanges restricted only when the request audience is a project-level resource ([VPC Service Controls docs](https://docs.cloud.google.com/vpc-service-controls/docs/supported-products), as of 2026-11).
 See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
 
 ### Audit correlation
 
-In AWS, put the pod identity in the role session name or session tags so CloudTrail attributes calls to a pod.
-In Google Cloud, audit logs for impersonated calls carry the original federated principal in delegation info (UNVERIFIED field names), which is what lets you attribute a BigQuery read to a namespace and service account.
+In AWS, put the pod identity in the role session name or session tags so CloudTrail attributes calls to a pod; Pod Identity does this for you with a session name of the form `eks-clustername-podname-randomUUID` and its pod tags ([API reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_auth_AssumeRoleForPodIdentity.html), as of 2026-11).
+In Google Cloud, audit logs for impersonated calls carry the original federated principal in `serviceAccountDelegationInfo[].principalSubject`, and token exchange logs carry it in `authenticationInfo.principalSubject` ([Google Cloud docs](https://docs.cloud.google.com/iam/docs/audit-logging/examples-workload-identity), as of 2026-11), which is what lets you attribute a BigQuery read to a namespace and service account.
 Joining the two across clouds requires a shared correlation field you control, because neither cloud knows the other's session.
 
 ### Unit economics
 
-The federation control plane is effectively free (UNVERIFIED pricing).
+The federation control plane is effectively free (pricing sources in Numbers to Know, as of 2026-11).
 The real costs are engineering time spent on trust policy sprawl, NAT data processing for STS traffic without endpoints, API server load from short token TTLs, and the incident cost of the cold-start dependency.
 Pod Identity wins on operational cost at fleet scale because it removes per-cluster OIDC providers, trust-policy edits, and STS quota planning.
-IRSA wins on portability: it works on Fargate, Windows, EKS Anywhere, and self-managed clusters (secondary, as of 2026-10).
+IRSA wins on portability: it works on Fargate, Windows, EKS Anywhere, and self-managed clusters ([EKS comparison](https://docs.aws.amazon.com/eks/latest/userguide/service-accounts.html), [Fargate docs](https://docs.aws.amazon.com/eks/latest/userguide/fargate.html), and [EKS multi-account best practices](https://docs.aws.amazon.com/eks/latest/best-practices/multi-account-strategy.html), as of 2026-11).
 
 ## Interview Questions and Model Answers
 
@@ -567,7 +606,7 @@ What does STS actually verify?
 At admission, the pod-identity-webhook reads the `eks.amazonaws.com/role-arn` annotation on the pod's service account.
 It injects `AWS_ROLE_ARN`, `AWS_WEB_IDENTITY_TOKEN_FILE`, and a projected volume carrying a service account token with audience `sts.amazonaws.com`.
 The kubelet calls the TokenRequest API for that token and rewrites the file when it is older than 80 percent of its TTL, so the file always contains a live JWT.
-The default TTL on EKS is 86400 seconds (AWS EKS best practices, as of 2026-10).
+The default TTL for the IRSA token is 86400 seconds ([webhook README](https://github.com/aws/amazon-eks-pod-identity-webhook), as of 2026-11).
 The SDK's web identity provider calls `AssumeRoleWithWebIdentity` with the role ARN, a session name, and the token.
 That call is unauthenticated, so the caller needs no AWS credentials.
 STS resolves the token's issuer to the IAM OIDC provider registered in the account, fetches the issuer's discovery document and JWKS, and verifies the signature.
@@ -590,11 +629,11 @@ Choose between IRSA and EKS Pod Identity and defend the choice.
 #### Model Answer
 
 There is no single answer, and the mixed fleet forces a split.
-Pod Identity does not support Fargate or Windows nodes (AWS EKS docs, as of 2026-10), so Fargate pods stay on IRSA.
+Pod Identity does not support Fargate or Windows nodes (AWS EKS docs, as of 2026-11), so Fargate pods stay on IRSA.
 For the EC2 clusters I would default to Pod Identity.
 It removes the per-cluster OIDC provider, which matters against the default of 100 providers per account.
 It removes the IRSA trust policy size pressure of roughly four relationships per default 2,048-character policy.
-It also takes exchanges off my account's STS quota, and it adds session tags for ABAC (secondary, as of 2026-10).
+It also takes exchanges off my account's STS quota, and it adds session tags for ABAC (AWS EKS docs, as of 2026-11).
 The costs are an agent DaemonSet on every node as a new availability dependency and a regional EKS Auth dependency.
 They also include a change in where authority lives: the role trust policy no longer names clusters, so `iam:PassRole` and `eks:CreatePodIdentityAssociation` become the control points and need SCPs.
 For cross-account access I would use the association's target role, accepting the one-hour cap on the chained session.
@@ -619,7 +658,7 @@ Namespace creation goes through a platform controller that applies a tenant-pref
 Pod creation in B's namespace is denied to A by RBAC, and a ValidatingAdmissionPolicy rejects `serviceAccountName` values that do not match the namespace's expected service account set.
 On the AWS side, for IRSA I use `StringEquals` on `sub`, never wildcards.
 For Pod Identity the trust policy does not name the namespace, so I constrain who can create associations with SCPs on `eks:CreatePodIdentityAssociation` and `iam:PassRole`, and make associations a platform-owned Terraform output.
-I add ABAC on top: policies use the namespace session tag to scope resource prefixes, so even a mistaken association grants only that namespace's data (secondary, as of 2026-10; tag key names UNVERIFIED).
+I add ABAC on top: policies use the namespace session tag to scope resource prefixes, so even a mistaken association grants only that namespace's data, using the `kubernetes-namespace` tag (AWS EKS docs, as of 2026-11).
 Finally, I detect drift by alerting on any `CreatePodIdentityAssociation` or trust-policy change not made by the platform pipeline.
 The residual risk is a compromised platform controller, which is why its changes are the highest-severity audit events.
 
@@ -639,7 +678,8 @@ Both clouds act as offline verifiers of GitHub's OIDC token (issuer `token.actio
 The trust condition is what separates my repository from everyone else's.
 On AWS I pin `aud` and `sub`.
 I make `sub` specific to repository and environment (for example `repo:org/app:environment:prod`), not a wildcard on branches, because a feature branch or a pull request workflow should not be able to reach prod.
-I check which additional claims AWS exposes as condition keys for the provider, since not all JWT claims are available, and use GitHub's `sub` customization to embed immutable repository and owner IDs if needed (UNVERIFIED this session).
+AWS exposes `repository_id`, `repository_owner_id`, `environment`, and `job_workflow_ref` as GitHub condition keys in the trust policy, so I pin those too ([AWS IAM condition keys](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_iam-condition-keys.html), as of 2026-11).
+GitHub repositories created after 2026-07-15 also embed immutable owner and repository IDs in `sub`, and older ones can opt in, so the `sub` value I pin depends on the repository ([GitHub docs](https://docs.github.com/en/actions/reference/security/oidc), as of 2026-11).
 On Google Cloud the mapping sees all claims, so I map `repository_id`, `repository_owner_id`, `environment`, and `job_workflow_ref` into attributes and write a CEL attribute condition on them.
 Pinning immutable IDs stops a rename or transfer attack where an attacker re-registers a released repository name.
 Pinning `job_workflow_ref` stops an arbitrary workflow in my own repository from using the deploy identity: only the protected, reviewed reusable workflow may.
@@ -660,15 +700,16 @@ What fails, what keeps working, and how should the design have prepared for it?
 
 Separate the paths by whether they need a new exchange.
 Processes already holding unexpired credentials keep working until expiry.
-AWS SDKs begin an advisory refresh about 15 minutes before expiry and treat 10 minutes as mandatory (botocore, UNVERIFIED this session), so with one-hour sessions a process has roughly a 15 to 60 minute cushion depending on its position in the cycle.
-A 40-minute outage therefore hits roughly the fraction of processes whose credentials expire inside the outage window, plus every pod that starts or restarts during it.
+botocore begins an advisory refresh 15 minutes before expiry, tolerates failure there, and raises on a failed refresh once inside the 10-minute mandatory window ([botocore source](https://github.com/boto/botocore/blob/develop/botocore/credentials.py), as of 2026-11).
+So with one-hour sessions a process has 15 to 60 minutes of remaining life when the outage starts, but only a 5 to 50 minute cushion before errors surface, depending on its position in the cycle.
+A 40-minute outage therefore hits (40 - 5) / (50 - 5), about 78 percent, of steady-state boto processes, plus every pod that starts or restarts during it.
 That second group is the dangerous one: autoscaling, node replacement, deploys, and crash loops all call the identity provider at the worst moment.
 I would prepare in four ways.
 First, treat federation as a control-plane dependency and keep it off the request path: acquire credentials at startup and refresh in the background, never per request.
 Second, freeze deploys and scale-down during identity impairment, and provision headroom so the data plane need not scale up.
 Third, use regional endpoints and VPC endpoints so a global endpoint problem does not take down regional workloads, as in the Builders' Library guidance on [static stability](https://aws.amazon.com/builders-library/static-stability-using-availability-zones/).
 Fourth, avoid fallback paths that silently change behavior, such as falling back to the node role, per [avoiding fallback](https://aws.amazon.com/builders-library/avoiding-fallback-in-distributed-systems/).
-Pod Identity moves some of this to the EKS Auth service and the node agent, which changes the dependency graph but does not remove it.
+Pod Identity moves some of this to the EKS Auth service and the node agent, which changes the dependency graph but does not remove it, though the agent's 6-hour credential cache widens the cushion for pods whose credentials it already holds (AWS EKS docs, as of 2026-11).
 
 #### Follow-up Interviewer Question
 
@@ -683,16 +724,16 @@ Where is the root of trust, what is the blast radius if an AWS account is compro
 #### Model Answer
 
 I have three viable shapes.
-The first uses Google's AWS provider type: the pod uses its AWS role, builds a signed `GetCallerIdentity` request, and Google STS replays it against AWS STS to learn the caller (UNVERIFIED this session).
-The second uses an OIDC token minted by AWS for external services through its outbound federation capability, whose current status I would verify before committing (UNVERIFIED).
+The first uses Google's AWS provider type: the pod uses its AWS role, builds a signed `GetCallerIdentity` request, and Google Cloud verifies it to learn the caller (Google Cloud docs, as of 2026-11).
+The second uses an OIDC token minted by AWS through IAM outbound identity federation and `sts:GetWebIdentityToken`, launched 2025-11-19, which Google lists as an alternative mechanism (AWS and Google Cloud docs, as of 2026-11).
 The third uses my own issuer, such as a SPIFFE-based one, giving cloud-neutral identity at the cost of operating a new critical system.
 For a first design I would pick the first shape, because it reuses an identity AWS already vouches for.
 The root of trust is then the AWS account: Google trusts that STS answers truthfully about who signed, so anyone who can assume the pinned role can reach Google Cloud.
 The blast radius is set entirely by the Google attribute condition.
 I pin the condition to one specific role ARN, not the account ID, and not a role-name prefix, because anything that can create a matching role name would pass.
-I use one provider per AWS account and one pool per environment in dedicated projects, and use organization policy constraints on which AWS accounts and issuers providers may reference (constraint names UNVERIFIED).
-I map `google.subject` to a normalized role identity, because mapping the full assumed-role ARN makes every pod a separate principal and can exceed the subject length limit (UNVERIFIED).
-For revocation, AWS-side session revocation does not reach Google, so the Google-side kill switch is removing the `workloadIdentityUser` binding or disabling the provider, accepting up to the one-hour lifetime of tokens already issued (UNVERIFIED).
+I use one provider per AWS account and one pool per environment in dedicated projects, and use the organization policy constraints `iam.workloadIdentityPoolAwsAccounts` and `iam.workloadIdentityPoolProviders` on which AWS accounts and issuers providers may reference (Google Cloud docs, as of 2026-11).
+I map `google.subject` to a normalized role identity, because mapping the full assumed-role ARN makes every pod a separate principal and can exceed the 127-character subject limit: the fixed prefix is 39 characters, and a role name and session name can each reach 64 (Google Cloud and AWS IAM docs, as of 2026-11).
+For revocation, AWS-side session revocation does not reach Google, so the Google-side kill switch has two levels: disabling the provider stops new exchanges, while disabling the pool or the impersonated service account, or adding an IAM deny policy, also stops active tokens that would otherwise live up to an hour (Google Cloud docs, as of 2026-11).
 For attribution, Google audit logs identify the federated principal (and the impersonated service account), but that is the role, not the pod.
 Pod-level attribution has to be carried by a field I control, such as the AWS role session name or a request label, joined to CloudTrail.
 Whether this is acceptable depends on the audit requirement, and if per-pod attribution is mandatory I need a per-service role, not a per-fleet role.
@@ -712,14 +753,14 @@ What would you change in the node design for a fleet that runs both regulated an
 Start with the common baseline: root on a node can read every projected token file of pods on that node, because the kubelet writes them to node disk.
 Under IRSA the attacker holds JWTs for those pods and can exchange them at STS from anywhere until `exp`, which is up to 24 hours by default.
 The exchange needs no AWS credentials, so the node role is irrelevant to the exchange, and the stolen identity is portable.
-Under Pod Identity the attacker also has the pod tokens, but the exchange that mints credentials goes through the EKS Auth API with the node's IAM role as a co-factor (secondary, as of 2026-10), which constrains where the exchange can be done from and ties the activity to the node role in CloudTrail.
-Whether it can be replayed off-node depends on EKS Auth's checks, which AWS does not document in the sources I could verify (UNVERIFIED), so I assume the portable-token worst case when threat modeling.
+Under Pod Identity the attacker also has the pod tokens, but the exchange that mints credentials goes through the EKS Auth API with the node's IAM role as a co-factor (AWS EKS docs, as of 2026-11), which constrains where the exchange can be done from and ties the activity to the node role in CloudTrail.
+Whether it can be replayed off-node depends on EKS Auth's checks, which the API reference does not describe (as of 2026-11), so I assume the portable-token worst case when threat modeling.
 Under GKE the pod holds no file credential.
-The attacker on the node, however, can reach the node-local metadata server and can obtain tokens for any pod on that node by impersonating its network identity, and a compromise of the metadata server is a compromise of every identity on that node (UNVERIFIED mechanism details).
+The attacker on the node, however, can reach the node-local metadata server and can obtain tokens for any pod on that node by impersonating its network identity, and a compromise of the metadata server is a compromise of every identity on that node (UNVERIFIED: Google docs omit the attribution mechanism this relies on).
 All three share the same truth: the blast radius equals the set of identities scheduled on the node, plus the node role.
 So the design change is scheduling isolation, not a different federation product.
 Regulated and unregulated workloads go to separate node pools with taints and tolerations, ideally separate clusters for the highest tier.
-The node role is minimal, IMDSv2 is required with hop limit 1 (secondary, as of 2026-10), and short token TTLs are weighed against API server load.
+The node role is minimal, IMDSv2 is required with hop limit 1 (AWS EKS best practices, as of 2026-11), and short token TTLs are weighed against API server load.
 Detection is on the cloud side: alert on the same session used from an unexpected network, since that is the one signal an attacker cannot avoid creating.
 For the strictest tier, confidential or dedicated nodes plus one-workload-per-node placement bound the loss to one identity.
 

@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://sre.google/workbook/alerting-on-slos/"
@@ -11,6 +11,33 @@ sources:
   - "https://sre.google/sre-book/service-level-objectives/"
   - "https://aws.amazon.com/builders-library/building-dashboards-for-operational-visibility/"
   - "https://aws.amazon.com/message/101925/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-cloudwatch-metrics.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Statistics-definitions.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_concepts.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/alarm-evaluation.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/alarm-promql.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_PutMetricAlarm.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_limits.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-ServiceLevelObjectives.html"
+  - "https://aws.amazon.com/cloudwatch/pricing/"
+  - "https://docs.aws.amazon.com/sns/latest/dg/sns-key-management.html"
+  - "https://docs.cloud.google.com/monitoring/service-monitoring/slo-concepts"
+  - "https://docs.cloud.google.com/stackdriver/docs/solutions/slo-monitoring/alerting-on-budget-burn-rate"
+  - "https://docs.cloud.google.com/stackdriver/docs/solutions/slo-monitoring/api/timeseries-selectors"
+  - "https://docs.cloud.google.com/stackdriver/docs/solutions/slo-monitoring/api/api-structures"
+  - "https://docs.cloud.google.com/monitoring/api/ref_v3/rest/v3/services.serviceLevelObjectives"
+  - "https://docs.cloud.google.com/monitoring/api/metrics_gcp_p_z"
+  - "https://docs.cloud.google.com/monitoring/quotas"
+  - "https://docs.cloud.google.com/monitoring/mql"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/supported-products"
+  - "https://cloud.google.com/products/observability/pricing"
+  - "https://www.vldb.org/pvldb/vol13/p3181-adams.pdf"
+  - "https://www.vldb.org/pvldb/vol8/p1816-teller.pdf"
+  - "https://research.google/pubs/the-tail-at-scale/"
+  - "https://prometheus.io/docs/practices/histograms/"
+  - "https://hdrhistogram.github.io/HdrHistogram/"
 ---
 
 # SLIs, SLOs, and Error Budget Engineering
@@ -62,7 +89,7 @@ A well-formed SLI has three parts:
 The measurement point determines what you cannot see:
 
 - Server-side counters miss requests that never reach the server (DNS failure, connection refused, TLS failure, overloaded accept queues).
-- Load balancer metrics see requests the LB accepted. In AWS ALB, `RequestCount` is incremented only when the node could choose a target, so a 503 generated because no healthy target exists can be absent from the denominator (AWS docs, as of 2026-10, UNVERIFIED in this pass).
+- Load balancer metrics see requests the LB accepted. In AWS ALB, `RequestCount` is incremented only when the node could choose a target, so a 503 generated because no healthy target exists can be absent from the denominator (AWS ALB docs, as of 2026-11). On GCP, Cloud Run `request_count` likewise excludes requests that do not reach container instances, such as unauthorized requests or requests arriving when the maximum number of instances is reached (Google Cloud metrics list, as of 2026-11).
 - Client-side or edge measurement sees what users see, but you may not own the client.
 - Synthetic probes see a constant, known workload, but only the paths you encode.
 
@@ -80,14 +107,14 @@ Cumulative histogram buckets do compose: you sum bucket counters across instance
 That ratio is a proper SLI and feeds the same burn-rate machinery as availability.
 
 Histogram quantile estimation also has a systematic error.
-Prometheus-style `histogram_quantile` assumes observations are uniformly distributed inside a bucket and interpolates linearly, so error is bounded by the bucket width at the quantile.
+Prometheus-style `histogram_quantile` assumes observations are uniformly distributed inside a bucket and interpolates linearly, so error is bounded by the bucket width at the quantile (Prometheus docs, as of 2026-11).
 If you define the SLO threshold at a bucket boundary you read the exact count, with no interpolation.
 This is why the SLO threshold must be a bucket boundary, and why changing bucket layouts during a deploy silently changes the SLI.
 High-dynamic-range histograms (HdrHistogram, Gil Tene's "How NOT to Measure Latency" work) keep bounded relative error across several orders of magnitude, at the cost of more series or memory.
 
 On AWS, CloudWatch publishes percentile statistics per period and dimension set, and percentiles cannot be recombined afterwards.
-CloudWatch also offers a percentile-rank statistic (`PR(lower:upper)`) that returns the fraction of samples within a range, which is exactly a good-fraction latency SLI (AWS docs, as of 2026-10, UNVERIFIED in this pass).
-On GCP, Cloud Monitoring distribution metrics carry bucket counts, and a distribution-cut SLI counts the fraction of samples in a range (Google Cloud docs, as of 2026-10, UNVERIFIED in this pass).
+CloudWatch also offers a percentile-rank statistic (`PR(lower:upper)`, lower bound exclusive, upper bound inclusive) that returns the percentage of samples within a range, which is exactly a good-fraction latency SLI, and it needs raw data points rather than statistic sets (AWS docs, as of 2026-11).
+On GCP, Cloud Monitoring distribution metrics carry bucket counts, and a distribution-cut SLI counts the fraction of samples in a range (Google Cloud docs, as of 2026-11).
 
 Fan-out makes tail latency worse than per-service numbers suggest.
 Dean and Barroso (CACM 2013, "The Tail at Scale") give the example that if each of 100 servers exceeds 1 s on 1% of requests, then 1 - 0.99^100 = 63% of user requests that wait on all 100 will see at least one slow response.
@@ -138,12 +165,12 @@ Mitigations: a minimum-volume guard on the short window, request-weighted budget
 Without the short window, a long-window alert stays firing long after the incident ends.
 For a 1-hour window and a threshold of 1.44%, an outage of any length keeps the alert in ALARM until almost all of the bad minutes age out of the window, which is about 59 minutes after recovery (derived).
 The short window is ANDed in so the alert clears when the problem is actually gone.
-The Workbook suggests a short window of one twelfth of the long window (Google SRE Workbook ch. 5, as cited by Splunk Observability docs, as of 2026-10).
+The Workbook suggests a short window of one twelfth of the long window (Google SRE Workbook ch. 5, as of 2026-11).
 The simulator measures reset times of 5 minutes (page, fast), 30 minutes (page, slow), and 6 hours (ticket) after a total outage, matching the short windows.
 The Workbook also quantifies the alternative: alerting when a 10-minute error ratio simply reaches the SLO fires on events that consume only 0.02% of the monthly budget, and can fire up to 144 times per day while the service still meets its SLO (Google SRE Workbook ch. 5, as of 2026-10).
 
 Gaps are by design.
-A sustained 5.9x burn never pages under the table above and only produces a ticket after 3 days, having already consumed about 10% and heading for exhaustion in about 5 days.
+A sustained 5.9x burn never pages under the table above and only produces a ticket, which fires after about 12 hours (72 h / 5.9, derived) with about 10% consumed and exhaustion about 5 days from the start.
 If that is unacceptable, add a tier (for example 3x over 1 day) rather than lowering the 6x threshold.
 
 ### Sliding versus tumbling windows, and pipeline lag
@@ -151,13 +178,14 @@ If that is unacceptable, add a tier (for example 3x over 1 day) rather than lowe
 The guarantees above assume a true sliding window evaluated frequently.
 Prometheus-style recording rules with range vectors and Cloud Monitoring's `select_slo_burn_rate(slo, lookback)` filter both compute over a trailing interval.
 CloudWatch metric alarms evaluate a statistic per period, and each evaluation uses datapoints at the alarm's period granularity.
-Whether a 1-hour-period alarm sees a sliding hour or period-aligned buckets, including partially filled ones, changes the window guarantee, and you should verify it from alarm history before trusting the invariant above (AWS docs, as of 2026-10, UNVERIFIED in this pass).
+By default that evaluation is a sliding window: for any period of one minute or longer the alarm is evaluated every minute over the window set by period and evaluation periods, and the window is not aligned to the wall clock unless you opt in (AWS docs, as of 2026-11).
+Multi-day alarms are the exception: they are evaluated once per hour using data up to the top of the hour, so a 3-day window can react about an hour late (AWS docs, as of 2026-11).
 An "N out of M datapoints" alarm is a different statistic from a window ratio.
 Requiring 6 consecutive hourly ratios above 6x is stricter than requiring the 6-hour aggregate ratio above 6x: a single 36x hour followed by five clean hours pages in the second case and never in the first.
 
 Total alert latency is the sum of:
 
-- Metric emission and ingestion delay. ALB publishes at 60-second granularity (AWS docs, as of 2026-10, UNVERIFIED in this pass). Cloud Monitoring documents a per-metric visibility delay, up to about 180 seconds for many system metrics (Google Cloud docs, as of 2026-10, UNVERIFIED in this pass).
+- Metric emission and ingestion delay. ALB publishes at 60-second intervals, and only while requests are flowing (AWS ALB docs, as of 2026-11). Cloud Monitoring documents a per-metric visibility delay after sampling, commonly 120 to 300 seconds, and 120 seconds after 60-second sampling for Cloud Run `request_count` (Google Cloud metrics list, as of 2026-11).
 - Evaluation interval of the alert engine.
 - Notification delivery and human acknowledgement.
 
@@ -242,7 +270,7 @@ Use evaluation-based quality SLIs fed by sampled production traffic; see [[13-Ag
 - Beyer et al., Site Reliability Engineering (O'Reilly 2016), ch. 4 "Service Level Objectives", and the Site Reliability Workbook (2018), ch. 2 and ch. 5.
 - Dean and Barroso, "The Tail at Scale", CACM 2013.
 - Adams et al., "Monarch: Google's Planet-Scale In-Memory Time Series Database", VLDB 2020, for how a planet-scale metrics system separates collection, evaluation, and regional versus global query paths.
-- Pelkonen et al., "Gorilla: A Fast, Scalable, In-Memory Time Series Database", VLDB 2015, for the observation that monitoring data is read mostly in the last few hours and that availability of recent data beats durability of old data.
+- Pelkonen et al., "Gorilla: A Fast, Scalable, In-Memory Time Series Database", VLDB 2015, for the observation that at least 85% of queries to Facebook's earlier ODS store were for data from the past 26 hours and that availability of recent data beats durability of old data.
 
 ## Numbers to Know
 
@@ -258,35 +286,37 @@ Use evaluation-based quality SLIs fed by sampled production traffic; see [[13-Ag
 | Time to exhaust 30-day budget at burn 14.4 / 6 / 1 | 50 h / 120 h / 30 d | derived |
 | Error-ratio thresholds at 99.9% for those tiers | 1.44% / 0.6% / 0.1% | derived |
 | Error-ratio thresholds at 99.99% | 0.144% / 0.06% / 0.01% | derived |
-| Short window to long window ratio | 1/12 | Google SRE Workbook, as cited by Splunk docs, as of 2026-10 |
+| Short window to long window ratio | 1/12 | Google SRE Workbook ch. 5, as of 2026-11 |
 | Naive 10-minute "error ratio >= SLO" alert | up to 144 alerts/day while still meeting SLO; each event may consume only 0.02% of monthly budget | Google SRE Workbook ch. 5, as of 2026-10 |
 | Low-traffic example | 10 req/h, 99.9% SLO: one failure is a 10% hourly error ratio, 13.9% of the 30-day budget, and the budget allows about 7 failures per 30 days | Google SRE Workbook ch. 5, as of 2026-10 (the text prints 1,000x burn; the arithmetic gives 100x) |
 | Example policy windows | 4-week budget window; postmortem if one incident consumes more than 20% | Google SRE Workbook, Example Error Budget Policy, as of 2026-10 |
 | Freeze after a 4-hour total outage, rolling 30d, 99.9%, binary in/out-of-SLO rule | about 30 days | derived |
 | Serial availability of 3 hard dependencies at 99.95% | 99.85% | derived |
 | Fan-out tail: 100 servers, each 1% slow | 63% of requests see at least one slow response | Dean and Barroso, CACM 2013 |
-| ALB metric publication interval | 60 s | AWS docs, as of 2026-10, UNVERIFIED in this pass |
-| Cloud Monitoring metric visibility delay | up to about 180 s for many system metrics | Google Cloud docs, as of 2026-10, UNVERIFIED in this pass |
-| CloudWatch high-resolution alarm period | 10 s or 30 s | AWS docs, as of 2026-10, UNVERIFIED in this pass |
-| CloudWatch alarm price | order of $0.10 to $0.30 per alarm-month depending on type | AWS pricing, as of 2026-10, UNVERIFIED in this pass |
+| ALB metric publication interval | 60 s | AWS ALB docs, as of 2026-11 |
+| Cloud Monitoring metric visibility delay after sampling | commonly 120 to 300 s by metric; 120 s for Cloud Run `request_count` | Google Cloud metrics list, as of 2026-11 |
+| CloudWatch high-resolution alarm period | 10 s, 20 s, or 30 s | AWS PutMetricAlarm API reference, as of 2026-11 |
+| CloudWatch alarm evaluation range | period * evaluation periods up to 7 days, or up to 1 day when the period is under 1 hour | AWS PutMetricAlarm API reference, as of 2026-11 |
+| CloudWatch alarm price | $0.10 per standard-resolution alarm metric (metric math alarms pay per listed metric), $0.30 per high-resolution alarm, $0.50 per composite alarm, per month | AWS CloudWatch pricing examples, as of 2026-11 |
+| Cloud Monitoring alerting price | not charged yet; no sooner than 2027-09-01, $0.35 per metric reference per month plus $0.50 per million points returned | Google Cloud Observability pricing, as of 2026-11 |
 
 ## AWS vs GCP Mechanism Parity
 
 | Mechanism | AWS | GCP |
 | --- | --- | --- |
-| Native SLO object | CloudWatch Application Signals service level objectives with request-based and period-based SLIs, rolling or calendar intervals (AWS docs, as of 2026-10, UNVERIFIED in this pass) | Cloud Monitoring Service Monitoring SLOs: request-based and windows-based SLIs, rolling or calendar compliance periods (Google Cloud docs, as of 2026-10, UNVERIFIED in this pass) |
-| Burn-rate alert primitive | Application Signals burn-rate alarms (UNVERIFIED), or DIY metric-math alarms plus composite alarms | `select_slo_burn_rate(slo, lookback)` filter in an alert policy condition (Google Cloud docs, as of 2026-10, UNVERIFIED in this pass) |
+| Native SLO object | CloudWatch Application Signals service level objectives with request-based and period-based SLIs, rolling or calendar intervals (AWS docs, as of 2026-11) | Cloud Monitoring Service Monitoring SLOs: request-based and windows-based SLIs, rolling or calendar compliance periods (Google Cloud docs, as of 2026-11) |
+| Burn-rate alert primitive | Application Signals burn-rate alarms with a look-back window (AWS docs, as of 2026-11), or DIY metric-math alarms plus composite alarms | `select_slo_burn_rate(slo, lookback)` filter in an alert policy condition (Google Cloud docs, as of 2026-11) |
 | Multiwindow AND | `aws_cloudwatch_composite_alarm` with `ALARM(a) AND ALARM(b)` | Alert policy with `combiner = "AND"` over two conditions |
-| Window semantics | Alarm period and evaluation periods; period-aligned versus sliding must be verified from alarm history; max evaluation range is capped (UNVERIFIED) | Lookback duration over trailing interval for SLO burn rate |
+| Window semantics | Alarm period and evaluation periods; sliding window by default, evaluated every minute (hourly for multi-day alarms), wall-clock alignment optional; evaluation range capped at 7 days, or 1 day for periods under 1 hour (AWS docs, as of 2026-11) | Lookback duration over trailing interval for SLO burn rate; burn-rate alerts cannot use a lookback over 24 hours, so a 3-day ticket tier does not map directly (Google Cloud docs, as of 2026-11) |
 | Prometheus-native alternative | Amazon Managed Service for Prometheus with recording and alerting rules | Google Cloud Managed Service for Prometheus, rules evaluated in managed rule evaluators |
-| Ratio from raw metrics | Metric math with `FILL` and `IF` for sparse series and zero denominators | MQL or PromQL ratio of aligned rate series; SLO filters take good, bad, and total filters |
-| Latency SLI from distributions | Percentile-rank statistic or EMF histograms; no native cumulative-bucket sum across arbitrary dimensions (UNVERIFIED) | Distribution metrics with bucket counts; distribution-cut SLI |
+| Ratio from raw metrics | Metric math with `FILL` and `IF` for sparse series and zero denominators | PromQL ratio of aligned rate series (MQL left the console and lost customer support on 2025-07-22, and remains API-only; Google Cloud docs, as of 2026-11); SLO filters take exactly two of good, bad, and total filters |
+| Latency SLI from distributions | Percentile-rank statistic or EMF histograms; CloudWatch does not aggregate custom metrics across dimensions, so statistics exist only for the dimension combinations you published (AWS docs, as of 2026-11) | Distribution metrics with bucket counts; distribution-cut SLI |
 | Missing data | `treat_missing_data` per alarm: breaching, notBreaching, ignore, missing | Alert policy "no data" handling per condition; metric-absence conditions |
 | Edge SLI source | ALB/NLB/CloudFront metrics, CloudWatch Synthetics canaries | Load balancer and Cloud Run request metrics, Uptime checks from multiple regions |
 | IaC resources | `aws_cloudwatch_metric_alarm`, `aws_cloudwatch_composite_alarm`, `aws_budgets_budget` | `google_monitoring_custom_service`, `google_monitoring_slo`, `google_monitoring_alert_policy`, `google_billing_budget` |
 | Notification path | SNS topic with CloudWatch alarm actions | Notification channels (email, Pub/Sub, webhooks, and others) |
 | Consensus and consistency note | Metrics are eventually consistent across the pipeline; the alarm engine reads recent data that may still be filling in | Same; per-metric ingestion delay is documented in the metric descriptor |
-| Key difference | Native alarms are per-period statistics, so sliding-window burn rate needs Application Signals or AMP | Burn-rate over a lookback is a first-class filter, so multiwindow is two conditions |
+| Key difference | Native metric alarms already slide, but each alarm has one window, so multiwindow needs two alarms plus a composite; Application Signals burn-rate alarms, AMP rules, and PromQL alarms on OTLP-ingested metrics are alternatives (AWS docs, as of 2026-11) | Burn-rate over a lookback is a first-class filter, so multiwindow is two conditions |
 
 ## Worked Example: Multiwindow Burn-Rate Alerts on Both Clouds, With a Simulator
 
@@ -299,7 +329,7 @@ Workload: an HTTP API at 200 requests per second with a 99.9% availability SLO o
 3. Page tier 1 (14.4x, 1h/5m): threshold error ratio 1.44% means 2.88 failed requests per second. It fires after about 2% of budget, which is 10,368 failures.
 4. Page tier 2 (6x, 6h/30m): 0.6% means 1.2 failures per second, firing after 5% of budget, which is 25,920 failures.
 5. Minimum useful traffic for the 5-minute window. At 1.44% you want at least about 5 expected failures in the short window to avoid single-error pages: 300 s * rps * 0.0144 >= 5 means rps >= 1.16. Below that, use a minimum-volume guard or the low-traffic options in the Workbook (artificial traffic, combine services, or change the product so a failure is less impactful).
-6. Alarm count: 2 page tiers * (2 window alarms + 1 composite) = 6 alarms per service. For 200 services that is 1,200 alarms. At an assumed $0.10 to $0.30 per alarm-month (AWS pricing, as of 2026-10, UNVERIFIED in this pass) that is $120 to $360 per month, a figure to weigh against a managed SLO product or a single Prometheus rule group.
+6. Alarm count: 2 page tiers * (2 window alarms + 1 composite) = 6 alarms per service, which is 4 metric alarms and 2 composites. For 200 services that is 1,200 alarms. Metric math alarms pay per listed metric at $0.10 and composites pay $0.50 per month (AWS CloudWatch pricing examples, as of 2026-11), so with the 3 metrics per alarm in Step 3 each service costs 4 * 3 * $0.10 + 2 * $0.50 = $2.20 per month, or $440 per month for 200 services, a figure to weigh against a managed SLO product or a single Prometheus rule group.
 
 ### Step 2: simulator (runs offline, ASCII, numpy only)
 
@@ -379,7 +409,7 @@ A 4-minute total outage burns 9.3% of the budget and the slow page fires only 3 
 
 This sketch uses ALB metrics.
 `FILL` handles sparse series where a metric is not emitted for periods with zero events, and `IF` guards division by zero.
-The denominator adds `HTTPCode_ELB_5XX_Count` because `RequestCount` excludes requests rejected before a target is chosen (AWS docs, as of 2026-10, UNVERIFIED in this pass); a small double count is possible for 504s emitted after target selection.
+The denominator adds `HTTPCode_ELB_5XX_Count` because `RequestCount` excludes requests rejected before a target is chosen (AWS ALB docs, as of 2026-11); a small double count is possible for 504s emitted after target selection.
 Validate with `terraform validate` and test the expression in the console before relying on it.
 
 ```hcl
@@ -500,8 +530,8 @@ resource "aws_budgets_budget" "lab" {
 ```
 
 Two caveats are baked into this design.
-Each window alarm uses one datapoint at a period equal to the window, which approximates a trailing window only to the extent CloudWatch evaluates the most recent period; verify with `aws cloudwatch describe-alarm-history` while injecting synthetic 5xx at a known rate.
-The 3-day ticket tier is omitted because a 259,200-second alarm period may exceed alarm limits (UNVERIFIED in this pass); use a daily report from Application Signals or Prometheus for that tier.
+Each window alarm uses one datapoint at a period equal to the window, and CloudWatch evaluates it every minute over a sliding window by default (AWS docs, as of 2026-11), so it behaves as a trailing window; recent datapoints can still be filling in, so verify detection timing with `aws cloudwatch describe-alarm-history` while injecting synthetic 5xx at a known rate.
+The 3-day ticket tier is omitted to keep the lab small, not because of a limit: a 259,200-second period with one evaluation period is within the 604,800-second cap, but a multi-day alarm is evaluated only once per hour (AWS docs, as of 2026-11), so a daily report from Application Signals or Prometheus is a reasonable alternative for that tier.
 
 ### Step 4: GCP - Service Monitoring SLO plus burn-rate alert policy
 
@@ -618,7 +648,7 @@ resource "google_billing_budget" "lab" {
 
 ### Step 5: cost, validation, and teardown
 
-- Cost estimate: 6 alarms, 1 SNS topic, and 1 budget on AWS; 1 SLO, 2 alert policies, 1 channel, and 1 budget on GCP. The estimate is a few dollars per month at most under the assumed unit prices, plus whatever the monitored workload costs. Alarm and alert-policy unit prices are UNVERIFIED in this pass; check current pricing pages before applying.
+- Cost estimate: 6 alarms ($2.20 per month from Step 1), 1 SNS topic, and 1 budget on AWS; 1 SLO, 2 alert policies, 1 channel, and 1 budget on GCP, where Cloud Monitoring does not charge for alerting until no sooner than 2027-09-01 (Google Cloud Observability pricing, as of 2026-11). The estimate is a few dollars per month at most, plus whatever the monitored workload costs. Check current pricing pages before applying.
 - Validation: inject a known error rate (for example a fault-injecting sidecar returning 503 for 3% of requests) and check that both tiers fire in the order the simulator predicts. Inject a 100% failure for 5 minutes and confirm the fast page fires within about 2 to 4 minutes (60 to 180 seconds of metric delay plus window math) and clears within about 5 to 10 minutes.
 - Teardown, run in each stack directory:
 
@@ -641,7 +671,8 @@ In Cloud Monitoring, add a metric-absence condition for the SLI's total series.
 When a regional load balancer, DNS record, or certificate fails, in-region server metrics show fewer requests, not more errors.
 The ratio stays healthy while users see failures.
 Public post-incident analyses show how failures in shared dependencies and control planes hit monitoring and paging at the same time as the services they watch.
-Examples to study: AWS's post-event summary for the October 2025 us-east-1 disruption rooted in DynamoDB DNS management (https://aws.amazon.com/message/101925/, details UNVERIFIED in this pass), and Google Cloud's incident report for the June 2025 Service Control event on status.cloud.google.com (details UNVERIFIED in this pass).
+Examples to study: AWS's post-event summary for the October 19-20, 2025 us-east-1 disruption, where a latent race in DynamoDB's automated DNS management left an empty DNS record for the regional endpoint (https://aws.amazon.com/message/101925/), though it does not discuss customer monitoring impact.
+Google Cloud's incident report for the June 12, 2025 Service Control event describes a quota policy with blank fields that replicated globally and crashed binaries on an unhandled null pointer, with Cloud Service Health itself down and some customers' monitoring tools on Google Cloud failing (https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW).
 The SLO lesson is the same in both: a regional or global dependency event can spend a month's budget in hours across many services at once, per-service freeze rules do not model this, and your paging path must not share its failure domain with the thing being paged on.
 See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
@@ -671,7 +702,7 @@ Segment SLIs by tenant tier or cell (see [[17-Cloud-AI-Engineering/Volume_01_Clo
 
 ### Canary traffic hidden by aggregate SLIs
 
-A 5% canary failing completely is a 5% error ratio in aggregate and pages at 50x burn, but a 1% canary failing completely is below a 14.4x threshold at 99.9% only if the failure rate is under 1.44%.
+A 5% canary failing completely is a 5% error ratio in aggregate and pages at 50x burn, but a 1% canary failing completely is a 1% error ratio, a 10x burn, which stays below the 14.4x threshold at 99.9% and reaches only the 6x tier after about 3.6 hours (derived).
 Use a per-version SLI for canary analysis; see [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_06_Progressive_Delivery_and_Deployment_Pipelines|Progressive Delivery and Deployment Pipelines]].
 
 ### SLO set to current performance
@@ -694,7 +725,9 @@ A minimum-volume guard on the short window is a common additional mitigation.
 
 ### Alert-engine and quota limits
 
-Large alarm fleets hit account quotas for alarms and API throttles on `PutMetricAlarm` and `GetMetricData` (AWS docs, as of 2026-10, UNVERIFIED in this pass), and per-project alert policy and condition quotas on GCP (Google Cloud docs, as of 2026-10, UNVERIFIED in this pass).
+Large alarm fleets on AWS hit API rate quotas rather than an alarm count: standard alarms have no count limit, but `PutMetricAlarm` and `PutCompositeAlarm` default to 3 requests per second and `GetMetricData` to 500 per second, all adjustable, while Metrics Insights alarms are capped at 200 and PromQL alarms at 15,000 per Region (AWS docs, as of 2026-11).
+Application Signals defaults to 250 SLOs per Region and 100 per service, both adjustable (AWS docs, as of 2026-11).
+On GCP the quotas are per metrics scope: 2,000 alert policies, raisable to 10,000, with 6 conditions per metric-based policy, plus 500 SLOs per service (Google Cloud docs, as of 2026-11).
 Manage alerts as generated code from SLO definitions, not by hand, and test the generator.
 
 ## Security and Cost Angles
@@ -703,19 +736,19 @@ Manage alerts as generated code from SLO definitions, not by hand, and test the 
 
 - The release-gate service needs read access to metrics only (for example `cloudwatch:GetMetricData` on AWS and `roles/monitoring.viewer` on GCP) and write access to one feature flag or pipeline variable. It must not hold deploy permissions, so a compromised gate cannot ship code.
 - Restrict who can edit SLO definitions, alarm actions, and notification channels. Weakening an alert or muting a route is an integrity attack on your reliability signal. Require code review and log changes through CloudTrail and Cloud Audit Logs.
-- CloudWatch alarms publishing to an SNS topic encrypted with a customer managed KMS key need the key policy to allow the CloudWatch service principal, otherwise notifications fail silently. Test the full path with `aws cloudwatch set-alarm-state` (AWS docs, as of 2026-10, UNVERIFIED in this pass).
+- CloudWatch alarms publishing to an SNS topic encrypted with a customer managed KMS key need the key policy to allow the CloudWatch service principal, otherwise notifications fail silently, because CloudWatch does not test or validate alarm actions or detect SNS errors. The service principal `cloudwatch.amazonaws.com` needs `kms:GenerateDataKey*` and `kms:Decrypt`. Test the full path with `aws cloudwatch set-alarm-state` (AWS docs, as of 2026-11).
 - SNS topic policies should restrict `sns:Publish` to the specific alarm ARNs with `aws:SourceArn` and `aws:SourceAccount` conditions.
 
 ### Private network boundaries
 
-- Keep probers and notification webhooks inside controlled egress paths. On AWS use VPC endpoints for CloudWatch and SNS where supported; on GCP confirm that the Monitoring API is covered by your VPC Service Controls perimeter and that on-call tooling can still reach it during an incident (Google Cloud docs, as of 2026-10, UNVERIFIED in this pass).
+- Keep probers and notification webhooks inside controlled egress paths. On AWS use VPC endpoints for CloudWatch and SNS where supported; on GCP confirm that the Monitoring API is covered by your VPC Service Controls perimeter and that on-call tooling can still reach it during an incident (`monitoring.googleapis.com` is protectable by perimeters; Google Cloud docs, as of 2026-11).
 - Do not put customer identifiers, prompts, or other sensitive content in metric labels or alarm descriptions. SLI dimensions should be coarse (route, tier, cell), not per-user.
 
 ### Unit economics
 
 - The cost of each nine is roughly a 10x smaller budget. Going from 99.9% (43.2 min per month) to 99.99% (4.3 min) usually requires multi-zone or multi-region active-active, automated failover tested monthly, and staffed on-call coverage, so price the SLO before agreeing to it.
 - Alarm and series counts scale as services * tiers * windows. Generate rules from SLO specs and share recording rules across services.
-- High-resolution metrics and custom metrics have per-metric charges (AWS pricing, as of 2026-10, UNVERIFIED in this pass). Prefer counters emitted by the load balancer or mesh over per-request custom metrics where the SLI allows.
+- Custom metrics have per-metric charges, $0.30 per metric-month for the first 10,000, and high-resolution metrics add `PutMetricData` calls and costlier alarms (AWS CloudWatch pricing examples, as of 2026-11). Prefer counters emitted by the load balancer or mesh over per-request custom metrics where the SLI allows.
 - Log-based SLIs are costly at high volume. Use counters for the SLI and logs for debugging.
 - Error budget as a currency. A budget left unspent is waste. A policy that converts remaining budget into faster rollout cadence, chaos experiments, or capacity cuts turns reliability into a cost lever; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics|GPU and TPU Unit Economics]] for the accelerator-side trade-off.
 
@@ -723,7 +756,7 @@ Manage alerts as generated code from SLO definitions, not by hand, and test the 
 
 An SLA is a contract with financial remedy, usually looser than the internal SLO, with exclusions and a claim process.
 Keep the internal SLO strictly tighter than any SLA you offer, and do not assume that a provider's SLA credit compensates for your own customers' losses.
-Provider SLA figures change; check current terms before basing a design on them (UNVERIFIED in this pass).
+Provider SLA figures change; check current terms before basing a design on them.
 
 ## Interview Questions and Model Answers
 
@@ -770,7 +803,7 @@ If throttling is a deliberate rate limit protecting the service from a misbehavi
 If throttling is caused by my own capacity shortfall, it is a failure from the user's point of view and counts as bad.
 
 Good events are non-5xx responses.
-I also count timeouts and connection failures the load balancer observed, which on AWS means adding `HTTPCode_ELB_5XX_Count` to both the numerator side of bad and the denominator, because `RequestCount` does not include requests rejected before target selection (AWS docs, as of 2026-10, UNVERIFIED in this pass).
+I also count timeouts and connection failures the load balancer observed, which on AWS means adding `HTTPCode_ELB_5XX_Count` to both the numerator side of bad and the denominator, because `RequestCount` does not include requests rejected before target selection (AWS ALB docs, as of 2026-11).
 
 Measurement: load balancer metrics are the primary pager signal because they are fast and independent of the application.
 They miss requests that never reach the LB, so I add a black-box prober from outside the region and, if I own the clients, a client-side SLI.
@@ -780,7 +813,7 @@ Divergence between the LB SLI and the prober SLI is itself an alert.
 
 Most of your clients retry on 503 up to three times. A dependency starts failing 30% of calls. What does each SLI show, and what do you alert on?
 
-Expected direction: the client logical-request SLI shows about 3% failures (0.3^3 = 2.7%), the per-attempt SLI shows 30%, and load on the dependency has increased by up to 1 + 0.3 + 0.09 + 0.027 = about 1.42x, so alert on per-attempt burn and on retry ratio, and cap retries with budgets.
+Expected direction: with one attempt plus three retries and independent failures, the client logical-request SLI shows about 0.8% failures (0.3^4 = 0.81%), the per-attempt SLI shows 30%, and load on the dependency has increased by up to 1 + 0.3 + 0.09 + 0.027 = about 1.42x, so alert on per-attempt burn and on retry ratio, and cap retries with budgets.
 
 ### Question 3 (L6 - Staff)
 
@@ -804,7 +837,7 @@ Third, a percentile threshold gives no tail information about the 1% it excludes
 Replacement: define the SLI as the fraction of requests faster than 300 ms.
 In Prometheus-style systems that is the `le="0.3"` bucket divided by the total count, summed across instances.
 The threshold must sit exactly on a bucket boundary, otherwise interpolation introduces error up to the bucket width.
-On CloudWatch I would emit the data as a distribution and use a percentile-rank statistic, or compute good and total counters from EMF and use a ratio metric-math alarm (AWS docs, as of 2026-10, UNVERIFIED in this pass).
+On CloudWatch I would publish raw values and use a percentile-rank statistic, which alarms accept as `PR(n:m)`, or compute good and total counters from EMF and use a ratio metric-math alarm (AWS docs, as of 2026-11).
 The same multiwindow burn-rate machinery then applies unchanged, with the SLO stated as "99% of requests under 300 ms over 30 days".
 
 Operational caveat: bucket layouts are part of the SLI.
@@ -828,7 +861,7 @@ Checks, in order of cheapest to most structural:
 1. Was data arriving? Look at the SLI numerator and denominator series for the period. If the denominator dropped to zero, the alarm's missing-data policy (`notBreaching`) or the absence of an absence-alert explains the silence.
 2. Was the measurement point inside the failure? If the regional load balancer, DNS, or certificate was the failing component, server-side and LB metrics saw no requests. That is the survivorship problem: failed requests are never counted.
 3. Was the alert engine or the notification path degraded? Check alarm history for evaluation errors, and test the SNS or notification channel path. If the pager depended on the same region, it may have been down.
-4. Were thresholds and windows correct for this failure shape? A partial failure at 3% errors is a 30x burn on 99.9%, which should have paged. A 0.8% failure for 40 minutes is 8x, which pages only on the 6-hour tier after about 3.75 hours at constant rate, because 8x is below 14.4x. Whether that is a policy gap is a product decision.
+4. Were thresholds and windows correct for this failure shape? A partial failure at 3% errors is a 30x burn on 99.9%, which should have paged. A 0.8% failure is 8x, which is below 14.4x and pages only on the 6-hour tier after about 4.5 hours at constant rate (6 h * 6 / 8), so a 40-minute event at that rate never pages. Whether that is a policy gap is a product decision.
 
 Changes: a prober in another region and, ideally, another provider path that exercises DNS, TLS, and the full data path, feeding the same SLI; an absence alarm on the denominator; a pager route that does not depend on the affected region (static stability applied to monitoring); and a game-day that kills the metric pipeline to prove the absence alarm works.
 I also add a tier or lower the slow-page threshold only if the budget impact of the missed pattern justifies the extra noise, using the simulator to estimate precision.
@@ -945,7 +978,7 @@ Expected direction: suspect the SLI definition (blind to client-side failures, s
 - Adams et al., "Monarch: Google's Planet-Scale In-Memory Time Series Database", VLDB 2020 - How a planet-scale metrics system structures collection, evaluation, and queries, which bounds what freshness and availability an SLI pipeline can promise.
 - Pelkonen et al., "Gorilla: A Fast, Scalable, In-Memory Time Series Database", VLDB 2015 - Why recent monitoring data is prioritised for availability, and the compression that makes high-resolution SLIs affordable.
 - [AWS Builders' Library: Building dashboards for operational visibility](https://aws.amazon.com/builders-library/building-dashboards-for-operational-visibility/) - Practical guidance on what operators need to see during an incident, relevant to SLO and budget dashboards.
-- [AWS: Summary of the Amazon DynamoDB Service Disruption in US-EAST-1 (October 2025)](https://aws.amazon.com/message/101925/) - A public post-event analysis of a regional dependency failure, useful for reasoning about correlated budget spend (details not re-verified in this pass).
+- [AWS: Summary of the Amazon DynamoDB Service Disruption in US-EAST-1 (October 2025)](https://aws.amazon.com/message/101925/) - A public post-event analysis of a regional dependency failure, useful for reasoning about correlated budget spend.
 - Gil Tene, "How NOT to Measure Latency" (conference talk) - Why coordinated omission and percentile averaging corrupt latency SLIs.
 - [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control|Load Shedding, Backpressure, and Admission Control]] - The next chapter, covering how to protect the budget once the burn-rate alarm fires.
 - [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_14_Observability_CloudWatch_Metrics_Logs_and_X_Ray|Observability: CloudWatch, Metrics, Logs, and X-Ray]] and [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_16_Observability_Cloud_Monitoring_Logging_and_Trace|Observability: Cloud Monitoring, Logging, and Trace]] - The metric pipelines these SLIs run on.

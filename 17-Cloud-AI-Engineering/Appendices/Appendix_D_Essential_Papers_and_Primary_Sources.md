@@ -4,7 +4,47 @@ track: [cloud-ai, ai-eng, sde, distinguished]
 level:
 status: draft
 last_reviewed:
-sources: []
+sources: 
+  - "https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf"
+  - "https://www.usenix.org/conference/atc22/presentation/elhemali"
+  - "https://dl.acm.org/doi/10.1145/3035918.3056101"
+  - "https://dl.acm.org/doi/10.1145/3183713.3196937"
+  - "https://www.usenix.org/conference/nsdi20/presentation/brooker"
+  - "https://dl.acm.org/doi/10.1145/3477132.3483540"
+  - "https://www.usenix.org/conference/nsdi20/presentation/agache"
+  - "https://doi.org/10.1109/MM.2020.3016891"
+  - "https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/security-design-of-aws-nitro-system.html"
+  - "https://www.usenix.org/conference/osdi12/technical-sessions/presentation/corbett"
+  - "https://research.google/pubs/spanner-truetime-and-the-cap-theorem/"
+  - "https://dl.acm.org/doi/10.1145/3035918.3056103"
+  - "https://dl.acm.org/doi/10.1145/2741948.2741964"
+  - "https://dl.acm.org/doi/10.1145/2465351.2465386"
+  - "https://queue.acm.org/detail.cfm?id=2898444"
+  - "https://dl.acm.org/doi/10.1145/1365815.1365816"
+  - "https://dl.acm.org/doi/10.1145/945445.945450"
+  - "https://cloud.google.com/blog/products/storage-data-transfer/a-peek-behind-colossus-googles-file-system"
+  - "https://www.usenix.org/legacy/event/osdi06/tech/full_papers/burrows/burrows.pdf"
+  - "https://www.vldb.org/pvldb/vol3/R29.pdf"
+  - "https://www.vldb.org/pvldb/vol6/p1033-akidau.pdf"
+  - "https://www.vldb.org/pvldb/vol8/p1792-Akidau.pdf"
+  - "https://www.usenix.org/conference/atc19/presentation/pang"
+  - "https://dl.acm.org/doi/10.5555/2930611.2930645"
+  - "https://www.usenix.org/conference/nsdi18/presentation/dalton"
+  - "https://dl.acm.org/doi/10.1145/2829988.2787508"
+  - "https://dl.acm.org/doi/10.1145/3544216.3544265"
+  - "https://dl.acm.org/doi/10.1145/2408776.2408794"
+  - "https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s11-bronson.pdf"
+  - "https://www.usenix.org/conference/osdi22/presentation/huang-lexiang"
+  - "https://www.usenix.org/conference/nsdi16/technical-sessions/presentation/eisenbud"
+  - "https://www.microsoft.com/en-us/research/publication/gray-failure-achilles-heel-cloud-scale-systems/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://builder.aws.com/content/3F06NpJ8YeoIGP8VHTw4n81pFn8/workload-isolation-using-shuffle-sharding"
+  - "https://builder.aws.com/content/3K9SiqiJ369TGkkGzqPM95BuYWI/static-stability-using-availability-zones"
+  - "https://www.usenix.org/conference/fast25/presentation/qin"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://arxiv.org/abs/2407.21783"
+  - "https://github.com/meta-llama/llama-models/blob/main/models/sku_list.py"
+  - "https://research.google.com/people/jeff/stanford-295-talk.pdf"
 ---
 
 # Appendix D: Essential Papers, Talks, and Primary Sources Reading List
@@ -16,9 +56,11 @@ Appendix C ([[17-Cloud-AI-Engineering/Appendices/Appendix_C_Limits_Quotas_and_Th
 
 ## 0. Verification status of this appendix
 
-Only the Maglev record below was re-fetched during authoring: title, NSDI'16, pages 523-535, published 16 March 2016 (ACM DL, as of 2026-10).
-The web-search quota ran out before the other entries could be re-checked.
-Every other venue, year, DOI, URL, and paper-derived number comes from the author's knowledge of the papers and is listed in the UNVERIFIED block at the end.
+Every paper's title, venue, and year was re-checked on 2026-11-01 against the publisher record (USENIX, Crossref, arXiv, JMLR) or the paper's own first page.
+Paper-derived numbers in sections 4 and 6 were checked against the paper text (Aurora, DynamoDB, Spanner, Maglev, Llama 3, Metastable Failures in the Wild), and the Aurora text came from a course-hosted copy because the Amazon-hosted URL returned 404.
+The one-line "why it is essential" summaries were spot-checked rather than checked line by line against every paper, so treat them as a reading guide.
+Every link was requested on the same date.
+`dl.acm.org` and `queue.acm.org` return HTTP 403 to automated clients, so ACM rows were confirmed through doi.org redirects and Crossref records, and the `queue.acm.org` page itself was not loaded.
 Paper contents do not change, but URLs and session titles do.
 The numbers produced by the scripts in section 4 are my own arithmetic or simulation, and they are labeled as such.
 
@@ -49,7 +91,7 @@ Section 5 gives the starting drift notes.
 Rows are grouped by theme.
 The last column links to the chapter that teaches the mechanism.
 Dates are the publication year of the primary source.
-All rows are tagged (publisher record, as of 2026-10) except where noted, and the section 0 caveat applies.
+All rows are tagged (publisher record, as of 2026-11) except where noted, and section 0 says how each kind of claim was checked.
 
 ### 3.1 Replication, consensus, and storage engines (Amazon)
 
@@ -63,7 +105,7 @@ All rows are tagged (publisher record, as of 2026-10) except where noted, and th
 | [Using Lightweight Formal Methods to Validate a Key-Value Storage Node in Amazon S3 (ShardStore)](https://dl.acm.org/doi/10.1145/3477132.3483540) | SOSP 2021 | Executable reference models checked with property-based testing and stateless model checking. Shows how a hyperscaler keeps crash-consistency bugs out of a log-structured store. | [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_05_Amazon_S3_ShardStore_Formal_Methods\|ShardStore]] |
 | [Firecracker: Lightweight Virtualization for Serverless Applications](https://www.usenix.org/conference/nsdi20/presentation/agache) | NSDI 2020 | Minimal device model, jailer, and density targets behind Lambda and Fargate. Read the section on oversubscription and the sections on what was deliberately left out. | [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_04_Firecracker_MicroVM\|Firecracker]] |
 | [A Cloud-Optimized Transport Protocol for Elastic and Scalable HPC (SRD)](https://doi.org/10.1109/MM.2020.3016891) | IEEE Micro 2020 | The design basis of EFA: multipath packet spraying, out-of-order delivery, and sender-side congestion control instead of in-order TCP or RoCE semantics. | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI\|Interconnect Technologies]] |
-| [The Security Design of the AWS Nitro System](https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/security-design-of-aws-nitro-system.html) | AWS whitepaper | Primary statement of the "no operator access" model, the Nitro cards, and the attestation boundary. | [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_04_EC2_Nitro_Architecture_and_Graviton\|Nitro and Graviton]] |
+| [The Security Design of the AWS Nitro System](https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/security-design-of-aws-nitro-system.html) | AWS whitepaper, published 15 February 2024 (AWS docs, as of 2026-11) | Primary statement of the "no operator access" model, the Nitro Cards, the Nitro Security Chip, and the minimized Nitro Hypervisor. | [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_04_EC2_Nitro_Architecture_and_Graviton\|Nitro and Graviton]] |
 
 ### 3.2 Storage, compute, and data processing (Google)
 
@@ -71,7 +113,7 @@ All rows are tagged (publisher record, as of 2026-10) except where noted, and th
 | --- | --- | --- | --- |
 | [Spanner: Google's Globally-Distributed Database](https://www.usenix.org/conference/osdi12/technical-sessions/presentation/corbett) | OSDI 2012 | TrueTime, commit wait, and Paxos groups under two-phase commit. The cleanest example of buying consistency with bounded clock uncertainty. | [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_06_Google_Spanner\|Google Spanner]] |
 | [Spanner, TrueTime and the CAP Theorem](https://research.google/pubs/spanner-truetime-and-the-cap-theorem/) | Google white paper, 2017 | Brewer's argument that Spanner is effectively CA by making partitions rare through private networking and operations, not by escaping CAP. | [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_10_Cloud_Spanner_TrueTime_and_External_Consistency\|Cloud Spanner]] |
-| [Spanner: Becoming a SQL System](https://dl.acm.org/doi/10.1145/3035918.3056103) | SIGMOD 2017 | Distributed query execution, schema change, and the SQL layer that the 2012 paper does not cover. | [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_10_Cloud_Spanner_TrueTime_and_External_Consistency\|Cloud Spanner]] |
+| [Spanner: Becoming a SQL System](https://dl.acm.org/doi/10.1145/3035918.3056103) | SIGMOD 2017 | Distributed query execution during resharding, query restarts after transient failures, range extraction, a blockwise-columnar storage format, and the SQL dialect, none of which the 2012 paper covers (Google Research abstract, as of 2026-11). | [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_10_Cloud_Spanner_TrueTime_and_External_Consistency\|Cloud Spanner]] |
 | [Large-scale cluster management at Google with Borg](https://dl.acm.org/doi/10.1145/2741948.2741964) | EuroSys 2015 | Cells, priority bands, quota, preemption, resource reclamation, and a Paxos-replicated Borgmaster. The conceptual parent of every GPU cluster scheduler. | [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_07_Google_Borg_and_Omega\|Borg and Omega]] |
 | [Omega: flexible, scalable schedulers for large compute clusters](https://dl.acm.org/doi/10.1145/2465351.2465386) | EuroSys 2013 | Shared-state scheduling with optimistic concurrency. Read it to understand scheduler conflict rates and why gang scheduling is hard. | [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_07_Google_Borg_and_Omega\|Borg and Omega]] |
 | [Borg, Omega, and Kubernetes](https://queue.acm.org/detail.cfm?id=2898444) | ACM Queue 2016 | The authors' own account of which Borg lessons were carried into Kubernetes and which were not. | [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_01_Kubernetes_Control_Loop_Internals\|Kubernetes Control Loop Internals]] |
@@ -88,8 +130,8 @@ All rows are tagged (publisher record, as of 2026-10) except where noted, and th
 
 | Source | Venue and year | Why it is essential | Chapter |
 | --- | --- | --- | --- |
-| [Maglev: A Fast and Reliable Software Network Load Balancer](https://dl.acm.org/doi/10.5555/2930611.2930645) | NSDI 2016, pp. 523-535 (ACM DL, as of 2026-10) | Consistent hashing lookup table plus per-machine connection tracking, running on commodity Linux servers with a kernel-bypass packet path. | [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_11_Maglev_Network_Load_Balancer\|Maglev]] |
-| [Andromeda: Performance, Isolation, and Velocity at Scale in Cloud Network Virtualization](https://www.usenix.org/conference/nsdi18/presentation/dalton) | NSDI 2018 | The Hoverboard model: send first packets through gateways and offload hot flows to direct host-to-host paths. Also describes live migration of the virtual switch. | [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_12_Andromeda_Network_Virtualization\|Andromeda]] |
+| [Maglev: A Fast and Reliable Software Network Load Balancer](https://www.usenix.org/conference/nsdi16/technical-sessions/presentation/eisenbud) | NSDI 2016, pp. 523-535 (USENIX proceedings, as of 2026-11) | Consistent hashing lookup table plus per-machine connection tracking, running on commodity Linux servers with a kernel-bypass packet path. | [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_11_Maglev_Network_Load_Balancer\|Maglev]] |
+| [Andromeda: Performance, Isolation, and Velocity at Scale in Cloud Network Virtualization](https://www.usenix.org/conference/nsdi18/presentation/dalton) | NSDI 2018 | The Hoverboard model: send first packets through gateways and offload hot flows to direct host-to-host paths. Also describes transparent VM live migration and non-disruptive dataplane upgrades (paper text, as of 2026-11). | [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_12_Andromeda_Network_Virtualization\|Andromeda]] |
 | [Jupiter Rising: A Decade of Clos Topologies and Centralized Control in Google's Datacenter Network](https://dl.acm.org/doi/10.1145/2829988.2787508) | SIGCOMM 2015 | Five generations of Clos fabric and the case for centralized routing control. | [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_13_Jupiter_Datacenter_Network\|Jupiter]] |
 | [Jupiter Evolving: Transforming Google's Datacenter Network via Optical Circuit Switches and Software-Defined Networking](https://dl.acm.org/doi/10.1145/3544216.3544265) | SIGCOMM 2022 | Removes the spine layer with OCS and direct connect, and explains the operational model for topology engineering and traffic engineering. Read it after the 2015 paper. | [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_02_Datacenter_Networking_Fabrics\|Datacenter Networking Fabrics]] |
 
@@ -100,7 +142,7 @@ All rows are tagged (publisher record, as of 2026-10) except where noted, and th
 | [The Tail at Scale](https://dl.acm.org/doi/10.1145/2408776.2408794) | CACM 2013 | Fan-out turns a 1-in-100 slow response into the common case. Hedged and tied requests are the standard remedy, with a stated load cost. | [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers\|Resilient Communication]] |
 | [Metastable Failures in Distributed Systems](https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s11-bronson.pdf) | HotOS 2021 | Defines the trigger and sustaining-effect model. The vocabulary for retry storms and cache-cold collapse. | [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control\|Load Shedding and Admission Control]] |
 | [Metastable Failures in the Wild](https://www.usenix.org/conference/osdi22/presentation/huang-lexiang) | OSDI 2022 | Empirical study of public incidents. Shows that retry policy is the most common sustaining effect. | [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages\|Anatomy of Major Cloud Outages]] |
-| [Gray Failure: The Achilles' Heel of Cloud-Scale Systems](https://www.microsoft.com/en-us/research/publication/gray-failure-the-achilles-heel-of-cloud-scale-systems/) | HotOS 2017 | Differential observability: the health checker and the application see different realities. Explains why GPU nodes that pass health checks still stall collectives. | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fault_Tolerance_and_Fleet_Resiliency_at_Scale\|Fault Tolerance and Fleet Resiliency]] |
+| [Gray Failure: The Achilles' Heel of Cloud-Scale Systems](https://www.microsoft.com/en-us/research/publication/gray-failure-achilles-heel-cloud-scale-systems/) | HotOS 2017 | Differential observability: the health checker and the application see different realities. Explains why GPU nodes that pass health checks still stall collectives. | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fault_Tolerance_and_Fleet_Resiliency_at_Scale\|Fault Tolerance and Fleet Resiliency]] |
 | [Cores that don't count](https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s01-hochschild.pdf) | HotOS 2021 | Silent data corruption from defective CPU cores at fleet scale. | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fault_Tolerance_and_Fleet_Resiliency_at_Scale\|Fault Tolerance and Fleet Resiliency]] |
 | [Silent Data Corruptions at Scale](https://arxiv.org/abs/2102.11245) | arXiv 2021 (Meta) | Complements the Google paper with a second operator's detection methodology. | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fault_Tolerance_and_Fleet_Resiliency_at_Scale\|Fault Tolerance and Fleet Resiliency]] |
 | [Site Reliability Engineering](https://sre.google/sre-book/table-of-contents/) and [The SRE Workbook](https://sre.google/workbook/table-of-contents/) | Google, 2016 and 2018 | SLOs, burn-rate alerting, overload handling, cascading failures, and postmortem practice. | [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_01_SLIs_SLOs_and_Error_Budget_Engineering\|SLIs, SLOs, and Error Budgets]] |
@@ -108,23 +150,24 @@ All rows are tagged (publisher record, as of 2026-10) except where noted, and th
 
 ### 3.5 Amazon Builders' Library (read in this order)
 
-Index: [Amazon Builders' Library](https://aws.amazon.com/builders-library/) (AWS, as of 2026-10).
-Article slugs follow the pattern `https://aws.amazon.com/builders-library/<slug>/`.
+Index: [Amazon Builders' Library](https://builder.aws.com/learn/topics/builders-library) (AWS Builder Center, as of 2026-11).
+Article slugs follow the pattern `https://aws.amazon.com/builders-library/<slug>/`, which now redirects to `https://builder.aws.com/content/<id>/<slug>` (as of 2026-11).
+The `reliability-and-constant-work` slug lands on an article titled "Reliability, constant work, and a good cup of coffee".
 
 | Article slug | What to extract | Chapter |
 | --- | --- | --- |
-| `static-stability-using-availability-zones` | Pre-provision capacity so that AZ loss needs no control-plane action. Cost: roughly 50 percent headroom in a 2-AZ design and 33 percent in a 3-AZ design. | [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability\|Regions, Zones, and Static Stability]] |
+| `static-stability-using-availability-zones` | Pre-provision capacity so that AZ loss needs no control-plane action. Cost: the article overprovisions by 50 percent with 3 AZs, so each AZ runs at about 66 percent (AWS Builders' Library, as of 2026-11). It gives no 2-AZ figure; the same arithmetic gives 100 percent overprovisioning with 2 AZs (author computation). | [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability\|Regions, Zones, and Static Stability]] |
 | `workload-isolation-using-shuffle-sharding` | Combinatorial blast-radius reduction. See section 4.4. | [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding\|Cells and Shuffle Sharding]] |
 | `reliability-and-constant-work` | Replace event-driven change propagation with fixed-rate full-state push so that load does not rise during failure. | [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_05_Constant_Work_and_Workload_Smoothing\|Constant Work]] |
 | `timeouts-retries-and-backoff-with-jitter` | Retry amplification across layers and why jitter is mandatory. | [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers\|Resilient Communication]] |
 | `using-load-shedding-to-avoid-overload` | Shed on arrival, use goodput as the target metric, and keep the shed path cheaper than the serve path. | [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control\|Load Shedding]] |
 | `avoiding-fallback-in-distributed-systems` | Fallback paths are untested modes that activate during the worst moment. | [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation\|Control Plane vs Data Plane Separation]] |
-| `avoiding-insurmountable-queue-backlogs` | Backlog drain time is backlog divided by spare capacity, so spare capacity is what you provision for. | [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control\|Load Shedding]] |
+| `avoiding-insurmountable-queue-backlogs` | Backlog drain time is backlog divided by spare capacity, so spare capacity is what you provision for. The article gives worked recovery examples, and this formula is the author's reading of them (as of 2026-11). | [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control\|Load Shedding]] |
 | `fairness-in-multi-tenant-systems` | Per-tenant admission and quota design. | [[17-Cloud-AI-Engineering/Volume_14_Staff_Plus_Interview_Arena/Chapter_01_Design_Multi_Tenant_LLM_Inference_Platform\|Multi-Tenant LLM Inference Platform]] |
 | `implementing-health-checks` | Local versus dependency health, and fail-open behavior when all hosts fail the check. | [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_03_DNS_Anycast_and_Global_Traffic_Management\|DNS, Anycast, and Global Traffic Management]] |
 | `automating-safe-hands-off-deployments` | Wave-based deployment, bake time, and automatic rollback. | [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_06_Progressive_Delivery_and_Deployment_Pipelines\|Progressive Delivery]] |
 
-Also follow [Marc Brooker's blog](https://brooker.co.za/blog/) for short derivations on quorums, queueing, and Aurora DSQL (author blog, as of 2026-10).
+Also follow [Marc Brooker's blog](https://brooker.co.za/blog/) for short derivations on quorums, queueing, and Aurora DSQL (author blog, as of 2026-11).
 
 ### 3.6 Accelerators, training systems, and serving
 
@@ -135,14 +178,14 @@ Also follow [Marc Brooker's blog](https://brooker.co.za/blog/) for short derivat
 | [Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism](https://arxiv.org/abs/1909.08053) and [Efficient Large-Scale Language Model Training on GPU Clusters Using Megatron-LM](https://arxiv.org/abs/2104.04473) | 2019 and SC 2021 | Tensor parallel layout and the interleaved pipeline schedule. The second paper is the best source for composing TP, PP, and DP against a real topology. | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_04_Distributed_Training_Parallelism_Strategies\|Distributed Training Parallelism]] |
 | [ZeRO: Memory Optimizations Toward Training Trillion Parameter Models](https://arxiv.org/abs/1910.02054) | SC 2020 | Memory accounting for mixed-precision Adam and the three partitioning stages. See section 4.6. | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_05_Memory_Optimization_ZeRO_FSDP_and_JAX_Sharding\|Memory Optimization]] |
 | [GSPMD: General and Scalable Parallelization for ML Computation Graphs](https://arxiv.org/abs/2105.04663) | arXiv 2021 | The compiler-side sharding propagation behind JAX and XLA partitioning. | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_05_Memory_Optimization_ZeRO_FSDP_and_JAX_Sharding\|Memory Optimization]] |
-| [Pathways: Asynchronous Distributed Dataflow for ML](https://arxiv.org/abs/2203.12533) and [PaLM](https://arxiv.org/abs/2204.02311) | MLSys 2022 and 2022 | Single-controller dispatch across TPU pods and the multislice training run that used it. | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_03_High_Performance_AI_Cluster_Architectures\|High-Performance AI Cluster Architectures]] |
+| [Pathways: Asynchronous Distributed Dataflow for ML](https://arxiv.org/abs/2203.12533) and [PaLM](https://arxiv.org/abs/2204.02311) | MLSys 2022 and arXiv 2022, JMLR 2023 | Single-controller dispatch across TPU pods and the multislice training run that used it. | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_03_High_Performance_AI_Cluster_Architectures\|High-Performance AI Cluster Architectures]] |
 | [The Llama 3 Herd of Models](https://arxiv.org/abs/2407.21783) | arXiv 2024 | Section on infrastructure reports interruption causes, effective training time, and straggler handling for a roughly 16K-GPU run. Use it as a public failure-rate data set. | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fault_Tolerance_and_Fleet_Resiliency_at_Scale\|Fault Tolerance and Fleet Resiliency]] |
 | [MegaScale: Scaling Large Language Model Training to More Than 10,000 GPUs](https://arxiv.org/abs/2402.15627) | NSDI 2024 | Diagnostics, heartbeat and stall detection, and network tuning at 10K-GPU scale. | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fault_Tolerance_and_Fleet_Resiliency_at_Scale\|Fault Tolerance and Fleet Resiliency]] |
 | [Orca: A Distributed Serving System for Transformer-Based Generative Models](https://www.usenix.org/conference/osdi22/presentation/yu) | OSDI 2022 | Iteration-level scheduling, the origin of continuous batching. | [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_04_Continuous_Batching_and_Scheduling_Algorithms\|Continuous Batching]] |
 | [Efficient Memory Management for Large Language Model Serving with PagedAttention](https://arxiv.org/abs/2309.06180) | SOSP 2023 | Block-table virtual memory for KV cache and copy-on-write sharing. | [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_03_KV_Cache_Management_and_PagedAttention\|KV-Cache Management]] |
 | [Taming Throughput-Latency Tradeoff in LLM Inference with Sarathi-Serve](https://arxiv.org/abs/2403.02310) | OSDI 2024 | Chunked prefill with stall-free batching, which is the colocated alternative to disaggregation. | [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_03_KV_Cache_Management_and_PagedAttention\|KV-Cache Management]] |
 | [DistServe](https://arxiv.org/abs/2401.09670) and [Splitwise](https://arxiv.org/abs/2311.18677) | OSDI 2024 and ISCA 2024 | Prefill and decode on separate pools, with goodput under TTFT and TPOT SLOs as the objective. | [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_07_Prefill_and_Decode_Disaggregation\|Prefill and Decode Disaggregation]] |
-| [Mooncake: A KVCache-centric Disaggregated Architecture for LLM Serving](https://arxiv.org/abs/2407.00079) | arXiv 2024, FAST 2025 | Treats the KV cache as a cluster-wide cached resource with a global scheduler, plus overload-oriented admission. | [[17-Cloud-AI-Engineering/Volume_14_Staff_Plus_Interview_Arena/Chapter_01_Design_Multi_Tenant_LLM_Inference_Platform\|Multi-Tenant LLM Inference Platform]] |
+| [Mooncake: A KVCache-centric Disaggregated Architecture for LLM Serving](https://arxiv.org/abs/2407.00079) | arXiv 2024; FAST 2025 as "Mooncake: Trading More Storage for Less Computation - A KVCache-centric Architecture for Serving LLM Chatbot" (USENIX, as of 2026-11) | Treats the KV cache as a cluster-wide cached resource with a global scheduler, plus overload-oriented admission. | [[17-Cloud-AI-Engineering/Volume_14_Staff_Plus_Interview_Arena/Chapter_01_Design_Multi_Tenant_LLM_Inference_Platform\|Multi-Tenant LLM Inference Platform]] |
 | [Fast Inference from Transformers via Speculative Decoding](https://arxiv.org/abs/2211.17192) | ICML 2023 | The acceptance-rate math that decides whether a draft model pays for itself. | [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_05_Speculative_Decoding_and_Advanced_Decoding\|Speculative Decoding]] |
 | [FlashAttention](https://arxiv.org/abs/2205.14135) | NeurIPS 2022 | IO-aware attention. A concrete example of optimizing for HBM traffic and not for FLOPs. | [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_01_LLM_Inference_Mechanics_Prefill_vs_Decode\|LLM Inference Mechanics]] |
 | [Training Compute-Optimal Large Language Models (Chinchilla)](https://arxiv.org/abs/2203.15556) | NeurIPS 2022 | Needed for any capacity plan that starts from a token budget. | [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics\|GPU and TPU Unit Economics]] |
@@ -150,16 +193,16 @@ Also follow [Marc Brooker's blog](https://brooker.co.za/blog/) for short derivat
 ### 3.7 Talks (titles only, search by title)
 
 Session codes and hosting URLs change between years, so no codes or URLs are given.
-All titles are recalled rather than re-fetched, so confirm each exists before assigning it (see the UNVERIFIED list).
+Each title and year below was confirmed on 2026-11-01 from AWS-hosted session material or third-party session listings, not from an official catalog that covers every year.
 
 | Talk | Venue | What to extract |
 | --- | --- | --- |
-| A day in the life of a billion packets | AWS re:Invent | How Nitro and the VPC data path move a packet and what state lives on the host. |
-| Deep dive on the AWS Nitro System | AWS re:Invent | Offload card roles and the hypervisor's reduced scope. |
-| A serverless journey: AWS Lambda under the hood | AWS re:Invent | Worker placement, microVM reuse, and cold-start composition. |
-| Amazon Aurora storage demystified | AWS re:Invent | Segment repair, quorum membership, and cache warming on failover. |
-| Dive deep on Amazon S3 | AWS re:Invent | Scale numbers, consistency design, and durability engineering. |
-| Software Engineering Advice from Building Large-Scale Distributed Systems (Jeff Dean) | Stanford talk, 2007 | The origin of "numbers every engineer should know" and the back-of-envelope habit. |
+| A Day in the Life of a Billion Packets (Eric Brandwine; sequel "Another Day, Another Billion Packets", 2015) | AWS re:Invent 2013 | How the VPC data path and mapping service move a packet and what state lives on the host. |
+| Powering next-gen Amazon EC2: Deep dive on the Nitro System | AWS re:Invent, 2018 through 2021 with small title changes | Offload card roles and the hypervisor's reduced scope. |
+| A serverless journey: AWS Lambda under the hood | AWS re:Invent 2018 and 2019 | Worker placement, microVM reuse, and cold-start composition. |
+| Amazon Aurora storage demystified | AWS re:Invent 2019 (subtitled "How it all works") and 2020 | Segment repair, quorum membership, and cache warming on failover. |
+| Dive deep on Amazon S3 (also "Deep dive on Amazon S3") | AWS re:Invent 2023, 2024, and 2025 | Scale numbers, consistency design, and durability engineering. |
+| Software Engineering Advice from Building Large-Scale Distributed Systems (Jeff Dean) | Stanford talk, Spring 2007 ([slides](https://research.google.com/people/jeff/stanford-295-talk.pdf), date per the SRE book bibliography) | The "Numbers Everyone Should Know" slide and the back-of-envelope habit. |
 
 ### 3.8 Post-incident reviews to read as case studies
 
@@ -170,7 +213,7 @@ All titles are recalled rather than re-fetched, so confirm each exists before as
 | AWS S3, February 2017 | [AWS summary](https://aws.amazon.com/message/41926/) | Operator command scope, and restart time of a large index subsystem. | [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages\|Anatomy of Major Cloud Outages]] |
 | AWS us-east-1, December 2021 | [AWS summary](https://aws.amazon.com/message/12721/) | Internal network congestion and its effect on monitoring and operator tooling. | [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages\|Anatomy of Major Cloud Outages]] |
 | AWS us-east-1, October 2025 | [AWS summary](https://aws.amazon.com/message/101925/) | DynamoDB endpoint DNS automation and the dependent services that failed after it. Build a dependency graph from the text. | [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability\|Regions, Zones, and Static Stability]] |
-| Google Cloud, 12 June 2025 | [Google Cloud status history](https://status.cloud.google.com/) (find the incident for that date) | A globally replicated policy record, a missing feature flag, and a herd effect during recovery. | [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation\|Control Plane vs Data Plane Separation]] |
+| Google Cloud, 12 June 2025 | [Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW) | A globally replicated policy record, a missing feature flag, and a herd effect during recovery. | [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation\|Control Plane vs Data Plane Separation]] |
 
 ## 4. Mechanisms you will not find in a getting-started guide
 
@@ -179,7 +222,7 @@ All titles are recalled rather than re-fetched, so confirm each exists before as
 The database instance is the single writer and allocates every LSN.
 Each volume is divided into 10 GB segments, each stored as 6 copies, 2 per AZ.
 Writes need 4 of 6 acknowledgements and reads would need 3 of 6, so read and write quorums overlap (3 + 4 > 6) and two writes cannot both succeed on disjoint sets (4 > 6/2).
-This is the Aurora SIGMOD 2017 design, recalled from the paper (see section 0).
+This is the Aurora SIGMOD 2017 design (paper text, as of 2026-11).
 
 The instance does not run a consensus round per write.
 Each segment tracks the highest LSN below which it holds every record, using a per-record backlink chain.
@@ -191,12 +234,12 @@ The instance tracks the following points.
 
 A transaction commits when VDL passes its commit LSN.
 A worker is not blocked on this; commit completion is signaled asynchronously.
-The instance also refuses to allocate an LSN more than the LSN allocation limit (the paper gives 10 million) ahead of VDL.
+The instance also refuses to allocate an LSN more than the LSN allocation limit (the paper gives 10 million, as of 2026-11) ahead of VDL.
 That limit is backpressure: a slow storage tier throttles the writer before it can accumulate an unbounded in-flight log.
 
 Three consequences matter in interviews.
 
-1. Write latency is the 4th-fastest of 6 acknowledgements. One slow node is invisible, and two slow nodes set your p50.
+1. Write latency is the 4th-fastest of 6 acknowledgements. Up to two slow nodes are masked, and a third slow node sets your write latency, because the 4th acknowledgement must then come from a slow node (author reasoning from the 4-of-6 quorum).
 2. Normal reads go to a single segment known to be complete at the read point. Quorum reads occur only at recovery, where the instance asks for a read quorum per protection group, computes VDL, and truncates everything above it.
 3. Recovery time does not depend on the volume of redo since the last checkpoint, because storage nodes apply redo continuously in the background.
 
@@ -209,7 +252,7 @@ Small segments are a reliability feature, not only a sharding convenience.
 TrueTime returns an interval [earliest, latest] that contains absolute time.
 A read-write transaction picks a commit timestamp s that is not less than TT.now().latest at commit start.
 The coordinator then waits until TT.after(s) is true, meaning s is less than TT.now().earliest, before releasing locks and acknowledging the commit.
-This is Spanner OSDI 2012, recalled from the paper.
+This is Spanner OSDI 2012 (paper text, as of 2026-11).
 
 The invariant is external consistency: if transaction T1 commits before T2 starts, then s1 < s2.
 It holds because T2 cannot start until real time has passed s1, and T2's timestamp is at least its own TT.now().latest.
@@ -261,6 +304,10 @@ My simulation with 100 backends (author computation, 2026-10-21) gave these resu
 | 65537 | 655 or 656 | 655 | 386 (0.59 percent of table) |
 | 655373 | 6553 or 6554 | 6553 | 886 (0.14 percent of table) |
 
+Re-running this script on 2026-11-01 with two backend-name schemes and two choices of removed backend gave 376 to 399 extra entries (0.57 to 0.61 percent) at M = 65537, and 892 to 969 (0.14 to 0.15 percent) at M = 655373.
+So the exact counts depend on the backend names, and only the magnitudes should be quoted.
+The table sizes are the paper's own (Maglev NSDI 2016, as of 2026-11).
+
 Load is balanced to within one entry, and the extra disruption is small but not zero.
 Larger M lowers the extra disruption.
 The cost is memory and slower table rebuilds.
@@ -270,29 +317,31 @@ Extra disruption only matters for flows that lack a tracking entry on the machin
 
 If a customer is assigned k of n workers, there are C(n, k) distinct shards.
 With 8 workers and k = 2 there are 28 shards, so a poison-pill customer overlaps fully with 1 in 28 other customers.
-The Builders' Library article describes Route 53 using 2048 virtual name servers with 4 per hosted zone.
-C(2048, 4) is 730,862,190,080 (author computation), which matches the article's "about 730 billion" as I recall it.
+The Builders' Library article describes Route 53 using 2048 virtual name servers with a shuffle shard of 4 per customer domain.
+C(2048, 4) is 730,862,190,080 (author computation), which matches the article's "730 billion possible shuffle shards" (AWS Builders' Library, as of 2026-11).
 
 The assumption that breaks is independence.
 The math holds only if a failing request can hurt just the workers it reaches.
+The article treats retries as how fault-tolerant requestors work around an affected worker, so the next two sentences are the author's caveat and not the article's.
 Clients that retry across all 4 assigned workers will walk the poison pill through the whole shard.
 Shuffle sharding needs a client that is shard-aware and a retry policy that stops after the shard is exhausted.
-Overlap is also not uniform: customers with partially overlapping shards share some fate, which is why the article pairs shuffle sharding with per-tenant rate limits.
+Overlap is also not uniform: customers with partially overlapping shards share some fate, so pair shuffle sharding with per-tenant rate limits (author recommendation; the article does not discuss them, as of 2026-11).
 
 ### 4.5 DynamoDB: why predictability needed admission control
 
 The ATC 2022 paper's central claim is predictable performance, not only scale.
 Each partition is a replication group using Multi-Paxos, with a leader that serves writes and strongly consistent reads.
 Log replicas hold only the write-ahead log and no B-tree.
-When a storage replica fails, the group can add a log replica quickly to restore durability, and rebuild the full storage replica afterwards.
-Admission control uses token buckets per partition plus a global admission control layer that tracks table-level consumption, so that adaptive capacity can move throughput between partitions without letting one table consume unbounded aggregate.
+When a storage replica fails, the leader can add a log replica in a few seconds to restore durability, and rebuild the full storage replica afterwards (paper text, as of 2026-11).
+The paper describes an evolution: adaptive capacity was reactive and acted only after throttling, so DynamoDB replaced it with global admission control (GAC).
+GAC centrally tracks table-level token consumption and vends tokens to request routers, and partition-level token buckets were retained for defense in depth (paper section 4.2, as of 2026-11).
 The residual limit is a single hot key: a key lives in one partition, so no amount of table-level capacity helps it.
 
 ### 4.6 Two back-of-envelope formulas worth deriving yourself
 
 **KV transfer in disaggregated serving.**
 KV bytes per token = 2 x layers x KV heads x head dimension x bytes per element.
-For a Llama-3-70B-class shape (80 layers, 8 KV heads, head dimension 128, 16-bit elements, from the model's published configuration) this is 2 x 80 x 8 x 128 x 2 = 327,680 bytes, or 320 KiB per token.
+For a Llama-3-70B-class shape (80 layers, 8 KV heads, head dimension 128, 16-bit elements; head dimension is 8192 / 64, from [Meta's published model arguments](https://github.com/meta-llama/llama-models/blob/main/models/sku_list.py), as of 2026-11) this is 2 x 80 x 8 x 128 x 2 = 327,680 bytes, or 320 KiB per token.
 An 8,192-token prompt is 2.5 GiB of KV (author computation).
 Moving it at 50 GB/s effective takes about 54 ms, at 100 GB/s about 27 ms, and at 25 GB/s about 107 ms (author computation).
 A 128K-token context is 40 GiB, which does not fit in any single-hop budget at those rates.
@@ -301,7 +350,7 @@ A 128K-token context is 40 GiB, which does not fit in any single-hop budget at t
 Optimal interval T = sqrt(2 x delta x MTBF), where delta is checkpoint stall time.
 Expected overhead is about delta / T + T / (2 x MTBF), plus restart time R divided by MTBF.
 Assume an MTBF of 3.1 hours (11,135 s).
-That figure is the Llama 3 report's 54-day interruption count of 419 unexpected events, as I recall it, and it is not re-verified.
+That figure is the 54-day snapshot in the Llama 3 report, with 419 unexpected interruptions out of 466 total (54 x 86,400 / 419, Llama 3 report, as of 2026-11).
 
 | Checkpoint stall delta | Optimal T | Overhead before restart cost |
 | --- | --- | --- |
@@ -319,7 +368,7 @@ Because MTBF scales roughly as 1/N with GPU count, quadrupling the fleet quarter
 | GFS: single master, 64 MB chunks | Colossus has scaled-out metadata and different chunk and encoding behavior | Designing around a master bottleneck that no longer exists |
 | Jupiter 2015: Clos with spine blocks | Jupiter 2022 removes the spine layer using OCS | Quoting stale bisection bandwidth and topology constraints |
 | TPU v1: inference-only, 8-bit, no inter-chip fabric | TPU v4 and later are training-capable with ICI and OCS slices | Applying inference-era roofline numbers to training planning |
-| Aurora 2017: MySQL and PostgreSQL compatible, single-writer volume | Product line now includes additional features that do not change the storage model described in the paper | Treating later product variants as architectural changes without reading release docs |
+| Aurora 2017: MySQL 5.6-based engine, single-writer volume | Product line now includes PostgreSQL compatibility (AWS docs, as of 2026-11) and additional features that do not change the storage model described in the paper | Treating later product variants as architectural changes without reading release docs |
 | Borg 2015: Borglet and Borgmaster | Kubernetes uses declarative controllers over an etcd-backed API server | Assuming Kubernetes implements Borg's quota and reclamation behavior |
 
 For every row, the verification action is the same: find the current product documentation or the later paper and write down what changed.
@@ -449,6 +498,6 @@ How do you respond?
 
 ## 7. Weekly use
 
-[[17-Cloud-AI-Engineering/Appendices/Appendix_E_16_Week_Mastery_Study_Plan|Appendix E]] assigns Tier 0 papers to weeks 1 through 8 and Tier 1 papers to weeks 9 through 14.
+[[17-Cloud-AI-Engineering/Appendices/Appendix_E_16_Week_Mastery_Study_Plan|Appendix E]] schedules papers by topic rather than by tier, for example Firecracker in week 1, Physalia in week 3, Dynamo and Spanner in week 6, and Maglev, Andromeda, and Jupiter in week 7 (Appendix E, as of 2026-11).
 Related vault material: [[15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers/02-Distributed-Systems-and-Consensus|Distributed Systems and Consensus papers]], [[15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers/03-Cloud-Infrastructure-and-Big-Data|Cloud Infrastructure and Big Data papers]], [[15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers/04-Databases-and-Transaction-Processing|Databases and Transaction Processing papers]], [[08-Distinguished-Engineering/02-Distributed-Systems-Internals/Consistent-Hash-Ring|Consistent Hash Ring]], and [[04-System-Design/05-Data-Stores/Amazon-S3-and-Object-Storage|Amazon S3 and Object Storage]].
 Chapter-level numbers for the interview arena are in [[17-Cloud-AI-Engineering/Volume_14_Staff_Plus_Interview_Arena/Chapter_06_Cloud_AI_Numbers_Every_Staff_Engineer_Must_Know|Cloud AI Numbers Every Staff Engineer Must Know]].

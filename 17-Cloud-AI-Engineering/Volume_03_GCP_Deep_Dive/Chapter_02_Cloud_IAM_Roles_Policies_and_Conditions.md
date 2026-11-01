@@ -16,6 +16,28 @@ sources:
   - "https://github.com/google/cel-spec"
   - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html"
   - "https://www.amazon.science/publications/semantic-based-automated-reasoning-for-aws-access-policies-using-smt"
+  - "https://docs.cloud.google.com/iam/docs/access-change-propagation"
+  - "https://docs.cloud.google.com/iam/docs/deny-permissions-support"
+  - "https://docs.cloud.google.com/iam/docs/deny-access"
+  - "https://docs.cloud.google.com/iam/docs/principal-access-boundary-policies"
+  - "https://docs.cloud.google.com/iam/docs/release-notes"
+  - "https://docs.cloud.google.com/iam/docs/service-account-creds"
+  - "https://docs.cloud.google.com/iam/docs/create-short-lived-credentials-direct"
+  - "https://docs.cloud.google.com/iam/docs/best-practices-for-managing-service-account-keys"
+  - "https://docs.cloud.google.com/iam/docs/billing-questions"
+  - "https://docs.cloud.google.com/docs/security/compromised-credentials"
+  - "https://docs.cloud.google.com/resource-manager/docs/organization-policy/restricting-service-accounts"
+  - "https://docs.cloud.google.com/resource-manager/docs/secure-by-default-organizations"
+  - "https://docs.cloud.google.com/eventarc/advanced/docs/control-publishing-access"
+  - "https://docs.cloud.google.com/eventarc/docs/release-notes"
+  - "https://cloud.google.com/products/observability/pricing"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://status.cloud.google.com/incident/zall/20013"
+  - "https://www.usenix.org/system/files/atc19-pang.pdf"
+  - "https://www.infoq.com/news/2022/11/google-cloud-iam-deny/"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-versioning.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_data-perimeters.html"
+  - "https://aws.amazon.com/iam/access-analyzer/features/"
 ---
 
 # Cloud IAM: Roles, Policies, and Conditions
@@ -102,7 +124,8 @@ A deny rule uses the service's fully qualified domain name as a prefix, for exam
 A deny rule has four parts: `deniedPrincipals`, `exceptionPrincipals`, `deniedPermissions`, and `exceptionPermissions`, plus an optional `denialCondition` (Google Cloud docs, as of 2026-10).
 Exception principals are exempt even if they belong to a group named in `deniedPrincipals`.
 This allows the most important deny idiom: deny `principalSet://goog/public:all` and exempt one break-glass group.
-Only a subset of permissions can be used in deny rules; check the supported-permissions list before you design around one (UNVERIFIED).
+Because `public:all` includes service agents, Google recommends adding them as exceptions so that services keep working (Google Cloud docs, as of 2026-11).
+Only a subset of permissions can be used in deny rules; check the supported-permissions list before you design around one (Google Cloud docs, as of 2026-11).
 
 ### Conditions: a CEL subset with three failure behaviors
 
@@ -131,12 +154,15 @@ Getting the polarity of the guard wrong is how teams accidentally grant a broad 
 
 The deny-side behavior is a sharp edge for availability.
 Deny conditions only recognize resource tag functions such as `resource.matchTag('<org-id>/env', 'prod')` (Google Cloud docs, as of 2026-10).
-If an author writes a deny condition on `request.time` or `resource.name` expecting narrow scope, the condition cannot be evaluated, the rule applies, and the deny becomes unconditional for every listed principal.
+The docs say other functions and operators are not supported in denial conditions, but not whether the API rejects them at write time (UNVERIFIED: write-time behavior not stated in current docs).
+If a deny condition on `request.time` or `resource.name` is accepted and cannot be evaluated, the rule applies, and the deny becomes unconditional for every listed principal (Google Cloud docs, as of 2026-11).
 In effect, a deny rule fails open toward denying, so a typo in its condition causes an outage, not an exposure.
 That is the correct security posture and the wrong availability posture, so deny rules belong behind a canary rollout like any other production change.
 
 The Eventarc access-policy row is the odd one out, and it shows that "deny" in Google Cloud does not mean "fail-closed" until you have checked which mechanism you are using.
-The GA status of IAM v3 access policies was not verified for this chapter and should be checked before relying on them (UNVERIFIED).
+The docs list access policies as a fourth policy type, currently used for Eventarc, and their use in Eventarc Advanced is in Preview, not GA (Eventarc docs and release notes, 2025-11-11, as of 2026-11).
+Binding one also requires lifting `constraints/iam.managed.disableAccessPolicyBindings`, which is enabled by default for new organizations (Google Cloud docs, as of 2026-11).
+PAB policies, by contrast, have been GA since 2024-12-16 (IAM release notes, as of 2026-11).
 
 ### Policy versions, etags, and the `_withcond_` trap
 
@@ -154,12 +180,14 @@ A whole-policy resource will happily remove Google-managed service agent binding
 
 ### Consistency and the "new enemy" problem
 
-Policy writes are eventually consistent: changes usually take effect within about 2 minutes and can take 7 minutes or more (UNVERIFIED in this session).
+Policy writes are eventually consistent: changes usually take effect within about 2 minutes and can take 7 minutes or more (Google Cloud docs, as of 2026-11).
+Group membership changes are slower, typically several minutes and potentially hours or longer, and removals generally propagate more slowly than additions (Google Cloud docs, as of 2026-11).
 The best public description of the underlying problem is Google's Zanzibar paper (USENIX ATC 2019).
-It describes a global authorization system that stores ACLs as relation tuples, keeps a denormalized index (Leopard) for deeply nested groups, and uses "zookie" consistency tokens to solve the "new enemy" problem (UNVERIFIED in this session).
+It describes a global authorization system that stores ACLs as relation tuples, keeps a denormalized index (Leopard) for deeply nested groups, and uses "zookie" consistency tokens to solve the "new enemy" problem (Pang et al., USENIX ATC 2019).
 The new enemy problem: if Alice removes Bob from a document's ACL and then adds secret content, an authorization check against a stale ACL lets Bob read content he should never see.
 Zanzibar's fix is for the content write to carry a token that forces later checks to see an ACL snapshot at least that fresh.
-Google has not publicly documented whether Cloud IAM allow evaluation runs on Zanzibar, so treat the paper as a design reference, not an architecture diagram (UNVERIFIED).
+The paper states that Google's Cloud IAM system "is built as a layer on top of Zanzibar's ACL storage and evaluation system" (Pang et al., USENIX ATC 2019).
+That statement is from 2019 and gives no detail on deny or PAB evaluation, and the IAM docs cited here do not describe the current backend, so treat the paper as a design reference, not a current architecture diagram.
 
 For a Cloud IAM customer, no zookie is exposed, so you have to order operations yourself.
 Revoke, wait out the propagation window, verify with a probe call as the revoked principal, and only then put sensitive data in place.
@@ -172,8 +200,8 @@ There are four ways to obtain credentials for one, and they differ sharply in ri
 
 | Path | Mechanism | Credential lifetime | Where the secret lives |
 | --- | --- | --- | --- |
-| Attached service account | The workload asks its metadata server for a token | Short-lived access token, 1 hour default (UNVERIFIED) | Nowhere outside Google |
-| Impersonation | Caller with `roles/iam.serviceAccountTokenCreator` calls IAM Credentials `generateAccessToken` | Short-lived, extendable to 12 hours only via org policy (UNVERIFIED) | Nowhere; the caller's own identity is the root |
+| Attached service account | The workload asks its metadata server for a token | Short-lived access token, 1 hour default (Google Cloud docs, as of 2026-11) | Nowhere outside Google |
+| Impersonation | Caller with `roles/iam.serviceAccountTokenCreator` calls IAM Credentials `generateAccessToken` | 1 hour maximum by default, extendable to 12 hours only via `constraints/iam.allowServiceAccountCredentialLifetimeExtension` (Google Cloud docs, as of 2026-11) | Nowhere; the caller's own identity is the root |
 | Workload Identity Federation | External OIDC/SAML/AWS token exchanged at the Security Token Service, optionally impersonating an SA | Short-lived | The external IdP |
 | User-managed key | Workload signs a JWT with an RSA private key and exchanges it for an access token | Valid until the key is deleted, disabled, or expires | A file, a CI secret, a laptop, a git history |
 
@@ -185,12 +213,12 @@ A deny scoped to a list of humans therefore does not cover impersonation chains,
 
 Key governance is enforced with organization policy constraints (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_01_Resource_Hierarchy_and_Organization_Policies|Resource Hierarchy and Organization Policies]]):
 
-- `iam.disableServiceAccountKeyCreation` blocks new user-managed keys (UNVERIFIED).
-- `iam.disableServiceAccountKeyUpload` blocks uploading externally generated public keys (UNVERIFIED).
-- `iam.serviceAccountKeyExpiryHours` gives newly created keys a maximum lifetime (UNVERIFIED).
-- `iam.serviceAccountKeyExposureResponse` lets Google act on keys it detects in public places, for example by disabling them (UNVERIFIED).
-- `iam.automaticIamGrantsForDefaultServiceAccounts` stops default service accounts from automatically receiving the Editor role (UNVERIFIED).
-- Organizations created after a 2024 "secure by default" change get several of these constraints enforced from creation (UNVERIFIED for exact date and set).
+- `iam.disableServiceAccountKeyCreation` blocks new user-managed keys; `iam.managed.disableServiceAccountKeyCreation` is the managed version (Google Cloud docs, as of 2026-11).
+- `iam.disableServiceAccountKeyUpload` blocks uploading externally generated public keys; `iam.managed.disableServiceAccountKeyUpload` is the managed version (Google Cloud docs, as of 2026-11).
+- `iam.serviceAccountKeyExpiryHours` gives newly created keys a maximum lifetime, from `1h` to `2160h`, and does not apply to existing keys (Google Cloud docs, as of 2026-11).
+- `iam.serviceAccountKeyExposureResponse` lets Google act on keys it detects in public places, for example by disabling them; since 2024-06-16 an unset value defaults to `DISABLE_KEY`, and Google does not guarantee detection (Google Cloud docs, as of 2026-11).
+- `iam.automaticIamGrantsForDefaultServiceAccounts` stops default service accounts from automatically receiving the Editor role, but it does not stop a later grant of Editor or Owner (Google Cloud docs, as of 2026-11).
+- Organizations created on or after 2024-05-03 are secure by default, with the key creation, key upload, and automatic-grant constraints enforced from creation, while the expiry constraint is not part of that baseline (Google Cloud docs, as of 2026-11).
 
 An org policy constraint and a deny rule on `iam.googleapis.com/serviceAccountKeys.create` are two separate layers.
 Org policy is a configuration constraint evaluated by the service.
@@ -202,8 +230,9 @@ Use both: the deny rule's exception list gives you an auditable break-glass path
 The policy data plane is global configuration pushed to every serving stack, and that is the most dangerous kind of change in a hyperscale cloud.
 The 12 June 2025 Google Cloud incident is the canonical public example.
 A Service Control policy-check code path hit a null-pointer crash on a newly inserted policy with blank fields.
-That policy replicated globally within seconds through Spanner, and API requests failed across many products and regions (UNVERIFIED in this session).
-The December 2020 Google authentication outage came from a quota for the User ID service being set to zero during a quota-system migration, which shows that the identity lookup, not only the policy, is a global dependency (UNVERIFIED in this session).
+That policy replicated globally within seconds through Spanner, and API requests failed across many products and regions (Google Cloud incident report, as of 2026-11).
+The 14 December 2020 Google authentication outage lasted 47 minutes: during a quota-system migration, leftover parts of the old system reported the User ID service's usage as 0, and once a grace period expired, automated quota enforcement cut that service's quota (Google Cloud incident report #20013, as of 2026-11).
+That incident shows that the identity lookup, not only the policy, is a global dependency.
 The lesson applies equally to your own policy-as-code pipelines: policy changes need staged rollout, a feature flag, and a fail-safe default, exactly like binaries (see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]]).
 
 ## Numbers to Know
@@ -222,16 +251,17 @@ The lesson applies equally to your own policy-as-code pipelines: policy changes 
 | Rules in one PAB policy | 500 | (Google Cloud docs, as of 2026-10) |
 | Resources across all rules of one PAB policy | 500 | (Google Cloud docs, as of 2026-10) |
 | PAB policies bound to one principal set | 10 | (Google Cloud docs, as of 2026-10) |
-| Access policies (IAM v3) per resource | 5 | (Google Cloud docs, as of 2026-10) |
+| Access policies (IAM v3, Preview in Eventarc Advanced) per resource | 5 | (Google Cloud docs, as of 2026-10) |
 | IAM API read quota, e.g. listing custom roles | 6,000 per project per minute | (Google Cloud docs, as of 2026-10) |
 | IAM API write quota, e.g. creating custom roles | 600 per project per minute | (Google Cloud docs, as of 2026-10) |
 | Privileged Access Manager CreateGrant | 200 per project per minute, 600 per org per minute | (Google Cloud docs, as of 2026-10) |
 | Privileged Access Manager GetGrant | 3,000 per project per minute, 9,000 per org per minute | (Google Cloud docs, as of 2026-10) |
 | Minimum gcloud version that handles policy version 3 correctly | 263.0.0 | (Google Cloud docs, as of 2026-10) |
-| Policy change propagation | Typically about 2 minutes, can exceed 7 minutes | UNVERIFIED |
-| User-managed keys per service account | 10 | UNVERIFIED |
-| Default access token lifetime | 1 hour; up to 12 hours with an org policy exception | UNVERIFIED |
-| IAM list price | No charge for IAM itself; audit log ingestion is billed by Cloud Logging | UNVERIFIED |
+| Policy change propagation | Typically 2 minutes, potentially 7 minutes or longer | (Google Cloud docs, as of 2026-11) |
+| Group membership change propagation | Typically several minutes, potentially hours or longer | (Google Cloud docs, as of 2026-11) |
+| User-managed keys per service account | 10 | (Google Cloud docs, as of 2026-11) |
+| Default access token lifetime | 1 hour; up to 12 hours with an org policy exception | (Google Cloud docs, as of 2026-11) |
+| IAM list price | No additional charge for IAM itself; audit log ingestion is billed by Cloud Logging at 0.50 USD per GiB after the first 50 GiB per project per month | (Google Cloud docs and pricing page, as of 2026-11) |
 
 Use the 1,500 and 250 limits for capacity planning.
 A group counts as one principal regardless of how many members it has.
@@ -247,12 +277,12 @@ Organizations that grant to individual users hit the limit, while organizations 
 | Precedence | Explicit deny anywhere beats any allow | Deny beats allow; PAB ineligibility beats both | Same effect: deny always wins |
 | Condition language | JSON condition operators on condition keys (`StringEquals`, `aws:PrincipalTag`) | CEL subset, max 12 logical operators | AWS uses principal attributes heavily for ABAC; GCP conditions focus on resource attributes and tags |
 | ABAC primitive | Principal and resource tags compared in conditions | Resource tags via `resource.matchTag`; the only attribute deny rules support | GCP deny ABAC depends on tags alone |
-| Concurrency on policy edits | Managed policy versions, up to 5 stored (UNVERIFIED) | Whole-document etag with read-modify-write | GCP clients must handle conflict retries and versions |
+| Concurrency on policy edits | Customer managed policy versions, up to 5 stored (AWS docs, as of 2026-11) | Whole-document etag with read-modify-write | GCP clients must handle conflict retries and versions |
 | Short-lived workload credentials | STS AssumeRole, instance profiles, IRSA and EKS Pod Identity | Metadata server tokens, `generateAccessToken`, GKE Workload Identity | Similar mechanics; GCP impersonation is a separate IAM permission on the SA resource |
 | Long-lived credentials | IAM user access keys | User-managed SA keys | Both are bearer secrets; both clouds steer you to federation |
 | External federation | IAM Roles Anywhere, OIDC/SAML identity providers | Workload and Workforce Identity Federation via STS | Comparable; see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation\|Workload Identity Federation]] |
-| Principal-side perimeter | RCPs plus `aws:ResourceOrgID` conditions in SCPs | PAB policies bound to principal sets | PAB is a first-class object; AWS composes it from conditions |
-| Analysis tooling | IAM Access Analyzer, built on the Zelkova SMT reasoner (UNVERIFIED) | Policy Troubleshooter, Policy Analyzer, IAM Recommender | AWS publishes its formal-methods foundation; GCP tooling is less documented publicly |
+| Principal-side perimeter | SCPs with `aws:ResourceOrgID` conditions (RCPs are the resource-side counterpart, with `aws:PrincipalOrgID`) (AWS docs, as of 2026-11) | PAB policies bound to principal sets | PAB is a first-class object; AWS composes it from conditions |
+| Analysis tooling | IAM Access Analyzer, built on the Zelkova SMT reasoner (AWS security blog and Amazon Science, as of 2026-11) | Policy Troubleshooter, Policy Analyzer, IAM Recommender | AWS publishes its formal-methods foundation; GCP tooling is less documented publicly |
 | Consistency | Documented as eventually consistent | Eventually consistent, minutes | Neither offers read-your-write authorization to customers |
 
 For the AWS evaluation engine itself, see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]] and [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_03_Identity_Security_and_Governance_Translation|Identity, Security, and Governance Translation]].
@@ -433,9 +463,9 @@ Case 5 shows the tag-scoped deny with a break-glass exception.
 ### Part B - enforce key governance in a sandbox project
 
 This lab creates only IAM objects: a service account, a conditional binding, and a deny policy.
-None of these are billed resources (UNVERIFIED for IAM pricing), so the expected cost is 0 USD.
+None of these are billed resources, because IAM is offered at no additional charge (Google Cloud docs, as of 2026-11), so the expected cost is 0 USD.
 The budget alarm is still created because the project may have other spend.
-The operator running the script must hold `roles/iam.denyAdmin` and project IAM admin rights (UNVERIFIED role name), and must not be in the break-glass group, or the verification step will succeed instead of failing.
+The operator running the script must hold `roles/iam.denyAdmin` on the organization (Google Cloud docs, as of 2026-11) and project IAM admin rights, and must not be in the break-glass group, or the verification step will succeed instead of failing.
 
 ```bash
 #!/usr/bin/env bash
@@ -526,9 +556,9 @@ Scenario: an AI platform organization with 3,000 projects, 180 teams, three envi
 1. Allow policy sizing: give each team one reader group and one writer group per environment folder, which uses 360 group slots per folder policy.
 2. That exceeds the 250 domain-and-group limit per allow policy (Google Cloud docs, as of 2026-10), so either split each environment into two sub-folders of 90 teams (180 groups each, 70 slots of headroom) or move writer grants down to team-owned projects.
 3. Deny sizing: an org-level guardrail set of 40 rules uses 8 percent of the 500 deny-rule budget per resource, and principal usage is tiny because each rule names `public:all` plus one or two exception groups.
-4. Condition budget: a bucket-prefix allowlist costs one `||` per prefix plus one for the `resource.type` guard, so at most 12 prefixes fit under 12 operators (or 11 if one operator is reserved for future guards). Beyond that, move data into fewer buckets or use tags instead of name prefixes.
-5. Key risk sizing: with no expiry, a key's exposure window is unbounded. With a 90-day expiry constraint, each key is usable for at most 2,160 hours, so the fleet's total exposure is bounded at 2,000 x 2,160 = 4.32 million key-hours per quarter. Federating 80 percent of those workloads cuts the bound to 864,000 key-hours, a 5x reduction before counting detection.
-6. Direct IAM cost is effectively 0 USD (UNVERIFIED). The real cost driver is Data Access audit logging: at 50 million authorized calls per day and about 1.5 KB per entry, ingestion is about 75 GB per day, so multiply by the current Cloud Logging per-GiB ingestion price and use log exclusions for high-volume read paths that do not need auditing (price UNVERIFIED in this session).
+4. Condition budget: a `resource.type` guard joined to N bucket prefixes uses N `||` operators, so at most 12 prefixes fit under 12 operators (or 11 if one operator is reserved for future guards). Beyond that, move data into fewer buckets or use tags instead of name prefixes.
+5. Key risk sizing: with no expiry, a key's exposure window is unbounded. With a 90-day (`2160h`, the constraint's maximum) expiry constraint, each key is usable for at most 2,160 hours, so the fleet's total exposure is bounded at 2,000 x 2,160 = 4.32 million key-hours per quarter. The constraint does not apply to existing keys (Google Cloud docs, as of 2026-11), so this bound holds only after the 2,000 keys are rotated onto new keys. Federating 80 percent of those workloads cuts the bound to 864,000 key-hours, a 5x reduction before counting detection.
+6. Direct IAM cost is 0 USD (Google Cloud docs, as of 2026-11). The real cost driver is Data Access audit logging: at 50 million authorized calls per day and about 1.5 KB per entry, ingestion is about 75 GB (69.8 GiB) per day. At 0.50 USD per GiB after the first 50 GiB per project per month (Google Cloud pricing page, as of 2026-11), that is about 35 USD per day, or about 1,020 USD per 30 days if it all lands in one project, so use log exclusions for high-volume read paths that do not need auditing.
 
 ## Failure Modes and Pitfalls
 
@@ -542,26 +572,26 @@ Scenario: an AI platform organization with 3,000 projects, 180 teams, three envi
 
 - An inherited `resource.name` condition at project or folder level grants nothing on resource types that do not expose a name, and the team responds by widening the role instead of adding a `resource.type` guard.
 - A guard with reversed logic or wrong boolean operators (for example writing `resource.type == X || name check`, or applying `resource.type == X && name check` to a multi-service role) inadvertently grants the whole role on all other resource types or blocks all other operations.
-- A deny condition written on a non-tag attribute cannot be evaluated, so it applies unconditionally and turns a narrow guardrail into an org-wide outage for every listed principal.
+- A deny condition written on a non-tag attribute is unsupported, and if it is accepted and cannot be evaluated, it applies unconditionally and turns a narrow guardrail into an org-wide outage for every listed principal.
 - Tag-based deny conditions depend on tag bindings, so whoever can bind or unbind tags (`resourcemanager.tagUser`) can switch the deny on or off. Tag administration is therefore part of your trusted computing base.
 
 ### Identity and escalation
 
 - A deny rule targets named humans, and a denied human impersonates a service account that is not denied, because deny evaluation sees the service account as the caller.
 - A broad `iam.serviceAccounts.actAs` grant at project level lets any deployer run code as the most privileged service account in the project.
-- Default compute service accounts that still hold Editor turn any VM compromise into project compromise (UNVERIFIED for which organizations still have the automatic grant).
-- Leaked service account keys in public repositories, container images, notebook outputs, and CI logs are the most common GCP credential-compromise path in public incident write-ups. Keys stay valid until they are disabled or deleted (UNVERIFIED for any blanket statistic).
+- Default compute service accounts that still hold Editor turn any VM compromise into project compromise. The automatic grant is off by default only in organizations created on or after 2024-05-03, so check older organizations (Google Cloud docs, as of 2026-11).
+- Leaked service account keys in public repositories, container images, notebook outputs, and CI logs are a documented compromise path: Google warns that keys can end up where they should not be stored and that whoever obtains one can authenticate with it (Google Cloud docs, as of 2026-11). Keys stay valid until they are disabled, deleted, or expire.
 
 ### Consistency and scale
 
-- Revocation during an incident is not instant, and access tokens already issued remain usable until they expire, so containment needs both policy revocation and disabling the service account or key (UNVERIFIED for exact token revocation semantics).
+- Revocation during an incident is not instant, and service account access tokens already issued cannot be revoked and exist separately from the key or permission that minted them, so deleting a key or editing a policy does not end them. Disabling the service account cuts off its workloads immediately, and Google advises keeping it disabled for at least 60 minutes so that compromised tokens expire, or longer if lifetimes were extended (Google Cloud docs, as of 2026-11).
 - Automation that grants and immediately uses the grant fails intermittently. Fixed sleeps are wrong; retry with backoff until a probe call succeeds.
 - Granting to individual users instead of groups hits the 1,500-principal limit on a busy project, and the next `setIamPolicy` fails during an incident when you least want it to.
 - The IAM API write quota of 600 per project per minute (Google Cloud docs, as of 2026-10) is enough for humans but not for a runaway reconciliation loop that rewrites custom roles on every tick.
 
 ### Global policy pushes
 
-- The June 2025 Service Control incident showed that a single malformed policy record, replicated globally in seconds and read by an unflagged code path, can take down API serving across regions (UNVERIFIED in this session).
+- The June 2025 Service Control incident showed that a single malformed policy record, replicated globally in seconds and read by an unflagged code path, can take down API serving across regions (Google Cloud incident report, as of 2026-11).
 - Your organization's equivalent is an org-level deny or org policy change pushed from one pipeline to every project at once. Roll these out folder by folder with dry-run and monitoring of 403 rates per service.
 
 ## Security and Cost Angles
@@ -576,7 +606,7 @@ Use time-bound conditions (`request.time < timestamp(...)`) for contractors and 
 ### Layered vetoes
 
 Organization-level deny rules cover the irreversible actions: project deletion, disabling audit logs, creating SA keys, and changing org policy.
-Each rule targets `public:all` with a narrow break-glass exception group.
+Each rule targets `public:all` with a narrow break-glass exception group, plus the service agent exceptions that Google recommends for such rules (Google Cloud docs, as of 2026-11).
 PAB policies stop a compromised identity from reaching resources outside its organization's allowed set.
 [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]] stops data from moving across a service perimeter even when the caller is fully authorized.
 These three are independent, and each one covers a different exfiltration path: an identity that is too broad, a destination that is out of scope, or a network path that leaves the perimeter.
@@ -585,15 +615,16 @@ See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter
 ### Key hierarchy for service account credentials
 
 Google-managed service account keys are rotated by Google and never leave Google's infrastructure.
-User-managed keys are RSA key pairs where Google holds the public half and you hold the private half (UNVERIFIED for key algorithm details).
+User-managed keys are RSA key pairs where Google holds the public half and you hold the private half (Google Cloud docs, as of 2026-11).
 If a key truly cannot be avoided, generate it inside an HSM, upload only the public key, and keep the private key non-exportable.
-This changes "a leaked file" into "a compromised HSM" (key upload: UNVERIFIED as a currently supported workflow under default org policy).
+This changes "a leaked file" into "a compromised HSM".
+Google documents this workflow for HSMs and TPMs, but `iam.disableServiceAccountKeyUpload` blocks it by default in organizations created on or after 2024-05-03, so it needs a scoped org policy exception (Google Cloud docs, as of 2026-11).
 For data at rest, CMEK and envelope encryption are covered in [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_15_Security_and_Confidential_Computing_Cloud_KMS|Cloud KMS]] and [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies]].
 Note that `cloudkms.cryptoKeyVersions.useToDecrypt` is itself an IAM permission, so key access is only as tight as the IAM policy on the key ring.
 
 ### Unit economics
 
-IAM evaluation has no direct price (UNVERIFIED), so the costs are indirect: audit log volume, engineering time spent on 403 debugging, and incident cost.
+IAM evaluation has no direct price (Google Cloud docs, as of 2026-11), so the costs are indirect: audit log volume, engineering time spent on 403 debugging, and incident cost.
 The cheapest controls are structural: groups instead of users, folder-level grants instead of thousands of per-project grants, and federation instead of key rotation tooling.
 Data Access audit logs on hot read paths can cost more than the workload they audit, so enable them selectively by service and exempt high-volume, low-sensitivity principals through audit-logging exemptions.
 Those exemptions count against the same 1,500-principal budget (Google Cloud docs, as of 2026-10).
@@ -644,15 +675,16 @@ Design guardrails for 3,000 projects so that nobody except a break-glass process
 #### Model Answer
 
 I would use an org-level deny policy, because it vetoes regardless of how many Owner grants exist below, and use org policy constraints as a second layer for key creation.
-Each rule denies `principalSet://goog/public:all` with one exception group, populated only through Privileged Access Manager just-in-time grants so that membership is time-bound and audited.
-Project deletion is scoped with a tag condition `resource.matchTag('<org>/env', 'prod')`, because tags are the only attribute deny conditions recognize, and a condition on anything else would fail closed and deny everyone.
-This makes tag binding rights security-critical, so I would also deny tag binding and unbinding on the `env` key to everyone except the platform pipeline.
-Key creation is denied unconditionally with `iam.googleapis.com/serviceAccountKeys.create`, backed by the key-creation org policy constraint and an expiry constraint for legacy keys (constraint names to be confirmed against current docs).
+Each rule denies `principalSet://goog/public:all` with one exception group, populated only through Privileged Access Manager just-in-time grants so that membership is time-bound and audited, plus the service agent exceptions Google recommends for `public:all` rules (Google Cloud docs, as of 2026-11).
+Project deletion is scoped with a tag condition `resource.matchTag('<org>/env', 'prod')`, because tags are the only attribute deny conditions recognize, and any condition that cannot be evaluated fails closed and denies everyone.
+This makes tag binding rights security-critical, so I would grant `roles/resourcemanager.tagUser` on the `env` key only to the platform pipeline, because project tag binding permissions are not on the deny-supported list (Google Cloud docs, as of 2026-11).
+Key creation is denied unconditionally with `iam.googleapis.com/serviceAccountKeys.create`, backed by `iam.managed.disableServiceAccountKeyCreation` and by `iam.serviceAccountKeyExpiryHours` for any new exception keys, because the expiry constraint does not reach existing keys (Google Cloud docs, as of 2026-11).
 Rollout matters as much as content.
 I would inventory existing callers of each permission from Cloud Audit Logs, add the legitimate automation identities to temporary exceptions, and deploy to one folder at a time while watching 403 rates per principal.
 Then I would remove the temporary exceptions as teams migrate to Workload Identity Federation.
 Budget check: this is a handful of rules against a 500-rule and 2,500-principal limit per resource, so capacity is not the constraint; blast radius is.
-The failure mode I would rehearse is a mistaken org-level deny, so the break-glass group must be able to edit deny policies, which means its exception must cover `iam.googleapis.com/denypolicies.*` (UNVERIFIED exact permission name).
+The failure mode I would rehearse is a mistaken org-level deny, so the break-glass group must be able to edit deny policies, which means it must hold `roles/iam.denyAdmin` on the organization.
+The `iam.denypolicies.*` permissions in that role are not on the deny-supported list, so no deny rule can block them and no exception entry is needed (Google Cloud docs, as of 2026-11).
 
 #### Follow-up Interviewer Question
 
@@ -692,7 +724,7 @@ GCP-hosted workloads move to attached service accounts or GKE Workload Identity.
 GitHub Actions, AWS, and Azure workloads move to Workload Identity Federation with attribute conditions pinned to repository and branch or to the AWS role ARN.
 On-premises workloads move to federation through their IdP.
 Unused keys are disabled first, then deleted after a two-week soak, because deletion is not reversible and disabling is.
-Weeks 8 to 12: apply a key expiry constraint to the remaining exceptions and track key-hours down week over week.
+Weeks 8 to 12: apply a key expiry constraint, rotate the remaining exceptions onto new keys because the constraint does not apply to existing keys (Google Cloud docs, as of 2026-11), and track key-hours down week over week.
 Exit criteria: zero keys without an owner, zero keys older than the expiry window, and every remaining key on a register with a migration date.
 The trade-off I would state openly is that federation moves trust to the external IdP's configuration, so pool attribute conditions become security-critical code that needs review.
 
@@ -710,10 +742,10 @@ Each choice answers a different question: what is the worse error for this mecha
 Deny rules are guardrails for irreversible or high-impact actions, so a false allow can be catastrophic, while a false deny is an outage that can be recovered from.
 Failing closed is right, and it also lets the platform add new attributes later without silently weakening existing rules.
 The cost is that one bad condition can deny every principal everywhere below the attachment point, so the design depends on a supporting system: tags as the only allowed attribute, validation at write time, and staged rollout.
-Ignoring a failed access policy is a deliberate availability choice for an event-delivery path, but it means that policy type is not a security boundary under partial failure, and I would not use it as the only control for anything sensitive.
+Ignoring a failed access policy is a deliberate availability choice for an event-delivery path, but it means that policy type, still in Preview for Eventarc Advanced (Google Cloud docs, as of 2026-11), is not a security boundary under partial failure, and I would not use it as the only control for anything sensitive.
 For my own platform, I would make the fail mode an explicit, reviewed property of every policy type rather than an accident of implementation.
 Every policy push would go through validation, dry-run against recent production decisions, cell-by-cell rollout, and an automatic halt on rising 403 rates.
-The June 2025 Service Control incident is the case study: a policy record took an untested code path and spread globally in seconds, so the missing controls were a feature flag and progressive replication, not a better condition language (incident details UNVERIFIED in this session).
+The June 2025 Service Control incident is the case study: a policy record took an untested code path and spread globally in seconds, so the missing controls were a feature flag and progressive replication, not a better condition language (Google Cloud incident report, as of 2026-11).
 I would also give the policy data plane static stability: serving continues on the last-known-good snapshot when the control plane or replication is unhealthy (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Static Stability]]).
 
 #### Follow-up Interviewer Question
@@ -726,8 +758,8 @@ A model-training service account in project A is compromised through a poisoned 
 
 #### Model Answer
 
-In the first 10 minutes, the controls that matter are the ones that act on the identity itself, because policy propagation takes minutes and tokens already issued keep working until they expire.
-I would disable the service account, which stops new token minting, and disable or delete any user-managed keys, then confirm with probe calls instead of trusting the API response.
+In the first 10 minutes, the controls that matter are the ones that act on the identity itself, because policy propagation takes minutes and tokens already issued cannot be revoked, staying valid until they expire, by default up to 60 minutes and up to 12 hours with an extended lifetime (Google Cloud docs, as of 2026-11).
+I would disable the service account, which makes any workload using it lose access immediately, keep it disabled for at least the token lifetime as Google advises, and disable or delete any user-managed keys, then confirm with probe calls instead of trusting the API response (Google Cloud docs, as of 2026-11).
 At the same time, an org-level deny rule naming the service account for all storage and BigQuery data permissions provides a second, independent veto that does not depend on the allow policies being correct.
 Preventive controls determine how bad it was.
 A PAB policy bound to the training projects' service accounts would have restricted eligible resources to the organization's own projects, so the attacker cannot reach their own buckets as this identity.

@@ -17,13 +17,41 @@ sources:
   - "https://cloud.google.com/kubernetes-engine/sla"
   - "https://gvisor.dev/docs/"
   - "https://www.datadoghq.com/blog/2023-03-08-multiregion-infrastructure-connectivity-issue/"
+  - "https://docs.cloud.google.com/kubernetes-engine/quotas"
+  - "https://docs.cloud.google.com/kubernetes-engine/versioning"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/plan-node-sizes"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/planning-large-clusters"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/flexible-pod-cidr"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/node-pool-upgrade-strategies"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-resource-requests"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-security"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/resources/autopilot-standard-feature-comparison"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/run-autopilot-partner-workloads"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/workload-identity"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/private-service-connect"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/sandbox-pods"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/confidential-gke-nodes"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/fqdn-network-policies"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/capacity-provisioning"
+  - "https://docs.cloud.google.com/compute/docs/instances/committed-use-discounts-overview"
+  - "https://cloud.google.com/products/compute/pricing/general-purpose"
+  - "https://cloud.google.com/blog/products/containers-kubernetes/gke-65k-nodes-and-counting"
+  - "https://cloud.google.com/blog/products/containers-kubernetes/new-dns-based-endpoint-for-the-gke-control-plane"
+  - "https://cloud.google.com/blog/products/containers-kubernetes/gke-autopilot-now-available-to-all-qualifying-clusters"
+  - "https://kubernetes.io/releases/version-skew-policy/"
+  - "https://docs.cilium.io/en/stable/network/ebpf/maps/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://www.4armed.com/blog/hacking-kubelet-on-gke/"
+  - "https://aws.amazon.com/eks/pricing/"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/eks-architecture.html"
+  - "https://aws.amazon.com/blogs/containers/under-the-hood-amazon-eks-ultra-scale-clusters/"
 ---
 
 # GKE Deep Dive: Standard vs Autopilot
 
 ## TL;DR
 
-A regional or Autopilot GKE control plane runs replicated in three zones, which is why its SLA is 99.95% while a zonal Standard control plane gets 99.5%. The data plane keeps running when the control plane is down, but nothing new gets scheduled, scaled, or re-endpointed until it comes back ([GKE SLA](https://cloud.google.com/kubernetes-engine/sla), as of 2026-10).
+A regional or Autopilot GKE control plane runs replicated in three zones, which is why its SLA is 99.95% while a zonal Standard control plane gets 99.5%. The data plane keeps running when the control plane is down, but nothing new gets scheduled, scaled, or re-endpointed until it comes back ([GKE SLA](https://cloud.google.com/kubernetes-engine/sla), as of 2026-11).
 Autopilot is not a different Kubernetes. It is the same kube-scheduler and cluster autoscaler with node auto-provisioning, plus an admission layer that rewrites and constrains pod specs. General-purpose pods are billed on requests, so Google carries the bin-packing waste instead of you.
 Dataplane V2 swaps kube-proxy's linear iptables chains for Cilium eBPF hash maps on sockets and on tc hooks. The win is service lookup that stays constant-time as the cluster grows and policy enforcement based on identities. The new risk is that eBPF map capacity and routes owned by host agents become failure points.
 VPC-native pod IPs are Andromeda alias IPs drawn from a secondary range, and each node takes a block at least twice its max-pods setting. Most "the cluster will not scale past N nodes" incidents are IPAM arithmetic, not compute capacity.
@@ -85,7 +113,7 @@ Every failure mode in this chapter is either the brain being unreachable, the br
 ### Control plane topology and what "regional" buys you
 
 A zonal Standard cluster runs one control plane replica in one zone.
-A regional Standard cluster, and every Autopilot cluster, runs control plane replicas across three zones of the region behind a single endpoint ([GKE SLA](https://cloud.google.com/kubernetes-engine/sla), as of 2026-10).
+A regional Standard cluster, and every Autopilot cluster, runs control plane replicas across three zones of the region behind a single endpoint ([GKE SLA](https://cloud.google.com/kubernetes-engine/sla), as of 2026-11).
 The state store is quorum-replicated, so losing one zone costs a replica, not the cluster.
 For a three-member quorum, two members must stay healthy, so the store survives the loss of any single zone and cannot survive two.
 The control plane runs on Google-managed VMs, and GKE resizes it automatically as the cluster grows.
@@ -95,7 +123,7 @@ That re-list is the mechanism behind the "API server CPU spike right after an up
 Every informer in every controller and DaemonSet reconnects and asks for a full list, so the control plane takes a thundering herd at exactly the moment it is down a replica.
 The Kubernetes fix is API Priority and Fairness plus `resourceVersion`-aware watch caches, covered in [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_01_Kubernetes_Control_Loop_Internals|Kubernetes Control Loop Internals]].
 
-For very large clusters, Google has said it moved GKE's state storage off upstream etcd onto a Spanner-based store that speaks the etcd API, as part of its 65,000-node cluster work (UNVERIFIED; I could not re-check the launch post this batch).
+Google said in November 2024, as part of its 65,000-node cluster work, that it is transitioning GKE's state storage from open-source etcd to a Spanner-based store that implements the etcd API ([Google Cloud blog](https://cloud.google.com/blog/products/containers-kubernetes/gke-65k-nodes-and-counting), as of 2026-11).
 The architectural reason is simple.
 etcd is one Raft group where every write goes through one leader and the whole dataset lives on each member.
 That caps write throughput and database size no matter how many members you add.
@@ -104,9 +132,9 @@ Whatever the backend, the contract you program against is the same: optimistic c
 
 ### Control plane reachability
 
-The control plane is reachable through a public IP endpoint, a private endpoint inside your VPC, or a DNS-based endpoint that terminates on Google's API front end and authorizes callers with IAM rather than source IP (UNVERIFIED for current GA scope).
+The control plane is reachable through a public IP endpoint, a private endpoint inside your VPC, or a DNS-based endpoint that terminates on Google's API front end and authorizes callers with IAM, through the `container.clusters.connect` permission, rather than source IP ([Google Cloud blog](https://cloud.google.com/blog/products/containers-kubernetes/new-dns-based-endpoint-for-the-gke-control-plane) and GKE docs, as of 2026-11).
 Older private clusters connected the control plane to nodes through VPC Network Peering.
-Newer clusters use Private Service Connect for that path (UNVERIFIED for version cutover details).
+Newer clusters use Private Service Connect for that path: create on 1.29 or later for private nodes, and a cluster whose `privateClusterConfig` has a `peeringName` is still on peering ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/private-service-connect), as of 2026-11).
 This matters in failure analysis because control-plane-to-node traffic (webhooks, `kubectl exec`, `kubectl logs`, metrics-server, aggregated APIs) flows in the reverse direction from what engineers expect.
 In private clusters it needs a VPC firewall rule from the control plane range to the node port that serves the webhook.
 
@@ -114,24 +142,25 @@ In private clusters it needs a VPC firewall rule from the control plane range to
 
 A Standard node pool is a Managed Instance Group per zone.
 In a regional cluster, `--num-nodes` is per zone, so `--num-nodes=1` across three zones gives you three VMs.
-Node upgrades happen at node-pool granularity using one of three strategies:
-- Surge upgrades create `maxSurge` new nodes and drain up to `maxUnavailable` old nodes at a time.
+Node upgrades happen at node-pool granularity using one of these strategies ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/node-pool-upgrade-strategies), as of 2026-11):
+- Surge upgrades create `maxSurge` new nodes and drain up to `maxUnavailable` old nodes at a time. This is the default, and Autopilot uses it without letting you change it.
 - Blue-green upgrades stand up a full green pool, cordon the blue pool, and soak before deleting it.
-- Short-lived upgrades are used for certain node types (UNVERIFIED for current scope).
-During a drain, GKE respects PodDisruptionBudgets for a bounded time (one hour is the commonly documented figure) and then evicts anyway (UNVERIFIED).
+- Autoscaled blue-green upgrades are a Preview variant that needs control plane 1.34.0-gke.2201000 or later and cluster autoscaling.
+- Short-lived upgrades apply to Flex-start VM nodes and to queued-provisioning nodes on 1.32.2-gke.1652000 or later: existing nodes run until preempted, and the new configuration rolls out over at most seven days.
+During a surge drain, GKE respects PodDisruptionBudgets and the termination grace period for up to one hour and then evicts anyway (GKE docs, as of 2026-11).
 That bound is deliberate: a PDB with `maxUnavailable: 0` must not be allowed to block security patching across the fleet forever.
-The Kubernetes version skew policy lets kubelets lag the apiserver by up to three minor versions (upstream Kubernetes policy since 1.28, UNVERIFIED for GKE enforcement details).
-GKE auto-upgrade keeps the gap much smaller than that.
+The Kubernetes version skew policy lets kubelets lag the apiserver by up to three minor versions (upstream policy since 1.28, [Kubernetes docs](https://kubernetes.io/releases/version-skew-policy/), as of 2026-11).
+GKE is stricter: nodes may run at most two minor versions behind the control plane ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/versioning), as of 2026-11).
 
 ### Autopilot provisioning, step by step
 
 What follows is the path a pod takes on Autopilot.
 Getting-started guides compress it to "Google manages the nodes."
 1. Admission. The pod hits the apiserver, where Autopilot's policy admission (GKE Warden) mutates and validates it.
-   - It fills in default requests when none are set.
-   - It rounds requests to allowed increments and enforces CPU:memory ratio bounds.
+   - It fills in default requests when none are set: 0.5 vCPU and 2 GiB for compute classes, plus 1 GiB of ephemeral storage for most containers ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-resource-requests), as of 2026-11).
+   - It rounds CPU requests up to 0.25 vCPU increments on clusters without bursting support, and enforces CPU:memory ratio bounds: 1:1 to 1:6.5 for general-purpose, 1:1 to 1:8 for Balanced, and exactly 1:4 for Scale-Out (GKE docs, as of 2026-11).
    - It maps any `cloud.google.com/compute-class` selector to a node shape family.
-   - It rejects privileged containers, most `hostPath` mounts, and other node-escape primitives (exact defaults and ratios UNVERIFIED).
+   - It rejects privileged containers, `hostPath` mounts other than read-only `/var/log` paths, and other node-escape primitives ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-security), as of 2026-11).
    The pod you `get` back is not the pod you `apply`ed, and that difference is billable.
 2. Scheduling. kube-scheduler tries existing nodes.
    If nothing fits, the pod is marked `PodScheduled=False` with reason `Unschedulable`.
@@ -140,19 +169,20 @@ Getting-started guides compress it to "Google manages the nodes."
    It then picks a shape, creating a new node pool or MIG if none matches.
 4. VM creation. The MIG resizes, Compute Engine places and boots the VM on Titanium hosts ([[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_06_Compute_Engine_and_Titanium_Architecture|Compute Engine and Titanium]]), and kubelet registers with the apiserver.
 5. Bind and pull. The scheduler binds the pod, then containerd pulls the image and starts it.
-   Image streaming can shorten the pull step (feature availability UNVERIFIED for every compute class).
-Steps 3 to 5 typically cost tens of seconds to a few minutes (UNVERIFIED; measure it in your own region).
+   Image streaming can shorten the pull step, and it is pre-configured on Autopilot ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/resources/autopilot-standard-feature-comparison), as of 2026-11).
+Steps 3 to 5 typically cost tens of seconds to a few minutes (UNVERIFIED: no published figure found; measure it in your own region).
 That latency is the main operational difference from a pre-warmed Standard pool.
-The standard mitigation is a capacity buffer: low-priority "balloon" pods that hold headroom and are preempted the moment real pods arrive (the worked example below shows it).
+The standard mitigation is a capacity buffer: low-priority "balloon" pods that hold headroom and are preempted the moment real pods arrive (the worked example below shows it; [GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/capacity-provisioning), as of 2026-11, which also list a managed capacity buffers feature in Preview).
 
 Billing follows the abstraction.
-General-purpose pods are billed per second on their requested vCPU, memory, and ephemeral storage, so fragmentation and system DaemonSet overhead on the node are Google's problem ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing), as of 2026-10).
-Hardware-specific compute classes (accelerators, specific machine series) are billed per node, because a GPU cannot be split across tenants the way a CPU slot can, so the fragmentation risk goes back to you (UNVERIFIED for current per-class billing rules).
-Google has also announced a "container-optimized compute platform" for Autopilot that resizes running nodes, and a way to run Autopilot-managed compute classes inside Standard clusters (UNVERIFIED for GA status; treat both as needing confirmation before you design around them).
+General-purpose pods are billed per second on their requested vCPU, memory, and ephemeral storage, so fragmentation and system DaemonSet overhead on the node are Google's problem ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing), as of 2026-11).
+Pods that select specific hardware (accelerators, specific machine series) are billed per node, at Compute Engine prices plus an Autopilot management premium, because a GPU cannot be split across tenants the way a CPU slot can, so the fragmentation risk goes back to you ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing), as of 2026-11).
+Google's "container-optimized compute platform" is the default for Autopilot clusters and scales vertically as well as horizontally; whether that resizes running nodes in place is UNVERIFIED: neither the docs nor the launch post describe node resizing.
+Autopilot compute classes (`autopilot`, `autopilot-spot`) can also run inside Standard clusters, announced as GA in September 2025 starting on the Rapid channel ([Google Cloud blog](https://cloud.google.com/blog/products/containers-kubernetes/gke-autopilot-now-available-to-all-qualifying-clusters)); current docs require 1.34.1-gke.1829001 or later (as of 2026-11).
 
 The name echoes Google's internal Borg vertical autoscaler, described in "Autopilot: Workload Autoscaling at Google" (EuroSys 2020).
 That system sets per-task resource limits from moving windows of historical usage and cut slack substantially at Borg scale.
-The GKE mode's tie to that paper is conceptual, not documented code lineage (UNVERIFIED).
+The GKE mode's tie to that paper is conceptual, not documented code lineage (UNVERIFIED: no Google source found either way).
 The lesson carries over: per-request billing only works if requests track usage, which is why Vertical Pod Autoscaler recommendations matter more on Autopilot than on Standard.
 
 ### Networking: alias IPs, pod CIDR arithmetic, and Dataplane V2
@@ -163,7 +193,7 @@ Andromeda ([[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/C
 There is no VXLAN or Geneve encapsulation inside GKE, VPC firewall rules and flow logs see real pod IPs, and peered or interconnected networks can route to pods directly.
 
 The detail most engineers miss is how GKE sizes the per-node block.
-It allocates the smallest CIDR holding at least twice the node's max-pods value: 110 pods gets a /24, 64 gets a /25, 32 gets a /26, and 8 gets a /28 (UNVERIFIED as current doc text, but the long-standing documented rule).
+It allocates the smallest CIDR holding at least twice the node's max-pods value: 110 pods gets a /24, 64 gets a /25, 32 gets a /26, and 8 gets a /28 ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/flexible-pod-cidr), as of 2026-11).
 The doubling exists so a terminating pod's IP is not handed to a new pod right away.
 That avoids stale conntrack entries, stale endpoint caches, and stale firewall flow state pointing at the wrong workload.
 The consequence is a hard node ceiling set entirely by IPAM: `max_nodes = 2^(node_block_prefix - pod_range_prefix)`.
@@ -173,7 +203,7 @@ Service ClusterIPs come from a separate range that never appears on any NIC.
 They exist only as keys in the datapath's translation tables.
 
 Dataplane V2 is GKE's Cilium-based eBPF datapath, run by the `anetd` DaemonSet, and it replaces kube-proxy entirely ([Dataplane V2 docs](https://cloud.google.com/kubernetes-engine/docs/concepts/dataplane-v2)).
-It cannot be enabled on an existing cluster; it is chosen at cluster creation, and Autopilot clusters always use it (UNVERIFIED for any 2026 change to in-place migration).
+It cannot be enabled on an existing cluster; it is chosen at cluster creation, and it is enabled by default on all new Autopilot clusters ([Dataplane V2 docs](https://cloud.google.com/kubernetes-engine/docs/concepts/dataplane-v2), as of 2026-11).
 kube-proxy's iptables mode resolves a ClusterIP in three steps:
 - A packet walks the `KUBE-SERVICES` chain until it hits the rule for its service.
 - It then walks a per-service chain of probabilistic `statistic --mode random` rules to pick an endpoint.
@@ -190,14 +220,15 @@ Both paths use eBPF hash maps keyed by (VIP, port, protocol), which point to a b
 Endpoint updates become single map-element writes rather than table rewrites.
 
 Network policy uses identities instead of IP lists.
-Cilium hashes each unique set of security-relevant pod labels into a numeric security identity, stored on GKE as CRD-backed objects rather than in a separate key-value store (UNVERIFIED for current GKE storage of identities).
+Cilium hashes each unique set of security-relevant pod labels into a numeric security identity, stored on GKE as CRD-backed objects rather than in a separate key-value store (UNVERIFIED: GKE docs do not state where identities are stored).
 Each endpoint gets an eBPF policy map keyed by (peer identity, port, protocol).
 Packets carry or resolve the source identity, so enforcement is one map lookup, and pod churn only updates the IP-to-identity cache, not every policy rule.
 The new limits are map sizes.
-- Conntrack and NAT maps have fixed maximum entries.
-- Policy maps have a per-endpoint entry ceiling.
+- Conntrack and NAT maps have fixed maximum entries; upstream Cilium's static defaults are 512k TCP and 256k UDP conntrack entries per node, and a default Helm install sizes them from node memory instead ([Cilium docs](https://docs.cilium.io/en/stable/network/ebpf/maps/), as of 2026-11).
+- Policy maps have a per-endpoint entry ceiling, 16k by default upstream (Cilium docs, as of 2026-11).
+- On GKE the service map is limited to 260,000 endpoints across all Services, and the largest maps reserve 0.25% of node memory ([Dataplane V2 docs](https://cloud.google.com/kubernetes-engine/docs/concepts/dataplane-v2), as of 2026-11).
 - High-cardinality labels can explode the identity count.
-When a map fills, new flows drop silently rather than slowing down, which is a very different failure shape from iptables (Cilium mechanism; GKE-specific map sizes UNVERIFIED).
+When a map fills, insertion fails, so new flows drop rather than slow down, which is a very different failure shape from iptables (Cilium docs, as of 2026-11).
 
 Container-native load balancing changes the external path too.
 Google Cloud load balancers target Network Endpoint Groups whose members are pod IPs, so traffic skips the NodePort hop and the second SNAT hop that `externalTrafficPolicy: Cluster` introduces.
@@ -208,7 +239,7 @@ Pod readiness gates tie Kubernetes readiness to load balancer health ([[17-Cloud
 Node identity: Shielded GKE Nodes run on Shielded VMs with Secure Boot, a vTPM, and integrity monitoring.
 The control plane checks that a node joining the cluster is a genuine GKE VM before giving it kubelet credentials.
 This closes an old attack class.
-In early GKE, a pod that could reach the instance metadata server could read kubelet bootstrap material from the `kube-env` attribute, impersonate a node, and read secrets for pods scheduled anywhere (publicly demonstrated by researchers around 2018; specific write-up UNVERIFIED).
+In early GKE, a pod that could reach the instance metadata server could read kubelet bootstrap material from the `kube-env` attribute, impersonate a node, and read secrets for pods scheduled anywhere (publicly demonstrated in ["Hacking Kubelet on GKE"](https://www.4armed.com/blog/hacking-kubelet-on-gke/), 4ARMED, November 2018).
 
 Pod identity: Workload Identity Federation for GKE runs `gke-metadata-server` as a DaemonSet in place of the VM's metadata path, and pod traffic to `169.254.169.254` is redirected to it.
 The flow is:
@@ -216,7 +247,7 @@ The flow is:
 2. It obtains a projected service account token from the apiserver.
 3. It exchanges that token with Google STS for a federated access token, or impersonates a mapped IAM service account.
 4. It returns the token in the same format the VM metadata server would.
-The principal string has the form `principal://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/PROJECT_ID.svc.id.goog/subject/ns/NAMESPACE/sa/KSA` (format UNVERIFIED against current docs).
+The principal string has the form `principal://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/PROJECT_ID.svc.id.goog/subject/ns/NAMESPACE/sa/KSA` ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/workload-identity), as of 2026-11).
 That form encodes the subtle property called identity sameness.
 Every cluster in a project shares the pool `PROJECT_ID.svc.id.goog`, so `ns/payments/sa/api` in a throwaway dev cluster is the same IAM principal as `ns/payments/sa/api` in production if both clusters live in the same project.
 Details are in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]].
@@ -225,13 +256,13 @@ Kernel isolation: GKE Sandbox runs pods under gVisor (`runtimeClassName: gvisor`
 gVisor's user-space Sentry kernel intercepts application syscalls, so a container escape must first break gVisor and then the host kernel's much smaller exposed surface ([gVisor docs](https://gvisor.dev/docs/), [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_01_Hypervisors_MicroVMs_and_Sandboxing|Hypervisors, MicroVMs, and Sandboxing]]).
 The cost is syscall-heavy and I/O-heavy overhead, plus some features that are incompatible.
 
-Memory confidentiality: Confidential GKE Nodes run node VMs with hardware memory encryption (AMD SEV variants or Intel TDX depending on machine series, UNVERIFIED per series), covered in [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_15_Security_and_Confidential_Computing_Cloud_KMS|Cloud KMS and Confidential Computing]].
+Memory confidentiality: Confidential GKE Nodes run node VMs with hardware memory encryption (AMD SEV or SEV-SNP, with N2D as the Autopilot default series, or Intel TDX, with C3; [GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/confidential-gke-nodes), as of 2026-11), covered in [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_15_Security_and_Confidential_Computing_Cloud_KMS|Cloud KMS and Confidential Computing]].
 
 Supply chain and posture: Binary Authorization admits only images with valid attestations.
 Application-layer secrets encryption wraps the data keys that protect Kubernetes Secrets in the state store with a Cloud KMS key you control (envelope encryption).
 
 Autopilot's baseline: Shielded Nodes, Workload Identity Federation, and Container-Optimized OS with containerd are always on and cannot be turned off.
-Privileged pods are rejected unless a Google-published partner allowlist permits a specific workload (UNVERIFIED for allowlist mechanism naming).
+Privileged pods are rejected unless a `WorkloadAllowlist` custom resource, installed through an `AllowlistSynchronizer`, permits that specific workload ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/run-autopilot-partner-workloads), as of 2026-11).
 
 ## Numbers to Know
 
@@ -239,34 +270,36 @@ Downtime budgets are computed from the SLA percentage over a 730-hour month.
 
 | Quantity | Value | Source and status |
 |---|---|---|
-| Zonal Standard control plane SLA | 99.5% monthly (about 3.65 h allowed downtime) | [GKE SLA](https://cloud.google.com/kubernetes-engine/sla) (Google Cloud docs, as of 2026-10) |
-| Regional Standard control plane SLA | 99.95% monthly (about 21.9 min) | (Google Cloud docs, as of 2026-10) |
-| Autopilot control plane SLA | 99.95% monthly | (Google Cloud docs, as of 2026-10) |
-| Autopilot pods spread across multiple zones SLA | 99.9% monthly (about 43.8 min) | (Google Cloud docs, as of 2026-10) |
-| Cluster management fee | $0.10 per cluster per hour, billed per second, every mode and topology | [GKE pricing](https://cloud.google.com/kubernetes-engine/pricing) (Google Cloud docs, as of 2026-10) |
-| Free tier | $74.40 monthly credit per billing account; usable for zonal Standard or Autopilot fees only, not regional Standard | (Google Cloud docs, as of 2026-10) |
-| Extended release channel | Extra management fee while the minor version is in extended support | (Google Cloud docs, as of 2026-10); amount UNVERIFIED |
-| Autopilot general-purpose price, us-central1 | about $0.0445 per vCPU-hour, $0.0049225 per GiB-hour | (Google Cloud pricing as reproduced by third-party analyses, as of 2026-10) |
-| Autopilot Balanced class, us-central1 | about $0.0645 per vCPU-hour, $0.0071354 per GiB-hour | (Google Cloud pricing as reproduced by third-party analyses, as of 2026-10) |
-| Autopilot ephemeral storage | about $0.0001389 per GiB-hour | (third-party, as of 2026-10) UNVERIFIED against Google page |
-| Max pods per node, Standard | 110 by default, configurable up to 256 | UNVERIFIED |
-| Max pods per node, Autopilot | 32 by default | UNVERIFIED |
-| Per-node pod CIDR | Smallest block of at least 2x max-pods (110 -> /24, 64 -> /25, 32 -> /26) | UNVERIFIED |
-| Nodes per cluster | 15,000 standard limit; up to 65,000 with Google enablement | UNVERIFIED |
-| Node allocatable CPU reserve | 6% of core 1, 1% of core 2, 0.5% of cores 3-4, 0.25% above 4 | UNVERIFIED |
-| Node allocatable memory reserve | 25% of first 4 GiB, 20% of next 4, 10% of next 8, 6% of next 112, 2% above 128, plus 100 MiB eviction threshold | UNVERIFIED |
-| PDB honored during node drain for upgrades | Up to about 1 hour, then forced eviction | UNVERIFIED |
-| Spot VM discount vs on-demand | 60-91% range | UNVERIFIED |
-| Kubelet version skew | Up to 3 minor versions older than apiserver (upstream policy) | UNVERIFIED |
+| Zonal Standard control plane SLA | 99.5% monthly (about 3.65 h allowed downtime) | [GKE SLA](https://cloud.google.com/kubernetes-engine/sla) (Google Cloud docs, as of 2026-11) |
+| Regional Standard control plane SLA | 99.95% monthly (about 21.9 min); 99.9% in Stockholm | (Google Cloud docs, as of 2026-11) |
+| Autopilot control plane SLA | 99.95% monthly; 99.9% in Stockholm | (Google Cloud docs, as of 2026-11) |
+| Autopilot pods spread across multiple zones SLA | 99.9% monthly (about 43.8 min); 99.5% in Stockholm | (Google Cloud docs, as of 2026-11) |
+| Cluster management fee | $0.10 per cluster per hour, billed per second, every mode and topology | [GKE pricing](https://cloud.google.com/kubernetes-engine/pricing) (Google Cloud docs, as of 2026-11) |
+| Free tier | $74.40 monthly credit per billing account; usable for zonal Standard or Autopilot fees only, not regional Standard | (Google Cloud docs, as of 2026-11) |
+| Extended release channel | Extra $0.50 per cluster per hour while the minor version is in extended support, for $0.60 total; no extra charge during standard support | (Google Cloud docs, as of 2026-11) |
+| Autopilot general-purpose price, us-central1 | $0.0445 per vCPU-hour, $0.0049225 per GiB-hour | [GKE pricing](https://cloud.google.com/kubernetes-engine/pricing) (Google Cloud docs, as of 2026-11) |
+| Autopilot Balanced class, us-central1 | $0.0645 per vCPU-hour, $0.0071354 per GiB-hour | (Google Cloud docs, as of 2026-11) |
+| Autopilot ephemeral storage | $0.0001389 per GiB-hour | (Google Cloud docs, as of 2026-11) |
+| Max pods per node, Standard | 110 by default, configurable up to 512 | [GKE quotas](https://docs.cloud.google.com/kubernetes-engine/quotas) (Google Cloud docs, as of 2026-11) |
+| Max pods per node, Autopilot | Set dynamically between 8 and 256 from cluster size and workload count; 32 on versions earlier than 1.28; one for GPU and Performance class Pods | (Google Cloud docs, as of 2026-11) |
+| Per-node pod CIDR | Smallest block of at least 2x max-pods (110 -> /24, 64 -> /25, 32 -> /26, 256 -> /23, 512 -> /22) | [GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/flexible-pod-cidr) (as of 2026-11) |
+| Nodes per cluster, Standard | Up to 5,000 automatically; 5,000-15,000 regional only, with a Cloud Customer Care request; 15,000-65,000 on 1.31 or later, regional only, Dataplane V2 and PSC required, no cluster autoscaler | [GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/planning-large-clusters) (as of 2026-11) |
+| Nodes per cluster, Autopilot | 5,000 | [GKE quotas](https://docs.cloud.google.com/kubernetes-engine/quotas) (Google Cloud docs, as of 2026-11) |
+| Node allocatable CPU reserve | 6% of core 1, 1% of core 2, 0.5% of cores 3-4, 0.25% above 4; capped at 1 vCPU for pools created on 1.37 or later | [GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/plan-node-sizes) (as of 2026-11) |
+| Node allocatable memory reserve, pools created on 1.36 or earlier | 25% of first 4 GiB, 20% of next 4, 10% of next 8, 6% of next 112, 2% above 128, plus 100 MiB eviction threshold | (Google Cloud docs, as of 2026-11) |
+| Node allocatable memory reserve, pools created on 1.37 or later | Lower of the tiered result and (15 MiB x max-pods) + 500 MiB on Container-Optimized OS (700 MiB on Ubuntu), plus 100 MiB eviction threshold and any image streaming buffer | (Google Cloud docs, as of 2026-11) |
+| PDB honored during surge upgrade drain | Up to 1 hour, then forced eviction | [GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/node-pool-upgrade-strategies) (as of 2026-11) |
+| Spot discount vs on-demand | 60-91% range for CPU, memory, and GPU; prices can change | [GKE pricing](https://cloud.google.com/kubernetes-engine/pricing) (Google Cloud docs, as of 2026-11) |
+| Kubelet version skew | Up to 3 minor versions older than apiserver upstream; up to 2 on GKE | [Kubernetes docs](https://kubernetes.io/releases/version-skew-policy/), [GKE docs](https://docs.cloud.google.com/kubernetes-engine/versioning) (as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | Amazon EKS | Google GKE | Critical difference |
 |---|---|---|---|
-| Control plane placement | AWS-managed account, apiservers and etcd across multiple AZs | Google tenant project; zonal (1 replica) or regional/Autopilot (3 zones) | GKE offers a cheaper zonal option with a weaker SLA; EKS has no single-AZ control plane tier (UNVERIFIED for 2026) |
-| Control plane fee | Per-cluster hourly fee, higher in extended support (UNVERIFIED amounts) | $0.10/h per cluster, plus Extended channel fee | Both price clusters, not nodes; cluster sprawl costs money on both |
-| State store | etcd, managed by AWS (UNVERIFIED for any backend change) | etcd API, Spanner-backed at large scale (UNVERIFIED) | Determines the ceiling on cluster size and write rate |
-| Hands-off node mode | EKS Auto Mode, Fargate (UNVERIFIED for Auto Mode scope) | Autopilot | Fargate gives one microVM per pod; Autopilot packs many pods per hidden VM, billed per pod |
+| Control plane placement | AWS-managed account, at least two apiservers and three etcd instances across three AZs ([AWS docs](https://docs.aws.amazon.com/eks/latest/userguide/eks-architecture.html), as of 2026-11) | Google tenant project; zonal (1 replica) or regional/Autopilot (3 zones) | GKE offers a zonal option with a weaker SLA at the same fee (its free tier credit covers zonal, not regional); the EKS docs describe only the three-AZ control plane (AWS docs, as of 2026-11) |
+| Control plane fee | $0.10/h per cluster, $0.60/h in extended support ([AWS pricing](https://aws.amazon.com/eks/pricing/), as of 2026-11) | $0.10/h per cluster, $0.60/h in extended support (Google Cloud docs, as of 2026-11) | Both price clusters, not nodes; cluster sprawl costs money on both |
+| State store | etcd, managed by AWS; ultra scale clusters offload consensus to an internal journal and keep BoltDB in memory ([AWS blog](https://aws.amazon.com/blogs/containers/under-the-hood-amazon-eks-ultra-scale-clusters/), as of 2026-11) | etcd API on a Spanner-based store (Google Cloud blog, as of 2026-11) | Determines the ceiling on cluster size and write rate |
+| Hands-off node mode | EKS Auto Mode (Karpenter-based compute, plus networking, load balancing, DNS, and block storage) or Fargate (AWS docs, as of 2026-11) | Autopilot | Fargate gives one microVM per pod; Autopilot packs many pods per hidden VM, billed per pod |
 | Node provisioner | Karpenter (open source, runs as a controller) | Cluster autoscaler + NAP, run by Google | Karpenter launches EC2 instances directly through Fleet APIs; GKE resizes MIGs ([[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_04_Autoscaling_at_Scale_HPA_KEDA_and_Karpenter\|Autoscaling at Scale]]) |
 | Pod networking | VPC CNI gives pods ENI secondary IPs or prefixes | Alias IP ranges from a secondary range | EKS pod density depends on ENI and IP limits per instance type; GKE depends on CIDR arithmetic ([[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_07_Amazon_EKS_Control_Plane_and_Networking\|EKS]]) |
 | Service datapath | kube-proxy (iptables/IPVS) by default; Cilium optional and self-managed | Dataplane V2 (managed Cilium), no kube-proxy | GKE owns the eBPF datapath lifecycle; on EKS you own Cilium upgrades |
@@ -281,11 +314,11 @@ Downtime budgets are computed from the SLA percentage over a 730-hour month.
 ### Cost estimate and guardrails
 
 The lab runs one Autopilot cluster and one regional Standard cluster in `us-central1` for about three hours.
-The Autopilot cluster fee is $0.10/h, which the free tier credit can absorb ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing), as of 2026-10).
-The regional Standard cluster fee is $0.10/h and is not covered by the free tier credit (as of 2026-10).
-Standard nodes are three e2-standard-4 VMs (one per zone) at an assumed $0.134/h each (UNVERIFIED list price), or about $0.40/h.
+The Autopilot cluster fee is $0.10/h, which the free tier credit can absorb ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing), as of 2026-11).
+The regional Standard cluster fee is $0.10/h and is not covered by the free tier credit (as of 2026-11).
+Standard nodes are three e2-standard-4 VMs (one per zone) at $0.134/h each ([Compute Engine pricing](https://cloud.google.com/products/compute/pricing/general-purpose), as of 2026-11), or about $0.40/h.
 Autopilot lab pods total about 2 vCPU and 4 GiB: 2 x 0.0445 + 4 x 0.0049225 = $0.109/h.
-The all-in total is about $0.71/h, plus roughly $0.04/h for the Standard node pool's three 100 GB boot persistent disks (and no external load balancer forwarding rules), bringing the total to roughly $2.50-$3.50 for the 3-hour run.
+The all-in total is about $0.71/h, plus roughly $0.04/h for the Standard node pool's three 100 GB boot persistent disks (and no external load balancer forwarding rules), or about $0.75/h and $2.25 for the 3-hour run; allow up to $3.50 for slow teardown.
 A $20 budget with 50/90/100% alerts is set below.
 
 ### Provision
@@ -427,7 +460,7 @@ kubectl get pod -l app=balloon -o jsonpath='{.items[0].spec.containers[0].resour
 ```
 
 The balloons are billed at the full per-pod rate.
-Two balloons at 0.5 vCPU and 1 GiB cost 2 x (0.5 x 0.0445 + 1 x 0.0049225) = $0.054/h, or about $39 per month, for roughly 1 vCPU of instant burst capacity.
+Two balloons at 0.5 vCPU and 1 GiB cost 2 x (0.5 x 0.0445 + 1 x 0.0049225) = $0.054/h, or about $40 per month, for roughly 1 vCPU of instant burst capacity.
 
 ### Capacity sizing: 40 replicas at 500m CPU and 2 GiB
 
@@ -435,16 +468,17 @@ Autopilot (general-purpose, us-central1) cost per pod-hour is 0.5 x 0.0445 + 2 x
 Forty pods cost 40 x 0.032095 x 730 h = about $937 per month, plus the $73 cluster fee.
 If a zone fails, Autopilot reschedules the lost pods into the surviving zones and you keep paying for 40 pods, assuming capacity exists there.
 
-Standard on e2-standard-8 (8 vCPU, 32 GB, assumed $0.268/h, UNVERIFIED list price) needs an allocatable calculation first.
+Standard on e2-standard-8 (8 vCPU, 32 GB, $0.268/h, [Compute Engine pricing](https://cloud.google.com/products/compute/pricing/general-purpose), as of 2026-11) needs an allocatable calculation first.
 - CPU reserve is 0.06 + 0.01 + 0.01 + 0.01 = 0.09 vCPU, which leaves 7.91 allocatable.
-- Memory reserve is 1.0 + 0.8 + 0.8 + 0.96 + 0.1 = 3.66 GiB, which leaves about 28.3 GiB, using the reservation formula from the numbers table (UNVERIFIED).
+- Memory reserve is 1.0 + 0.8 + 0.8 + 0.96 + 0.1 = 3.66 GiB, which leaves about 28.3 GiB, using the tiered formula for pools created on 1.36 or earlier from the numbers table.
 - System DaemonSets (anetd, logging and metrics agents, gke-metadata-server) take an assumed 0.4 vCPU and 0.6 GiB; measure yours with `kubectl describe node`.
 - Memory then limits each node to floor((28.3 - 0.6) / 2) = 13 pods, against 15 by CPU.
+- A pool created on 1.37 or later at the default 110 max-pods reserves 15 MiB x 110 + 500 MiB = 2.1 GiB plus 0.1 GiB, before any image streaming buffer, so it fits floor((29.8 - 0.6) / 2) = 14 pods.
 
-Without zonal headroom, 40 / 13 needs 4 nodes, or 4 x 0.268 x 730 = $783 per month.
-To survive a zone loss at full capacity, each of 2 surviving zones must hold 20 pods, which means 2 nodes per zone across 3 zones = 6 nodes, or $1,174 per month.
+Without zonal headroom, 40 / 13 needs 4 nodes, or 4 x 0.268 x 730 = $783 per month; at 14 pods per node on a 1.37 pool, 3 nodes are enough, or $587 per month.
+To survive a zone loss at full capacity, each of 2 surviving zones must hold 20 pods, which means 2 nodes per zone across 3 zones = 6 nodes, or $1,174 per month, under either formula.
 The crossover is the point.
-Autopilot's per-unit premium is cheaper than Standard once Standard has to carry N+1 zonal headroom and bin-packing waste, and more expensive when Standard can pack tightly with no headroom or run on Spot with committed-use discounts.
+Autopilot's per-unit premium is cheaper than Standard once Standard has to carry N+1 zonal headroom and bin-packing waste, and more expensive when Standard can pack tightly with no headroom or run on Spot or committed-use discounts, which do not stack because flexible commitments cannot be applied to Spot VMs ([Compute Engine docs](https://docs.cloud.google.com/compute/docs/instances/committed-use-discounts-overview), as of 2026-11).
 
 ### IPAM sizing for the Standard cluster
 
@@ -490,7 +524,7 @@ Running pods keep serving, but everything that writes to the API stalls:
 - Endpoint updates during pod churn
 Because the resize is triggered by cluster growth, it tends to arrive at exactly the moment you are scaling out.
 For anything production-facing, use regional clusters.
-The SLA gap is 99.5% versus 99.95% ([GKE SLA](https://cloud.google.com/kubernetes-engine/sla), as of 2026-10).
+The SLA gap is 99.5% versus 99.95% ([GKE SLA](https://cloud.google.com/kubernetes-engine/sla), as of 2026-11).
 
 ### Admission webhook deadlocks and private-cluster firewalls
 
@@ -506,12 +540,12 @@ Mitigate with:
 ### Upgrade drains blocked by PDBs, then forced
 
 A PDB with `maxUnavailable: 0`, or `minAvailable` equal to the replica count, blocks voluntary eviction.
-GKE waits a bounded time and then evicts anyway (UNVERIFIED duration), so a team that "protected" a singleton with a strict PDB gets an uncontrolled eviction at an arbitrary time instead of a controlled one.
+During a surge upgrade GKE waits up to one hour and then evicts anyway (GKE docs, as of 2026-11), so a team that "protected" a singleton with a strict PDB gets an uncontrolled eviction at an arbitrary time instead of a controlled one.
 Use real replica headroom, set maintenance windows, and use maintenance exclusions for freeze periods.
 
 ### Autopilot surprises
 
-Admission rewrites requests and enforces CPU:memory ratios, so a pod asking for 4 vCPU and 1 GiB is stored and billed with more memory than requested (exact ratio bounds UNVERIFIED).
+Admission rewrites requests and enforces CPU:memory ratios, so a general-purpose pod asking for 4 vCPU and 1 GiB is stored and billed with 4 GiB, because Autopilot raises the smaller resource to reach the 1:1 lower bound ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-resource-requests), as of 2026-11).
 Scale-up from zero headroom pays the full VM provisioning latency, so latency-sensitive services need balloon pods or a higher HPA floor.
 Node shapes are chosen for you, so a single large pod can land on a dedicated VM.
 On per-node-billed compute classes, that VM's idle remainder is your cost.
@@ -526,7 +560,7 @@ Mitigations:
 
 ### Host agents fighting the eBPF datapath
 
-Datadog's March 2023 multi-region outage, on its own Cilium-based clusters rather than GKE, is the canonical case study ([Datadog postmortem](https://www.datadoghq.com/blog/2023-03-08-multiregion-infrastructure-connectivity-issue/), URL UNVERIFIED).
+Datadog's March 2023 multi-region outage, on its own Cilium-based clusters rather than GKE, is the canonical case study ([Datadog postmortem](https://www.datadoghq.com/blog/2023-03-08-multiregion-infrastructure-connectivity-issue/), published May 2023).
 An automatic OS security update restarted systemd-networkd, which removed routes that Cilium had installed, and nodes across regions and clouds lost pod networking at once.
 On GKE, Google owns the node OS image and `anetd`, which removes most of this class.
 It comes back as soon as you install DaemonSets that modify host routing, iptables, or eBPF programs: security agents, service meshes in CNI mode, custom tuning DaemonSets.
@@ -537,7 +571,7 @@ Conntrack and NAT maps have fixed capacities.
 High-connection-rate workloads, such as UDP-heavy DNS or short-lived HTTP without keep-alive, can fill them.
 When they fill, new flows drop, while established ones are fine.
 Labels with per-pod unique values (build IDs, request hashes) create one security identity per pod, which inflates policy maps and identity churn on the control plane.
-Watch `anetd` metrics and keep security-relevant labels low-cardinality (Cilium mechanism; GKE-specific thresholds UNVERIFIED).
+Watch `anetd` metrics and keep security-relevant labels low-cardinality (Cilium mechanism; GKE conntrack and NAT thresholds UNVERIFIED: not published in the Dataplane V2 docs).
 
 ### DNS as the hidden single point
 
@@ -554,8 +588,8 @@ Client libraries retry; hand-rolled curl in init scripts often does not.
 
 ### Global API dependency
 
-The Google Cloud incident of 2025-06-12 was a bad policy change that crashed Service Control.
-It caused widespread API errors across many products and regions for hours ([Google Cloud status](https://status.cloud.google.com/summary); the specific incident page is not linked because its URL is UNVERIFIED).
+The Google Cloud incident of 2025-06-12 was a policy change with blank fields that hit a null pointer path in Service Control and crash-looped it in every region.
+It caused widespread API errors across many products and regions for hours ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
 From the GKE architecture we can infer the effect: any workflow needing a Google API call (new tokens via STS, node creation, load balancer reconfiguration, image pulls from Artifact Registry) is exposed, while already-running pods holding cached tokens keep serving.
 Design for static stability.
 - Pre-pull or mirror critical images.
@@ -567,7 +601,7 @@ Design for static stability.
 Reddit's 2023 Pi-Day outage happened on self-managed Kubernetes, not GKE.
 A 1.23 to 1.24 upgrade removed a node label that their Calico route reflector configuration selected on ("You Broke Reddit: The Pi-Day Outage", r/RedditEng, 2023).
 On GKE the equivalent risk is removed beta APIs and changed node labels hitting your own manifests and agents.
-GKE's deprecation insights can pause auto-upgrades when they detect use of removed APIs (UNVERIFIED for current behavior).
+During standard support, GKE does not auto-upgrade a cluster to the next minor version while it uses deprecated APIs or features, but that pause does not apply at the end of standard support ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/versioning), as of 2026-11).
 
 ## Security and Cost Angles
 
@@ -593,22 +627,22 @@ Treat the control plane as an API resource.
 - Prefer a private endpoint or the IAM-authorized DNS endpoint over an IP allowlist on a public endpoint.
 - Put `container.googleapis.com`, Artifact Registry, and Cloud Storage inside a VPC Service Controls perimeter ([[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]]).
 - Use Private Google Access or Private Service Connect so nodes never need a public egress path to reach Google APIs.
-- Inside the cluster, run a default-deny NetworkPolicy plus FQDN-scoped egress where available (UNVERIFIED for current GA tier).
+- Inside the cluster, run a default-deny NetworkPolicy plus FQDN-scoped egress, which needs Dataplane V2 and uses a `v1alpha1` API, though the docs carry no Preview label ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/fqdn-network-policies), as of 2026-11).
 - Block pod access to the raw VM metadata path; Workload Identity's `GKE_METADATA` mode does this.
 
 ### Untrusted code
 
-Run third-party or model-generated code in a gVisor node pool (Standard) or with `runtimeClassName: gvisor` (Autopilot support UNVERIFIED for every compute class).
+Run third-party or model-generated code in a gVisor node pool (Standard) or with `runtimeClassName: gvisor` (enabled by default on Autopilot; [GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/sandbox-pods), as of 2026-11).
 Also apply a deny-all egress policy and a dedicated KSA with no IAM bindings ([[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_08_Cloud_Security_for_AI_Systems_Attacks_and_Defenses|Cloud Security for AI Systems]]).
 
 ### Unit economics levers
 
-- The cluster fee is per cluster ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing), as of 2026-10). Fifty clusters cost about $3,650 per month in fees alone, which argues for fewer, multi-tenant clusters where the isolation requirements allow it ([[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_05_Multi_Tenancy_Isolation_and_Resource_Quotas|Multi-Tenancy]]).
+- The cluster fee is per cluster ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing), as of 2026-11). Fifty clusters cost about $3,650 per month in fees alone, which argues for fewer, multi-tenant clusters where the isolation requirements allow it ([[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_05_Multi_Tenancy_Isolation_and_Resource_Quotas|Multi-Tenancy]]).
 - On Autopilot, your bill is your requests, so right-sizing with VPA recommendations is the main lever. An over-requested pod is pure waste, with no node packing to hide it.
 - On Standard, your bill is your nodes, so bin-packing efficiency (requested versus allocatable), node shape choice, and zonal headroom policy dominate.
 - Spot capacity (Spot node pools on Standard, Spot pods on Autopilot) suits stateless, checkpointable, or batch work ([[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_03_Spot_Economics_and_Interruption_Handling|Spot Economics]]).
-- Committed-use discounts apply to both modes, with SKU eligibility that differs between them (UNVERIFIED specifics; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Savings Plans vs CUDs]]).
-- Staying on the Extended channel past standard support costs extra (as of 2026-10). Version drift has a line-item price, not just a risk cost.
+- Committed-use discounts apply to both modes: Standard nodes use Compute Engine CUDs, while Autopilot Pod SKUs list their own CUD prices, and node-based Autopilot workloads use Compute Engine CUDs on the underlying VMs ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing), as of 2026-11; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Savings Plans vs CUDs]]).
+- Staying on the Extended channel past standard support costs extra (as of 2026-11). Version drift has a line-item price, not just a risk cost.
 - Enable GKE cost allocation so namespace and label breakdowns flow into the BigQuery billing export ([[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cloud_Billing_Models_and_Unit_Cost_Allocation|Unit Cost Allocation]]).
 
 ## Interview Questions and Model Answers
@@ -624,12 +658,12 @@ Autopilot general-purpose bills on requested resources per second, and Standard 
 On Autopilot in us-central1 that is about 0.5 x $0.0445 + 2 x $0.0049225 = $0.032 per pod-hour, so 40 pods is about $937 per month.
 On Standard I size from allocatable, not raw capacity.
 An e2-standard-8 keeps roughly 7.9 vCPU and 28 GiB after GKE's reservations, and after system DaemonSets it fits about 13 of these pods, limited by memory.
-The bare minimum is 4 nodes, about $780 per month at an assumed list price, which looks cheaper.
+The bare minimum is 4 nodes, about $780 per month at list price, or 3 nodes at about $590 on a pool created on 1.37 or later, which looks cheaper.
 But the team said they want to survive a zone outage at full capacity.
 On a regional pool that means 20 pods per surviving zone, which is 2 nodes per zone across 3 zones, or 6 nodes at about $1,170.
 At that point Autopilot is cheaper, because Google absorbs the headroom and packing waste.
 The non-cost factors point the same way for a generic stateless service: no node OS patching, Shielded Nodes and Workload Identity forced on, and a 99.9% pod-level SLA when spread across zones.
-I would pick Standard if they needed privileged DaemonSets, custom kernel parameters, specific node shapes for licensing, or large Spot plus CUD coverage that pushes node cost well below list.
+I would pick Standard if they needed privileged DaemonSets, custom kernel parameters, specific node shapes for licensing, or a large mix of Spot and separately committed capacity that pushes node cost well below list.
 I would also flag Autopilot's two traps: admission may rewrite requests upward to meet ratio rules, and scale-up from zero headroom waits on VM provisioning, so I would add balloon pods or a higher HPA floor.
 
 #### Follow-up Interviewer Question
@@ -732,7 +766,7 @@ Remediation, in order:
 2. Structural fix: move non-production clusters to separate projects, because a project is the trust boundary for the pool.
 3. Defense in depth: put production buckets in a VPC Service Controls perimeter with ingress rules scoped to production networks and identities, and use IAM conditions where they fit.
 4. Governance: org policy and admission rules restricting who can create clusters in production projects, plus a namespace naming policy that reserves production names.
-Being in a different cluster gives you no IAM separation here; only a different project does.
+Being in a different cluster gives you no IAM separation by default; a different project does, and the docs also allow distinct namespace names or conditional IAM policies scoped to specific clusters ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/workload-identity), as of 2026-11).
 
 #### Follow-up Interviewer Question
 

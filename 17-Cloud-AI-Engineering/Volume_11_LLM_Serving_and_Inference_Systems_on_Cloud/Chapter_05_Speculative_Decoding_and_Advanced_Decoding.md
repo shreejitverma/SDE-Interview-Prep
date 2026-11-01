@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/abs/2211.17192"
@@ -14,6 +14,15 @@ sources:
   - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/vllm-neuron/docs/design/speculation/speculative_decoding_design.html"
   - "https://arxiv.org/abs/2305.09781"
   - "https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues"
+  - "https://www.nvidia.com/en-us/data-center/h100/"
+  - "https://aws.amazon.com/ec2/pricing/on-demand/"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/latency-optimized-inference.html"
+  - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/open-models/vllm/use-vllm"
+  - "https://developers.googleblog.com/en/supercharging-llm-inference-on-google-tpus-achieving-3x-speedups-with-diffusion-style-speculative-decoding/"
+  - "https://docs.cloud.google.com/deep-learning-vm/docs/images"
+  - "https://docs.vllm.ai/en/latest/features/speculative_decoding/mtp/"
+  - "https://vllm.ai/blog/2026-05-28-speculators-v050"
+  - "https://arxiv.org/abs/2504.18583"
 ---
 
 # Speculative Decoding and Advanced Decoding
@@ -58,7 +67,7 @@ That is why the proposer can be swapped, retrained, or corrupted without changin
 
 One decode step for a dense model with N parameters in BF16 must stream about 2N bytes of weights plus the batch's KV cache from HBM, and it does about 2N FLOPs per token in the batch.
 Arithmetic intensity is therefore about B tokens per weight read, where B is the number of tokens processed in the step.
-For an accelerator with about 3.35 TB/s of HBM and about 989 dense BF16 TFLOP/s (H100 SXM class, UNVERIFIED datasheet values), the ridge point is about 295 FLOP/byte, which here means about 295 tokens per step before compute becomes the bottleneck.
+For an accelerator with about 3.35 TB/s of HBM and about 989 dense BF16 TFLOP/s (H100 SXM: NVIDIA lists 3.35 TB/s and 1,979 BF16 TFLOP/s with sparsity, so about 989 dense; NVIDIA H100 page, as of 2026-10), the ridge point is about 295 FLOP/byte, which here means about 295 tokens per step before compute becomes the bottleneck.
 A Llama-3.1-8B-shaped model at batch 1 spends about 4.8 ms reading 16 GB of weights and about 16 microseconds on arithmetic, so more than 99 percent of the math capacity is idle.
 Verifying gamma+1 tokens instead of 1 raises the tokens per step from B to B(gamma+1), and while that stays well under the ridge, step time barely moves.
 For the per-step mechanics of prefill and decode this chapter builds on, see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_01_LLM_Inference_Mechanics_Prefill_vs_Decode|LLM Inference Mechanics: Prefill vs Decode]].
@@ -137,8 +146,8 @@ Verification batches have shape B x (gamma+1) or B x T, so an engine that uses c
 That costs graph memory and warm-up time, and it is one reason engines limit the allowed speculation settings.
 The proposer and the target are on each other's critical path: draft round t+1 cannot start until verification t has committed.
 Feature-level drafters like EAGLE and MTP shorten this dependency because their input is a byproduct of the target's own pass.
-Parallel drafters such as vLLM's PARD and DFlash methods emit all gamma tokens in a single draft pass (vLLM docs, as of 2026-10).
-vLLM also offers non-standard rejection samplers, including a lossy "fly" verifier (`rejection_sample_method`, default `standard`) (vLLM docs, as of 2026-10).
+Parallel drafters such as vLLM's PARD and DFlash methods emit all gamma tokens in a single draft pass (vLLM docs, [PARD](https://arxiv.org/abs/2504.18583), [vLLM Speculators v0.5.0 blog](https://vllm.ai/blog/2026-05-28-speculators-v050), as of 2026-10).
+vLLM also offers non-standard rejection samplers, including a lossy "fly" verifier (`rejection_sample_method`, default `standard`, other values `synthetic`, `block`, and `fly`) (vLLM docs, as of 2026-10).
 Any non-standard sampler should be treated as a model-quality change that has to pass evals, not as a performance flag.
 
 ### The batch-size crossover and the two effects that move it
@@ -168,7 +177,7 @@ Under greedy decoding, a near-tie at argmax can then flip, and from that point t
 The same issue exists without speculation whenever batch composition changes, because continuous batching changes M on every iteration.
 Speculation simply makes the effect easy to reproduce.
 AWS documents greedy outputs as "bit-exact" for its Neuron EAGLE3 implementation (AWS Neuron docs, as of 2026-10).
-On GPU engines that guarantee should not be assumed unless the engine advertises batch-invariant kernels and they are turned on.
+On GPU engines that guarantee should not be assumed unless the engine advertises batch-invariant kernels and they are turned on; vLLM, for example, calls speculative sampling lossless only "up to the precision limits of hardware numerics" and warns that batch-size changes can vary logprobs (vLLM docs, as of 2026-10).
 The correct acceptance test is distribution-level evaluation (task accuracy, per-token log-likelihood agreement), not exact string matching against a run without speculation.
 
 ### Placement and failure domains
@@ -194,14 +203,14 @@ A deployment where a broken drafter fails the replica's health check has turned 
 | Medusa-2 speedup (joint fine-tune) | 2.3-3.6x | Cai et al., arXiv 2401.10774 (as of 2026-10) |
 | EAGLE-3 peak speedup | up to 6.5x, about 1.4x over EAGLE-2 at batch 1 | Li et al., arXiv 2503.01840 (as of 2026-10) |
 | EAGLE-3 throughput at batch 64 in SGLang | 1.38x | Li et al., arXiv 2503.01840 (as of 2026-10) |
-| vLLM n-gram example config | num_speculative_tokens 5, prompt_lookup_max 4 | vLLM docs (as of 2026-10) |
+| vLLM n-gram example config | num_speculative_tokens 4, prompt_lookup_max 5, prompt_lookup_min 2 | vLLM docs (as of 2026-10) |
 | Neuron EAGLE3 example config | TP 8, max_num_seqs 4, num_speculative_tokens 5 | AWS Neuron docs (as of 2026-10) |
-| H100 SXM HBM bandwidth / dense BF16 | 3.35 TB/s / 989 TFLOP/s | UNVERIFIED (NVIDIA datasheet values) |
+| H100 SXM HBM bandwidth / dense BF16 | 3.35 TB/s / 989 TFLOP/s (half of the 1,979 TFLOP/s sparsity figure) | NVIDIA H100 page (as of 2026-10) |
 | Ridge point on that part | about 295 tokens per step for a BF16 dense model | Derived from the row above |
 | Llama-3.1-8B KV per token (BF16) | 128 KiB (32 x 8 x 128 x 2 x 2 bytes) | Derived from public model config |
 | Modeled crossover, alpha 0.8, gamma 4, short context | gain 2.62x at batch 64, 0.74x at batch 256 | Computed, lab roofline model |
 | Modeled gain, 8K context, gamma 4 | 2.80x up to memory-limited batch 48-52 | Computed, lab roofline model |
-| g6e.xlarge on-demand (us-east-1) | about 1.86 USD/hour | UNVERIFIED; fetch with the pricing CLI in the lab |
+| g6e.xlarge on-demand (us-east-1, Linux) | 1.861 USD/hour | AWS EC2 on-demand pricing (as of 2026-10); re-fetch with the pricing CLI in the lab |
 
 Roofline numbers are upper bounds.
 EAGLE-3's measured 1.38x at batch 64, against this model's 2.6x, shows how much kernel overhead, tree masks, and scheduler cost the roofline leaves out.
@@ -212,8 +221,8 @@ For a planning baseline, derate modeled gains by at least 30 percent until there
 | Dimension | AWS | Google Cloud | Critical difference |
 | --- | --- | --- | --- |
 | Self-managed GPU serving | vLLM, SGLang, or TensorRT-LLM on EC2 GPU instances (P5 H100, G6e L40S) or EKS | Same engines on Compute Engine A3 (H100) or G2 (L4), or GKE | Speculation lives in the engine; the cloud only changes HBM size and bandwidth, which moves the crossover batch (instance names as of 2026-10) |
-| Custom silicon path | Trainium and Inferentia through vLLM Neuron, with EAGLE3 via `speculative_config` (AWS Neuron docs, as of 2026-10) | TPU through vLLM TPU or JetStream; speculative decoding support UNVERIFIED | Neuron documents bit-exact greedy output; on TPU, XLA compiles fixed verify shapes, so gamma must be static |
-| Managed foundation-model APIs | Amazon Bedrock; speculation knobs not exposed; a "latency-optimized" performance option exists, but its mechanism is UNVERIFIED | Vertex AI and Model Garden managed endpoints; no exposed speculation knobs (UNVERIFIED) | Managed APIs hide the drafter; you buy a latency tier, not an acceptance rate |
+| Custom silicon path | Trainium (Trn2, Trn3) through vLLM Neuron, with EAGLE3 via `speculative_config` as the only supported method (AWS Neuron docs, as of 2026-10) | TPU through vLLM TPU (tpu-inference) or JetStream; EAGLE-3 and DFlash run on the vLLM TPU pipeline on v5p (Google Developers Blog, May 2026) | Neuron documents bit-exact greedy output; on TPU, XLA compiles fixed verify shapes, so gamma must be static |
+| Managed foundation-model APIs | Amazon Bedrock; speculation knobs not exposed; a `performanceConfig` latency setting of `optimized` exists in preview for a few models, and AWS does not document its mechanism (AWS Bedrock docs, as of 2026-10) | Vertex AI and Model Garden managed endpoints; Google lists speculative decoding as a pre-tuned customization of its vLLM serving, but the documented deployment parameters expose no speculation knobs (Google Cloud docs, as of 2026-10) | Managed APIs hide the drafter; you buy a latency tier, not an acceptance rate |
 | Drafter-target coupling | Same process and same NVLink or NeuronLink domain; EFA is too slow to sit inside the round | Same process and same NVLink or ICI domain | Placing the drafter on another node is an anti-pattern on both clouds |
 | Artifact storage | S3 with SSE-KMS; read through a gateway VPC endpoint | Cloud Storage with CMEK; read through Private Google Access inside a VPC SC perimeter | Same envelope-encryption pattern; perimeter mechanics differ (see the Security section) |
 | Acceptance telemetry | Engine Prometheus metrics into Amazon Managed Service for Prometheus or CloudWatch | Engine Prometheus metrics into Google Cloud Managed Service for Prometheus | Metric names come from the engine, not the cloud; alarms are defined the same way on both |
@@ -291,7 +300,7 @@ def speedup(batch, alpha, gamma, c_draft, hw, ctx=0):
 
 if __name__ == "__main__":
     check_lossless()
-    # Illustrative accelerator: 3.35e12 B/s HBM, 9.89e14 dense BF16 FLOP/s (UNVERIFIED datasheet values).
+    # Illustrative accelerator: 3.35e12 B/s HBM, 9.89e14 dense BF16 FLOP/s (H100 SXM, NVIDIA page, as of 2026-10).
     hw = dict(params=8e9, bytes_per_param=2, hbm_bw=3.35e12, peak_flops=9.89e14)
     print("\nE[tokens/step] by alpha (rows) and gamma (cols 1..8)")
     for a in (0.5, 0.6, 0.7, 0.8, 0.9):
@@ -317,7 +326,7 @@ A drafter with mediocre acceptance and non-trivial cost has a very narrow window
 
 ### Part B - Measure real acceptance on one GPU (AWS, billable)
 
-Cost estimate: one g6e.xlarge (1x L40S 48 GB) at about 1.86 USD/hour (UNVERIFIED) plus a 200 GB gp3 root volume, for about 2 hours, comes to under 5 USD.
+Cost estimate: one g6e.xlarge (1x L40S 48 GB) at 1.861 USD/hour on demand in us-east-1 (AWS EC2 pricing, as of 2026-10) plus a 200 GB gp3 root volume, for about 2 hours, comes to under 5 USD.
 Confirm the live price before launching.
 
 ```bash
@@ -392,7 +401,7 @@ COMMON="--max-model-len 8192 --gpu-memory-utilization 0.90 --port 8000"
   '{"method":"eagle3","model":"yuhuili/EAGLE3-LLaMA3.1-Instruct-8B","num_speculative_tokens":4}'
 # Run 3: n-gram prompt lookup
 ~/v/bin/vllm serve $M $COMMON --speculative-config \
-  '{"method":"ngram","num_speculative_tokens":5,"prompt_lookup_max":4}'
+  '{"method":"ngram","num_speculative_tokens":4,"prompt_lookup_max":5,"prompt_lookup_min":2}'
 ```
 
 Client (`bench_spec.py`, standard library only).
@@ -483,7 +492,7 @@ aws budgets delete-budget --account-id "$(aws sts get-caller-identity --query Ac
 ```
 
 GCP equivalent: a g2-standard-8 (1x L4 24 GB) can hold the 8B BF16 model with a small KV pool, so use `--max-model-len 4096` there.
-The Deep Learning VM family name changes over time, so list the families first (image family name UNVERIFIED as of 2026-10).
+The Deep Learning VM family name changes over time, so list the families first (the current base family is `common-cu129-ubuntu-2204-nvidia-580` or its `ubuntu-2404` sibling; Google Cloud docs, as of 2026-10).
 
 ```bash
 gcloud compute images list --project deeplearning-platform-release --filter="family~cu12" \
@@ -502,13 +511,13 @@ gcloud billing budgets delete BUDGET_ID --billing-account=XXXXXX-XXXXXX-XXXXXX
 ### Part C - Back-of-the-envelope fleet sizing
 
 Requirement: 24,000 output tokens per second at peak (60 requests per second x 400 output tokens), with a per-stream decode rate of at least 60 tok/s (TPOT at most 16.7 ms).
-Model: Llama-3.1-8B BF16 at TP1 on an 80 GB, 3.35 TB/s part (UNVERIFIED hardware values), with 4096 tokens of context per sequence, which is 0.5 GiB of KV per sequence.
+Model: Llama-3.1-8B BF16 at TP1 on an 80 GB, 3.35 TB/s part (H100 SXM, NVIDIA H100 page, as of 2026-10), with 4096 tokens of context per sequence, which is 0.5 GiB of KV per sequence.
 Step 1, the memory ceiling: (0.9 x 80 GB - 16 GB weights - 2 GB overhead) / 0.537 GB is about 100 concurrent sequences per GPU.
 Step 2, the baseline latency ceiling: the step time is (16e9 + B x 0.537e9) / 3.35e12 seconds, and holding it at or below 16.7 ms gives B at most 74.
-Per-GPU baseline capacity is therefore 74 x 60 = 4,450 tok/s, and 24,000 / 4,450 rounds up to 6 GPUs.
+Per-GPU baseline capacity is therefore 74 x 60 = 4,440 tok/s, and 24,000 / 4,440 rounds up to 6 GPUs.
 Step 3, with EAGLE-3 at a measured alpha of 0.8 and gamma = 3: E = 2.95, and the round costs 1.15 baseline steps (verification is still memory-bound at 400 verify tokens: about 7.3 ms of compute against a 20.8 ms memory-bound step).
 At B = 100, per-token time is 1.15 x 20.8 / 2.95, about 8.1 ms, or 123 tok/s per stream, a modeled 2.57x gain.
-After a 30 percent derate on the gain (2.1x), the rate is 101 tok/s per stream, or about 10,100 tok/s per GPU, so 24,000 / 10,100 rounds up to 3 GPUs.
+After a 30 percent derate on the gain above 1x (1 + 0.7 x 1.57, about 2.1x, applied to the 48 tok/s baseline stream at B = 100), the rate is 101 tok/s per stream, or about 10,100 tok/s per GPU, so 24,000 / 10,100 rounds up to 3 GPUs.
 Capacity is now limited by KV memory rather than latency, so the next lever is KV quantization (see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_06_Model_Quantization_and_Compression|Model Quantization and Compression]]).
 Step 4, unit cost at a placeholder price P = 4 USD per GPU-hour (illustrative, not a quoted price): the baseline costs 6 x 4 / (24,000 x 3,600) x 1e6, about 0.28 USD per million output tokens, and speculation costs about 0.14 USD.
 Step 5, the risk: if a target retrain drops alpha to 0.6, then E = 2.18, the derated gain is about 1.6x, and 3 GPUs deliver about 23,400 tok/s, below demand.
@@ -530,9 +539,9 @@ Customers with snapshot tests will see diffs, so the reproducibility contract ha
 
 **Logit-processor drift in the verifier.** Repetition and presence penalties, logit bias, and grammar-constrained decoding must be applied to every draft position's p, using the state those earlier draft tokens would have produced.
 An implementation that applies them only at the first position silently breaks exactness.
-The closest public precedent is Anthropic's September 2025 postmortem, which described token-selection errors caused by precision mismatches in a top-k sampling path on TPUs (UNVERIFIED link in Further Reading).
+The closest public precedent is Anthropic's postmortem of 17 September 2025: a sampling change exposed an XLA:TPU miscompilation of approximate top-k that dropped the highest-probability token, but only for certain batch sizes and model configurations; it had been masked by a December 2024 workaround for a bf16-versus-fp32 precision mismatch on the same path (Anthropic engineering blog, linked in Further Reading).
 The lesson: sampler numerics are part of model correctness, and every speculative sampler change needs distribution-level evals, as covered in [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_06_Model_Evaluation_Monitoring_and_Drift_Detection|Model Evaluation, Monitoring, and Drift Detection]].
-No widely cited public cloud outage review is attributed specifically to speculative decoding as of 2026-10 (UNVERIFIED).
+No widely cited public cloud outage review is attributed specifically to speculative decoding (none found in a web search as of 2026-10).
 
 **KV pressure and preemption storms.** Reserving gamma+1 slots per sequence, plus a separate draft model's KV cache, pushes a nearly full block pool into preemption and recompute, which inflates p99 TTFT for newly admitted requests.
 Size the KV pool with speculation on, not off.
@@ -671,7 +680,7 @@ Size a fleet for 24,000 output tokens per second at a TPOT of 16.7 ms or better 
 #### Model Answer
 
 Without speculation, the step time is (weights + B x KV per sequence) / HBM bandwidth.
-With 16 GB of weights, 0.537 GB of KV per sequence at 4K context, and 3.35 TB/s, a 16.7 ms step allows B = 74, which is 4,450 tok/s per GPU and requires 6 GPUs.
+With 16 GB of weights, 0.537 GB of KV per sequence at 4K context, and 3.35 TB/s, a 16.7 ms step allows B = 74, which is 4,440 tok/s per GPU and requires 6 GPUs.
 With EAGLE-3 at alpha 0.8 and gamma 3, E = 2.95 and the round costs about 1.15 steps.
 Verification stays memory-bound at B = 100 (400 verify tokens take about 7 ms of compute against a 21 ms memory-bound step).
 Per-stream speed is about 123 tok/s modeled, or 101 tok/s after a 30 percent derate, which gives about 10,100 tok/s per GPU and 3 GPUs.
@@ -740,6 +749,6 @@ How would you quantify, in dollars per month, the value of the extra speedup ove
 - [Li, Wei, Zhang, Zhang - EAGLE-3: Scaling up Inference Acceleration via Training-Time Test](https://arxiv.org/abs/2503.01840) - feature-level drafting, multi-layer fusion, and the only widely cited measurement of speculation gains at batch 64 in a production engine.
 - [Fu, Bailis, Stoica, Zhang - Lookahead Decoding (ICML 2024), LMSYS write-up](https://www.lmsys.org/blog/2023-11-21-lookahead-decoding/) - exact speculation without a drafter, using Jacobi trajectories and an n-gram pool, and a good illustration of trading FLOPs for latency.
 - [vLLM Speculative Decoding documentation](https://docs.vllm.ai/en/latest/features/speculative_decoding/) - the current `speculative_config` schema, the method selection guidance by QPS, and the rejection sampler options, including lossy ones.
-- [AWS Neuron - Speculative Decoding (EAGLE3) in vLLM Neuron](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/vllm-neuron/docs/design/speculation/speculative_decoding_design.html) - how speculation maps onto Trainium and Inferentia, including the greedy bit-exactness claim.
+- [AWS Neuron - Speculative Decoding (EAGLE3) in vLLM Neuron](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/vllm-neuron/docs/design/speculation/speculative_decoding_design.html) - how speculation maps onto Trainium (Trn2 and Trn3), including the greedy bit-exactness claim.
 - [Miao et al. - SpecInfer: Tree-based Speculative Inference and Verification (ASPLOS 2024)](https://arxiv.org/abs/2305.09781) - multi-draft tree verification that stays exact under sampling.
 - [Anthropic - A postmortem of three recent issues (2025)](https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues) - a public example of sampling-path numerics causing token-selection errors in production, and why sampler changes need distribution-level evals.

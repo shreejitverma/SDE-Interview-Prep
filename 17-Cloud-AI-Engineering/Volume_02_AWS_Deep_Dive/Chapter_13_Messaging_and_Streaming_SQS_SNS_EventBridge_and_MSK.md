@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.microsoft.com/en-us/research/wp-content/uploads/2017/09/Kafka.pdf"
@@ -18,6 +18,33 @@ sources:
   - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/avoid-backlog-with-the-same-message-group-id.html"
   - "https://aws.amazon.com/message/11201/"
   - "https://aws.amazon.com/message/101925/"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-messages.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_DeleteMessage.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_ChangeMessageVisibility.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SetQueueAttributes.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_StartMessageMoveTask.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fair-queues.html"
+  - "https://aws.amazon.com/sqs/pricing/"
+  - "https://docs.aws.amazon.com/sns/latest/dg/sns-message-delivery-retries.html"
+  - "https://docs.aws.amazon.com/sns/latest/dg/message-filtering-apply.html"
+  - "https://aws.amazon.com/sns/pricing/"
+  - "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-quota.html"
+  - "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-pattern-operators.html"
+  - "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-retry-policy.html"
+  - "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-custom-bus-migrate.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/09/eventbridge-relaunches-custom-event-buses/"
+  - "https://aws.amazon.com/eventbridge/pricing/"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-configure.html"
+  - "https://docs.aws.amazon.com/msk/latest/developerguide/msk-tiered-storage.html"
+  - "https://docs.aws.amazon.com/msk/latest/developerguide/msk-guidelines-tiered-storage-topic-level-config.html"
+  - "https://docs.aws.amazon.com/msk/latest/developerguide/supported-kafka-versions.html"
+  - "https://aws.amazon.com/msk/pricing/"
+  - "https://issues.apache.org/jira/browse/KAFKA-13598"
+  - "https://docs.cloud.google.com/pubsub/lite/docs"
+  - "https://docs.cloud.google.com/managed-service-for-apache-kafka/docs/overview"
+  - "https://docs.cloud.google.com/eventarc/docs/release-notes"
 ---
 
 # Messaging and Streaming: SQS, SNS, EventBridge, and MSK
@@ -67,7 +94,7 @@ SQS stores copies of each message on multiple servers for redundancy, and standa
 Two documented consequences follow from that distribution, and getting-started guides rarely connect them.
 
 First, short polling (`WaitTimeSeconds=0`) samples a weighted-random subset of the servers holding the queue, so a single receive can return nothing even when the queue holds messages ([SQS short and long polling](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-short-and-long-polling.html)).
-Long polling queries all servers and holds the connection for up to 20 seconds until a message arrives ([AWS docs, as of 2026-10](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-fifo.html)).
+Long polling queries all servers and holds the connection for up to 20 seconds until a message arrives ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-fifo.html)).
 This is why a short-polling consumer on a low-traffic queue sees "empty" receives and phantom latency, and why every empty receive is billed as a request.
 
 Second, at-least-once delivery on standard queues is a side effect of replication, not a design quirk.
@@ -78,7 +105,7 @@ If a server holding a copy is unavailable when a delete arrives, that copy can r
 `ReceiveMessage` does not remove a message.
 It hides the message for `VisibilityTimeout` seconds and returns a receipt handle bound to that specific receive.
 Every receive of the same message produces a different receipt handle.
-The DeleteMessage reference requires the most recently received handle; with an older handle, the request can succeed while the message is not deleted (AWS docs, UNVERIFIED as of 2026-10: verify exact wording in the API reference).
+The DeleteMessage reference requires the most recently received handle; with an older handle, the request can succeed while the message is not deleted ([DeleteMessage API, as of 2026-11](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_DeleteMessage.html)).
 That silent success is the mechanism behind most "we delete after processing and still see duplicates" tickets.
 
 Here is the race, step by step.
@@ -94,7 +121,7 @@ The receipt handle looks like a token, but only SQS understands it, and your dat
 So the fencing has to live in your own state, through a conditional write on a business idempotency key (see the Worked Example), as the Builders' Library recommends for making retries safe ([Making retries safe with idempotent APIs](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/)).
 
 `ChangeMessageVisibility` extends the lease, and the new timeout counts from the time of the call, not from the original receive.
-The documented ceiling is 12 hours total from the first receive, and extensions do not reset that ceiling (AWS docs, UNVERIFIED as of 2026-10).
+The documented ceiling is 12 hours total from the first receive, and extensions do not reset that ceiling ([SQS visibility timeout, as of 2026-11](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html)).
 A heartbeat that extends the lease at about one-third of the timeout tolerates one missed beat and keeps the timeout short, which in turn keeps crash-recovery latency short.
 The trade-off is explicit: a long visibility timeout delays retries after a crash, a short one causes duplicate processing during stalls, and heartbeating costs one extra billed request per beat per message.
 
@@ -102,7 +129,8 @@ The trade-off is explicit: a long visibility timeout delays retries after a cras
 
 Each receive increments `ApproximateReceiveCount`.
 When the count exceeds `maxReceiveCount` in the redrive policy, SQS moves the message to the dead-letter queue on the next receive attempt.
-For standard queues, the message keeps its original enqueue timestamp when it moves to the DLQ, so a DLQ with the same retention as its source can expire a poison message within hours of it landing there (AWS docs, UNVERIFIED as of 2026-10).
+For standard queues, the message keeps its original enqueue timestamp when it moves to the DLQ, so a DLQ with the same retention as its source can expire a poison message within hours of it landing there ([SQS DLQ docs, as of 2026-11](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html)).
+FIFO queues differ here: the enqueue timestamp resets when the message moves to the DLQ.
 The rule is to set DLQ retention to the maximum and to alarm on DLQ depth, not just on source-queue age.
 Note that a receive with no processing still counts, so a consumer that receives batches and drops them during a deploy can push healthy messages into the DLQ.
 
@@ -110,30 +138,32 @@ Note that a receive with no processing still counts, so a consumer that receives
 
 A FIFO queue orders messages within a `MessageGroupId`.
 It enforces that order by not returning another message from a group while any message from that group is in flight.
-FIFO queues support up to 120,000 in-flight messages; at that limit SQS returns no error, but processing may be impacted ([AWS docs, as of 2026-10](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-fifo.html)).
-The scheduler scans the first 120,000 messages to find available message groups, so if those messages belong to groups blocked by in-flight messages, messages from other groups further back are not returned ([AWS docs, as of 2026-10](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/avoid-backlog-with-the-same-message-group-id.html)).
+FIFO queues support up to 120,000 in-flight messages; at that limit SQS returns no error, but processing may be impacted ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-fifo.html)).
+The scheduler scans the first 120,000 messages to find available message groups, so if those messages belong to groups blocked by in-flight messages, messages from other groups further back are not returned ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/avoid-backlog-with-the-same-message-group-id.html)).
 That bounded scan window is the mechanism behind FIFO head-of-line blocking: one tenant with a two-million-message backlog in a single group can make every other tenant look idle.
 
-Deduplication uses a 5-minute window keyed on `MessageDeduplicationId`, or on a SHA-256 of the body if content-based deduplication is enabled (AWS docs, UNVERIFIED as of 2026-10).
+Deduplication uses a 5-minute window keyed on `MessageDeduplicationId`, or on a SHA-256 of the body if content-based deduplication is enabled ([SQS exactly-once processing, as of 2026-11](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/FIFO-queues-exactly-once-processing.html)).
 That makes it a producer-retry dedupe, not an end-to-end exactly-once guarantee.
 
 High-throughput FIFO is configured, not automatic.
-`FifoThroughputLimit` takes `perQueue` or `perMessageGroupId`, and `perMessageGroupId` is allowed only when `DeduplicationScope` is `messageGroup` ([SetQueueAttributes, as of 2026-10](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SetQueueAttributes.html)).
-Without high throughput, FIFO handles 300 transactions per second, and requests above that get `ThrottlingException` even when messages are available ([AWS re:Post, as of 2026-10](https://repost.aws/knowledge-center/sqs-fifo-messages-not-returned)).
+`FifoThroughputLimit` takes `perQueue` or `perMessageGroupId`, and `perMessageGroupId` is allowed only when `DeduplicationScope` is `messageGroup` ([SetQueueAttributes, as of 2026-11](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SetQueueAttributes.html)).
+Without high throughput, FIFO handles 300 transactions per second, and requests above that get `ThrottlingException` even when messages are available ([AWS re:Post, as of 2026-11](https://repost.aws/knowledge-center/sqs-fifo-messages-not-returned)).
 
-Standard queues gained a "fair queues" mode: setting `MessageGroupId` on a standard queue gives tenant-fairness during dwell-time skew without ordering (UNVERIFIED as of 2026-10: confirm GA status and semantics before relying on it).
+Standard queues gained a "fair queues" mode, launched 2025-07 in all commercial and GovCloud Regions with no preview label ([AWS announcement](https://aws.amazon.com/about-aws/whats-new/2025/07/amazon-sqs-introduces-fair/)).
+Setting `MessageGroupId` on a standard queue gives tenant-fairness during dwell-time skew without ordering ([SQS fair queues, as of 2026-11](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fair-queues.html)).
+Requests that carry a group ID pay an extra $0.10 per million in us-east-1 on top of standard rates (AWS price list, as of 2026-11).
 
 ### SNS: fan-out with per-subscription filtering
 
 An SNS topic is a fan-out router.
 A publish is durably accepted, then delivered once per matching subscription, and each delivery is retried independently.
 Filter policies are evaluated per subscription, either on message attributes or on the JSON body when `FilterPolicyScope=MessageBody` ([SNS message filtering](https://docs.aws.amazon.com/sns/latest/dg/sns-message-filtering.html)).
-Filter policy changes are eventually consistent, and AWS documents up to 15 minutes for a change to fully take effect (AWS docs, UNVERIFIED as of 2026-10).
+Filter policy changes are eventually consistent, and AWS documents up to 15 minutes for a change to fully take effect ([SNS filter policy docs, as of 2026-11](https://docs.aws.amazon.com/sns/latest/dg/message-filtering-apply.html)).
 That means a "tighten the filter, then deploy the consumer" rollout can deliver non-matching messages for minutes, so consumers must re-check the predicate themselves.
 
 The delivery retry policy depends on the endpoint type.
-For AWS-managed endpoints such as SQS and Lambda, SNS retries for days across many attempts (documented as 100,015 attempts over 23 days, UNVERIFIED as of 2026-10).
-HTTP/S endpoints use a customizable, much shorter policy.
+For AWS-managed endpoints such as SQS and Lambda, SNS retries for days across many attempts (100,015 attempts over 23 days, [SNS delivery retries, as of 2026-11](https://docs.aws.amazon.com/sns/latest/dg/sns-message-delivery-retries.html)).
+HTTP/S endpoints use a customizable, much shorter policy, with total retry time capped at 3,600 s.
 After retries are exhausted, a message is dropped unless the subscription has a redrive policy pointing to an SQS DLQ.
 
 ### EventBridge: content-based routing as a compiled state machine
@@ -142,26 +172,31 @@ An EventBridge event bus receives `PutEvents` calls, evaluates every rule on the
 Unlike a router table, there is no "first match wins": every matching rule fires, in no defined order.
 
 The matching engine is the part a getting-started guide never explains.
-AWS open-sourced Event Ruler, the Java pattern-matching library behind EventBridge-style matching ([aws/event-ruler](https://github.com/aws/event-ruler)).
+AWS open-sourced Event Ruler, the Java pattern-matching library behind EventBridge matching ([aws/event-ruler](https://github.com/aws/event-ruler)), and AWS states that event bus matching runs on the open-source engine ([AWS, 2024-02](https://aws.amazon.com/about-aws/whats-new/2024/02/amazon-eventbridge-event-bus-matching-event-ruler)).
 Ruler flattens an event into sorted `(path, value)` pairs and compiles all rule patterns into a single finite-state machine keyed on field names and values.
 Matching walks that machine once over the event's fields, so the cost depends mostly on the event's shape and size, not on how many rules exist ([event-ruler README](https://github.com/aws/event-ruler)).
-Tim Bray, who worked on the original Ruler at AWS, documents the same design in his open-source re-implementation, Quamina ([timbray/quamina](https://github.com/timbray/quamina)).
+Tim Bray, who built v1.0 of Ruler at AWS ([Hello, Ruler](https://www.tbray.org/ongoing/When/202x/2022/09/02/Hello-Ruler)), documents the same design in his open-source re-implementation, Quamina ([timbray/quamina](https://github.com/timbray/quamina)).
 The operational consequences are concrete.
 
 - Adding the 200th rule does not slow matching for the other 199, but every additional match is an extra target invocation and an extra failure surface.
-- Wildcard and `anything-but` patterns can blow up the number of automaton states, which is why EventBridge rejects patterns it considers too complex (UNVERIFIED as of 2026-10: exact complexity limit not published).
-- Numeric matching works on a bounded, fixed-precision range rather than arbitrary floats (documented as -5.0e9 to +5.0e9 with 15 significant digits and 6 decimal places, UNVERIFIED as of 2026-10), so nanosecond epoch timestamps are not numerically matchable.
+- Wildcard and anything-but-wildcard patterns add automaton non-determinism that does slow matching ([event-ruler README](https://github.com/aws/event-ruler)), which is why EventBridge returns `InvalidEventPatternException` for wildcard patterns it considers too complex ([EventBridge operators, as of 2026-11](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-pattern-operators.html)).
+  AWS publishes no number for that complexity limit, but it does cap wildcard rules at 30 per bus and `$or` at 1,000 combinations per pattern ([EventBridge quotas, as of 2026-11](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-quota.html)).
+- Numeric matching compares values as IEEE 754 doubles, with integers exact only within +/-2^53 ([EventBridge operators, as of 2026-11](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-pattern-operators.html)), so nanosecond epoch timestamps (about 1.8e18) are not reliably matchable numerically.
 - Matching is purely per event and stateless: no joins, no windows, no "event A then event B" patterns.
 
 The pattern operators include exact match, `prefix`, `suffix`, `anything-but`, `numeric`, `cidr` for IP addresses, `exists`, `equals-ignore-case`, `wildcard`, and `$or` ([EventBridge event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html)).
 
-Each target has a retry policy (`MaximumEventAgeInSeconds` and `MaximumRetryAttempts`, default 24 hours and 185 attempts, UNVERIFIED as of 2026-10) with backoff and jitter.
+Each target has a retry policy (`MaximumEventAgeInSeconds` and `MaximumRetryAttempts`, default 24 hours and 185 attempts, [EventBridge retries, as of 2026-11](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-retry-policy.html)) with backoff and jitter.
 Non-retriable errors, such as a missing resource or a permission or KMS denial, skip retries and go directly to the target's DLQ, or are dropped if no DLQ exists.
 Delivery is at-least-once with no ordering.
 Archive and replay re-inject historical events into the bus, where they are re-matched against the rules as they exist now, not as they were when the events were archived.
 
+Everything above describes the rule-and-target bus, which AWS renamed "Custom event bus - classic" when it launched an enhanced Custom event bus on 2026-09-24 in fourteen Regions, with existing APIs unchanged ([AWS announcement, as of 2026-11](https://aws.amazon.com/about-aws/whats-new/2026/09/eventbridge-relaunches-custom-event-buses/)).
+The enhanced bus replaces rules and targets with consumer-created subscribers, adds FIFO delivery per event group per subscriber and 1 to 365 days of built-in retention, and charges for data transferred rather than per event ([migration guide, as of 2026-11](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-custom-bus-migrate.html)).
+So no ordering, archive-only replay, and 5 targets per rule in this chapter are Classic properties, not properties of every EventBridge bus.
+
 Pipes is a separate point-to-point construct: it polls a source (SQS, Kinesis, DynamoDB Streams, MSK, self-managed Kafka, Amazon MQ), filters, optionally enriches, and delivers to one target.
-It is billed after filtering (UNVERIFIED as of 2026-10), which makes "filter in Pipes before Lambda" a direct cost lever.
+It is billed after filtering at $0.40 per million requests in us-east-1 ([EventBridge pricing, as of 2026-11](https://aws.amazon.com/eventbridge/pricing/)), which makes "filter in Pipes before Lambda" a direct cost lever.
 
 ### MSK: replicated log mechanics
 
@@ -170,7 +205,8 @@ Each partition has a leader and followers.
 The in-sync replica set (ISR) is the set of followers that have caught up within `replica.lag.time.max.ms`.
 With `acks=all`, the leader acknowledges a write once every ISR member has it, and `min.insync.replicas` sets the floor below which writes are rejected.
 Leader epochs, which are monotonic per partition, act as the fencing token Kafka has and SQS lacks: a deposed leader's writes are truncated on rejoin.
-Since Kafka 3.0, producers enable idempotence and `acks=all` by default (KIP-679), which removes duplicates caused by producer retries within a session.
+Kafka 3.0 made idempotence and `acks=all` the producer defaults (KIP-679), which removes duplicates caused by producer retries within a session.
+A bug kept the idempotence default from applying until 3.0.1, 3.1.1, and 3.2.0 ([KAFKA-13598](https://issues.apache.org/jira/browse/KAFKA-13598)).
 Transactions plus `isolation.level=read_committed` extend this to read-process-write pipelines inside Kafka only.
 
 MSK places brokers across AZs and spreads replicas across them.
@@ -178,9 +214,9 @@ During patching and version upgrades, MSK restarts brokers one at a time.
 With RF=3 and `min.insync.replicas=2`, `acks=all` producers stay available during a single broker restart.
 With RF=2 and min ISR 2, they do not.
 
-Recent Kafka versions on MSK can run in KRaft mode instead of ZooKeeper (KIP-500).
-Apache Kafka 4.0 removed ZooKeeper entirely (Apache Kafka release notes, 2025).
-Check the MSK supported-versions page before assuming a specific version is available (UNVERIFIED as of 2026-10).
+Kafka versions on MSK from 3.7.x can run in KRaft mode instead of ZooKeeper (KIP-500), and 3.9.x is the last line that supports both ([MSK supported versions, as of 2026-11](https://docs.aws.amazon.com/msk/latest/developerguide/supported-kafka-versions.html)).
+Apache Kafka 4.0 removed ZooKeeper entirely ([Kafka 4.0 upgrade notes](https://kafka.apache.org/40/getting-started/upgrade/)).
+MSK lists 3.8.x, 3.9.x (recommended), 4.0.x, 4.1.x, and 4.2.x (Express brokers only) without an end-of-support date, so check that page before assuming a specific version is available (as of 2026-11).
 
 ### MSK tiered storage (KIP-405), mechanism first
 
@@ -208,15 +244,19 @@ The constraints matter in practice.
 
 - Compacted topics are not supported by KIP-405 tiering.
 - Only rolled segments move, so a low-volume partition with a large `segment.bytes` or long `segment.ms` may never tier anything, and local disk does not shrink.
-- On MSK, tiered storage requires specific Kafka versions (documented as 2.8.2.tiered and 3.6.0 or later) and is unavailable on the smallest burstable brokers (AWS docs, UNVERIFIED as of 2026-10).
-- Disabling tiering on a topic after enabling it is restricted (UNVERIFIED as of 2026-10: check the current MSK docs, because upstream KIP-950 changed the semantics).
+- On MSK, tiered storage requires Kafka 2.8.2.tiered or 3.6.0 or later, applies only to provisioned clusters, and does not support `t3.small` brokers ([MSK tiered storage, as of 2026-11](https://docs.aws.amazon.com/msk/latest/developerguide/msk-tiered-storage.html)).
+  MSK support for 2.8.2.tiered, 3.6.0, and 3.7.x has ended, so in practice start at 3.8.x ([MSK supported versions, as of 2026-11](https://docs.aws.amazon.com/msk/latest/developerguide/supported-kafka-versions.html)).
+- MSK allows disabling tiering per topic but not per cluster, and a topic cannot be re-enabled afterward ([MSK tiered storage, as of 2026-11](https://docs.aws.amazon.com/msk/latest/developerguide/msk-tiered-storage.html)).
+  MSK on 3.9.x can retain the tiered data for reads after disabling, which is the behavior upstream KIP-950 specifies ([KIP-950](https://cwiki.apache.org/confluence/display/KAFKA/KIP-950%3A++Tiered+Storage+Disablement)).
+- MSK sets a 3-day minimum for `retention.ms` on tiered topics, requires `local.retention.ms` to stay below `retention.ms`, and enforces a minimum segment of 48 MiB or 10 minutes ([MSK topic-level guidelines, as of 2026-11](https://docs.aws.amazon.com/msk/latest/developerguide/msk-guidelines-tiered-storage-topic-level-config.html)).
+- MSK tells clients not to use `read_committed` when reading from the remote tier unless the application actually uses transactions ([MSK tiered storage, as of 2026-11](https://docs.aws.amazon.com/msk/latest/developerguide/msk-tiered-storage.html)).
 
 The remote tier on MSK is managed by AWS and billed per GB-month; you do not see or own an S3 bucket.
 
-MSK Express brokers are a different design point (GA, launched 2024-11, UNVERIFIED as of 2026-10).
-Storage is decoupled and pay-as-you-go, and AWS advertises higher per-broker throughput and much faster scaling and recovery than Standard brokers, because the broker no longer owns the bulk of the data.
+MSK Express brokers are a different design point (GA, launched 2024-11, [AWS announcement](https://aws.amazon.com/about-aws/whats-new/2024/11/express-brokers-amazon-msk-generally-available/)).
+Storage is decoupled and pay-as-you-go, and AWS advertises up to 3x per-broker throughput, up to 20x faster scaling, and 90% faster recovery than Standard brokers, because the broker no longer owns the bulk of the data.
 Confluent's Kora paper describes the same architectural move: separating the compute of a Kafka broker from durable cloud object storage ([Povzner et al., VLDB 2023](https://www.vldb.org/pvldb/vol16/p3822-povzner.pdf)).
-The upstream "diskless topics" proposal (KIP-1150) is a proposal, not shipped Kafka (as of 2026-10).
+The upstream "diskless topics" proposal (KIP-1150) was accepted in 2026-03 as a high-level KIP ([Aiven](https://aiven.io/blog/kip-1150-accepted-and-the-road-ahead)), but it does not appear in the upgrade notes through Kafka 4.4 ([Kafka 4.4 upgrade notes](https://kafka.apache.org/44/getting-started/upgrade/)), so it is not shipped Kafka (as of 2026-11).
 
 ### Failure-domain boundaries
 
@@ -231,50 +271,51 @@ For cell design around these boundaries, see [[17-Cloud-AI-Engineering/Volume_01
 
 ## Numbers to Know
 
-Rows marked UNVERIFIED are long-standing documented values that this revision could not re-check against the live docs; re-validate them before using them in a design review.
+Prices are us-east-1 list rates; re-validate them before using them in a design review.
+EventBridge rows describe Custom event bus - Classic unless they say otherwise.
 
 | Item | Value | Source and date |
 |---|---|---|
-| SQS long-poll max wait | 20 s | (AWS docs, as of 2026-10) |
-| SQS FIFO in-flight max | 120,000, no error at the limit | (AWS docs, as of 2026-10) |
-| SQS FIFO group-scan window | First 120,000 messages | (AWS docs, as of 2026-10) |
-| SQS FIFO throughput, no high-throughput mode | 300 TPS per API action, `ThrottlingException` above | (AWS re:Post, as of 2026-10) |
-| SQS FIFO with batching of 10 | 3,000 messages/s | (AWS docs, UNVERIFIED as of 2026-10) |
-| SQS FIFO high-throughput mode | Region-dependent, up to tens of thousands of TPS per API action in the largest regions | (AWS docs, UNVERIFIED as of 2026-10) |
-| SQS standard in-flight | About 120,000, `OverLimit` error on receive | (AWS docs, UNVERIFIED as of 2026-10) |
-| SQS visibility timeout | Default 30 s, max 12 h | (AWS docs, UNVERIFIED as of 2026-10) |
-| SQS retention | 60 s to 14 days, default 4 days | (AWS docs, UNVERIFIED as of 2026-10) |
-| SQS delay | 0 to 15 min | (AWS docs, UNVERIFIED as of 2026-10) |
-| SQS max payload | 1 MiB (raised from 256 KiB in 2025) | (AWS launch post, UNVERIFIED as of 2026-10) |
-| SQS billing unit | Each 64 KB chunk of a payload counts as 1 request | (AWS pricing, UNVERIFIED as of 2026-10) |
-| SQS price, us-east-1 | Standard $0.40 per million requests, FIFO $0.50 per million, first 1M per month free | (AWS pricing, UNVERIFIED as of 2026-10) |
-| SQS FIFO dedupe window | 5 min | (AWS docs, UNVERIFIED as of 2026-10) |
-| SQS SSE-KMS data key reuse | 60 s to 24 h, default 300 s | (AWS docs, UNVERIFIED as of 2026-10) |
-| Lambda SQS event source mapping | Visibility timeout at least 6x the function timeout | (AWS docs, UNVERIFIED as of 2026-10) |
-| SNS filter policy propagation | Up to 15 min | (AWS docs, UNVERIFIED as of 2026-10) |
-| SNS publish price | $0.50 per million publishes, SQS delivery free | (AWS pricing, UNVERIFIED as of 2026-10) |
-| EventBridge targets per rule | 5 | (AWS docs, UNVERIFIED as of 2026-10) |
-| EventBridge rules per bus | 300 default, adjustable | (AWS docs, UNVERIFIED as of 2026-10) |
-| EventBridge `PutEvents` | 10 entries per call, region-dependent TPS quota per account | (AWS docs, UNVERIFIED as of 2026-10) |
-| EventBridge target retry default | 24 h, 185 attempts | (AWS docs, UNVERIFIED as of 2026-10) |
-| EventBridge custom events | $1.00 per million, 64 KB chunks | (AWS pricing, UNVERIFIED as of 2026-10) |
-| MSK Standard broker storage | EBS, priced per GB-month (about $0.10 in us-east-1) | (AWS pricing, UNVERIFIED as of 2026-10) |
-| MSK tiered storage | Per GB-month, lower than primary (about $0.06 in us-east-1) | (AWS pricing, UNVERIFIED as of 2026-10) |
-| MSK intra-cluster replication traffic | Not billed | (AWS pricing, UNVERIFIED as of 2026-10) |
-| Kafka producer defaults since 3.0 | `enable.idempotence=true`, `acks=all` | (Apache Kafka KIP-679, stable) |
+| SQS long-poll max wait | 20 s | (AWS docs, as of 2026-11) |
+| SQS FIFO in-flight max | 120,000, no error at the limit | (AWS docs, as of 2026-11) |
+| SQS FIFO group-scan window | First 120,000 messages | (AWS docs, as of 2026-11) |
+| SQS FIFO throughput, no high-throughput mode | 300 TPS per API action, `ThrottlingException` above | (AWS docs and re:Post, as of 2026-11) |
+| SQS FIFO with batching of 10 | 3,000 messages/s per API action | (AWS docs, as of 2026-11) |
+| SQS FIFO high-throughput mode | Region-dependent: 70,000 TPS per API action (700,000 messages/s batched) in us-east-1, us-west-2, and eu-west-1, down to a 2,400 TPS default in other Regions | (AWS docs, as of 2026-11) |
+| SQS standard in-flight | About 120,000; `OverLimit` on short-poll receive, while long-poll receive returns no new messages and no error | (AWS docs, as of 2026-11) |
+| SQS visibility timeout | Default 30 s, max 12 h | (AWS docs, as of 2026-11) |
+| SQS retention | 60 s to 14 days, default 4 days | (AWS docs, as of 2026-11) |
+| SQS delay | 0 to 15 min | (AWS docs, as of 2026-11) |
+| SQS max payload | 1 MiB (raised from 256 KiB in 2025-08) | (AWS docs and launch post, as of 2026-11) |
+| SQS billing unit | Each 64 KB chunk of a payload counts as 1 request | (AWS pricing, as of 2026-11) |
+| SQS price, us-east-1 | Standard $0.40 per million requests to 100B, $0.30 to 200B, $0.24 above; FIFO $0.50, $0.40, $0.35; first 1M per month free | (AWS price list, as of 2026-11) |
+| SQS FIFO dedupe window | 5 min | (AWS docs, as of 2026-11) |
+| SQS SSE-KMS data key reuse | 60 s to 24 h, default 300 s | (AWS docs, as of 2026-11) |
+| Lambda SQS event source mapping | Visibility timeout at least 6x the function timeout (recommended); function timeout above visibility timeout is rejected | (AWS docs, as of 2026-11) |
+| SNS filter policy propagation | Up to 15 min | (AWS docs, as of 2026-11) |
+| SNS publish price | $0.50 per million publishes after the first 1M, SQS delivery free, body filtering adds $0.09 per GB scanned | (AWS pricing and price list, as of 2026-11) |
+| EventBridge targets per rule | 5, not adjustable | (AWS docs, as of 2026-11) |
+| EventBridge rules per bus | 300 default (100 in af-south-1 and eu-south-1), adjustable | (AWS docs, as of 2026-11) |
+| EventBridge `PutEvents` | 10 entries per call (100 on the enhanced bus); per-account request quota of 10,000/s in us-east-1, adjustable | (AWS docs, as of 2026-11) |
+| EventBridge target retry default | 24 h, 185 attempts | (AWS docs, as of 2026-11) |
+| EventBridge custom events | $1.00 per million, 64 KB chunks | (AWS pricing, as of 2026-11) |
+| MSK Standard broker storage | EBS, priced per GB-month ($0.10 in us-east-1) | (AWS pricing, as of 2026-11) |
+| MSK tiered storage | $0.06 per GB-month plus $0.0015 per GB retrieved in us-east-1 | (AWS pricing, as of 2026-11) |
+| MSK intra-cluster replication traffic | Not billed | (AWS pricing, as of 2026-11) |
+| Kafka producer defaults since 3.0 | `enable.idempotence=true` (effective from 3.0.1, 3.1.1, and 3.2.0), `acks=all` | (Apache Kafka KIP-679 and KAFKA-13598, stable) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Concern | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
-| Work queue | SQS: receive, visibility-timeout lease, delete with receipt handle | Pub/Sub pull subscription: ack deadline lease, `modifyAckDeadline`, ack by ack ID | Pub/Sub ack deadline maxes out at 600 s, versus SQS's 12 h (Google Cloud docs, UNVERIFIED as of 2026-10). Pub/Sub has an exactly-once delivery option for pull subscriptions; SQS standard has no such option. |
+| Work queue | SQS: receive, visibility-timeout lease, delete with receipt handle | Pub/Sub pull subscription: ack deadline lease, `modifyAckDeadline`, ack by ack ID | Pub/Sub ack deadline maxes out at 600 s, versus SQS's 12 h (Google Cloud docs, as of 2026-11). Pub/Sub has an exactly-once delivery option for pull subscriptions; SQS standard has no such option. |
 | Ordering | SQS FIFO `MessageGroupId`, with group blocking | Pub/Sub ordering keys | Both serialize per key. SQS FIFO adds a 5-min send dedupe window; Pub/Sub ordering is per region. |
-| Fan-out | SNS topic -> subscriptions with attribute or body filters | Pub/Sub topic -> many subscriptions with attribute filters | Pub/Sub filters are attribute-only and immutable after subscription creation (Google Cloud docs, UNVERIFIED as of 2026-10). SNS filters are mutable but eventually consistent. |
-| Retention and replay on queues | SQS up to 14 days, no replay after delete | Pub/Sub topic retention and seek-to-timestamp (Google Cloud docs, UNVERIFIED as of 2026-10) | Pub/Sub can rewind a subscription; SQS cannot. |
-| Content-based event router | EventBridge buses, rules with Ruler patterns, archive and replay | Eventarc Standard (triggers) and Eventarc Advanced (bus and pipelines, CloudEvents) | Eventarc is built on CloudEvents. Its filter expressiveness and quotas differ, so check the GA scope (UNVERIFIED as of 2026-10). |
-| Dead letters | SQS redrive policy (`maxReceiveCount` up to 1000), per-target DLQ on EventBridge and SNS | Pub/Sub dead-letter topic, max delivery attempts 5 to 100 (UNVERIFIED as of 2026-10) | The Pub/Sub DLQ is a topic, the SQS DLQ is a queue. |
-| Managed Kafka | MSK Provisioned (Standard and Express brokers), MSK Serverless | Google Cloud Managed Service for Apache Kafka | Storage tiering and broker sizing are exposed differently; GCP's storage model is UNVERIFIED as of 2026-10. |
-| Partitioned log alternative | Kinesis Data Streams | Pub/Sub Lite is deprecated, with shutdown scheduled for 2026 (UNVERIFIED date) | Do not design new systems on Pub/Sub Lite. |
+| Fan-out | SNS topic -> subscriptions with attribute or body filters | Pub/Sub topic -> many subscriptions with attribute filters | Pub/Sub filters are attribute-only and immutable after subscription creation (Google Cloud docs, as of 2026-11). SNS filters are mutable but eventually consistent. |
+| Retention and replay on queues | SQS up to 14 days, no replay after delete | Pub/Sub topic retention and seek-to-timestamp (Google Cloud docs, as of 2026-11) | Pub/Sub can rewind a subscription; SQS cannot. |
+| Content-based event router | EventBridge buses, rules with Ruler patterns, archive and replay | Eventarc Standard (triggers) and Eventarc Advanced (bus and pipelines, CloudEvents) | Eventarc delivers events in CloudEvents format, and Eventarc Advanced has been GA since 2025-08-01 (Google Cloud docs and release notes, as of 2026-11). Its filter expressiveness and quotas differ. |
+| Dead letters | SQS redrive policy (`maxReceiveCount` up to 1000), per-target DLQ on EventBridge and SNS | Pub/Sub dead-letter topic, max delivery attempts 5 to 100 (Google Cloud docs, as of 2026-11) | The Pub/Sub DLQ is a topic, the SQS DLQ is a queue. |
+| Managed Kafka | MSK Provisioned (Standard and Express brokers), MSK Serverless | Google Cloud Managed Service for Apache Kafka | Storage tiering and broker sizing are exposed differently: the Google Cloud service tiers storage across pre-provisioned local broker disks and remote storage, and you size the cluster by total vCPU and memory rather than by broker type (Google Cloud docs, as of 2026-11). |
+| Partitioned log alternative | Kinesis Data Streams | Pub/Sub Lite is deprecated, with turn-down effective 2027-01-31 (Google Cloud docs, as of 2026-11) | Do not design new systems on Pub/Sub Lite. |
 | Private access | Interface VPC endpoints for SQS, SNS, and EventBridge, MSK multi-VPC private connectivity | Private Google Access, Private Service Connect, VPC Service Controls perimeters | VPC SC is a perimeter around APIs. AWS composes the same idea from endpoint policies, resource policies, and SCPs. |
 
 For the GCP-side internals, see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_14_Messaging_and_Streaming_Cloud_Pub_Sub_and_Dataflow|Messaging and Streaming: Cloud Pub/Sub and Dataflow]] and [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_05_Messaging_Streaming_and_Analytics_Translation|Messaging, Streaming, and Analytics Translation]].
@@ -288,8 +329,8 @@ It includes one CMK, a source DLQ, a per-target EventBridge DLQ, a DynamoDB idem
 The consumer heartbeats its lease and fences side effects with a conditional write.
 
 Cost estimate for one day of lab use in us-east-1: about $0.03 for the prorated KMS key (the key costs about $1 per month), $0 for SQS and SNS within the monthly free tier, less than $0.01 for EventBridge custom events at lab volume, and less than $0.01 for DynamoDB on-demand.
-The total is under $1, assuming you tear down the same day (AWS pricing, UNVERIFIED as of 2026-10).
-After teardown, the KMS key stays pending deletion for 7 days; a key pending deletion is not billed (UNVERIFIED as of 2026-10).
+The total is under $1, assuming you tear down the same day (AWS pricing, as of 2026-11).
+After teardown, the KMS key stays pending deletion for 7 days; a key pending deletion is not billed ([AWS KMS pricing, as of 2026-11](https://aws.amazon.com/kms/pricing/)).
 
 ### Terraform / OpenTofu
 
@@ -630,7 +671,7 @@ Closing that gap requires the downstream to accept the idempotency key itself, f
 ### MSK tiered storage enablement (not provisioned in this lab)
 
 ```bash
-# Cluster-level enablement. Verify the flag against the current AWS CLI reference before running.
+# Cluster-level enablement. Flags checked against the AWS CLI reference, as of 2026-11.
 aws kafka update-storage --cluster-arn "$CLUSTER_ARN" \
   --current-version "$(aws kafka describe-cluster-v2 --cluster-arn "$CLUSTER_ARN" --query 'ClusterInfo.CurrentVersion' --output text)" \
   --storage-mode TIERED
@@ -647,7 +688,7 @@ kafka-configs.sh --bootstrap-server "$BS" --command-config client.properties \
 
 1. Monthly messages: 20,000 x 2,592,000 s = 5.18e10.
 2. Unbatched cost: send, receive, and delete each count as one request, so 3 requests per message gives 1.56e11 requests per month.
-   At $0.40 per million for the first 100B and a lower tier above that (UNVERIFIED as of 2026-10), that is roughly $40,000 + 55.5B x $0.30 per million, or about $56,600 per month.
+   At $0.40 per million for the first 100B and $0.30 per million for the next 100B (AWS price list, as of 2026-11), that is roughly $40,000 + 55.5B x $0.30 per million, or about $56,600 per month.
 3. Batched by 10 on all three calls: 0.3 requests per message gives 1.56e10 requests, or about $6,200 per month.
    Batching is a 9x cost lever before any architecture change.
 4. Payloads just over 64 KB double the request count, so keep bodies small or use a claim check (an S3 pointer).
@@ -656,7 +697,7 @@ kafka-configs.sh --bootstrap-server "$BS" --command-config client.properties \
 
 1. In-flight messages = arrival rate x time held per message.
 2. With 10-message batches processed in 2 s: 20,000 x 2 = 40,000 in flight, under the roughly 120,000 standard-queue limit.
-3. If downstream latency triples to 6 s, in-flight reaches 120,000 and receives start failing with `OverLimit`.
+3. If downstream latency triples to 6 s, in-flight reaches 120,000: short-poll receives start failing with `OverLimit`, and long-poll receives such as this lab's just stop returning new messages, with no error ([SQS visibility timeout, as of 2026-11](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html)).
    That is a limit you can compute in advance, so alarm on consumer latency x arrival rate, not only on queue depth.
 
 **Visibility timeout.**
@@ -667,14 +708,14 @@ kafka-configs.sh --bootstrap-server "$BS" --command-config client.properties \
 **MSK, 200 MB/s ingress, RF=3, 7-day retention.**
 
 1. One copy of 7 days of data: 200 MB/s x 604,800 s = 121 TB.
-2. All local: 121 TB x 3 replicas = 363 TB of EBS, about $36,300 per month at $0.10 per GB-month (UNVERIFIED price).
-3. Tiered with 1 day local: 17.3 TB x 3 = 52 TB local, about $5,200, plus 121 TB remote at about $0.06, about $7,300 (UNVERIFIED price).
+2. All local: 121 TB x 3 replicas = 363 TB of EBS, about $36,300 per month at $0.10 per GB-month (AWS pricing, as of 2026-11).
+3. Tiered with 1 day local: 17.3 TB x 3 = 52 TB local, about $5,200, plus 121 TB remote at $0.06, about $7,300, before the $0.0015 per GB retrieval charge (AWS pricing, as of 2026-11).
    That totals about $12,500 per month, roughly a 3x saving, and broker recovery copies at most 1 day of data per partition.
 4. Broker network: each broker carries ingress share + 2x replication out + consumer egress.
    With 3 consumer groups, cluster egress is 600 MB/s of consumers + 400 MB/s of replication.
    Size per-broker network and EBS throughput against those numbers, not against ingress alone.
-5. Cross-AZ consumer traffic: without `client.rack` set (follower fetching, KIP-392), about two-thirds of consumer bytes cross AZs.
-   Across 3 groups that is 600 MB/s x 2/3 x 2.59e6 s, about 1.04 PB per month, billed per GB in each direction (price UNVERIFIED as of 2026-10).
+5. Cross-AZ consumer traffic: without `client.rack` set (follower fetching, KIP-392, which also needs `replica.selector.class` on the cluster), about two-thirds of consumer bytes cross AZs.
+   Across 3 groups that is 600 MB/s x 2/3 x 2.59e6 s, about 1.04 PB per month, billed at $0.01 per GB in each direction, or about $20,700 per month (AWS price list, as of 2026-11).
    This line item can exceed the broker bill.
 
 ### Teardown
@@ -697,18 +738,18 @@ The Builders' Library catalogues the mitigations ([Avoiding insurmountable queue
 Drain time is backlog / (capacity - arrival rate), and when capacity is close to the arrival rate the denominator approaches zero.
 
 **DLQ expiry trap.**
-Standard-queue DLQs keep the original enqueue timestamp, so poison messages that took 3.5 days to fail out of a 4-day source queue expire from a 4-day DLQ almost immediately (UNVERIFIED as of 2026-10).
+Standard-queue DLQs keep the original enqueue timestamp, so poison messages that took 3.5 days to fail out of a 4-day source queue expire from a 4-day DLQ about 12 hours later ([SQS DLQ docs, as of 2026-11](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html)).
 
 **Redrive stampede.**
 Redriving 5 million DLQ messages at full speed re-creates the outage that put them there.
-Use a rate-limited message move task (`StartMessageMoveTask` with `MaxNumberOfMessagesPerSecond`, UNVERIFIED as of 2026-10) and cap consumer concurrency.
+Use a rate-limited message move task (`StartMessageMoveTask` with `MaxNumberOfMessagesPerSecond`, at most 500, [API reference, as of 2026-11](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_StartMessageMoveTask.html)) and cap consumer concurrency.
 
 **Lambda batch semantics.**
 Without `ReportBatchItemFailures`, one failed record makes Lambda retry the whole batch, which multiplies duplicates and burns `maxReceiveCount` for healthy messages.
-With a visibility timeout shorter than the function timeout, in-flight invocations race their own redeliveries.
+Lambda rejects an event source mapping create or update when the function timeout exceeds the visibility timeout, and AWS recommends at least six times the function timeout so that throttled batches do not race their own redeliveries ([Lambda SQS docs, as of 2026-11](https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-configure.html)).
 
 **FIFO starvation.**
-One giant message group fills the 120,000-message scan window, and other groups appear empty ([AWS docs, as of 2026-10](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/avoid-backlog-with-the-same-message-group-id.html)).
+One giant message group fills the 120,000-message scan window, and other groups appear empty ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/avoid-backlog-with-the-same-message-group-id.html)).
 The FIFO in-flight limit returns no error, so only age-of-oldest-message per group reveals it.
 
 **KMS-encrypted queue behind SNS or EventBridge with the AWS-managed key.**
@@ -731,9 +772,9 @@ This is a noisy-neighbor path that bus-level isolation does not fix; fix it with
 
 **Upstream dependency failures in messaging control paths.**
 In the 2020-11-25 us-east-1 Kinesis event, adding front-end capacity pushed servers past an operating-system thread limit, because each front-end server keeps threads to its peers.
-The resulting failures to build the shard-map cache cascaded into CloudWatch, Cognito, Lambda, and CloudWatch Events, the predecessor of EventBridge ([AWS PIR](https://aws.amazon.com/message/11201/)).
+The resulting failures to build the shard-map cache cascaded into CloudWatch, Cognito, Lambda, CloudWatch Events, and EventBridge ([AWS PIR](https://aws.amazon.com/message/11201/)).
 In the 2025-10-19/20 us-east-1 event, a race condition in DynamoDB's DNS automation left an empty DNS record for the regional endpoint, and dependent services degraded ([AWS PIR](https://aws.amazon.com/message/101925/)).
-The PIR's discussion of Lambda event source mapping impact on SQS processing should be read directly; the exact scope is UNVERIFIED here.
+The PIR also reports that Lambda's internal subsystem for polling SQS queues failed and did not recover automatically until engineers restored it, and that Lambda throttled event source mappings during recovery so synchronous calls could go first.
 The lesson for designers is that your queue being up does not mean your pollers, metrics, and alarms are, so keep a static-stability posture ([[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]]).
 
 **MSK under-replication during patching.**
@@ -741,7 +782,7 @@ RF=2 or `min.insync.replicas` equal to RF turns every rolling restart into a pro
 
 **MSK disk full.**
 Brokers that fill EBS go offline.
-Storage auto-scaling only grows, and successive storage updates have a cooldown (UNVERIFIED as of 2026-10), so a fast ingest spike can outrun it.
+Storage auto-scaling only grows, and a storage scaling action can occur only once every six hours ([MSK auto-scaling, as of 2026-11](https://docs.aws.amazon.com/msk/latest/developerguide/msk-autoexpand.html)), so a fast ingest spike can outrun it.
 Tiered storage is the structural fix, but only after segments roll.
 
 **Tiered storage that never tiers.**
@@ -753,7 +794,7 @@ On a cluster without tiering, a backfill reading cold segments from EBS evicts h
 On a tiered cluster, cold reads move to the remote reader pool, where the failure mode becomes pool saturation and higher fetch latency for the replaying group only.
 
 **SNS filter policy lag.**
-Changes can take minutes to propagate (UNVERIFIED as of 2026-10), so consumers must validate the predicate locally during rollouts.
+Changes can take up to 15 minutes to propagate ([SNS filter policy docs, as of 2026-11](https://docs.aws.amazon.com/sns/latest/dg/message-filtering-apply.html)), so consumers must validate the predicate locally during rollouts.
 
 ## Security and Cost Angles
 
@@ -761,9 +802,9 @@ Changes can take minutes to propagate (UNVERIFIED as of 2026-10), so consumers m
 
 - Producers get only `sqs:SendMessage` on specific queue ARNs, `sns:Publish` on specific topic ARNs, and `events:PutEvents` on a specific bus ARN.
 - Consumers get `sqs:ReceiveMessage`, `sqs:DeleteMessage`, and `sqs:ChangeMessageVisibility`, never `sqs:*`.
-- `events:PutEvents` supports conditions on `events:source` and `events:detail-type`, so a team can publish only its own event namespace (UNVERIFIED as of 2026-10: confirm condition keys in the service authorization reference).
+- `events:PutEvents` supports conditions on `events:source` and `events:detail-type`, so a team can publish only its own event namespace ([AWS service reference, as of 2026-11](https://servicereference.us-east-1.amazonaws.com/v1/events/events.json)).
 - Resource policies on queues and buses must carry `aws:SourceArn` or `aws:SourceAccount` to block confused-deputy delivery, as the Worked Example does.
-- Cross-account bus-to-bus delivery requires a policy on the receiving bus, and each hop is billed as a separate custom event.
+- Cross-account bus-to-bus delivery requires a policy on the receiving bus, and each hop is billed as a separate custom event ([EventBridge pricing, as of 2026-11](https://aws.amazon.com/eventbridge/pricing/)).
 - On MSK, prefer IAM access control (SASL/IAM, with `kafka-cluster:*` actions scoped by cluster, topic, and group ARNs) over SCRAM.
   This removes long-lived passwords; see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]].
 
@@ -838,15 +879,17 @@ When do you choose SNS plus SQS fan-out over EventBridge rules, and when the rev
 Both are at-least-once, unordered routers, but they differ in five ways.
 
 - **Filtering.** EventBridge matches arbitrary JSON content with prefix, suffix, numeric, CIDR, wildcard, and `anything-but` operators.
-  SNS body filtering covers a smaller operator set, and its policy changes are eventually consistent.
+  SNS body filtering has closed much of that gap, adding wildcard matching in 2025-07 ([AWS announcement](https://aws.amazon.com/about-aws/whats-new/2025/07/amazon-sns-message-filtering-operators/)), but its policy changes are eventually consistent.
 - **Fan-out width.** An SNS topic fans out to a very large number of subscriptions.
   An EventBridge rule has 5 targets, so wide fan-out means many rules, which is fine for matching cost because the Ruler state machine scales with the event, not the rule count, but it consumes rule quota.
 - **Cost.** SNS-to-SQS delivery is free on top of the publish, while EventBridge charges per custom event published and per bus-to-bus hop.
   At billions of events per month, that difference is real money.
 - **Throughput and quotas.** EventBridge `PutEvents` and invocation quotas are per account-region and shared by every team in that account.
 - **Operations.** EventBridge provides native archive and replay on all buses, a schema registry, cross-account bus routing, and global endpoints with automatic failover.
-  Standard SNS topics lack built-in archiving and schema registries (though SNS FIFO topics added message archiving and replay in 2023), but SNS provides predictable single-digit millisecond latency and ordered FIFO fan-out into SQS FIFO queues.
+  Standard SNS topics lack built-in archiving and schema registries (though SNS FIFO topics added message archiving and replay in 2023), but SNS documents typical latency under 30 ms ([AWS Well-Architected, as of 2026-11](https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_monitor_aws_resources_notification_monitor.html)) and provides ordered FIFO fan-out into SQS FIFO queues.
+  EventBridge reported a P99 of 129 ms from ingestion to first invocation attempt, measured in 2024-08 on a different metric, so the two figures are not directly comparable ([AWS, 2024-11](https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-eventbridge-improvement-latency-event-buses/)).
 
+This comparison assumes Custom event bus - Classic; the enhanced bus launched in 2026-09 adds per-group FIFO and built-in retention and bills per GB, so re-run the cost and ordering analysis if you can use it.
 My default is EventBridge for low-to-medium-volume domain events crossing team or account boundaries, where decoupling and replay matter.
 I choose SNS plus SQS for high-volume, latency-sensitive fan-out inside one domain, and whenever ordering is required.
 Either way, every consumer gets its own SQS queue as a buffer, so a slow consumer cannot exert backpressure on the router's retry budget.
@@ -1023,6 +1066,6 @@ Design the inbox table and its retention so that a 30-day Kafka replay remains e
 - [aws/event-ruler](https://github.com/aws/event-ruler) - The open-source matching engine whose state-machine design explains EventBridge pattern cost and limits.
 - [timbray/quamina](https://github.com/timbray/quamina) - An independent re-implementation, with design notes from an engineer on the original Ruler work.
 - [SQS FIFO quotas](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-fifo.html) and [Avoid large backlogs with the same message group ID](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/avoid-backlog-with-the-same-message-group-id.html) - Primary statements of the in-flight limit and the scan window that cause FIFO starvation.
-- [AWS PIR: Amazon Kinesis event, us-east-1, 2020-11-25](https://aws.amazon.com/message/11201/) - A canonical cascade from a streaming front-end fleet into EventBridge's predecessor, CloudWatch, and Lambda.
+- [AWS PIR: Amazon Kinesis event, us-east-1, 2020-11-25](https://aws.amazon.com/message/11201/) - A canonical cascade from a streaming front-end fleet into EventBridge, CloudWatch, and Lambda.
 - [AWS PIR: us-east-1 event, 2025-10-19/20](https://aws.amazon.com/message/101925/) - Dependency cascades through DNS automation, essential reading for anyone who assumes regional messaging is independent.
 - Within this vault: [[04-System-Design/06-Messaging-and-Streaming/Apache-Kafka|Apache Kafka]], [[04-System-Design/06-Messaging-and-Streaming/RabbitMQ|RabbitMQ]], [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Retries, Jitter, and Circuit Breakers]], [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control|Load Shedding, Backpressure, and Admission Control]], the previous chapter [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_12_Aurora_DSQL_Multi_Region_Active_Active_SQL|Aurora DSQL]], and the next chapter [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_14_Observability_CloudWatch_Metrics_Logs_and_X_Ray|Observability: CloudWatch, Metrics, Logs, and X-Ray]].

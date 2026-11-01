@@ -16,6 +16,35 @@ sources:
   - "https://aws.amazon.com/builders-library/static-stability-using-availability-zones/"
   - "https://aws.amazon.com/message/12721/"
   - "https://aws.amazon.com/message/101925/"
+  - "https://aws.amazon.com/transit-gateway/pricing/"
+  - "https://aws.amazon.com/privatelink/pricing/"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/amazon-vpc-limits.html"
+  - "https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-connection-quotas.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/security-group-connection-tracking.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/network_mtu.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/edit-target-group-attributes.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-security-groups.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/application-load-balancers.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html"
+  - "https://aws.amazon.com/elasticloadbalancing/faqs/"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-basics.html"
+  - "https://docs.aws.amazon.com/vpc/latest/tgw/how-transit-gateways-work.html"
+  - "https://docs.aws.amazon.com/vpc/latest/tgw/tgw-vpc-attachments.html"
+  - "https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-share-your-services.html"
+  - "https://builder.aws.com/content/3F05oqNtNUWxHJ5r6L6I2HrH4rI/reliability-constant-work-and-a-good-cup-of-coffee"
+  - "https://aws.amazon.com/blogs/compute/understanding-vpc-links-in-amazon-api-gateway-private-integrations/"
+  - "https://docs.cloud.google.com/vpc/docs/quota"
+  - "https://docs.cloud.google.com/load-balancing/docs/https/request-distribution"
+  - "https://docs.cloud.google.com/load-balancing/docs/health-check-concepts"
+  - "https://docs.cloud.google.com/load-balancing/docs/firewall-rules"
+  - "https://docs.cloud.google.com/nat/docs/ports-and-addresses"
+  - "https://docs.cloud.google.com/vpc/docs/about-vpc-hosted-services"
+  - "https://docs.cloud.google.com/vpc/docs/configure-private-service-connect-producer"
+  - "https://docs.cloud.google.com/load-balancing/docs/https/applb-custom-metrics"
+  - "https://docs.cloud.google.com/load-balancing/docs/passthrough-network-load-balancer"
+  - "https://status.cloud.google.com/incident/cloud-networking/19009"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
 ---
 
 # Networking and Load Balancing Translation
@@ -26,7 +55,7 @@ sources:
 - A Transit Gateway is a regional router with hard per-attachment bandwidth and packets-per-second ceilings, a per-GB processing fee, and AZ-affinity behavior that breaks stateful appliances unless appliance mode is on. A GCP VPC has no hub to size, but Andromeda programs flows on demand, which has its own cold-flow and scale behavior.
 - ALB and NLB are regional fleets of nodes in your AZs, fronted by DNS, so failover and scale-out are bounded by DNS TTLs, client re-resolution and node warm-up. GCP's global external Application LB is an anycast VIP in front of GFE proxies, and its passthrough Network LB is Maglev, so spillover and failover are routing and capacity-setting decisions instead of DNS decisions.
 - PrivateLink puts one ENI per AZ in the consumer subnet, so it costs per AZ-hour and you must align AZ IDs. Private Service Connect (PSC) puts one internal IP in the consumer VPC and uses a NAT subnet on the producer side, so its failure mode is NAT subnet exhaustion.
-- LLM streaming exposes the sharpest differences: silent gaps hit ALB idle timeouts and GCP backend-service timeouts, large payloads hit PMTUD black holes on TGW peering attachments, and the choice between DNS-based and anycast front doors sets your regional failover time.
+- LLM streaming exposes the sharpest differences: silent gaps hit ALB idle timeouts and GCP backend-service timeouts, oversized packets can black-hole on a TGW path when the PMTUD signal is missing (traffic entering on peering, VPN or Direct Connect attachments, or blocked ICMP), and the choice between DNS-based and anycast front doors sets your regional failover time.
 
 ## Mental Model
 
@@ -65,9 +94,11 @@ It concentrates on the places where the two designs translate badly and on mecha
 An AWS VPC is a regional object, a subnet is pinned to one AZ, and route tables bind to subnets.
 Security groups attach to ENIs and are enforced on the Nitro card, so enforcement is local to the host and keeps per-flow state.
 That state is bounded per instance type.
-ENA exposes counters such as `conntrack_allowance_exceeded` through `ethtool -S` when the tracked-connection allowance is hit (UNVERIFIED, recalled from AWS docs).
-A security-group rule that allows all traffic from 0.0.0.0/0 is not tracked, which is why tightening a rule can suddenly make a busy gateway hit its tracking limit.
-Tracked flows also expire on an idle timer that is much longer than most application keepalives (UNVERIFIED), so a gateway holding many long-lived idle streams holds state for a long time.
+ENA exposes counters such as `conntrack_allowance_exceeded` through `ethtool -S` when the tracked-connection allowance is hit ([AWS ENA metrics docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/monitoring-network-performance-ena.html), as of 2026-11).
+A TCP or UDP flow is untracked only when a rule allows all traffic (0.0.0.0/0 or ::/0) and a corresponding rule in the other direction allows all response traffic on all ports, which is why tightening either rule can suddenly make a busy gateway hit its tracking limit ([AWS connection tracking docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/security-group-connection-tracking.html), as of 2026-11).
+Flows through Network Load Balancers, NAT gateways, PrivateLink and Global Accelerator are tracked automatically regardless of those rules (same docs).
+Idle tracked TCP flows expire after a default of 432,000 seconds (5 days) on most instance types but only 350 seconds on Nitro v6 instance types other than P6e-GB200, and the timeout is configurable down to 60 seconds (same docs, as of 2026-11).
+So a gateway holding many long-lived idle streams holds state for days on older generations, and on Nitro v6 it loses idle streams unless keepalives run more often than every 5 minutes.
 
 A GCP VPC is a global object, a subnet is regional, and firewall rules and routes are VPC-scoped.
 Every host runs a software virtual switch that is programmed by the Andromeda control plane (see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_12_Andromeda_Network_Virtualization|Andromeda: Cloud Network Virtualization]]).
@@ -82,23 +113,26 @@ Three practical consequences follow that you will not find in the product docs:
 
 - The first packets of a new, heavy flow can take a detour through a gateway before the direct path is installed, so a cold GPU-to-GPU or gateway-to-backend flow can show different latency from a warm one.
 - Control-plane load scales with flow churn and not with VM count alone, so a workload that opens huge numbers of short-lived distinct destinations stresses the programming path differently from one with a few stable heavy peers.
-- Documented per-network scale ceilings exist (for example a maximum number of VM instances per VPC network, UNVERIFIED), so "global" does not mean unbounded.
+- Documented per-network scale ceilings exist (for example the adjustable `INSTANCES_PER_NETWORK_GLOBAL` quota on VM network interfaces per VPC network, [Google Cloud VPC quotas](https://docs.cloud.google.com/vpc/docs/quota), as of 2026-11), so "global" does not mean unbounded.
 
 ### Transit Gateway internals and the AZ-affinity trap
 
 A TGW is a regional virtual router.
 Each VPC attachment creates ENIs in the one subnet per AZ that you nominate, and those ENIs are the TGW's data-plane presence inside your VPC.
 Each attachment is associated with exactly one TGW route table but can propagate its prefixes into many, so segmentation is done with route-table association and propagation instead of with security groups.
-A documented limitation is that security-group referencing does not work across a TGW (AWS docs, as of 2026-10), so rules that referenced peer security groups under VPC peering must be rewritten as CIDR rules.
+Security-group referencing across a TGW works only in inbound rules, only between VPCs attached to the same TGW, and only when it is enabled on both the TGW and its VPC attachments ([AWS TGW VPC attachment docs](https://docs.aws.amazon.com/vpc/latest/tgw/tgw-vpc-attachments.html), as of 2026-11).
+It is not supported across TGW peering, through a Gateway Load Balancer or Network Firewall inspection path, or in the use1-az3 zone, so rules that referenced peer security groups under VPC peering must be rewritten as CIDR rules in those cases (same docs).
 
 By documented behavior, a TGW keeps traffic in the AZ where it entered whenever the destination VPC has an attachment ENI in that AZ.
-If the destination has no attachment in that AZ, the TGW picks another AZ (UNVERIFIED on the exact selection rule).
+If the destination has no attachment in that AZ, the TGW routes the traffic to a random AZ where the attachment is present, with no additional TGW charge for that cross-AZ hop ([AWS how TGW works](https://docs.aws.amazon.com/vpc/latest/tgw/how-transit-gateways-work.html), as of 2026-11).
 That is good for cost and latency, but it breaks stateful inspection.
 A firewall appliance fleet in a shared-services VPC sees the forward path in one AZ and the return path in another, and drops the return packets because it has no flow state.
-Appliance mode on the attachment makes the TGW pick the AZ by flow hash and then pin both directions of the flow to it (see the [AWS TGW appliance scenario docs](https://docs.aws.amazon.com/vpc/latest/tgw/transit-gateway-appliance-scenario.html)).
-The trade-off is that you lose AZ-local routing for that attachment, so you pay inter-AZ data charges and extra latency on a share of flows.
+Appliance mode on the attachment pins both directions of a flow to one AZ of the appliance VPC for the life of the flow (see the [AWS TGW appliance scenario docs](https://docs.aws.amazon.com/vpc/latest/tgw/transit-gateway-appliance-scenario.html)).
+With route propagation enabled on the associated route table, same-AZ traffic stays in that AZ and inter-AZ traffic picks an AZ by flow hash, and without propagation every flow falls back to flow hash ([AWS TGW VPC attachment docs](https://docs.aws.amazon.com/vpc/latest/tgw/tgw-vpc-attachments.html), as of 2026-11).
+The trade-off is that a share of flows leave AZ-local routing and take extra latency.
+Whether those hops bill as inter-AZ data is UNVERIFIED: the docs read state no extra TGW charge only for the no-attachment case above.
 
-The ceilings are explicit and sizable but real (AWS docs, as of 2026-10):
+The ceilings are explicit and sizable but real (AWS docs, as of 2026-11):
 
 - A VPC attachment supports up to 100 Gbps in each direction per AZ and up to 7,500,000 packets per second per AZ.
 - A TGW holds up to 10,000 routes across all route tables, and the default is 20 route tables and 5 TGWs per account per Region.
@@ -110,27 +144,30 @@ At 100 Gbps the TGW stops being bandwidth-bound only if the average packet is ab
 Normal 1,500-byte-MTU traffic at 1,400 bytes average hits the packet limit near 84 Gbps.
 
 MTU is the second hidden mechanism.
-A TGW supports an MTU of 8,500 bytes between VPCs, Direct Connect, Connect and peering attachments (AWS docs, as of 2026-10).
+A TGW supports an MTU of 8,500 bytes between VPCs, Direct Connect, Connect and peering attachments (AWS docs, as of 2026-11).
 Instances inside a VPC commonly run at 9,001 bytes.
-The TGW does generate ICMP "fragmentation needed" and "packet too big" messages for traffic entering on VPC and Connect attachments, but it does not support Path MTU Discovery on Site-to-Site VPN, Direct Connect or peering attachments (AWS docs, as of 2026-10).
-So a 9,001-byte host sending across an inter-region TGW peering will silently black-hole every packet between 8,501 and 9,001 bytes, because the ICMP feedback never arrives.
-Small requests succeed and large payloads hang, which is exactly the signature of a big prompt or a batch embedding upload.
+The TGW does generate ICMP "fragmentation needed" and "packet too big" messages for traffic entering on VPC and Connect attachments, but it does not support Path MTU Discovery on Site-to-Site VPN, Direct Connect or peering attachments (AWS docs, as of 2026-11).
+The TGW also enforces MSS clamping for all packets (same docs), so TCP from a 9,001-byte host is told to shrink at connection setup, and oversized packets entering on its VPC attachment draw FRAG_NEEDED from the first TGW even when the path continues over inter-region peering.
+The black hole is therefore narrower than "any jumbo traffic over peering": oversized traffic that enters on a peering, VPN or Direct Connect attachment gets no ICMP feedback from the TGW.
+FRAG_NEEDED sent to a VPC host can also be lost, because a network ACL can deny it and a tracked security-group flow needs an inbound ICMP rule to receive it ([AWS EC2 MTU docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/network_mtu.html), as of 2026-11).
+In those cases small requests succeed and large payloads hang, which is the signature of a big prompt or a batch embedding upload.
 
 ### Load balancer data planes: DNS-fronted node fleets vs anycast proxies
 
 An ALB or NLB provisions load balancer nodes in each AZ you enable and publishes their addresses in DNS.
 ALB node IPs rotate as the fleet scales, and clients must re-resolve.
 An NLB gives each AZ a stable address, which can be an Elastic IP.
-An NLB routes each TCP connection by a flow hash over protocol, addresses, ports and the TCP sequence number, and pins the connection to one target for its life (UNVERIFIED, recalled from AWS docs).
-Cross-zone load balancing is always on for ALB and off by default for NLB.
-Cross-zone traffic through an NLB incurs inter-AZ data charges, while ALB cross-zone traffic does not (UNVERIFIED).
+An NLB routes each TCP connection by a flow hash over protocol, addresses, ports and the TCP sequence number, and pins the connection to one target for its life ([AWS NLB docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html), as of 2026-11).
+Cross-zone load balancing is always on at the load balancer level for ALB, where it can be turned off per target group, and off by default for NLB ([AWS ELB docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html), as of 2026-11).
+Cross-zone traffic through an NLB incurs regional data transfer charges, while ALB cross-zone traffic does not ([AWS ELB FAQ](https://aws.amazon.com/elasticloadbalancing/faqs/), as of 2026-11).
 
-AWS has described a distributed flow-tracking substrate, internally called Hyperplane, behind NAT Gateway, NLB and PrivateLink (UNVERIFIED on exact membership and design details).
-The design philosophy is explicit flow state, replicated so that a node failure does not drop connections.
-This buys exact stickiness for the connection lifetime, and it costs state and hard limits such as the NAT Gateway cap on simultaneous connections to a single destination (UNVERIFIED).
+AWS describes Hyperplane as an internal network virtualization platform, says NLB runs on it ([AWS Builders' Library](https://builder.aws.com/content/3F05oqNtNUWxHJ5r6L6I2HrH4rI/reliability-constant-work-and-a-good-cup-of-coffee), as of 2026-11), and names PrivateLink as one of its constructs ([AWS Compute Blog](https://aws.amazon.com/blogs/compute/understanding-vpc-links-in-amazon-api-gateway-private-integrations/), as of 2026-11).
+NAT Gateway membership is UNVERIFIED: not named in the AWS sources read.
+The design philosophy is explicit flow state, replicated so that a node failure does not drop connections (UNVERIFIED: not in AWS docs read, and re:Invent talks were not retrieved).
+This buys exact stickiness for the connection lifetime, and tracked state comes with hard limits such as the NAT Gateway cap of 55,000 simultaneous connections per IPv4 address to each unique destination ([AWS NAT gateway docs](https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-basics.html), as of 2026-11).
 
 Because the entry point is DNS, every AWS failover path is a DNS or client-behavior path.
-Route 53 Application Recovery Controller zonal shift removes an AZ's addresses from the load balancer's DNS answers (UNVERIFIED on exact GA scope).
+Amazon Application Recovery Controller (ARC) zonal shift removes an AZ's zonal load balancer IP address from DNS ([AWS ELB docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html), as of 2026-11), and on an NLB it must first be enabled through the `zonal_shift.config.enabled` attribute, which defaults to false ([AWS NLB docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html), as of 2026-11).
 Clients that hold keepalive connections, or that cache answers beyond the TTL, keep sending to the impaired AZ.
 See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]] for why that makes pre-provisioned capacity in surviving AZs mandatory.
 
@@ -140,12 +177,13 @@ A client's packets arrive at a nearby edge, where Maglev machines spread them ac
 The GFE then chooses a backend and forwards over Google's backbone.
 Because there is no DNS answer to go stale, failover is a routing and health-check event, and capacity spillover is controlled by balancing mode and per-backend capacity settings.
 If you do not set realistic max-rate or utilization targets for GPU backends, the LB has no signal that a replica is saturated, and it keeps sending to the nearest region until health checks fail.
-Newer load reporting mechanisms exist for custom metrics, but their GA status must be checked before you depend on them (UNVERIFIED).
+A newer mechanism is the `CUSTOM_METRICS` balancing mode, fed by ORCA load reports in backend responses, on global, regional and cross-region Application Load Balancers ([Google Cloud custom metrics docs](https://docs.cloud.google.com/load-balancing/docs/https/applb-custom-metrics), as of 2026-11).
+Its GA status is UNVERIFIED: that page shows no launch stage, and the backend-service docs mark its long-traffic-duration use as Preview, so check before you depend on it.
 
-The passthrough Network Load Balancer is the Maglev data plane almost directly.
-The Maglev paper (NSDI 2016) describes the pieces: upstream routers use ECMP to spread packets for a VIP across Maglev machines, each machine steers packets by 5-tuple hash to per-core queues in a kernel-bypass datapath, and each core consults a connection-tracking table.
+The external passthrough Network Load Balancer is built on Maglev, with the regional variant also using the Andromeda stack ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/passthrough-network-load-balancer), as of 2026-11), so it is close to the Maglev data plane.
+The Maglev paper (NSDI 2016) describes the pieces: upstream routers use ECMP to spread packets for a VIP across Maglev machines, each machine steers packets by 5-tuple hash to per-thread queues in a kernel-bypass datapath, and each packet thread consults its own connection-tracking table.
 On a miss it consults a consistent-hash lookup table, then GRE-encapsulates the packet to the chosen backend, which replies directly to the client (direct server return).
-The lookup table has a prime size M, with 65,537 for small deployments and 655,373 for large ones (Maglev paper, NSDI 2016, recalled and not re-opened this revision).
+The lookup table has a prime size M: the paper evaluates 65,537 (small, and its default in practice) and 655,373 (large) ([Maglev paper, NSDI 2016](https://www.usenix.org/system/files/conference/nsdi16/nsdi16-paper-eisenbud.pdf), re-opened 2026-11).
 The table is filled by letting each backend take turns claiming the next free slot in its own pseudo-random permutation of the table.
 
 This design deserves attention because it explains a behavior that explicit-state designs do not have.
@@ -157,7 +195,7 @@ The failure case is two simultaneous changes: a Maglev membership change plus a 
 Flows whose table entry moved are then misdirected and reset.
 The worked example below measures how small that fraction is.
 
-The internal passthrough Network Load Balancer is implemented in the Andromeda virtual network on the client's host, with no middle proxy (UNVERIFIED, recalled from Google Cloud docs).
+The internal passthrough Network Load Balancer is built on the Andromeda network virtualization stack, with no middle proxy and no single device in the data path ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/internal), as of 2026-11).
 That is a structural difference from an AWS internal NLB, which is a set of per-AZ nodes that traffic must traverse.
 See also [[08-Distinguished-Engineering/02-Distributed-Systems-Internals/Consistent-Hash-Ring|Consistent Hash Ring]] and [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_11_Maglev_Network_Load_Balancer|Maglev: Fast and Reliable Network Load Balancer]].
 
@@ -168,20 +206,23 @@ The provider fronts its service with an NLB or a Gateway Load Balancer and publi
 Each consumer creates an interface endpoint, which materializes as one ENI per chosen subnet, and each ENI takes a private IP from the consumer's CIDR.
 Consumer DNS resolves the service name, either through a private hosted zone the endpoint creates or through per-AZ DNS names, to those ENI addresses.
 The consumer's CIDR and the provider's CIDR never need to be coordinated, because the service is reached by endpoint and not by route.
-The provider sees connections from the NLB's addresses and not from the consumer, so identifying the consumer requires enabling proxy protocol v2 on the target group, which carries the endpoint ID (UNVERIFIED).
+The provider sees connections from the NLB's addresses and not from the consumer, so identifying the consumer requires enabling proxy protocol v2 on the target group, whose header carries the endpoint ID in TLV type 0xEA ([AWS NLB target group docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/edit-target-group-attributes.html), as of 2026-11).
 The endpoint service must be offered in the same AZ IDs the consumer picks.
 AZ names such as us-east-1a map to different physical zones in different accounts, so provider-consumer alignment must be done with AZ IDs such as use1-az1.
-Cross-region interface endpoints exist for some services (UNVERIFIED on GA scope and pricing).
+Cross-Region access exists for services shared through PrivateLink: the provider lists supported Regions and the consumer picks a service Region ([AWS PrivateLink docs](https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-share-your-services.html), as of 2026-11).
+It adds inter-Region data transfer on top of standard PrivateLink charges, plus a provider hourly charge per active remote Region ([AWS PrivateLink pricing](https://aws.amazon.com/privatelink/pricing/), as of 2026-11).
+It is not supported for NLBs with a custom TCP idle timeout (same docs), which matters when the idle timeout has been raised for streaming.
 
 **Private Service Connect.**
 The producer exposes a service attachment backed by an internal load balancer.
-It names one or more NAT subnets with purpose PRIVATE_SERVICE_CONNECT, plus a connection preference of automatic acceptance by project or explicit acceptance (UNVERIFIED on exact flag names).
+It names one or more NAT subnets created with `--purpose=PRIVATE_SERVICE_CONNECT`, plus a connection preference of `ACCEPT_AUTOMATIC` (any consumer may connect) or `ACCEPT_MANUAL` (explicit approval, with `--consumer-accept-list` naming projects or networks) ([Google Cloud PSC producer docs](https://docs.cloud.google.com/vpc/docs/configure-private-service-connect-producer), as of 2026-11).
 The consumer creates a forwarding rule that targets the service attachment and gets one internal IP in its own subnet, regardless of how many zones the producer spans.
 Andromeda translates the consumer IP to a source-NATed flow toward the producer, using addresses from the producer's NAT subnet, so the producer sees NAT-subnet addresses and not consumer addresses.
-The producer can recover the consumer's identity through the PSC connection ID carried in the PROXY protocol (UNVERIFIED).
-Because the NAT subnet is a finite pool of source address and port combinations, the NAT subnet size is the scaling limit of a PSC producer, and exhaustion refuses new consumer connections.
+The producer can recover the consumer's source IP and `pscConnectionId` through PROXY protocol v2 (TLV type 0xE0), enabled with `--enable-proxy-protocol` ([Google Cloud PSC producer overview](https://docs.cloud.google.com/vpc/docs/about-vpc-hosted-services), as of 2026-11).
+Each connected endpoint or backend uses one NAT IP by default regardless of its connection count, and each NAT IP provides 64,512 source ports, so the default cap is 64,512 simultaneous connections per endpoint (same docs).
+When every IP in the NAT subnets is in use, new PSC connections fail, so NAT subnet size in addresses is the scaling limit of a PSC producer, and NAT subnets can be added without interrupting traffic (same docs).
 
-PSC also publishes Google APIs as an endpoint IP in your VPC, which replaces Private Google Access for shops that want a consumer-owned address, and it supports consumer-side load balancer backends that point at producer attachments.
+PSC also publishes Google APIs as an endpoint IP in your VPC, which is an alternative to Private Google Access for shops that want a consumer-owned address, and it supports consumer-side load balancer backends that point at producer attachments.
 
 ## Numbers to Know
 
@@ -190,31 +231,31 @@ Rows marked UNVERIFIED could not be re-checked against primary documentation dur
 
 | Quantity | Value | Source |
 | --- | --- | --- |
-| TGW bandwidth per VPC attachment per AZ | Up to 100 Gbps each direction | AWS docs, as of 2026-10 |
-| TGW packets per second per VPC attachment per AZ | Up to 7,500,000 | AWS docs, as of 2026-10 |
-| TGW total routes across all route tables | 10,000 | AWS docs, as of 2026-10 |
-| TGW route tables per TGW; TGWs per account per Region | 20; 5 (both adjustable) | AWS docs, as of 2026-10 |
-| TGW MTU for VPC, Direct Connect, Connect and peering attachments | 8,500 bytes | AWS docs, as of 2026-10 |
-| TGW Connect: per peer, per attachment | 5 Gbps per GRE peer; 4 peers; 20 Gbps total | AWS docs, as of 2026-10 |
-| TGW PMTUD support | VPC and Connect attachments only; not VPN, Direct Connect or peering | AWS docs, as of 2026-10 |
-| TGW attachment price | $0.05 per attachment-hour (about $36.50 per month) | AWS pricing, as reported by secondary summaries, as of 2026-10; UNVERIFIED against the pricing page |
-| TGW data processing price | $0.02 per GB | AWS pricing, as reported by secondary summaries, as of 2026-10; UNVERIFIED against the pricing page |
+| TGW bandwidth per VPC attachment per AZ | Up to 100 Gbps each direction | AWS docs, as of 2026-11 |
+| TGW packets per second per VPC attachment per AZ | Up to 7,500,000 | AWS docs, as of 2026-11 |
+| TGW total routes across all route tables | 10,000 | AWS docs, as of 2026-11 |
+| TGW route tables per TGW; TGWs per account per Region | 20; 5 (both adjustable) | AWS docs, as of 2026-11 |
+| TGW MTU for VPC, Direct Connect, Connect and peering attachments | 8,500 bytes | AWS docs, as of 2026-11 |
+| TGW Connect: per peer, per attachment | 5 Gbps per GRE peer; 4 peers; 20 Gbps total | AWS docs, as of 2026-11 |
+| TGW PMTUD support | VPC and Connect attachments only; not VPN, Direct Connect or peering | AWS docs, as of 2026-11 |
+| TGW attachment price | $0.05 per VPC attachment-hour (about $36.50 per month) | AWS TGW pricing page example for US East (Ohio), as of 2026-11 |
+| TGW data processing price | $0.02 per GB sent into the TGW | AWS TGW pricing page, as of 2026-11 |
 | Break-even average packet size for 100 Gbps at 7.5 Mpps | about 1,667 bytes (derived) | Derived from the two TGW limits above |
-| Default VPCs per Region; subnets per VPC | 5; 200 | UNVERIFIED, recalled from AWS docs |
-| Routes per VPC route table (default) | 50 | UNVERIFIED, recalled from AWS docs |
-| Security group rules per group per direction (default) | 60 | UNVERIFIED, recalled from AWS docs |
-| ALB default idle timeout | 60 seconds | UNVERIFIED, recalled from AWS docs |
-| NLB TCP idle timeout | 350 seconds | UNVERIFIED, recalled from AWS docs |
-| Single-flow bandwidth outside a cluster placement group | 5 Gbps | UNVERIFIED, recalled from AWS docs |
-| NAT Gateway simultaneous connections to one destination | 55,000 | UNVERIFIED, recalled from AWS docs |
-| Interface endpoint price | $0.01 per AZ-hour plus $0.01 per GB | UNVERIFIED, recalled from AWS pricing |
-| GCP default VPC MTU; configurable range | 1,460; 1,300 to 8,896 | UNVERIFIED, recalled from Google Cloud docs |
-| GCP VPC network peering limit per network | 25 | UNVERIFIED, recalled from Google Cloud docs |
-| GCP backend service default timeout (external Application LB) | 30 seconds | UNVERIFIED, recalled from Google Cloud docs |
-| Cloud NAT usable ports per NAT IP; default minimum ports per VM | 64,512; 64 | UNVERIFIED, recalled from Google Cloud docs |
-| Google health check source ranges | 130.211.0.0/22 and 35.191.0.0/16 | UNVERIFIED, recalled from Google Cloud docs |
-| Maglev lookup table size M (prime) | 65,537 small; 655,373 large | Maglev paper, NSDI 2016; recalled, not re-opened this revision |
-| Maglev simulation, 100 backends, M=65,537, one backend removed | 1.001% of entries orphaned; 0.596% of surviving entries remapped; naive hash-mod-N remaps 99.0% | Simulation in the worked example below, run 2026-10 |
+| Default VPCs per Region; subnets per VPC | 5; 200 (both adjustable) | [AWS VPC quotas](https://docs.aws.amazon.com/vpc/latest/userguide/amazon-vpc-limits.html), as of 2026-11 |
+| Routes per VPC route table (default) | 500 non-propagated (adjustable to 1,000, enforced separately for IPv4 and IPv6); 100 propagated (fixed) | [AWS VPC quotas](https://docs.aws.amazon.com/vpc/latest/userguide/amazon-vpc-limits.html), as of 2026-11 |
+| Security group rules per group per direction (default) | 60 (enforced separately for IPv4 and IPv6) | [AWS VPC quotas](https://docs.aws.amazon.com/vpc/latest/userguide/amazon-vpc-limits.html), as of 2026-11 |
+| ALB default idle timeout | 60 seconds | [AWS ALB docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/application-load-balancers.html), as of 2026-11 |
+| NLB TCP idle timeout | 350 seconds by default, configurable from 60 to 6,000; TLS listeners fixed at 350 | [AWS NLB docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html), as of 2026-11 |
+| Single-flow bandwidth outside a cluster placement group | 5 Gbps (up to 10 Gbps inside one; up to 25 Gbps with ENA Express within a Region) | [AWS EC2 bandwidth docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-network-bandwidth.html), as of 2026-11 |
+| NAT Gateway simultaneous connections to one destination | 55,000 per IPv4 address, up to 8 addresses per gateway | [AWS NAT gateway docs](https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-basics.html), as of 2026-11 |
+| Interface endpoint price | $0.01 per endpoint ENI-hour (us-east-1 example) plus $0.01 per GB for the first 1 PB per month | [AWS PrivateLink pricing](https://aws.amazon.com/privatelink/pricing/), as of 2026-11 |
+| GCP default VPC MTU; configurable range | 1,460; 1,300 to 8,896 | [Google Cloud MTU docs](https://docs.cloud.google.com/vpc/docs/mtu), as of 2026-11 |
+| GCP VPC network peering limit per network | 25 | UNVERIFIED: `PEERINGS_PER_NETWORK` is an adjustable quota, but current docs state no default value |
+| GCP backend service default timeout (external Application LB) | 30 seconds (a request and response timeout, not an idle timer) | [Google Cloud request distribution docs](https://docs.cloud.google.com/load-balancing/docs/https/request-distribution), as of 2026-11 |
+| Cloud NAT usable ports per NAT IP; default minimum ports per VM | 64,512; 32 with dynamic port allocation, 64 with static | [Google Cloud NAT docs](https://docs.cloud.google.com/nat/docs/ports-and-addresses), as of 2026-11 |
+| Google health check source ranges | 35.191.0.0/16 for most LB types; 130.211.0.0/22 also required for GFE-based LBs as a proxy range; 136.124.104.0/22 and 136.124.108.0/22 for global external passthrough NLB; 209.85.204.0/22 and 209.85.152.0/22 also for target pools | [Google Cloud health check docs](https://docs.cloud.google.com/load-balancing/docs/health-check-concepts) and [firewall rule docs](https://docs.cloud.google.com/load-balancing/docs/firewall-rules), as of 2026-11 |
+| Maglev lookup table size M (prime) | 65,537 small (default in practice); 655,373 large | [Maglev paper, NSDI 2016](https://www.usenix.org/system/files/conference/nsdi16/nsdi16-paper-eisenbud.pdf), re-opened 2026-11 |
+| Maglev simulation, 100 backends, M=65,537, one backend removed | 1.001% of entries orphaned; 0.596% of surviving entries remapped; naive hash-mod-N remaps 99.0% | Simulation in the worked example below, re-run 2026-11 |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -222,12 +263,12 @@ Rows marked UNVERIFIED could not be re-checked against primary documentation dur
 | --- | --- | --- | --- |
 | Network scope | Regional VPC, AZ-scoped subnets | Global VPC, regional subnets | GCP reachability across regions is the default, so segmentation must come from firewall policy and project scope. AWS reachability must be constructed. |
 | Programming model | Nitro-card local state, route tables and security groups per ENI | Andromeda vswitch on each host with on-demand (Hoverboard) flow programming | GCP trades per-flow state size for control-plane programming dynamics and a cold-flow detour. |
-| Firewalling | Stateful security groups on ENIs, stateless NACLs on subnets | Stateful VPC firewall rules and hierarchical or network firewall policies, targeted by tag or service account | AWS security groups can reference other groups (not across a TGW). GCP targets use tags or service accounts and policies inherit through the org hierarchy. |
-| Many-to-many connectivity | VPC peering (non-transitive) or TGW hub with route-table segmentation | One VPC, VPC peering (non-transitive), or Network Connectivity Center hub (check GA status of VPC spokes) | TGW charges per attachment-hour and per GB. A single GCP VPC has no hub fee, but you give up per-VPC isolation boundaries. |
+| Firewalling | Stateful security groups on ENIs, stateless NACLs on subnets | Stateful VPC firewall rules and hierarchical or network firewall policies, targeted by tag or service account | AWS security groups can reference other groups (across a TGW only in inbound rules, on the same TGW, when enabled). GCP targets use tags or service accounts and policies inherit through the org hierarchy. |
+| Many-to-many connectivity | VPC peering (non-transitive) or TGW hub with route-table segmentation | One VPC, VPC peering (non-transitive), or Network Connectivity Center hub (VPC spokes show no Preview label in Google Cloud docs, as of 2026-11) | TGW charges per attachment-hour and per GB. A single GCP VPC has no hub fee, but you give up per-VPC isolation boundaries. |
 | Shared network ownership | Subnet sharing through Resource Access Manager | Shared VPC with a host project and service projects | Both let central teams own the network and app teams own workloads. GCP grants at subnet level through IAM. |
-| Cross-region private path | TGW inter-region peering, 8,500 MTU, no PMTUD | Same VPC routes over Google's backbone | AWS cross-region traffic is explicit and metered. GCP's is implicit and priced per egress category. |
+| Cross-region private path | TGW inter-region peering, 8,500 MTU, no PMTUD for traffic entering on the peering attachment | Same VPC routes over Google's backbone | AWS cross-region traffic is explicit and metered. GCP's is implicit and priced per egress category. |
 | Global L7 front door | CloudFront or Global Accelerator in front of regional ALBs | Global external Application LB on an anycast VIP | On GCP the LB itself is global. On AWS you compose a global layer over regional LBs. |
-| Regional L7 | ALB, DNS-fronted nodes, cross-zone always on | Regional external or internal Application LB on Envoy in proxy-only subnets | GCP regional proxies live in subnets you must size. ALB nodes live in your subnets and consume IPs. |
+| Regional L7 | ALB, DNS-fronted nodes, cross-zone always on at the LB level | Regional external or internal Application LB on Envoy in proxy-only subnets | GCP regional proxies live in subnets you must size. ALB nodes live in your subnets and consume IPs. |
 | L4 | NLB, flow-hash pinning, cross-zone off by default, optional security groups | External passthrough NLB on Maglev with DSR, internal passthrough NLB in Andromeda | GCP passthrough preserves destination VIP and uses no proxy. AWS NLB routes through per-AZ nodes. |
 | Load balancer failover | DNS plus zonal shift, bounded by TTL and client re-resolution | BGP anycast plus health checks and capacity settings | Failover time floors on AWS are set by client DNS behavior. On GCP they are set by health-check intervals. |
 | Appliance insertion | Gateway Load Balancer with GENEVE, TGW appliance mode | Internal passthrough LB as next hop, packet mirroring | Both need symmetric flows. AWS makes it a TGW attachment property. |
@@ -246,11 +287,11 @@ Scenario: 40 team VPCs call a shared inference gateway VPC over TGW, with 25 TB 
 
 1. Attachment fees are 40 spokes at $0.05 per hour for 730 hours, which is $1,460 per month.
 2. Data processing is 25 TB, which is 25,600 GB, at $0.02 per GB, which is $512 per month.
-3. The TGW total is about $1,972 per month (secondary-source prices, as of 2026-10, confirm on the AWS pricing page). A hub VPC with its own attachment adds $36.50 per month.
+3. The TGW total is about $1,972 per month (AWS TGW pricing page examples, as of 2026-11). A hub VPC with its own attachment adds $36.50 per month.
 4. Bandwidth headroom is 60 Gbps against the 100 Gbps per-AZ attachment ceiling, so utilization is 60 percent.
 5. The packet-rate check is 60 Gbps at an average of 1,400 bytes per packet, which is 60e9 / 8 / 1,400 or about 5.4 Mpps. That is 71 percent of the 7.5 Mpps ceiling, and it is the binding limit for small-packet traffic.
 6. Adding a failover margin so that a lost AZ can be absorbed by the remaining two, plan the gateway-side attachment for peak load of the busiest AZ at no more than about 50 percent of the ceilings.
-7. The break-even for the PrivateLink alternative is 50 consumer VPCs across three AZs at $0.01 per AZ-hour, which is $1,095 per month before the $0.01 per GB data fee (UNVERIFIED prices). PrivateLink wins when consumers are many, CIDRs overlap, and traffic is one-directional. TGW wins when traffic is many-to-many.
+7. The break-even for the PrivateLink alternative is 50 consumer VPCs across three AZs at $0.01 per AZ-hour, which is $1,095 per month before the $0.01 per GB data fee (AWS PrivateLink pricing, us-east-1 example, as of 2026-11). PrivateLink wins when consumers are many, CIDRs overlap, and traffic is one-directional. TGW wins when traffic is many-to-many.
 
 ### Step 2: AWS lab, TGW hub with two spokes
 
@@ -374,7 +415,7 @@ terraform destroy -auto-approve -var alert_email=you@example.com
 ### Step 3: GCP lab, one VPC, two regions, no hub
 
 Cost estimate: the VPC, subnets and firewall rules are free.
-Two e2-micro VMs run roughly a cent or less per hour each (UNVERIFIED), so a two-hour lab is a few cents.
+Two e2-micro VMs run roughly a cent or less per hour each (UNVERIFIED: rate not readable from the pricing page fetched 2026-11), so a two-hour lab is a few cents.
 IAP tunnels carry no extra charge for this use.
 
 ```bash
@@ -484,7 +525,7 @@ def main():
 main()
 ```
 
-Output from the run for this chapter (2026-10):
+Output from the run for this chapter (re-run 2026-11):
 
 - Entries per backend: min 655, max 656, ideal 655.4, so the table is balanced to within one entry.
 - The removed backend owned 1.001 percent of entries, which is the unavoidable minimum.
@@ -501,42 +542,45 @@ Without consistent hashing the same event would reset almost every flow that mis
 
 Symptom: a stateful firewall fleet behind TGW drops return packets, and connections hang after the SYN-ACK.
 Mechanism: the TGW keeps traffic in the entry AZ when it can, so forward and return paths use different appliance instances.
-Fix: enable appliance mode on the inspection VPC attachment and accept the inter-AZ charges and the loss of AZ-local routing for that path.
+Fix: enable appliance mode on the inspection VPC attachment and accept the loss of AZ-local routing for inter-AZ flows on that path.
 
 ### PMTUD black hole over TGW peering
 
 Symptom: small requests succeed, large prompts or batch uploads hang, and a packet capture shows no ICMP "packet too big" replies.
-Mechanism: hosts use 9,001-byte frames, the TGW MTU is 8,500, and peering, VPN and Direct Connect attachments do not provide PMTUD (AWS docs, as of 2026-10).
-Fix: set the MTU on cross-region paths explicitly (or clamp TCP MSS), and test with `ping -M do -s` at the boundary sizes.
+Mechanism: hosts use 9,001-byte frames and the TGW MTU is 8,500.
+The TGW clamps MSS and sends FRAG_NEEDED for traffic entering on VPC and Connect attachments, but traffic entering on peering, VPN or Direct Connect attachments gets no PMTUD (AWS docs, as of 2026-11).
+FRAG_NEEDED to a VPC host is also lost if a network ACL denies ICMP or a tracked security-group flow has no inbound ICMP rule ([AWS EC2 MTU docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/network_mtu.html), as of 2026-11).
+Fix: allow the ICMP, set the MTU on cross-region paths explicitly (or clamp TCP MSS), and test with `ping -M do -s` at the boundary sizes.
 GCP has the same class of failure when a network configured for a large MTU talks to hosts or peers at 1,460.
 
 ### Idle timeouts versus silent LLM streams
 
 Symptom: streamed completions die with a gateway error after exactly 60 seconds on an ALB, or after exactly the backend-service timeout on GCP.
 Mechanism: reasoning-style generation can produce no bytes for tens of seconds, so the LB's idle timer fires even though the backend is healthy.
-On GCP the backend-service timeout for HTTP traffic is a response timeout, not only an idle timer, so a long completion can be cut off while still producing tokens (UNVERIFIED on exact semantics and the 30-second default).
-Fix: raise the timeouts to exceed your worst-case generation, send periodic SSE comment frames as keepalives, and load-test with a backend that sleeps.
-The sizing script in this chapter's lab flags any stream where the maximum silent gap exceeds half the idle timeout.
+On GCP the backend-service timeout for HTTP traffic is a request and response timeout with a 30-second default, not an idle timer, so a long completion can be cut off while still producing tokens, because the remaining response data is dropped when it expires ([Google Cloud request distribution docs](https://docs.cloud.google.com/load-balancing/docs/https/request-distribution), as of 2026-11).
+GFEs impose an effective maximum of 86,400 seconds on that timeout (same docs).
+Fix: raise the timeouts to exceed your worst-case generation, send periodic SSE comment frames as keepalives (these reset an idle timer such as ALB's but not GCP's response timeout), and load-test with a backend that sleeps.
+A useful load-test check is to flag any stream where the maximum silent gap exceeds half the idle timeout.
 See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Resilient Communication]] for retry policy on top of these cut-offs.
 
 ### Cold load balancer on launch day
 
 Symptom: a traffic step from near zero to a large rate yields 503s at an ALB while backends are idle.
 Mechanism: the node fleet scales in response to observed load and cannot jump instantly.
-Fix: run synthetic ramp tests before launches, and use the capacity-reservation feature for ALBs if you can predict the step (UNVERIFIED on feature name and GA status).
+Fix: run synthetic ramp tests before launches, and use Load Balancer Capacity Unit (LCU) reservations, with a 100 LCU minimum, if you can predict the step ([AWS ALB LCU reservation docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/capacity-unit-reservation.html), as of 2026-11).
 GCP's global external LB has no per-customer node fleet to warm, but its backends still need capacity and autoscaling headroom (see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_08_Cloud_GPU_Autoscaling_and_Cold_Start_Mitigation|Cloud GPU Autoscaling and Cold-Start Mitigation]]).
 
 ### Connection-tracking and NAT exhaustion for fan-out gateways
 
 Symptom: an LLM gateway that fans out to many model endpoints sees random connection resets while CPU is idle.
 On AWS, check ENA counters for exceeded connection-tracking allowance and NAT Gateway port allocation errors.
-On GCP, check Cloud NAT logs for allocation failures, because the default minimum ports per VM is small relative to a gateway's concurrent connections (UNVERIFIED).
+On GCP, check Cloud NAT logs for allocation failures, because the default minimum ports per VM (32 with dynamic allocation, 64 with static) is small relative to a gateway's concurrent connections ([Google Cloud NAT docs](https://docs.cloud.google.com/nat/docs/ports-and-addresses), as of 2026-11).
 Fix: use gateway or PSC endpoints to bypass NAT for first-party APIs, raise minimum ports per VM, and reuse connections.
 
 ### Health-check firewall omissions on GCP
 
 Symptom: a new backend service shows every backend unhealthy.
-Mechanism: VPC firewalls deny ingress by default, and Google's health-check probes come from published ranges that you must allow explicitly (UNVERIFIED on the range values, listed above).
+Mechanism: VPC firewalls deny ingress by default, and Google's health-check probes come from published ranges that you must allow explicitly, and the ranges differ by load balancer type (listed above; [Google Cloud firewall rule docs](https://docs.cloud.google.com/load-balancing/docs/firewall-rules), as of 2026-11).
 
 ### PSC NAT subnet and PrivateLink AZ mismatches
 
@@ -545,10 +589,10 @@ Symptom on PrivateLink: a consumer cannot create an endpoint in an AZ because th
 
 ### Public incidents that shape the design
 
-- AWS us-east-1, December 7, 2021: the public post-event summary describes an automated scaling activity of an internal service that produced a surge of connections and congestion between the internal network and the main AWS network. Client retries amplified the congestion and impaired monitoring and operations tooling.
-- AWS us-east-1, October 19 to 20, 2025: the public post-event summary describes a DNS-management race condition that emptied a regional DynamoDB endpoint record. Recovery then involved EC2 launch workflows, and NLB health checks flapped because network state had not propagated to newly provisioned nodes (UNVERIFIED on specifics, recalled).
-- Google Cloud, June 2, 2019 networking incident: a configuration change meant for a small set of servers in one region was applied across a larger set in several neighboring regions, and network capacity dropped (UNVERIFIED on specifics, recalled).
-- Google Cloud, June 12, 2025: a global replication of malformed policy data crashed a core API-serving component in many regions (UNVERIFIED on specifics, recalled).
+- AWS us-east-1, December 7, 2021: the [public post-event summary](https://aws.amazon.com/message/12721/) describes an automated activity to scale a service hosted in the main AWS network that triggered unexpected client behavior on the internal network, producing a surge of connections that overwhelmed the devices between the two networks. Client retries amplified the congestion and impaired monitoring and operations tooling.
+- AWS us-east-1, October 19 to 20, 2025: the [public post-event summary](https://aws.amazon.com/message/101925/) describes a DNS-management race condition that emptied a regional DynamoDB endpoint record. Recovery then hit congestive collapse in the EC2 DropletWorkflow Manager and a Network Manager propagation backlog, and NLB health checks flapped because the checker brought in new instances whose network state had not fully propagated.
+- Google Cloud, June 2, 2019 networking incident: per the [Google Cloud incident report](https://status.cloud.google.com/incident/cloud-networking/19009), two normally benign misconfigurations and a maintenance-automation bug let one maintenance event deschedule network control plane jobs across several physical locations. BGP routes were withdrawn after a few minutes of fail-static operation, and network capacity dropped.
+- Google Cloud, June 12, 2025: per the [Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), a policy change with unintended blank fields replicated globally within seconds and hit a Service Control code path, added on May 29, 2025 without error handling or a feature flag, whose null pointer crash-looped binaries in every region.
 
 The shared lesson is that the dependable boundary on AWS is the Region, and on GCP the globally replicated control-plane config is the exposed surface.
 See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]] and [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
@@ -571,10 +615,10 @@ See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_o
 ### Unit economics levers
 
 - TGW is a per-GB tax of $0.02 on top of attachment hours. Hot pairs of VPCs with steady heavy traffic can use direct peering (no processing fee, but no transitivity and a peering limit) while the long tail stays on TGW.
-- Same-region cross-AZ traffic is charged per GB in each direction on AWS, so NLB cross-zone and gateway fan-out to targets in other AZs have a real monthly cost (UNVERIFIED on exact rates). Prefer AZ-local routing and enable cross-zone only when target distribution is uneven.
+- Same-region cross-AZ traffic is charged per GB in each direction on AWS, so NLB cross-zone and gateway fan-out to targets in other AZs have a real monthly cost ([AWS data transfer docs](https://docs.aws.amazon.com/cur/latest/userguide/cur-data-transfers-charges.html), as of 2026-11; rates are on the EC2 pricing page). Prefer AZ-local routing and enable cross-zone only when target distribution is uneven.
 - Use gateway endpoints for S3 and DynamoDB, which carry no hourly charge, instead of sending model-artifact and dataset traffic through a NAT Gateway that bills per GB processed.
 - Interface endpoint cost scales with AZ count, so a consumer VPC that needs an endpoint in only two AZs should pay for two.
-- GCP Premium Tier carries traffic on Google's backbone to the edge nearest the user, and Standard Tier uses the public internet for more of the path at lower price (UNVERIFIED on current prices). Use Standard only for traffic that is latency-insensitive.
+- GCP Premium Tier carries traffic on Google's backbone to the edge nearest the user, and Standard Tier uses the public internet for more of the path at lower price ([Google Cloud Network Service Tiers docs](https://docs.cloud.google.com/network-tiers/docs/overview), as of 2026-11; check current prices there). Use Standard only for traffic that is latency-insensitive.
 - Cross-region and internet egress rules dominate model replication and multi-region serving costs (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]]).
 
 ## Interview Questions and Model Answers
@@ -612,11 +656,12 @@ Compare ALB with NLB on AWS for this, and name the failure you will hit first.
 ALB terminates HTTP, understands HTTP/2 and gRPC, supports WebSockets, and gives per-request routing, authentication hooks and WAF integration.
 It is the right default for a public JSON or SSE API where I want path-based routing by model, header-based canarying and WAF.
 NLB is L4 and passes TCP through with a static address per AZ, so I choose it for gRPC streaming where I want end-to-end mTLS in my own workload, for very long-lived connections, and when I need static IPs for customer allow-lists.
-NLB also uses security groups now (UNVERIFIED on date), which changes the old pattern of opening targets to the whole VPC CIDR.
+NLB has also supported security groups since August 10, 2023 ([AWS announcement](https://aws.amazon.com/about-aws/whats-new/2023/08/network-load-balancer-supports-security-groups/)), which changes the old pattern of opening targets to the whole VPC CIDR.
+An NLB created without security groups cannot gain them later ([AWS NLB security group docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-security-groups.html), as of 2026-11).
 The first failure I would expect is the idle timeout.
-ALB defaults to 60 seconds, and a reasoning model that goes quiet for 90 seconds appears to the ALB as a dead connection (UNVERIFIED on default).
+ALB defaults to 60 seconds, and a reasoning model that goes quiet for 90 seconds appears to the ALB as a dead connection (AWS ALB docs, as of 2026-11).
 The mitigations are raising the idle timeout, emitting SSE keepalive comments, and testing with a sleeping backend.
-The second is the cross-zone choice, which on NLB adds inter-AZ data charges and on ALB is always on.
+The second is the cross-zone choice, which on NLB adds regional data transfer charges and on ALB is always on at the load balancer level with no such charge (AWS ELB FAQ, as of 2026-11).
 
 #### Follow-up Interviewer Question
 
@@ -631,11 +676,11 @@ Compare peering, TGW and PrivateLink on cost, limits and failure behavior, and p
 #### Model Answer
 
 I split the traffic into two classes.
-Many-to-many east-west traffic among teams argues for TGW, because peering is non-transitive and a full mesh of 60 VPCs needs 1,770 peerings, far beyond the default per-VPC peering limit (UNVERIFIED on that limit).
-TGW costs $0.05 per attachment-hour and $0.02 per GB (secondary-source prices, as of 2026-10), so 60 attachments are $2,190 per month before data, and 50 TB per month of traffic adds $1,024.
-Its ceilings are 100 Gbps and 7.5 Mpps per attachment per AZ and 10,000 routes per TGW (AWS docs, as of 2026-10), and the packet limit binds first for small-packet traffic.
+Many-to-many east-west traffic among teams argues for TGW, because peering is non-transitive and a full mesh of 60 VPCs needs 1,770 peerings, and each VPC would need 59, beyond the per-VPC peering quota of 50 by default, though within its adjustable maximum of 125 ([AWS peering quotas](https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-connection-quotas.html), as of 2026-11).
+TGW costs $0.05 per attachment-hour and $0.02 per GB (AWS TGW pricing page examples, as of 2026-11), so 60 attachments are $2,190 per month before data, and 50 TB per month of traffic adds $1,024.
+Its ceilings are 100 Gbps and 7.5 Mpps per attachment per AZ and 10,000 routes per TGW (AWS docs, as of 2026-11), and the packet limit binds first for small-packet traffic.
 For the inference platform itself I would use PrivateLink, because it is one-directional, tolerates overlapping CIDRs, removes the route-table blast radius, and lets the provider control who connects.
-Interface endpoints cost per AZ-hour times three AZs per consumer, so 60 consumers are about $1,300 per month before data (UNVERIFIED prices).
+Interface endpoints cost per AZ-hour times three AZs per consumer, so 60 consumers are about $1,300 per month before data (AWS PrivateLink pricing, us-east-1 example, as of 2026-11).
 It also avoids sending LLM payloads through a shared router where a route leak can expose the platform to all spokes.
 Failure behavior differs.
 A bad TGW route-table change is a regional, many-tenant event.
@@ -680,8 +725,9 @@ Walk me through the diagnosis.
 
 Small requests work and large ones hang, which points to MTU and not to routing, security groups or the application.
 The sizes of a TCP request that exceed one segment are the first to hit a path MTU smaller than the sender's.
-Instances in a VPC commonly use 9,001-byte MTU, and a TGW supports 8,500 bytes for peering attachments (AWS docs, as of 2026-10).
-The TGW generates "fragmentation needed" for traffic entering on VPC attachments, but it does not support PMTUD on peering, VPN or Direct Connect attachments (AWS docs, as of 2026-10), so the sender never learns to shrink.
+Instances in a VPC commonly use 9,001-byte MTU, and a TGW supports 8,500 bytes for peering attachments (AWS docs, as of 2026-11).
+The TGW generates "fragmentation needed" for traffic entering on VPC attachments and clamps MSS for all packets, but it does not support PMTUD on peering, VPN or Direct Connect attachments (AWS docs, as of 2026-11).
+So a sender in a VPC should learn to shrink unless something eats the signal, and I would check whether a network ACL or the sender's security group is dropping the ICMP, and whether the oversized traffic actually enters on a peering, VPN or Direct Connect attachment.
 I would confirm with `ping -M do -s` at 8,472 and 8,973 bytes of payload (8,500 and 9,001 minus 28 bytes of headers), check that the failure begins exactly above 8,500 on the wire, and look for retransmissions with no ICMP in a capture.
 The fix is to clamp the MSS on the sending hosts or lower the interface MTU on the cross-region path, and to add a canary that sends maximum-size probes through every attachment type.
 Longer term I would standardize the MTU for all workloads that cross TGW at or below 8,500.
@@ -701,7 +747,7 @@ Compare the failure physics of each cloud.
 The core difference is the failover signal.
 On AWS the global layer is something I compose: CloudFront or Global Accelerator in front of regional ALBs, or Route 53 latency and health-based records in front of regional endpoints.
 With DNS-based steering, effective failover is health-check detection time plus record TTL plus the share of clients that cache or hold keepalive connections beyond the TTL, so long-lived streaming clients are the tail.
-Global Accelerator moves steering to anycast and avoids DNS caching, at the price of another hop and another service in the failure path (UNVERIFIED on its failure properties).
+Global Accelerator moves steering to anycast and avoids DNS caching, at the price of another hop and another service in the failure path (static anycast IPs per the [AWS Global Accelerator docs](https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html), as of 2026-11; the trade-off is my reasoning and not an AWS statement).
 On GCP the global external Application LB is natively anycast with health-checked backends per region, so failover is health-check interval times unhealthy threshold, and spillover is governed by balancing mode and capacity settings.
 The trap there is that spillover works only if the surviving region already has capacity and the LB knows its limit, so I set max-rate or utilization targets from load-tested numbers for GPU replicas and pre-provision N+1 regions to avoid overflowing into a cold fleet.
 Static stability is the shared principle: the surviving region must already hold the failed region's load, because scaling GPUs takes minutes (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]]).
@@ -723,10 +769,12 @@ Design the private connectivity and name the scaling cliffs.
 
 I would publish on PrivateLink on AWS and PSC on GCP, because both avoid CIDR coordination with customers and give one-way reachability.
 On AWS each customer creates an interface endpoint to my endpoint service on an NLB, and my scaling concerns are the quotas on endpoint connections per service and per NLB, the per-AZ fan-out, and AZ-ID alignment, since a customer picking an AZ I do not cover cannot connect.
-Provider-side identification of tenants needs proxy protocol v2 carrying the endpoint ID, and I would map endpoint IDs to tenants in my control plane (UNVERIFIED on exact fields).
+Provider-side identification of tenants needs proxy protocol v2 carrying the endpoint ID, and I would map endpoint IDs to tenants in my control plane (TLV type 0xEA, AWS NLB target group docs, as of 2026-11).
 On GCP each customer creates a PSC forwarding rule to my service attachment, and my cliff is the NAT subnet.
-Every customer connection consumes source address and port space from it, so I size NAT subnets for peak concurrent connections with headroom and shard customers across multiple service attachments, each behind its own internal load balancer.
-That sharding also gives blast-radius control: a noisy tenant exhausts one shard's NAT space and not all customers, and I can use shuffle sharding to assign each customer to a small subset of shards (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]]).
+Each connected endpoint consumes one NAT IP by default regardless of connection count, and each NAT IP gives 64,512 source ports, so the default cap is 64,512 simultaneous connections per endpoint (Google Cloud PSC producer docs, as of 2026-11).
+For 5,000 customers with one endpoint each that is 5,000 NAT IPs, or at least a /19 if held in one subnet, since a /20 leaves only 4,092 usable addresses.
+So I size NAT subnets for endpoint count with headroom, set per-consumer connection limits, and shard customers across multiple service attachments, each behind its own internal load balancer and NAT subnets, because a NAT subnet cannot be shared across attachments.
+That sharding also gives blast-radius control: a tenant that adds many endpoints exhausts one shard's NAT space and not all customers, a tenant with too many connections exhausts only its own endpoint's ports, and I can use shuffle sharding to assign each customer to a small subset of shards (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]]).
 On both clouds I would use manual acceptance, an allow-list, per-tenant rate limits at the first L7 hop behind the L4 endpoint, and cell-based deployment so a bad deploy affects one cell.
 For observability I need tenant identity at L7 (mTLS or API key) because L3 identity is NAT-collapsed.
 Cost is a pass-through decision: per-AZ endpoint-hours on AWS are charged to the consumer, and I should document that so customers choose two AZs and not three.
@@ -748,6 +796,6 @@ What do you check first at the PSC layer, and how would you have detected it bef
 - [Google SRE Book: Load Balancing in the Datacenter](https://sre.google/sre-book/load-balancing-datacenter/) - Backend selection, health and subsetting trade-offs that explain the capacity-setting behavior of GCP's LBs.
 - [AWS Builders' Library: Static stability using Availability Zones](https://aws.amazon.com/builders-library/static-stability-using-availability-zones/) - The design rule that makes DNS-fronted failover safe.
 - [AWS post-event summary, December 7, 2021 (us-east-1)](https://aws.amazon.com/message/12721/) - A public analysis of internal network congestion and retry amplification.
-- [AWS post-event summary, October 2025 (us-east-1)](https://aws.amazon.com/message/101925/) - A public analysis of a DNS automation race and its NLB health-check consequences (URL recalled, UNVERIFIED).
+- [AWS post-event summary, October 2025 (us-east-1)](https://aws.amazon.com/message/101925/) - A public analysis of a DNS automation race and its NLB health-check consequences.
 - [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_05_Cloud_Load_Balancing_GFEs_and_Maglev|Cloud Load Balancing: GFEs and Maglev]] - This curriculum's deep dive on the GCP front door.
 - [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_03_Identity_Security_and_Governance_Translation|Identity, Security, and Governance Translation]] - The next chapter, covering how the policy layers for these networks translate.

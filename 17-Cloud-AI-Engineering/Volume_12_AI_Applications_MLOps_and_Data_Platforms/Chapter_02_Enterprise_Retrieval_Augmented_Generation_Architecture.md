@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/abs/2005.11401"
@@ -27,6 +27,24 @@ sources:
   - "https://docs.aws.amazon.com/sagemaker-unified-studio/latest/userguide/kb-chunking-parsing.html"
   - "https://cloud.google.com/generative-ai-app-builder/pricing"
   - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/vertex-ai-name-changes"
+  - "https://aws.amazon.com/bedrock/pricing/"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/kb-chunking.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/kb-test-config.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/rerank-supported.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/kb-managed-acl.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/kb-managed-observability.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base-setup.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base-build-graphs.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/titan-embedding-models.html"
+  - "https://aws.amazon.com/blogs/machine-learning/get-started-with-amazon-titan-text-embeddings-v2-a-new-state-of-the-art-embeddings-model-on-amazon-bedrock/"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-contextual-grounding-check.html"
+  - "https://aws.amazon.com/opensearch-service/pricing/"
+  - "https://docs.cloud.google.com/generative-ai-app-builder/docs/ranking"
+  - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/rag-engine/rag-overview"
+  - "https://docs.cloud.google.com/generative-ai-app-builder/docs/data-source-access-control"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/supported-products"
+  - "https://docs.cloud.google.com/generative-ai-app-builder/docs/cmek"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/release-notes"
 ---
 
 # Enterprise Retrieval-Augmented Generation Architecture
@@ -48,7 +66,7 @@ flowchart LR
     CONN --> PARSE["Parser: layout, tables, OCR, FM parsing"]
     PARSE --> CHUNK["Chunker: fixed, semantic, hierarchical"]
     CHUNK --> ENR["Enrich: title, headings, ACL, tenant, version"]
-    ENR --> EMB["Embedding model - shared TPM quota"]
+    ENR --> EMB["Embedding model - shared RPM quota"]
     EMB --> DIDX[("Dense ANN index")]
     ENR --> SIDX[("Inverted index - BM25")]
   end
@@ -79,10 +97,11 @@ Everything after fusion is a funnel that trades compute for precision: cheap rec
 On AWS, `bedrock-agent` is the control plane (create knowledge base, data source, start ingestion job) and `bedrock-agent-runtime` is the data plane (`Retrieve`, `RetrieveAndGenerate`, `Rerank`), which is the same split described in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
 An ingestion job is control-plane-initiated but data-plane-heavy: it reads every changed object, calls a parser and an embedding model, and writes to the vector store, so it consumes the same model quotas the query path uses.
 Amazon Bedrock now ships two knowledge base types (AWS What's New, as of 2026-10).
-A Managed Knowledge Base, generally available since 2026-06-17, owns ingestion, storage, and retrieval, offers six native connectors (Amazon S3, SharePoint, Confluence, Google Drive, OneDrive, Web Crawler), and provides hybrid search, document ranking, and agentic retrieval (AWS What's New, as of 2026-10).
-A customer-managed knowledge base keeps the older model, in which you bring the vector store: OpenSearch Serverless, OpenSearch managed clusters, Aurora PostgreSQL with pgvector, Amazon S3 Vectors, Neptune Analytics for GraphRAG, Pinecone, Redis Enterprise Cloud, or MongoDB Atlas (AWS Prescriptive Guidance as summarized by Atlan, as of 2026-10).
+A Managed Knowledge Base, generally available since 2026-06-17, owns ingestion, storage, and retrieval, launched with six native connectors (Amazon S3, SharePoint, Confluence, Google Drive, OneDrive, Web Crawler), and provides hybrid search, document ranking, and agentic retrieval (AWS What's New, as of 2026-10).
+The managed ACL documentation now also lists Confluence Data Center, ServiceNow, Box, Zendesk, Salesforce, and custom connectors ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-managed-acl.html), as of 2026-10).
+A customer-managed knowledge base keeps the older model, in which you bring the vector store: OpenSearch Serverless, OpenSearch managed clusters, Aurora PostgreSQL with pgvector, Amazon S3 Vectors, Neptune Analytics for GraphRAG, Pinecone, Redis Enterprise Cloud, or MongoDB Atlas ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base-setup.html), as of 2026-10).
 The Managed type uses AWS-managed internal storage only, so a requirement to co-locate vectors with an existing OpenSearch or Aurora estate forces the customer-managed type (AWS Builder Center community post, as of 2026-10).
-On Google Cloud, Vertex AI was rebranded on 2026-04-22 as Gemini Enterprise Agent Platform, Vertex AI Search became Agent Search, Vertex AI Vector Search became Vector Search on Agent Platform, Vector Search 2.0 became Agent Retrieval, and RAG Engine kept its name (Google Cloud docs, as of 2026-10).
+On Google Cloud, Vertex AI was rebranded on 2026-04-22 as Gemini Enterprise Agent Platform, Vertex AI Search became Agent Search, Vertex AI Vector Search became Vector Search on Agent Platform, Vector Search 2.0 became Agent Retrieval, and RAG Engine kept its name (Google Cloud name-change table and 2026-04-22 release notes, as of 2026-10).
 Agent Search is the managed end-to-end retrieval and answer system and exposes DIY grounding APIs (ranking, check grounding) usable from a custom pipeline (Google Cloud product page, as of 2026-10).
 RAG Engine is the closer analogue of a customer-managed Bedrock KB, where you pick the corpus backend and own more of the pipeline.
 Both vendors publish little about the internals of their managed retrieval stacks, so the rest of this section describes the mechanisms you must reason about regardless of who operates them.
@@ -92,7 +111,7 @@ Both vendors publish little about the internals of their managed retrieval stack
 A PDF is a set of positioned glyphs, not a sequence of paragraphs, so text extraction must reconstruct reading order, detect multi-column layouts, and decide what a table cell belongs to.
 Naive extraction serializes a table row-major without headers, which yields chunks such as "Q3 14 30 EU" that no embedding model can map back to "refund window in days by region".
 Layout-aware and foundation-model parsers convert tables to Markdown or HTML with headers repeated, which costs model tokens per page at ingestion but is the single largest quality lever for document-heavy corpora.
-Bedrock Knowledge Bases added foundation-model parsing alongside its default parser in 2024 (AWS ML blog, 2024), and the Managed type advertises multimodal parsing of documents, images, audio, and video (Atlan summary of AWS docs, as of 2026-10).
+Bedrock Knowledge Bases added foundation-model parsing alongside its default parser in 2024 (AWS ML blog, 2024), and the Managed type advertises multimodal parsing of documents, images, audio, and video (AWS docs, as of 2026-10).
 The operational trade-off is that FM parsing makes ingestion cost and duration proportional to page count times model latency, and it introduces a nondeterministic stage, so two ingestions of the same file can produce different chunks and therefore different retrieval results.
 
 ### Chunking mechanics
@@ -104,8 +123,8 @@ Mechanically, a semantic chunker embeds each sentence together with its buffer o
 The non-obvious consequence is that semantic chunking performs one embedding call per sentence window during ingestion, so its ingestion embedding cost is a multiple of fixed-size chunking even though the stored vector count is similar.
 Because the threshold is a percentile of the document's own distance distribution, every document is cut into roughly the same fraction of segments regardless of how topically uniform it is, which over-splits homogeneous documents and under-splits heterogeneous ones.
 Hierarchical chunking stores small child chunks for matching and larger parent chunks for context, and at retrieval time child hits are replaced by their parent (AWS docs, as of 2026-10).
-Because children that share a parent collapse into one parent, a request for `numberOfResults = 10` can return fewer than ten results, which silently shrinks the candidate set handed to a reranker or an evaluator (AWS docs via AWS Builder Center, as of 2026-10).
-Custom chunking through a Lambda transformation step is available for pipelines that need domain-aware splitting, such as legal clause boundaries or code symbol boundaries (UNVERIFIED in this session).
+Because children that share a parent collapse into one parent, a request for `numberOfResults = 10` can return fewer than ten results, which silently shrinks the candidate set handed to a reranker or an evaluator ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-test-config.html), as of 2026-10).
+Custom chunking through a Lambda transformation step is available for pipelines that need domain-aware splitting, such as legal clause boundaries or code symbol boundaries: choose no chunking and let a custom transformation Lambda split the files the knowledge base stages in an intermediate S3 bucket ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-chunking.html), as of 2026-10).
 
 The chunk-size trade-off has three forces.
 Smaller chunks give sharper embeddings, because a bi-encoder compresses the whole chunk into one vector and averaging over many topics blurs the vector toward the corpus centroid.
@@ -144,7 +163,7 @@ Convex combination computes alpha x norm(dense) + (1 - alpha) x norm(sparse), wh
 Min-max normalization makes a document's fused score depend on which other documents were retrieved, so increasing k, adding a document to the corpus, or changing the filter can reorder the top results even when the two underlying scores of those results did not change.
 Bruch, Gai, and Ingber analyzed both families and found that a tuned convex combination generally outperforms RRF in-domain, that RRF is sensitive to its k parameter, and that convex combination needs only a small labeled set to tune alpha ([Bruch et al., ACM TOIS 2023](https://arxiv.org/abs/2210.11934)).
 The engineering rule is to start with RRF when you have no labeled queries, because it is scale-free and robust, and switch to a tuned convex combination once you have a few hundred judged queries per query class.
-A managed hybrid search such as Bedrock `overrideSearchType = HYBRID` does not publish its fusion function or normalization (UNVERIFIED that no documentation exists), so treat returned scores as ordinal within a single response and never threshold on them across queries.
+A managed hybrid search such as Bedrock `overrideSearchType = HYBRID` does not publish its fusion function or normalization (the AWS knowledge base docs describe HYBRID only as querying both the vector embeddings and the raw text, as of 2026-10), so treat returned scores as ordinal within a single response and never threshold on them across queries.
 If you need a calibrated "nothing relevant found" decision, take it on the reranker score, which is computed per query-document pair and is far more stable across queries than any fused retrieval score.
 
 ### Cross-encoder reranking
@@ -155,7 +174,7 @@ The price is that nothing can be precomputed: reranking N candidates of L_d toke
 For N = 50, L_d = 512, and L_q = 30, that is 27,100 tokens per query, about 900 times the tokens needed to embed the query itself.
 Rerankers have a maximum input length, and a candidate longer than it is truncated, so a hierarchical parent chunk of 1,500 tokens may be scored on its first few hundred tokens while the answer sits at the end.
 Late-interaction models such as ColBERT sit between the two designs by precomputing per-token document embeddings and doing a cheap MaxSim interaction at query time, trading index size for most of the cross-encoder quality ([Khattab and Zaharia, SIGIR 2020](https://arxiv.org/abs/2004.12832)).
-On AWS, the Bedrock `Rerank` API and the `rerankingConfiguration` of `Retrieve` expose Amazon Rerank 1.0 and Cohere Rerank 3.5 (UNVERIFIED model list as of 2026-10), and the Managed Knowledge Base includes managed re-ranking at no separate charge (AWS Builder Center community post and Caylent, as of 2026-10).
+On AWS, the Bedrock `Rerank` API and the `rerankingConfiguration` of `Retrieve` expose Amazon Rerank 1.0 (`amazon.rerank-v1:0`, not offered in us-east-1) and Cohere Rerank 3.5 (`cohere.rerank-v3-5:0`) ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/rerank-supported.html), as of 2026-10), and the Managed Knowledge Base includes managed re-ranking at no separate charge ([AWS Bedrock pricing](https://aws.amazon.com/bedrock/pricing/), as of 2026-10).
 On Google Cloud, the Ranking API in Agent Search scores records against a query and is usable from any pipeline (Google Cloud product page, as of 2026-10).
 
 ### Permission-aware retrieval: the post-filter collapse
@@ -168,7 +187,8 @@ Pre-filtering applies the predicate during graph traversal, but on HNSW a restri
 Predicate-aware ANN designs such as Filtered-DiskANN (WWW 2023) and ACORN ([Patel et al., SIGMOD 2024](https://arxiv.org/abs/2403.04871)) exist precisely because neither naive strategy works across the full selectivity range.
 The topology decision follows from selectivity: a large tenant with s above a few percent works with filtered search in a shared index, a long tail of small tenants is better served by exact search over a per-tenant partition, and a small number of very large tenants justify dedicated indexes.
 The second dimension is freshness: if ACLs are copied into chunk metadata at ingestion, a revoked permission remains effective until the next sync touches that document, and an ACL-only change may not register as a content change at all.
-The Bedrock Managed Knowledge Base applies document-level permissions from supported sources at retrieval time and excludes Web Crawler sources (Atlan summary of AWS docs, as of 2026-10), which moves authorization from view-build time to read time for those connectors.
+The Bedrock Managed Knowledge Base crawls document ACLs and group memberships at ingestion, filters results at query time against a user context (an email plus crawled groups) that your application supplies, and, for SharePoint, OneDrive, Google Drive, Confluence, Box, Zendesk, and Salesforce, also verifies each returned document against the source in real time; S3 and custom connectors have no real-time check, Web Crawler has no ACL support, and AWS states the feature is ACL-aware filtering, not authorization, because the service cannot verify the identity you pass ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-managed-acl.html), as of 2026-10).
+The real-time check moves revocation from view-build time to read time for those connectors, but group memberships are still only as fresh as the last sync, so newly granted access lags.
 For a customer-managed index, you own this problem, and the safe pattern is to filter on stable group identifiers resolved at query time from the identity provider rather than on user identifiers frozen at ingestion.
 
 ### Index lifecycle: sync, tombstones, and re-embedding
@@ -194,22 +214,22 @@ Place the highest-scoring reranked chunk first, deduplicate near-identical chunk
 | Bedrock semantic chunking parameters | max tokens, buffer size, breakpoint percentile threshold | (AWS ML blog, as of 2026-10) |
 | Bedrock Managed KB GA date | 2026-06-17 | (AWS What's New, as of 2026-10) |
 | Bedrock Managed KB launch Regions | us-east-1, us-west-2, Sydney, Tokyo, Dublin, Frankfurt, London, GovCloud (US-West) | (AWS What's New, as of 2026-10) |
-| Bedrock Managed KB native connectors | 6: S3, SharePoint, Confluence, Google Drive, OneDrive, Web Crawler | (AWS What's New, as of 2026-10) |
-| Bedrock Managed KB index storage | $5.00 per GB-month of indexed data | (AWS Builder Center community post and Caylent, as of 2026-10) |
-| Bedrock Managed KB standard retrieval | $1.00 per 1,000 Retrieve calls | (AWS ML blog, as of 2026-10) |
-| Bedrock Managed KB agentic retrieval, managed model | $4.00 per 1,000 agentic calls plus $1.00 per 1,000 underlying Retrieve calls | (AWS ML blog, as of 2026-10) |
-| Bedrock Managed KB embeddings, parsing, re-ranking with managed models | no separate charge | (AWS Builder Center community post, as of 2026-10) |
-| Bedrock GraphRAG (Neptune Analytics) source and default file limit | S3 only, 1,000 files per data source | (Atlan summary of AWS docs, as of 2026-10) |
+| Bedrock Managed KB native connectors | 6 at GA: S3, SharePoint, Confluence, Google Drive, OneDrive, Web Crawler; ACL docs now also list Confluence Data Center, ServiceNow, Box, Zendesk, Salesforce, Custom | (AWS What's New and AWS docs, as of 2026-10) |
+| Bedrock Managed KB index storage | $5.00 per GB of raw source data per month (reported as the `RawDataSize` metric) | (AWS Bedrock pricing and AWS docs, as of 2026-10) |
+| Bedrock Managed KB standard retrieval | $1.00 per 1,000 Retrieve calls | (AWS Bedrock pricing, as of 2026-10) |
+| Bedrock Managed KB agentic retrieval, managed model | $4.00 per 1,000 agentic calls plus $1.00 per 1,000 underlying Retrieve calls | (AWS ML blog and AWS Bedrock pricing, as of 2026-10) |
+| Bedrock Managed KB embeddings, parsing, re-ranking with managed models | no separate charge | (AWS Bedrock pricing, as of 2026-10) |
+| Bedrock GraphRAG (Neptune Analytics) source and default file limit | S3 only, 1,000 files per data source, raisable to 10,000 | (AWS docs, as of 2026-10) |
 | Agent Search Standard Edition | $1.50 per 1,000 queries | (Google Cloud pricing, as of 2026-10) |
 | Agent Search Enterprise Edition (core generative answers) | $4.00 per 1,000 queries | (Google Cloud pricing, as of 2026-10) |
 | Agent Search Advanced Generative Answers add-on | +$4.00 per 1,000 user input queries | (Google Cloud pricing, as of 2026-10) |
-| Agent Search data indexed | $5.00 per GB-month, first 10 GB free | (Google Cloud pricing, as of 2026-10) |
-| Agent Search free trial queries | first 10,000 queries | (Google Cloud pricing, as of 2026-10) |
+| Agent Search data indexed | $5.00 per GiB-month of raw data, first 10 GiB free | (Google Cloud pricing, as of 2026-10) |
+| Agent Search free trial queries | 10,000 queries per account per month | (Google Cloud pricing, as of 2026-10) |
 | Agent Search configurable pricing recommended above | 15M queries per month, QPM subscription | (Google Cloud pricing, as of 2026-10) |
 | Agent Search website data store storage accounting | 500 KiB per indexed page | (Google Cloud pricing, as of 2026-10) |
-| Agent Search Ranking API | $1.00 per 1,000 requests | (CostBench summary of Google pricing, as of 2026-10; UNVERIFIED against primary page) |
-| Cohere Rerank 3.5 on Bedrock | $2.00 per 1,000 queries | UNVERIFIED |
-| Amazon Titan Text Embeddings V2 | 8,192 input tokens, 256/512/1024 dims, $0.02 per 1M tokens | UNVERIFIED |
+| Agent Search Ranking API | $1.00 per 1,000 queries; one billed query covers up to 100 records, and each further 100 bills as another query | (Google Cloud pricing, as of 2026-10) |
+| Cohere Rerank 3.5 on Bedrock | $2.00 per 1,000 queries | (AWS Bedrock pricing, as of 2026-10) |
+| Amazon Titan Text Embeddings V2 | 8,192 input tokens, 256/512/1024 dims, $0.02 per 1M tokens | (AWS docs for specs; AWS ML launch blog, 2024, for price) |
 | RRF constant | k = 60 | (Cormack et al., SIGIR 2009) |
 | RRF credit, rank 1 vs rank 5 at k = 60 | 0.01639 vs 0.01538 | derived |
 | Contextual retrieval failure reduction | 49 percent, 67 percent with reranking | (Anthropic, 2024) |
@@ -223,16 +243,16 @@ Place the highest-scoring reranked chunk first, deduplicate near-identical chunk
 | Concern | AWS | Google Cloud | Critical difference |
 | --- | --- | --- | --- |
 | Fully managed RAG | Bedrock Managed Knowledge Base, GA 2026-06-17 | Agent Search on Gemini Enterprise Agent Platform (formerly Vertex AI Search) | Bedrock prices per Retrieve call plus indexed GB; Agent Search prices per query by edition plus indexed GB, with a capacity subscription above 15M queries per month |
-| Bring-your-own-store RAG | Customer-managed Bedrock KB | RAG Engine on Agent Platform | Bedrock customer-managed supports eight store families including S3 Vectors and Neptune GraphRAG; RAG Engine backend list UNVERIFIED in this session |
+| Bring-your-own-store RAG | Customer-managed Bedrock KB | RAG Engine on Agent Platform | Bedrock customer-managed supports eight store families including S3 Vectors and Neptune GraphRAG; RAG Engine supports RagManagedDb, Vector Search, Vector Search 2.0, Feature Store, Weaviate, Pinecone, and Agent Search (Google Cloud docs, as of 2026-10) |
 | Vector store for custom stacks | OpenSearch, Aurora pgvector, S3 Vectors | Vector Search on Agent Platform, AlloyDB pgvector | See [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_01_Vector_Databases_and_Similarity_Search_on_Cloud\|Vector Databases]] for ANN internals |
-| Chunking controls | Default about 300 tokens, fixed, none, semantic, hierarchical, custom Lambda (UNVERIFIED) | Layout-parser chunking with configurable size (UNVERIFIED) | Bedrock hierarchical can return fewer results than requested |
-| Hybrid search | `overrideSearchType = HYBRID` on supported stores, Managed KB built in | Built into Agent Search ranking | Neither publishes its fusion function |
+| Chunking controls | Default about 300 tokens, fixed, none, semantic, hierarchical, custom Lambda (AWS docs, as of 2026-10) | RAG Engine chunk size default 1,024 tokens with 256-token overlap, Document AI layout parser or LLM parser (Google Cloud docs, as of 2026-10) | Bedrock hierarchical can return fewer results than requested |
+| Hybrid search | `overrideSearchType = HYBRID` on Amazon RDS (Aurora), OpenSearch Serverless, and MongoDB Atlas stores with a filterable text field, otherwise silent fallback to semantic; Managed KB built in (AWS docs, as of 2026-10) | Built into Agent Search ranking | Neither publishes its fusion function |
 | Reranking | Bedrock Rerank API, `rerankingConfiguration` in Retrieve; managed re-ranking free in Managed KB | Ranking API, usable standalone | Both callable from a custom pipeline; Bedrock reranker choice is a model ARN |
 | Multi-hop retrieval | `AgenticRetrieveStream` in Managed KB | Generative answers tiers in Agent Search | Agentic path billed per planning call on AWS |
-| Grounding verification | Bedrock Guardrails contextual grounding check (UNVERIFIED parameters) | Check Grounding API | Both are post-hoc classifiers, not proofs |
-| Document ACLs | Managed KB applies source permissions at retrieval time for supported connectors | Agent Search ACL support for connected sources (UNVERIFIED scope) | Customer-managed stacks must implement filtering themselves |
-| Private access | Interface VPC endpoints for `bedrock-agent-runtime` | VPC Service Controls perimeter around Agent Search APIs (UNVERIFIED service list) | AWS is a network path control; VPC SC is an API-level perimeter |
-| Encryption | KMS customer managed keys for KB and stores | CMEK for data stores (UNVERIFIED regional coverage) | Key policy versus IAM on the key ring |
+| Grounding verification | Bedrock Guardrails contextual grounding check: GROUNDING and RELEVANCE thresholds from 0 to 0.99, limits of 100,000 characters of source, 1,000 of query, 5,000 of response (AWS docs, as of 2026-10) | Check Grounding API | Both are post-hoc classifiers, not proofs |
+| Document ACLs | Managed KB pre-filters on crawled ACLs and re-verifies in real time for supported connectors | Agent Search data source access control, in Preview, for Cloud Storage, BigQuery, Google Drive, and third-party sources; must be enabled at data store creation, 3,000 readers per document (Google Cloud docs, as of 2026-10) | Customer-managed stacks must implement filtering themselves |
+| Private access | Interface VPC endpoints for `bedrock-agent-runtime` | VPC Service Controls perimeter around `discoveryengine.googleapis.com` (GA), except that a public-access search widget bypasses it (Google Cloud docs, as of 2026-10) | AWS is a network path control; VPC SC is an API-level perimeter |
+| Encryption | KMS customer managed keys for KB and stores | CMEK for data stores in the US and EU multi-regions only, Enterprise edition required, not applicable to the ranking and check grounding APIs (Google Cloud docs, as of 2026-10) | Key policy versus IAM on the key ring |
 | Observability | CloudWatch namespace `AWS/Bedrock/KnowledgeBases` with Invocations, Throttles, TotalIterationCount | Cloud Monitoring and Cloud Logging | TotalIterationCount exposes agentic loop depth |
 
 ## Worked Example: Hybrid Fusion, ACL Collapse, and a Live Bedrock Retrieve
@@ -413,7 +433,7 @@ Add your own judged queries per class (identifier, paraphrase, multi-hop, negati
 
 ### Step 2 - live Bedrock Retrieve with hybrid search and reranking (billable)
 
-Create a customer-managed knowledge base in the console with an S3 data source and either OpenSearch Serverless (hybrid capable) or S3 Vectors (semantic only, run with `--search-type SEMANTIC`); hybrid support per store is UNVERIFIED in this session.
+Create a customer-managed knowledge base in the console with an S3 data source and either OpenSearch Serverless (hybrid capable) or S3 Vectors (semantic only, run with `--search-type SEMANTIC`); hybrid search is supported only on Amazon RDS (Aurora), OpenSearch Serverless, and MongoDB Atlas stores with a filterable text field, and other stores fall back to semantic search ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-test-config.html), as of 2026-10).
 Attach a tenant attribute by writing a sidecar metadata file next to each object, then sync and query.
 
 ```bash
@@ -434,7 +454,7 @@ python3 rag_fusion_lab.py --bedrock "$KB_ID" --region "$AWS_REGION" --search-typ
   --rerank-arn "arn:aws:bedrock:${AWS_REGION}::foundation-model/cohere.rerank-v3-5:0"
 ```
 
-The reranker model ARN and the per-Region availability of rerank models are UNVERIFIED in this session; list available models with `aws bedrock list-foundation-models --region "$AWS_REGION"` before running.
+The reranker model IDs are `cohere.rerank-v3-5:0` (us-east-1, us-west-2, ca-central-1, eu-central-1, ap-northeast-1) and `amazon.rerank-v1:0` (the same Regions except us-east-1) ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/rerank-supported.html), as of 2026-10); confirm with `aws bedrock list-foundation-models --region "$AWS_REGION"` before running.
 
 ### Step 3 - Google Cloud Ranking API on the same candidates (billable per request)
 
@@ -452,7 +472,7 @@ curl -s -X POST \
                   {"id":"7","content":"Part number PN-88213 is the replacement thermal fuse for XR-series pumps."}]}'
 ```
 
-The `semantic-ranker-default@latest` model alias is UNVERIFIED in this session; check the Ranking API reference for current model IDs.
+The `semantic-ranker-default@latest` alias points to the latest default ranker, currently `semantic-ranker-default-005`, and the API accepts up to 1,000 records per request, which pricing bills in units of 100 records ([Google Cloud docs](https://docs.cloud.google.com/generative-ai-app-builder/docs/ranking), as of 2026-10).
 
 ### Step 4 - budget alarms
 
@@ -476,7 +496,7 @@ gcloud billing budgets create --billing-account="$BILLING_ACCOUNT_ID" \
 ### Step 5 - lab cost estimate
 
 The offline lab costs nothing.
-OpenSearch Serverless bills OCU-hours continuously from collection creation until deletion, whether or not you query it, so it dominates the lab bill; the per-OCU-hour rate and minimum OCU count are UNVERIFIED in this session, so read them from the pricing page before you start and keep the session to a few hours.
+A classic OpenSearch Serverless collection bills OCU-hours continuously from collection creation until deletion, whether or not you query it, so it dominates the lab bill: the floor is 2 OCUs (1 OCU with the dev-test option that drops redundancy) at $0.24 per OCU-hour in US East (N. Virginia), about $0.48 per hour or $350 per month, while the newer NextGen collections have no minimum and scale to zero after 10 idle minutes ([AWS OpenSearch pricing](https://aws.amazon.com/opensearch-service/pricing/), as of 2026-10); keep the session to a few hours.
 S3 Vectors avoids the always-on OCU charge at the cost of losing hybrid search in this lab.
 Embedding one tiny document and issuing tens of Retrieve and Rerank calls costs cents at the list prices in Numbers to Know.
 Twenty Ranking API requests cost about $0.02 at $1.00 per 1,000 requests.
@@ -504,15 +524,16 @@ Assume 2,000,000 documents averaging 4,000 extracted tokens, for 8.0B tokens of 
 Chunking at 512 tokens with 10 percent overlap gives a stride of 460.8 tokens, so the corpus becomes 8.0e9 / 460.8 = 17.4M chunks and 17.4M x 512 = 8.9B tokens to embed.
 At 1,024 float32 dimensions each vector is 4 KB, so raw vectors take 17.4M x 4 KB = 71 GB, before HNSW graph overhead of roughly 2 x M x 4 bytes per vector at layer 0, which is 2.2 GB at M = 16.
 Int8 quantization or a 256-dimension Matryoshka prefix cuts vectors to about 18 GB, which moves a self-managed index from a memory-optimized cluster to a much smaller one; measure the recall loss on your judged set before taking it.
-At an embedding price of $0.02 per 1M tokens (UNVERIFIED), one full embedding pass is 8,900 x $0.02 = about $178, which means re-embedding is cheap in dollars and expensive in quota, wall-clock time, and migration risk.
+At an embedding price of $0.02 per 1M tokens (Titan Text Embeddings V2 launch price, AWS ML blog, 2024), one full embedding pass is 8,900 x $0.02 = about $178, which means re-embedding is cheap in dollars and expensive in quota, wall-clock time, and migration risk.
 At 30M queries per month, average load is 30e6 / (30 x 86,400) = 11.6 QPS; plan for a peak-to-average ratio of at least 4, so about 50 QPS of peak retrieval.
 
 Managed option A, Bedrock Managed KB, all standard retrieval: 30,000 x $1.00 = $30,000 per month in retrieval, with reranking and embeddings included.
 If 20 percent of queries go agentic with an average of two underlying retrievals, the bill is 24M x $1/1,000 + 6M x $4/1,000 + 12M x $1/1,000 = $24,000 + $24,000 + $12,000 = $60,000 per month, so agentic routing doubles the retrieval bill at a one-in-five mix.
 Managed option B, Agent Search Standard: (30M - 10,000) / 1,000 x $1.50 = $44,985 per month, or $119,960 on Enterprise Edition, and at this volume the configurable QPM subscription should be priced because the general pricing guidance targets workloads under 15M queries per month.
-Storage on both is $5.00 per GB-month, and the bill depends on what "GB indexed" measures: if it is extracted text, 32 GB costs about $160 per month on Bedrock and $110 on Agent Search after the 10 GB free tier, but if it is source file bytes and the average PDF is 1 MB, 2 TB costs about $10,000 per month.
-That 60x ambiguity is exactly why a pilot ingestion of a 1 percent sample with a billing export check is mandatory before committing a design.
-Custom option C, self-managed hybrid stack: Cohere Rerank 3.5 at $2.00 per 1,000 queries (UNVERIFIED) alone is $60,000 per month at 30M queries, so a self-hosted reranker becomes attractive.
+Storage on both is $5.00 per GB-month, and both vendors meter raw source data, not extracted text: Bedrock bills per GB of raw data and reports it as the `RawDataSize` metric, and Agent Search applies index storage to the total size of the raw data (AWS Bedrock pricing and AWS docs; Google Cloud pricing, as of 2026-10).
+If the average source PDF is 1 MB, 2 TB of raw data costs about $10,000 per month on Bedrock and about $9,300 on Agent Search, which meters GiB and frees the first 10 GiB, whereas the same corpus held as 32 GB of plain extracted text would cost about $160 and $100.
+That 60x spread between source bytes and extracted text is exactly why a pilot ingestion of a 1 percent sample with a billing export check is mandatory before committing a design.
+Custom option C, self-managed hybrid stack: Cohere Rerank 3.5 at $2.00 per 1,000 queries (AWS Bedrock pricing, as of 2026-10) alone is $60,000 per month at 30M queries, so a self-hosted reranker becomes attractive.
 A self-hosted 0.5B-parameter cross-encoder at N = 50 costs 2 x 0.5e9 x 27,100 = 2.7e13 FLOPs per query, so 50 peak QPS needs 1.36 PFLOP/s, which at an assumed 40 percent utilization of an H100's 989 TFLOP/s dense BF16 is about 3.4 GPUs, or 4 to 6 with headroom and N+1 redundancy.
 Halving N to 25 halves that fleet, and the right N is the smallest value at which recall@N of the first stage stops improving on your judged set.
 
@@ -522,7 +543,7 @@ Halving N to 25 halves that fleet, and the right N is the smallest value at whic
 
 A team upgrades the embedding model and launches a full re-ingestion in the production account.
 The ingestion job and the query path draw from the same account-level model throughput quota, query embedding calls start receiving `ThrottlingException`, and retrieval fails for users while the offline job reports progress.
-Mitigate by running bulk ingestion in a separate account or with dedicated throughput, rate-limiting the ingestion client to a fraction of quota, and alarming on the `Throttles` metric in the `AWS/Bedrock/KnowledgeBases` namespace (AWS Builder Center community post, as of 2026-10).
+Mitigate by running bulk ingestion in a separate account or with dedicated throughput, rate-limiting the ingestion client to a fraction of quota, and alarming on the `Throttles` metric in the `AWS/Bedrock/KnowledgeBases` namespace ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-managed-observability.html), as of 2026-10).
 
 ### ACL post-filter collapse for small tenants
 
@@ -581,7 +602,7 @@ The Bedrock KB service role needs read on exactly the source prefixes, invoke on
 Callers need `bedrock:Retrieve` scoped to specific knowledge base ARNs, and a multi-tenant application must never let the client choose the tenant filter value; the server derives it from the authenticated identity.
 A metadata filter is an application-layer control, not an authorization boundary, so tenants with contractual isolation requirements belong in separate knowledge bases or separate accounts, as discussed in [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_05_Multi_Tenancy_Isolation_and_Resource_Quotas|Multi-Tenancy, Isolation, and Resource Quotas]].
 On Google Cloud, grant Agent Search roles at the data store or app level where supported and run retrieval as a dedicated service account through [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]] rather than keys.
-On the agentic path, the Managed KB supports Guardrails only with the BLOCK action, not MASK (AWS Builder Center community post, as of 2026-10), so PII masking must happen at ingestion or in the response pipeline.
+On the agentic path, the Managed KB supports Guardrails only with the BLOCK action, not MASK (AWS ML blog, as of 2026-10), so PII masking must happen at ingestion or in the response pipeline.
 
 ### Encryption and the hidden copies
 
@@ -652,7 +673,7 @@ Within a tenant, per-user ACLs are a second filter whose selectivity is usually 
 I define two SLOs beyond latency: permission revocation propagation, measured from source change to retrieval denial, and deletion propagation, measured from source delete to index absence, and I alarm on queries that return fewer than n chunks after filtering.
 The tenant filter value comes from the authenticated session server-side, never from the client, and caches are keyed by query plus ACL fingerprint.
 For tenants with contractual isolation, I put them in separate knowledge bases or accounts, because a metadata filter is application logic, not an authorization boundary.
-If I use the Bedrock Managed Knowledge Base, its retrieval-time application of source permissions for supported connectors removes the freshness problem for SharePoint, but I would still test it with synthetic users across the selectivity distribution, since evaluation as an administrator hides the collapse.
+If I use the Bedrock Managed Knowledge Base, its real-time ACL verification against SharePoint catches revocations between syncs, though new grants still wait for the next sync and the service trusts whatever user identity I pass, so I would still test it with synthetic users across the selectivity distribution, since evaluation as an administrator hides the collapse.
 The trade-off I accept is operational complexity from three index tiers and a tenant-migration process when a tenant grows across a tier boundary.
 
 #### Follow-up Interviewer Question
@@ -724,7 +745,7 @@ Would you build on Bedrock Managed Knowledge Base and Agent Search, or build a c
 I decide on four axes: quality controllability, unit economics at scale, isolation and data residency, and organizational cost to operate.
 At 30M queries, Bedrock Managed KB standard retrieval is about $30,000 per month with reranking and embeddings included, rising to about $60,000 if a fifth of traffic goes agentic, while Agent Search Standard is about $45,000 and Enterprise about $120,000 at general pricing, with a QPM subscription that must be quoted at this volume.
 A custom stack pays for vector and lexical serving, a reranker fleet, and a team; a hosted third-party reranker alone at $2 per 1,000 queries would be $60,000 per month, while a self-hosted cross-encoder at N = 50 needs only a handful of H100-class GPUs at peak, so the custom stack can win on unit cost but only if it is staffed.
-The storage line is the hidden variable, since $5 per GB-month is either a few hundred dollars or ten thousand dollars depending on whether indexed GB means extracted text or source bytes, so I require a 1 percent pilot ingestion with billing export before any commitment.
+The storage line is the hidden variable, since both vendors charge $5 per GB-month on raw source bytes rather than extracted text, so a 2 TB PDF estate costs about ten thousand dollars a month where its extracted text alone would cost about $100 to $160, and I require a 1 percent pilot ingestion with billing export before any commitment.
 On quality, managed services do not publish fusion or reranking internals, so when a query class regresses after a silent model update, I cannot fix it, only route around it; I mitigate by owning the evaluation harness, a judged set per class and per application, and running it continuously against whichever backend serves traffic.
 My recommendation is a platform contract, not a backend: a retrieval API owned by the platform team with tenancy, ACL, provenance, evaluation, and cost attribution built in, with managed backends as the default for the long tail of applications and a custom hybrid stack for the few high-volume or high-precision applications where the economics or controllability justify it.
 That keeps the switching cost at the platform boundary instead of inside 200 applications, and it lets me move an application between backends based on its own evaluation and cost data.

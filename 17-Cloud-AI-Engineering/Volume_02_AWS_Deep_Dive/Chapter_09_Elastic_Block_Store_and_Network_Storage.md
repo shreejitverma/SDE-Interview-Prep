@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/conference/nsdi20/presentation/brooker"
@@ -13,6 +13,38 @@ sources:
   - "https://docs.aws.amazon.com/ebs/latest/userguide/initalize-volume.html"
   - "https://aws.amazon.com/blogs/aws/accelerate-the-transfer-of-data-from-an-amazon-ebs-snapshot-to-a-new-ebs-volume/"
   - "https://aws.amazon.com/blogs/storage/improve-your-application-resiliency-with-larger-and-faster-gp3-volumes/"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/provisioned-iops.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volumes-multi.html"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-1/index.csv"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-fast-snapshot-restore.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/volume-creation-credits.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-io-characteristics.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/snapshot-archive-pricing.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/snapshot-archive-considerations.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-modifying-snapshot-permissions.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-copy-snapshot.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/how-ebs-encryption-works.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/01/amazon-ebs-up-to-four-volume-modifications"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/block-public-access-snapshots.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/snapshot-lock-concepts.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/nvme-detailed-performance-stats.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-modify-volume.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/monitoring-volume-modifications.html"
+  - "https://docs.aws.amazon.com/fsx/latest/LustreGuide/managing-throughput-capacity.html"
+  - "https://docs.aws.amazon.com/fsx/latest/LustreGuide/managing-metadata-performance.html"
+  - "https://docs.aws.amazon.com/fsx/latest/LustreGuide/using-fsx-lustre.html"
+  - "https://docs.aws.amazon.com/fsx/latest/LustreGuide/limit-access-security-groups.html"
+  - "https://docs.aws.amazon.com/fsx/latest/LustreGuide/file-release.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-fsx-lustre-elastic-fabric-adapter-nvidia-gpudirect-storage/"
+  - "https://cdn.amazon.science/a6/34/41496f64421faafa1cbe301c007c/a-cloud-optimized-transport-protocol-for-elastic-and-scalable-hpc.pdf"
+  - "https://docs.cloud.google.com/compute/docs/disks/hyperdisks"
+  - "https://docs.cloud.google.com/compute/docs/disks/modify-hyperdisks"
+  - "https://docs.cloud.google.com/compute/docs/disks/storage-pools"
+  - "https://docs.cloud.google.com/compute/docs/disks/snapshots"
+  - "https://docs.cloud.google.com/compute/docs/disks/regional-persistent-disk"
+  - "https://docs.cloud.google.com/managed-lustre/docs/release-notes"
 ---
 
 # Elastic Block Store and Network Storage
@@ -21,8 +53,8 @@ sources:
 
 An EBS volume is not a disk; it is a chain-replicated, AZ-scoped network service exposed to the guest as an NVMe device by the Nitro card, and every I/O pays a network round trip plus replication.
 Correctness rests on a strongly consistent configuration store, Physalia, built as millions of 7-node Paxos cells placed physically close to the storage servers they serve, which shrinks both blast radius and the chance of a partition separating a volume from its configuration.
-Delivered IOPS is bounded by the minimum of volume provisioning, instance EBS bandwidth, and Little's law (IOPS = outstanding I/Os / latency), so gp3 at 80,000 IOPS or io2 Block Express at 256,000 IOPS is only reachable with enough queue depth (AWS docs, as of 2026-10).
-Snapshots are incremental 512 KiB block lineages stored in S3; restored volumes hydrate lazily on first touch unless you pay for Fast Snapshot Restore or a Provisioned Rate for Volume Initialization, which is capped at 5,000 MiB/s per Region across concurrent requests (AWS re:Post, as of 2026-10).
+Delivered IOPS is bounded by the minimum of volume provisioning, instance EBS bandwidth, and Little's law (IOPS = outstanding I/Os / latency), so gp3 at 80,000 IOPS or io2 Block Express at 256,000 IOPS is only reachable with enough queue depth (AWS docs, as of 2026-11).
+Snapshots are incremental 512 KiB block lineages stored in S3; restored volumes hydrate lazily on first touch unless you pay for Fast Snapshot Restore or a Provisioned Rate for Volume Initialization, which is capped at 5,000 MiB/s per Region across concurrent requests unless you obtain a quota increase (AWS docs, as of 2026-11).
 FSx for Lustre is a single-AZ parallel file system whose SSD tier fronts S3 via Data Repository Associations, so S3 is the durable source of truth and the file system is a cache with a metadata server that becomes the bottleneck on small-file datasets.
 
 ## Mental Model
@@ -63,9 +95,9 @@ Chain replication is the critical design choice: it keeps consensus off the data
 The price is that chain membership must be changed atomically and agreed on by everyone, which is exactly the job pushed into the control plane.
 
 EBS has evolved from shared spinning drives to a network storage system serving over 140 trillion operations per day, and Marc Olson's history attributes most gains to incremental queueing-theory-driven changes rather than one rewrite ([All Things Distributed, 2024-08](https://www.allthingsdistributed.com/2024/08/continuous-reinvention-a-brief-history-of-block-storage-at-aws.html)).
-io2 Block Express is the current high-end architecture, and it runs over SRD (Scalable Reliable Datagram), the AWS transport implemented in Nitro hardware that sprays packets of a single flow across many ECMP paths and retransmits on microsecond timers instead of TCP's millisecond-scale retransmission timeout (SRD design: Shalev et al., IEEE Micro 2020; Block Express use of SRD and its use by other volume types UNVERIFIED this review).
+io2 Block Express is the current high-end architecture, and it runs over SRD (Scalable Reliable Datagram), the AWS transport implemented in the Nitro card that sprays packets of a single flow across many ECMP paths and retransmits close to the physical network instead of waiting on a TCP retransmission timeout, which is 50 ms minimum in the paper's measurements (SRD design: [Shalev et al., IEEE Micro 2020](https://cdn.amazon.science/a6/34/41496f64421faafa1cbe301c007c/a-cloud-optimized-transport-protocol-for-elastic-and-scalable-hpc.pdf); Block Express use of SRD: AWS docs, as of 2026-11, which do not state SRD for other volume types).
 Multipath spraying matters for storage because tail latency in a Clos fabric is dominated by the unlucky flow that hashes onto a congested link, and spraying converts a per-flow lottery into an averaged load (see [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_02_Datacenter_Networking_Fabrics|Datacenter Networking Fabrics]]).
-AWS states io2 Block Express delivers an average latency under 500 microseconds for 16 KiB I/O on Nitro instances and reduces the frequency of I/Os exceeding 800 microseconds by more than 10x compared with General Purpose volumes, while gp3 is designed for single-digit millisecond latency (AWS EBS product pages, as of 2026-10).
+AWS states io2 Block Express delivers an average latency under 500 microseconds for 16 KiB I/O on Nitro instances and reduces the frequency of I/Os exceeding 800 microseconds by more than 10x compared with General Purpose volumes, while gp3 is designed for single-digit millisecond latency (AWS EBS product pages, as of 2026-11).
 
 ### The control plane: Physalia as millions of tiny databases
 
@@ -74,7 +106,7 @@ The configuration master answers one question per volume with linearizable seman
 Strong consistency is non-negotiable because the EBS replication protocol's correctness depends on it, so by CAP (Gilbert and Lynch) Physalia must accept that some clients will be unavailable during some partitions.
 The design insight is to choose which clients lose availability by controlling physical placement.
 Physalia is built as a colony of cells, each cell is a Paxos state machine over a small set of nodes, and each physical server hosts thousands of nodes belonging to different cells ([Amazon Science, 2020](https://www.amazon.science/blog/amazon-ebs-addresses-the-challenge-of-the-cap-theorem-at-scale)).
-A cell holds the configuration for a small number of volumes, and the control plane places a cell's nodes near the storage servers that are its clients, moving cells as volumes move.
+Each volume has its own partition key, each cell is used by only a small subset of clients (Brooker et al., NSDI 2020), and the control plane places a cell's nodes near the storage servers that are its clients, moving cells as volumes move.
 
 This placement turns a CAP liability into a mostly free property.
 If a partition separates a cell from its clients, it very likely also separates those clients from each other and from the EC2 instance, in which case the volume could not have served I/O anyway, so the configuration store's unavailability is correlated with an outage that already exists rather than adding a new one.
@@ -90,7 +122,7 @@ A learner with log gaps that no peer can fill runs a procedure the authors call 
 Cells reconfigure membership using the Paxos-in-the-log approach from Lampson's 1996 consensus paper, which lets a cell migrate node by node without a separate membership service.
 The control plane deliberately gives each node a different mix of cells, so a poison-pill transaction or a load spike that kills nodes of one cell cannot take down an aligned set of other cells.
 The authors also emphasize misuse resistance: the API is shaped so that a buggy client cannot easily drive a cell into an unsafe state.
-For the full paper treatment see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_03_Physalia_EBS_Control_Plane|Physalia: Millions of Distributed Databases]] and for the general pattern see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]].
+For the full paper treatment see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_03_Physalia_EBS_Control_Plane|Physalia: Millions of Tiny Databases]] and for the general pattern see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]].
 
 ### What failover actually does
 
@@ -109,24 +141,24 @@ Little's law fixes the last term: outstanding I/Os = IOPS x latency.
 At 40,000 IOPS and 0.5 ms average latency you need 20 I/Os in flight, at 1 ms you need 40, and at 2 ms you need 80.
 A single-threaded synchronous writer such as a database WAL flusher at queue depth 1 on a 1 ms volume cannot exceed about 1,000 IOPS no matter how many IOPS you provision.
 This is why io2 Block Express is a latency product, not just an IOPS product: halving latency halves the concurrency required to hit a target rate and makes commit-latency-bound workloads faster at the same queue depth.
-For SSD-backed volumes, AWS counts I/Os up to 256 KiB as one operation and splits larger ones, so throughput and IOPS limits interact with I/O size (AWS docs, UNVERIFIED this review).
+For SSD-backed volumes, AWS counts I/Os up to 256 KiB as one operation, splits larger ones, and merges physically sequential smaller ones, so throughput and IOPS limits interact with I/O size (AWS docs, as of 2026-11).
 A 16 KiB random workload at 40,000 IOPS moves 625 MiB/s, so a gp3 volume provisioned at 40,000 IOPS but left at the 125 MiB/s baseline throughput throttles at about 8,000 16 KiB IOPS.
 Instance EBS limits are queryable rather than memorized: `aws ec2 describe-instance-types --query 'InstanceTypes[].EbsInfo.EbsOptimizedInfo'` returns baseline and maximum bandwidth, throughput, and IOPS per type, and smaller sizes have a burst maximum above a much lower sustained baseline.
 
 ### gp3 versus io2 Block Express
 
 gp3 decouples performance from capacity: every volume gets 3,000 IOPS and 125 MiB/s, and you can provision up to 80,000 IOPS and 2,000 MiB/s on volumes up to 64 TiB, raised in 2025 from 16,000 IOPS, 1,000 MiB/s, and 16 TiB with unchanged pricing (AWS What's New, 2025-09).
-gp3 provisioning is ratio-limited, with a maximum of 500 IOPS per GiB, so 80,000 IOPS requires at least 160 GiB (AWS docs, UNVERIFIED this review).
-gp3 durability is 99.9% annual, which AWS frames as a reason to prefer one large gp3 volume over a RAID-0 stripe of small ones, since stripe durability multiplies down with every member (AWS Storage Blog, as of 2026-10).
-io2 Block Express provides up to 256,000 IOPS, 4,000 MB/s, 64 TiB, up to 1,000 IOPS per GiB, and 99.999% durability defined as an AFR of 0.001% for complete or partial volume loss (AWS EBS product pages, as of 2026-10).
-io2 throughput is not a separate knob; it scales with provisioned IOPS (third-party documentation cites 0.256 MiB/s per IOPS, UNVERIFIED against AWS docs this review).
-io1 and io2 support Multi-Attach to multiple Nitro instances in the same AZ, which gives shared block access but no coherence, so a cluster-aware file system or application-level fencing is mandatory (AWS docs, UNVERIFIED limit of 16 instances this review).
+gp3 provisioning is ratio-limited, with a maximum of 500 IOPS per GiB, so 80,000 IOPS requires at least 160 GiB, and 0.25 MiB/s per provisioned IOPS, so 2,000 MiB/s requires at least 8,000 IOPS (AWS docs, as of 2026-11).
+gp3 durability is 99.8% to 99.9% annual, an AFR no higher than 0.2%, in the EBS User Guide (AWS docs, as of 2026-11), while the AWS Storage Blog quotes 99.9% and frames it as a reason to prefer one large gp3 volume over a RAID-0 stripe of small ones, since stripe durability multiplies down with every member (AWS Storage Blog, as of 2026-11).
+io2 Block Express provides up to 256,000 IOPS, 4,000 MiB/s, 64 TiB, up to 1,000 IOPS per GiB, and 99.999% durability, an AFR no higher than 0.001% (AWS docs, as of 2026-11), where the Physalia paper defines EBS volume failure as complete or partial loss of the volume.
+io2 throughput is not a separate knob; it scales at 0.256 MiB/s per provisioned IOPS up to 4,000 MiB/s, reached at about 16,000 IOPS (AWS docs, as of 2026-11).
+io1 and io2 support Multi-Attach to up to 16 Nitro instances in the same AZ, which gives shared block access but no coherence, so a cluster-aware file system or application-level fencing is mandatory (AWS docs, as of 2026-11).
 
 ### Elastic Volumes: changing a live volume
 
 `ModifyVolume` changes size, type, IOPS, or throughput without detaching, and the volume moves through `modifying`, `optimizing`, and `completed` states.
 During `optimizing` the backend redistributes data, and performance sits between the source and target configuration.
-A fully used 1 TiB volume takes about six hours to optimize and larger volumes take proportionally longer (AWS re:Post, as of 2026-10).
+A fully used 1 TiB volume typically takes about six hours to reach a new performance configuration, the time does not always scale linearly with size, and a volume that is not fully initialized can take more than 24 hours (AWS docs, as of 2026-11).
 Since January 2026 a volume supports up to four modifications in a rolling 24-hour window, each starting once the previous completes, replacing the old six-hour cooldown (AWS What's New, 2026-01).
 Growing the block device does not grow the file system; you still run `growpart` and `xfs_growfs` or `resize2fs` in the guest.
 Volumes cannot shrink, so the only path down is a new smaller volume plus a file-level copy.
@@ -143,57 +175,58 @@ Crash-consistent is not application-consistent: the image matches a power loss, 
 
 ### Restore: lazy hydration and its three cures
 
-A volume created from a snapshot is usable immediately, but its blocks are fetched from S3 on first access, and until hydration completes those first touches suffer increased latency and reduced throughput (AWS EBS docs, as of 2026-10).
+A volume created from a snapshot is usable immediately, but its blocks are fetched from S3 on first access, and until hydration completes those first touches suffer increased latency and reduced throughput (AWS EBS docs, as of 2026-11).
 This is a deliberate design: volume creation becomes an O(1) metadata operation, and the cost is moved to first access.
 The first cure is manual initialization, reading every block with `fio` or `dd`, which hydrates at an unpredictable default rate.
-The second cure is Fast Snapshot Restore, enabled per snapshot per AZ, which pre-hydrates so that volumes created from it deliver full performance at creation; it costs $0.75 per DSU-hour with a one-hour minimum, and it rate-limits creation with a credit bucket whose size depends on snapshot size (AWS pricing via eon.io summary, as of 2026-09; credit formula UNVERIFIED).
-The third cure, GA since May 2025, is the Provisioned Rate for Volume Initialization: you specify 100 to 300 MiB/s at create time, EBS delivers within 10% of that rate 99% of the time, and you pay per GB of full snapshot size (AWS docs, as of 2026-10).
-The hidden constraint is a Regional cap of 5,000 MiB/s total across concurrent volume creation requests, which matters enormously for fleet launches (AWS re:Post, as of 2026-10).
+The second cure is Fast Snapshot Restore, enabled per snapshot per AZ, which pre-hydrates so that volumes created from it deliver full performance at creation; it costs $0.75 per DSU-hour billed per minute with a one-hour minimum, and it rate-limits creation with one credit bucket per snapshot per AZ, sized MAX(1, MIN(10, 1024 / snapshot GiB)) credits and refilled at MIN(10, 1024 / snapshot GiB) credits per hour starting from zero (AWS docs, as of 2026-11).
+FSR is also limited to snapshots of 16 TiB or less, 5 enabled snapshots per Region, and full benefit only for volumes up to 64,000 IOPS and 1,000 MiB/s (AWS docs, as of 2026-11).
+The third cure, GA since May 2025, is the Provisioned Rate for Volume Initialization: you specify 100 to 300 MiB/s at create time, EBS delivers within 10% of that rate 99% of the time, and you pay per GB of full snapshot size, $0.0024 per GB for 100 to 200 MiB/s and $0.0036 per GB for 201 to 300 MiB/s in us-east-1 (AWS docs and AWS Price List, as of 2026-11).
+The hidden constraint is a default Regional quota of 5,000 MiB/s total across concurrent volume creation requests, requests over it fail rather than queue unless you obtain an increase, which matters enormously for fleet launches (AWS docs, as of 2026-11).
 
 ### Archive, locks, and cross-Region copies
 
-EBS Snapshots Archive moves a snapshot to a lower-cost tier as a full, non-incremental copy, with restores that take 24 to 72 hours (secondary source, as of 2026-10; archive price and 90-day minimum UNVERIFIED this review).
+EBS Snapshots Archive moves a snapshot to a lower-cost tier as a full, non-incremental copy at $0.0125 per GB-month with a 90-day minimum, and restores cost $0.03 per GB and can take up to 72 hours (AWS docs, as of 2026-11).
 Because archived snapshots are full copies, archiving a snapshot whose unique incremental footprint is small can increase cost.
-Snapshot copies across Regions or accounts re-encrypt with a key the destination can use, and snapshots encrypted with the AWS managed key `aws/ebs` cannot be shared with another account, so cross-account DR requires a customer managed KMS key (AWS docs, UNVERIFIED this review).
-Time-based snapshot copy lets you pay for a guaranteed cross-Region completion window (AWS pricing via eon.io summary, as of 2026-09).
+Snapshot copies across Regions or accounts re-encrypt with a key the destination can use, and snapshots encrypted with the AWS managed key `aws/ebs` cannot be shared with another account, so cross-account DR requires a customer managed KMS key (AWS docs, as of 2026-11).
+Time-based snapshot copy lets you pay for a specified completion window, from $0.005 per GB for 960 minutes or more up to $0.020 per GB for 15 minutes in us-east-1 (AWS Price List, as of 2026-11).
 
 ### FSx for Lustre: a parallel file system as a tier over S3
 
 Lustre separates metadata from data: a metadata server (MDS) with metadata targets (MDTs) handles namespace operations, and object storage servers (OSSs) with object storage targets (OSTs) hold file stripes, so a client reads one large file in parallel from many OSTs after a single metadata lookup (Braam, The Lustre Storage Architecture).
-Aggregate throughput scales with the number of OSTs, which in FSx scales with provisioned storage and a per-TiB throughput tier, while metadata operations scale with MDS capacity (FSx per-TiB tiers and metadata IOPS options UNVERIFIED this review).
-Scratch deployment types do not replicate data and lose data on a file server failure, while persistent types replicate within one AZ, so every FSx for Lustre file system is an AZ-scoped failure domain.
+Aggregate throughput scales with the number of OSTs, which in FSx scales with provisioned storage and a per-TiB throughput tier, while metadata operations scale with MDS capacity; Persistent 2 SSD offers 125, 250, 500, and 1,000 MB/s per TiB, Persistent 1 SSD 50, 100, and 200, Scratch 200, and a Persistent 2 metadata configuration provisions 1,500, 3,000, 6,000, or multiples of 12,000 up to 192,000 Metadata IOPS (AWS docs, as of 2026-11).
+Scratch deployment types do not replicate data and lose data on a file server failure, while persistent SSD and HDD types replicate within one AZ and Intelligent-Tiering replicates data across AZs (AWS docs, as of 2026-11), so treat every FSx for Lustre file system as an AZ-scoped availability domain.
 A Data Repository Association (DRA) links a file system directory to an S3 prefix.
 On import, FSx creates only the file metadata, names, sizes, and permissions, and file contents are fetched from S3 on first read, the same lazy-hydration pattern as EBS restore one layer up.
 Files have Lustre HSM state: a file can be resident, archived to S3, or released, meaning its SSD blocks were freed while the S3 copy remains, and a released file is transparently re-fetched on next read.
 Data repository tasks perform bulk export, import, and release, and automatic import and export propagate S3 changes in and file system changes out asynchronously.
-The tiering mechanism is therefore explicit: S3 is the capacity and durability tier, Lustre SSD is the performance tier, and release policies evict cold files.
+The tiering mechanism is therefore explicit: S3 is the capacity and durability tier, Lustre SSD is the performance tier, and release data repository tasks, which you schedule yourself for example with EventBridge Scheduler and which only release files already exported to S3, evict cold files (AWS docs, as of 2026-11).
 The pitfall is that every one of those transitions is asynchronous, so a checkpoint written to Lustre is not durable in S3 until export completes, which must be part of the checkpoint protocol (see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_06_High_Throughput_Checkpointing_to_Object_Storage|High-Throughput Checkpointing to Object Storage]]).
-FSx for Lustre supports EFA and GPUDirect Storage on persistent file systems for supported GPU instances, moving data from OSTs into GPU memory without a CPU bounce buffer (AWS launch posts, UNVERIFIED this review).
+FSx for Lustre has supported EFA and GPUDirect Storage since November 2024 on Persistent 2 file systems created with a metadata configuration, for P5, P5e, P5en, and P6-B200 clients, moving data from OSTs into GPU memory without a CPU bounce buffer (AWS What's New, 2024-11; AWS docs, as of 2026-11).
 
 ## Numbers to Know
 
 | Item | Value | Source |
 | --- | --- | --- |
-| gp3 size range | 1 GiB to 64 TiB | (AWS EMR docs, as of 2026-10) |
-| gp3 baseline included | 3,000 IOPS and 125 MiB/s at any size | (AWS EBS pricing, as of 2026-10) |
+| gp3 size range | 1 GiB to 64 TiB | (AWS docs, as of 2026-11) |
+| gp3 baseline included | 3,000 IOPS and 125 MiB/s at any size | (AWS EBS pricing, as of 2026-11) |
 | gp3 maximum | 80,000 IOPS and 2,000 MiB/s per volume | (AWS What's New, 2025-09) |
-| gp3 durability | 99.9% | (AWS Storage Blog, as of 2026-10) |
-| gp3 latency contract | single-digit ms, provisioned performance 99% of the time | (AWS EBS features, as of 2026-10) |
-| io2 Block Express maximum | 256,000 IOPS, 4,000 MB/s, 64 TiB, 1,000 IOPS per GiB | (AWS EBS product page, as of 2026-10) |
-| io2 Block Express latency | average under 500 us for 16 KiB I/O on Nitro; more than 10x fewer I/Os over 800 us than General Purpose volumes | (AWS EBS product pages, as of 2026-10) |
-| io2 Block Express durability | 99.999%, AFR 0.001% | (AWS EBS features, as of 2026-10) |
-| gp3 price, us-east-1 | $0.08 per GB-month, $0.005 per IOPS-month over 3,000, $0.04 per MB/s-month over 125 | (AWS EBS pricing via multiple summaries, as of 2026-09) |
-| io2 price, us-east-1 | $0.125 per GB-month; IOPS $0.065 up to 32,000, $0.0455 for 32,001 to 64,000, $0.032 above 64,000 | (AWS EBS pricing, as of 2026-09; middle tier cross-checked against China Region ratios) |
-| st1 and sc1 price, us-east-1 | $0.045 and $0.015 per GB-month | (AWS EBS pricing via CloudZero summary, as of 2026-09) |
-| Snapshot storage, standard tier | $0.05 per GB-month of stored blocks | (AWS EBS pricing via multiple summaries, as of 2026-09) |
-| Fast Snapshot Restore | $0.75 per DSU-hour per snapshot per AZ, one-hour minimum | (AWS EBS pricing via eon.io, as of 2026-09) |
-| EBS direct APIs | List $0.0006 per 1,000 requests; GetSnapshotBlock $0.003 per 1,000; PutSnapshotBlock $0.006 per 1,000 (512 KiB units) | (AWS EBS pricing via eon.io, as of 2026-09) |
-| Provisioned Rate for Volume Initialization | 100 to 300 MiB/s per volume; within 10% of target 99% of the time | (AWS EBS docs, as of 2026-10) |
-| Initialization Regional cap | 5,000 MiB/s total across concurrent creates | (AWS re:Post, as of 2026-10) |
-| Initialization price | $0.0036 per GB of full snapshot size at 300 MB/s | (AWS EBS pricing via eon.io, as of 2026-09) |
+| gp3 durability | 99.8% to 99.9%, AFR no higher than 0.2% | (AWS docs, as of 2026-11) |
+| gp3 latency contract | single-digit ms, provisioned performance 99% of the time | (AWS EBS features, as of 2026-11) |
+| io2 Block Express maximum | 256,000 IOPS, 4,000 MiB/s, 64 TiB, 1,000 IOPS per GiB | (AWS docs, as of 2026-11) |
+| io2 Block Express latency | average under 500 us for 16 KiB I/O on Nitro; more than 10x fewer I/Os over 800 us than General Purpose volumes | (AWS EBS product pages, as of 2026-11) |
+| io2 Block Express durability | 99.999%, AFR 0.001% | (AWS EBS features, as of 2026-11) |
+| gp3 price, us-east-1 | $0.08 per GB-month, $0.005 per IOPS-month over 3,000, $0.04 per MiB/s-month over 125 | (AWS Price List, effective 2026-10-01, as of 2026-11) |
+| io2 price, us-east-1 | $0.125 per GB-month; IOPS $0.065 up to 32,000, $0.0455 for 32,001 to 64,000, $0.03185 above 64,000 | (AWS Price List, effective 2026-10-01, as of 2026-11) |
+| st1 and sc1 price, us-east-1 | $0.045 and $0.015 per GB-month | (AWS Price List, effective 2026-10-01, as of 2026-11) |
+| Snapshot storage, standard tier | $0.05 per GB-month of stored blocks | (AWS Price List, effective 2026-10-01, as of 2026-11) |
+| Fast Snapshot Restore | $0.75 per DSU-hour per snapshot per AZ, one-hour minimum | (AWS docs and AWS Price List, as of 2026-11) |
+| EBS direct APIs | List $0.0006 per 1,000 requests; GetSnapshotBlock $0.003 per 1,000; PutSnapshotBlock $0.006 per 1,000 (512 KiB units) | (AWS Price List, effective 2026-10-01, as of 2026-11) |
+| Provisioned Rate for Volume Initialization | 100 to 300 MiB/s per volume; within 10% of target 99% of the time | (AWS docs, as of 2026-11) |
+| Initialization Regional cap | 5,000 MiB/s total across concurrent creates, per Region, quota increase available | (AWS docs, as of 2026-11) |
+| Initialization price | $0.0024 per GB of full snapshot size at 100 to 200 MiB/s, $0.0036 at 201 to 300 MiB/s | (AWS Price List, effective 2026-10-01, as of 2026-11) |
 | Elastic Volumes rate limit | 4 modifications per volume per rolling 24 h | (AWS What's New, 2026-01) |
-| Optimization time | about 6 h for a full 1 TiB volume, proportional beyond | (AWS re:Post, as of 2026-10) |
-| Archive restore time | 24 to 72 h | (secondary source, as of 2026-10) |
+| Optimization time | typically about 6 h for a full 1 TiB volume, not always linear with size, over 24 h possible when not fully initialized | (AWS docs, as of 2026-11) |
+| Archive restore time | up to 72 h | (AWS docs, as of 2026-11) |
 | Physalia cell size in EBS | 7 nodes, Paxos | (Brooker et al., NSDI 2020) |
 | Physalia nodes per server | typically thousands | (Amazon Science, 2020) |
 | EBS daily operations | over 140 trillion | (All Things Distributed, 2024-08) |
@@ -203,19 +236,19 @@ FSx for Lustre supports EFA and GPUDirect Storage on persistent file systems for
 
 | Dimension | AWS | Google Cloud | Critical difference |
 | --- | --- | --- | --- |
-| Block service | EBS gp3, io2 Block Express, st1, sc1 | Persistent Disk and Hyperdisk (Balanced, Extreme, Throughput, ML) | Hyperdisk is the newer line; per-type limits UNVERIFIED this review |
-| Performance model | Per-volume provisioned IOPS and throughput (gp3, io2) | Per-disk provisioned IOPS and throughput on Hyperdisk; Hyperdisk Storage Pools pool capacity and performance across disks (UNVERIFIED) | Pooled performance has no direct EBS equivalent |
-| Replication scope | AZ-local replicas; no synchronous cross-AZ block volume | Zonal disks plus synchronously replicated two-zone options (Regional PD, Hyperdisk Balanced High Availability, UNVERIFIED) | On AWS, cross-AZ block durability is an application or snapshot concern |
+| Block service | EBS gp3, io2 Block Express, st1, sc1 | Persistent Disk and Hyperdisk (Balanced, Balanced High Availability, Extreme, Throughput, ML) | Hyperdisk is the newer line; per-volume maxima are Balanced 160,000 IOPS and 2,400 MiB/s, Extreme 350,000 IOPS and 5,000 MiB/s, Throughput 9,600 IOPS and 2,400 MiB/s, ML 2,097,152 MiB/s (Google Cloud docs, as of 2026-11) |
+| Performance model | Per-volume provisioned IOPS and throughput (gp3, io2) | Per-disk provisioned IOPS and throughput on Hyperdisk; Hyperdisk Storage Pools pool capacity and performance across disks, with Advanced performance sharing it across disks (Google Cloud docs, as of 2026-11) | Pooled performance has no direct EBS equivalent |
+| Replication scope | AZ-local replicas; no synchronous cross-AZ block volume | Zonal disks plus synchronously replicated two-zone options (Regional PD, Hyperdisk Balanced High Availability) (Google Cloud docs, as of 2026-11) | On AWS, cross-AZ block durability is an application or snapshot concern |
 | Configuration consensus | Physalia cells placed near clients, published at NSDI 2020 | No equivalent public paper for the PD control plane | Physalia is the citable design; do not assume GCP internals |
 | Host offload | Nitro card presents NVMe, encrypts, runs transport | Titanium offload presents storage to the VM (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_06_Compute_Engine_and_Titanium_Architecture\|Titanium]]) | Both remove storage processing from host CPUs |
 | Transport | SRD multipath datagrams in Nitro hardware for Block Express | Google fabric transport; storage-specific details not public | AWS transport is documented in IEEE Micro |
-| Shared attach | io1 and io2 Multi-Attach in one AZ, no coherence | Hyperdisk multi-writer and Hyperdisk ML read-only attach to many VMs (UNVERIFIED counts) | Hyperdisk ML targets read-only fan-out of model weights |
-| Snapshot scope | Regional; copy needed for other Regions | Snapshots are global resources stored in a chosen multi-region or region (UNVERIFIED) | GCP restores cross-region without an explicit copy step |
-| Snapshot format | Incremental 512 KiB blocks in S3, direct block APIs | Incremental, Colossus-backed (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_09_Cloud_Storage_and_Colossus_Filesystem\|Colossus]]) | EBS direct APIs give block-level diff access |
-| Restore behavior | Lazy hydration; FSR or provisioned init rate to fix | Restore performance mechanics UNVERIFIED this review | Benchmark both before relying on restore RTO |
-| Online modification | 4 per rolling 24 h, size only grows | Hyperdisk performance changes rate-limited (UNVERIFIED interval) | Both forbid shrinking |
-| Parallel file system | FSx for Lustre with DRA to S3 | Google Cloud Managed Lustre with import and export to GCS (UNVERIFIED GA status) | Both are single-zone caches over object storage |
-| Encryption | KMS envelope, per-volume data key on Nitro | Default Google-managed keys or CMEK via Cloud KMS | AWS default key blocks cross-account sharing |
+| Shared attach | io1 and io2 Multi-Attach to up to 16 instances in one AZ, no coherence | Hyperdisk Balanced and Balanced High Availability read-write from up to 8 instances; Hyperdisk ML read-only to up to 2,500 instances (Google Cloud docs, as of 2026-11) | Hyperdisk ML targets read-only fan-out of model weights |
+| Snapshot scope | Regional; copy needed for other Regions | Snapshots are global resources by default, with an optional regional scope that restricts create and restore locations (Google Cloud docs, as of 2026-11) | Globally scoped GCP snapshots restore cross-region without an explicit copy step |
+| Snapshot format | Incremental 512 KiB blocks in S3, direct block APIs | Incremental, stored separately from the source disk across multiple locations (Google Cloud docs, as of 2026-11; the docs do not name the storage layer, see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_09_Cloud_Storage_and_Colossus_Filesystem\|Colossus]] for background) | EBS direct APIs give block-level diff access |
+| Restore behavior | Lazy hydration; FSR or provisioned init rate to fix | Google documents that a disk created from a snapshot can immediately achieve maximum performance with no pre-warming (Google Cloud docs, as of 2026-11) | Benchmark both before relying on restore RTO |
+| Online modification | 4 per rolling 24 h, size only grows | Hyperdisk IOPS or throughput changes once every 4 h, Hyperdisk ML every 6 h, size only grows (Google Cloud docs, as of 2026-11) | Both forbid shrinking |
+| Parallel file system | FSx for Lustre with DRA to S3 | Google Cloud Managed Lustre, GA to all customers since 2025-06-30, with import and export to GCS (Google Cloud release notes, as of 2026-11) | Both are single-zone caches over object storage |
+| Encryption | KMS envelope, data key held in Nitro hardware | Default Google-managed keys or CMEK via Cloud KMS | AWS default key blocks cross-account sharing |
 
 ## Worked Example: Little's law on gp3 and snapshot lineage with EBS direct APIs
 
@@ -225,7 +258,7 @@ Part B builds two snapshots directly with the EBS direct APIs, no instance neede
 
 ### Cost estimate
 
-Part A uses an m7i.large on-demand instance, about $0.10 per hour in us-east-1 (UNVERIFIED this review), plus a 100 GiB gp3 volume at 6,000 IOPS and 250 MiB/s.
+Part A uses an m7i.large on-demand instance, $0.1008 per hour in us-east-1 (AWS on-demand price feed, as of 2026-11), plus a 100 GiB gp3 volume at 6,000 IOPS and 250 MiB/s.
 The volume costs 100 x $0.08 + 3,000 x $0.005 + 125 x $0.04 = $28.00 per month, about $0.038 per hour.
 A one-hour run of Part A costs about $0.15 including the 8 GiB root volume.
 Part B writes 68 blocks of 512 KiB, costing 68 x $0.006 / 1,000 = $0.0004 in API charges, and stores about 34 MiB, about $0.0017 per month if forgotten.
@@ -365,13 +398,13 @@ Step 3, io2 Block Express cost: 4,096 GB x $0.125 = $512.00, plus 32,000 x $0.06
 Step 4, concurrency: at gp3 single-digit ms latency, assume 1.5 ms mean under load, so 40,000 IOPS needs 60 I/Os in flight; at io2's sub-500 us average, 20 in flight suffices.
 Step 5, decide: if the database's commit path is a queue-depth-1 WAL fsync, io2 cuts commit latency by several x and is worth about $2,400 per month; if the workload is many concurrent readers, gp3 meets the rate at 18.5% of the cost.
 Step 6, instance: confirm the instance's sustained EBS baseline exceeds 1,000 MiB/s and 40,000 IOPS with `describe-instance-types`, because a burst-only instance would meet the target for minutes and then throttle.
-Step 7, durability: gp3 at 99.9% means an expected 1 in 1,000 volumes suffers loss per year, so a fleet of 500 database volumes should plan for about one event every two years and must keep snapshots and replicas regardless of type.
+Step 7, durability: gp3 at 99.8% to 99.9% means an expected 1 to 2 in 1,000 volumes suffer loss per year, so a fleet of 500 database volumes should plan for about one event every one to two years and must keep snapshots and replicas regardless of type.
 
 ### Capacity sizing: a 500-node GPU fleet boot storm
 
 Scenario: 500 GPU instances launch from an AMI whose 200 GiB root snapshot contains model weights.
-At 300 MiB/s, one volume hydrates in 200 x 1,024 / 300 = 683 s, about 11 minutes.
-The Regional cap of 5,000 MiB/s admits only about 16 volumes at 300 MiB/s concurrently, so hydrating all 100,000 GiB takes 100,000 x 1,024 / 5,000 = 20,480 s, about 5.7 hours.
+At 300 MiB/s, one volume hydrates in 200 x 1,024 / 300 = 683 s, about 11 minutes, assuming the snapshot holds a full 200 GiB of data since time and price follow snapshot data size.
+The default Regional quota of 5,000 MiB/s admits only 16 volumes at 300 MiB/s concurrently, so hydrating all 100,000 GiB takes 100,000 x 1,024 / 5,000 = 20,480 s, about 5.7 hours.
 The provisioned rate would cost 500 x 200 GB x $0.0036 = $360 per launch and still not meet a sub-hour target.
 The architectural fix is to keep the root volume small and stream weights from S3 or FSx for Lustre into local NVMe or GPU memory (see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_08_Cloud_GPU_Autoscaling_and_Cold_Start_Mitigation|Cloud GPU Autoscaling and Cold-Start Mitigation]]).
 
@@ -405,8 +438,8 @@ Physalia's small, locally placed cells are a direct structural response to this 
 
 ### Other public EBS events
 
-In October 2012 a latent memory leak in an EBS storage server data-collection agent, triggered by a DNS change, degraded volumes in one us-east-1 AZ ([AWS PIR 680342](https://aws.amazon.com/message/680342/), UNVERIFIED this review).
-In August 2019 a cooling control failure in one Tokyo AZ overheated servers and impaired EC2 instances and EBS volumes in that AZ ([AWS PIR 56489](https://aws.amazon.com/message/56489/), UNVERIFIED this review).
+In October 2012 a latent memory leak in an EBS storage server data-collection agent, triggered by a DNS change, degraded volumes in one us-east-1 AZ ([AWS PIR 680342](https://aws.amazon.com/message/680342/)).
+In August 2019 a cooling control system failure in one Tokyo AZ overheated a small percentage of servers and impaired EC2 instances and EBS volumes in that AZ ([AWS PIR 56489](https://aws.amazon.com/message/56489/)).
 Both reinforce that EBS is AZ-scoped: a workload with every replica on EBS in one AZ inherits that AZ's thermal, power, and software failure domain (see [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_06_Physical_Failure_Domains_and_Blast_Radius|Physical Failure Domains and Blast Radius]]).
 
 ### Configuration and operational pitfalls
@@ -414,7 +447,7 @@ Both reinforce that EBS is AZ-scoped: a workload with every replica on EBS in on
 - Provisioned IOPS that the application cannot use because queue depth is too low; the fix is concurrency or io2 latency, not more IOPS.
 - gp3 IOPS raised without raising throughput, so 16 KiB to 64 KiB I/O hits the 125 MiB/s baseline first.
 - Instance EBS limits below volume limits, especially burstable sustained baselines on smaller sizes that look fine in a 10-minute benchmark and throttle in production.
-- One-minute CloudWatch averages hiding sub-second microbursts that saturate the volume; per-second statistics from the NVMe log page exist on Nitro (UNVERIFIED this review) and should back any latency SLO investigation.
+- One-minute CloudWatch averages hiding sub-second microbursts that saturate the volume; detailed NVMe statistics at up to 1-second granularity, including latency histograms and time over volume or instance limits, exist on Nitro (AWS docs, as of 2026-11) and should back any latency SLO investigation.
 - Benchmarking a volume restored from a snapshot before hydration, then concluding the volume type is slow.
 - Leaving Fast Snapshot Restore enabled: at $0.75 per DSU-hour it costs about $547 per month per snapshot per AZ, or about $1,640 per month across three AZs, for a feature used during a few launches.
 - Deleting old snapshots expecting large savings while the chain's unique footprint lives in recent snapshots.
@@ -423,37 +456,37 @@ Both reinforce that EBS is AZ-scoped: a workload with every replica on EBS in on
 - Scheduled KMS key deletion or a disabled key making every snapshot encrypted under it unrecoverable after the waiting period.
 - FSx for Lustre on millions of small files where metadata operations, not OST bandwidth, set the ceiling; pack small files into large shards (see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_07_High_Throughput_Data_Loaders_and_Storage_IO|High-Throughput Data Loaders and Storage I/O]]).
 - FSx scratch file systems used for checkpoints that are never exported to S3, losing them on a single file server failure.
-- Auto-release evicting a file that the next epoch reads, converting SSD-speed reads into S3 first-byte latency in the middle of a training step.
+- A scheduled release task evicting a file that the next epoch reads, converting SSD-speed reads into S3 first-byte latency in the middle of a training step.
 
 ## Security and Cost Angles
 
 ### Encryption hierarchy
 
-EBS uses envelope encryption: a KMS key encrypts a per-volume data key, the encrypted data key is stored with volume metadata, and the Nitro host obtains the plaintext data key from KMS at attach time and uses it for AES-256 on the host (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]]).
+EBS uses envelope encryption: a KMS key encrypts a data key, which a volume shares with its source snapshot when both use the same KMS key (AWS docs, as of 2026-11), the encrypted data key is stored with volume metadata, and the Nitro host obtains the plaintext data key from KMS at attach time and uses it for AES-256 on the host (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]]).
 Snapshots of encrypted volumes are encrypted, and volumes restored from them inherit encryption, so enabling account-level encryption by default per Region closes the unencrypted-volume gap permanently.
 EC2 uses KMS grants to let the EBS service use the key on your behalf, so key policies must allow `kms:CreateGrant` with the condition `kms:GrantIsForAWSResource` set to true, rather than broad `kms:Decrypt` to humans.
-Disabling a key affects future attaches and restores rather than instantly blinding already-attached volumes, so key revocation is not an instant kill switch for running instances (AWS docs, UNVERIFIED this review).
+Disabling a key affects future attaches and restores rather than instantly blinding already-attached volumes, because the plaintext data key stays in Nitro hardware until detach, so key revocation is not an instant kill switch for running instances (AWS docs, as of 2026-11).
 Cross-account snapshot sharing requires a customer managed key whose policy grants the target account, which also makes that key a single point of failure for DR and a candidate for multi-Region keys.
 
 ### IAM scoping
 
 - Require encryption on creation with a condition on `ec2:Encrypted` in `ec2:CreateVolume` and `ec2:RunInstances` policies, and back it with an SCP (see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]]).
 - Restrict `ec2:ModifySnapshotAttribute` because a single call can share a snapshot with another account or make it public.
-- Enable block public access for EBS snapshots at the account level so public sharing is impossible regardless of IAM (UNVERIFIED feature mode names this review).
+- Enable block public access for EBS snapshots, an account-level setting applied per Region, in `block-all-sharing` mode so public sharing is impossible regardless of IAM, noting that `block-new-sharing` leaves already public snapshots public and that neither mode stops public sharing of EBS-backed AMIs (AWS docs, as of 2026-11).
 - Treat `ebs:GetSnapshotBlock` as a raw data-read permission equivalent to `s3:GetObject` on a database backup, and scope it to backup roles only.
 - Reach the EBS direct APIs through an interface VPC endpoint so block reads never traverse the internet and can be constrained by endpoint policy (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]]).
-- Protect backup integrity with Recycle Bin retention rules and snapshot locks so a compromised admin cannot delete the recovery point (UNVERIFIED lock mode details this review).
-- For FSx for Lustre, restrict the security group to Lustre ports for client subnets only, and use a KMS customer managed key for at-rest encryption (port numbers UNVERIFIED this review).
+- Protect backup integrity with Recycle Bin retention rules and snapshot locks so a compromised admin cannot delete the recovery point, using compliance mode because governance mode can be unlocked by anyone with IAM permission while compliance mode cannot be unlocked after its optional 1 to 72 hour cooling-off period (AWS docs, as of 2026-11).
+- For FSx for Lustre, restrict the security group to Lustre ports, TCP 988 and 1018-1023, for client security groups only, noting that EFA-enabled file systems instead need all traffic allowed between explicitly referenced security groups, and use a KMS customer managed key for at-rest encryption (AWS docs, as of 2026-11).
 
 ### Unit-economics levers
 
-- Migrate gp2 to gp3 online with Elastic Volumes; gp3 is $0.08 versus gp2 at $0.10 per GB-month and decouples IOPS from size (AWS pricing via CloudZero, as of 2026-09).
+- Migrate gp2 to gp3 online with Elastic Volumes; gp3 is $0.08 versus gp2 at $0.10 per GB-month and decouples IOPS from size (AWS Price List, effective 2026-10-01, as of 2026-11).
 - Right-size gp3 IOPS and throughput against p99 of per-volume metrics, now that four modifications per day allow scale-up for a batch window and scale-down afterward.
 - Prefer one large gp3 volume over a RAID-0 stripe when the 80,000 IOPS and 2,000 MiB/s ceiling suffices, which simplifies snapshots and improves effective durability.
 - Reserve io2 Block Express for latency-bound commit paths and durability-critical single-copy data; its IOPS charges dominate its storage charges at high rates.
 - Use Data Lifecycle Manager policies to bound snapshot lineages, and remember that the bill tracks unique changed blocks, so churn rate, not volume size, predicts snapshot cost.
 - Enable Fast Snapshot Restore only around planned launches and automate disablement.
-- For AI fleets, move weights off EBS roots onto S3 or FSx for Lustre, and tie FSx capacity to the active working set with release policies (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics|GPU and TPU Unit Economics]]).
+- For AI fleets, move weights off EBS roots onto S3 or FSx for Lustre, and tie FSx capacity to the active working set with scheduled release tasks (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics|GPU and TPU Unit Economics]]).
 
 ## Interview Questions and Model Answers
 
@@ -482,8 +515,8 @@ How would you prove, with metrics rather than intuition, that the instance EBS l
 #### Model Answer
 
 Each instance gets a new volume from the AMI's snapshot, which is created instantly but hydrates lazily from S3, so every first read of a weight file pays S3 fetch latency and the model load takes far longer than on a warm volume.
-Provisioned Rate for Volume Initialization caps at 300 MiB/s per volume, so one volume needs about 11 minutes, and the Regional cap of 5,000 MiB/s across concurrent creates admits only about 16 volumes at full rate, putting full hydration of 500 volumes at about 5.7 hours and about $360 per launch.
-Fast Snapshot Restore avoids hydration but is billed per snapshot per AZ per hour and rate-limits creation with a credit bucket, so it is a partial fix for bursty launches and an expensive one if left on.
+Provisioned Rate for Volume Initialization caps at 300 MiB/s per volume, so one volume needs about 11 minutes, and the default Regional quota of 5,000 MiB/s across concurrent creates admits only 16 volumes at full rate, putting full hydration of 500 volumes at about 5.7 hours and about $360 per launch unless the quota is raised.
+Fast Snapshot Restore avoids hydration but is billed per snapshot per AZ per hour and rate-limits creation with a credit bucket, which for a 200 GiB snapshot holds 5.12 credits and refills 5.12 per hour per AZ, so it is a partial fix for bursty launches and an expensive one if left on.
 The structural fix is to separate the image from the weights: a small root volume for the OS and runtime, and weights streamed in parallel from S3 with a high-concurrency client or read from FSx for Lustre, landing on local NVMe or directly in GPU memory.
 That converts a per-volume hydration problem into an aggregate S3 or Lustre bandwidth problem that scales with request parallelism.
 I would also bake a warm pool of stopped or hibernated instances if the launch SLO is tighter than the weight streaming time.
@@ -500,7 +533,7 @@ If the weights live on FSx for Lustre linked to S3, what happens on the first la
 
 The configuration master must be linearizable because it decides which server is primary for each volume, so CAP forces it to sacrifice availability for some clients during partitions.
 A single replicated database, even multi-AZ, picks the losers arbitrarily: any client on the minority side of any partition loses the ability to fail over volumes, and those clients are unrelated to the fault.
-Physalia instead partitions the keyspace into cells serving a few volumes each and places each cell's seven nodes near the storage servers that use it, so the clients that lose a cell are mostly clients that already lost their volume's peers or instance.
+Physalia instead partitions the keyspace into cells that each serve a small subset of clients and places each cell's seven nodes near the storage servers that use it, so the clients that lose a cell are mostly clients that already lost their volume's peers or instance.
 That correlation makes the CAP cost close to free in practice.
 Cellularity also bounds blast radius: a poison-pill transaction, a bug triggered by one volume's state, or a load spike affects one cell, and nodes host a varied mix of cells so failures do not align across cells.
 Seven nodes give three-failure tolerance with exponential durability gains, and the message cost is negligible because configuration data and transaction rates are tiny.
@@ -520,9 +553,9 @@ The paper says locality means Physalia cannot rely on multi-datacenter spread fo
 Snapshots are block-incremental, so a 15-minute schedule costs roughly the unique changed blocks per interval rather than the volume size, and blocks overwritten repeatedly within an interval are stored once.
 I would take multi-volume crash-consistent snapshots with `CreateSnapshots` so data and WAL volumes share one instant, because separately timed snapshots can produce a WAL that is behind the data files.
 The base is 20,480 GB at $0.05, about $1,024 per month, and if 3% of blocks change per day with 30-day retention, the incremental footprint is up to about 18,432 GB, another $922 per month as an upper bound.
-Cross-Region copies every 4 hours re-encrypt with a destination-Region key, so the source must use a customer managed key, and I would pay inter-Region transfer on changed blocks.
+Cross-Region copies every 4 hours re-encrypt with a destination-Region key, which can be the destination's `aws/ebs` key within one account, while a copy to another account needs a customer managed source key, and I would pay inter-Region transfer on changed blocks after the first full copy, as long as the copy chain stays incremental.
 The RTO is where naive designs fail: restoring 20 TiB lazily means the database starts quickly but runs at S3-fetch latency on cold blocks, and a provisioned initialization rate of 300 MiB/s per volume needs about 19.4 hours for 20 TiB on one volume.
-So I would either stripe across about 17 volumes restored in parallel at 300 MiB/s each, which saturates the Regional 5,000 MiB/s cap and bounds full hydration at about 70 minutes for 20 TiB, or pre-enable Fast Snapshot Restore on the latest DR snapshot in the DR AZ, accepting its hourly cost, or more realistically treat snapshots as the RPO backstop and run a streaming replica for the RTO.
+So I would either stripe across 17 volumes restored in parallel at 294 MiB/s each (17 at 300 MiB/s would exceed the default Regional 5,000 MiB/s quota and fail), which saturates the quota and bounds full hydration at about 70 minutes for 20 TiB, or pre-enable Fast Snapshot Restore on the latest DR snapshots in the DR AZ, accepting its hourly cost and noting that its 16 TiB per snapshot and 5 enabled snapshots per Region limits rule out both a single 20 TiB snapshot and a 17-way stripe by default, or more realistically treat snapshots as the RPO backstop and run a streaming replica for the RTO.
 Failure modes include snapshot schedule lag behind RPO when a snapshot is still pending, KMS key misconfiguration discovered only at restore, lineage deletions by lifecycle rules that remove the last good point, and untested application recovery from crash-consistent images.
 I would close with a quarterly restore drill measured end to end, because a DR plan whose restore path is never timed has an unknown RTO.
 
@@ -537,8 +570,8 @@ If an attacker with admin credentials in the source account deletes every snapsh
 #### Model Answer
 
 I would start from required bandwidth, not capacity: if each GPU consumes about 50 MB/s of preprocessed samples, the job needs about 50 GB/s of sustained reads, and an 8 TB checkpoint written in 5 minutes needs about 27 GB/s of writes, which must not collide with the read stream.
-FSx for Lustre aggregate throughput scales with storage times the per-TiB tier, so the file system size is max(working set, bandwidth / per-TiB throughput); with a 1,000 MB/s per TiB tier that is at least 50 TiB, and with a lower tier several hundred TiB, even if the hot working set is smaller (tier values UNVERIFIED this review).
-The 2 PB dataset should not be fully resident; a DRA imports metadata, the first epoch lazy-loads from S3, and I would preload the next shards with a data repository task or `lfs hsm_restore` ahead of the reader, using release policies to evict consumed shards.
+FSx for Lustre aggregate throughput scales with storage times the per-TiB tier, so the file system size is max(working set, bandwidth / per-TiB throughput); with a 1,000 MB/s per TiB tier that is at least 50 TiB, and with the 125 MB/s per TiB tier 400 TiB, even if the hot working set is smaller (Persistent 2 SSD tiers, AWS docs, as of 2026-11).
+The 2 PB dataset should not be fully resident; a DRA imports metadata, the first epoch lazy-loads from S3, and I would preload the next shards with a data repository task or `lfs hsm_restore` ahead of the reader, using scheduled release tasks to evict consumed shards.
 It breaks first on metadata if the dataset is millions of small files, so I would require WebDataset-style tar shards of hundreds of MB, which turn per-sample metadata operations into per-shard operations.
 It breaks second on S3 first-byte latency in epoch one, which I would hide with read-ahead.
 It breaks third on checkpoint durability: the checkpoint is only on single-AZ SSD until export to S3 completes, so the checkpoint protocol must record a checkpoint as committed only after export, and I would stripe checkpoint files widely across OSTs.
@@ -576,7 +609,7 @@ Your grace window increases the time volumes spend with a single copy; how do yo
 #### Model Answer
 
 I would argue against a blanket rule and for a durability budget per data class.
-gp3's 99.9% durability means an expected 1-in-1,000 annual loss per volume, while io2 Block Express at 99.999% means 1 in 100,000, a 100x difference that matters for single-copy data such as a lone database primary.
+gp3's 99.8% to 99.9% durability means an expected 1 to 2 in 1,000 annual loss per volume, while io2 Block Express at 99.999% means 1 in 100,000, a 100x to 200x difference that matters for single-copy data such as a lone database primary.
 Many stateful services already replicate across AZs, for example a Kafka cluster with replication factor 3 across three AZs or Cassandra with RF 3 per Region; for them volume loss is a routine replica rebuild, and the probability of losing all copies before rebuild is dominated by rebuild time and correlated AZ events, not per-volume AFR.
 For those systems io2 buys little durability per dollar; the better spend is faster rebuild, cross-AZ placement, and possibly instance store with application replication.
 On cost, a 40,000 IOPS 4 TiB volume is about $548 per month on gp3 versus about $2,956 on io2, so a fleet-wide mandate on a thousand such volumes is roughly $29 million per year of incremental spend for durability the replication layer already provides.
@@ -596,8 +629,8 @@ How does correlated failure, such as a single-AZ cooling event, change your dura
 
 On AWS every EBS volume is AZ-scoped and replicated only within its AZ, so a design that relied on a synchronously replicated two-zone disk on GCP has no direct block-level equivalent on AWS.
 The ported design must move zone-failure tolerance up a layer: database-native replication across AZs, a managed engine such as Aurora whose storage spans AZs (see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_11_Amazon_Aurora_Log_Is_The_Database|Amazon Aurora: Log-Is-The-Database]]), or snapshot-based recovery with a measured RPO.
-Snapshots are another difference: EBS snapshots are Regional and need explicit cross-Region copies, while GCP snapshots are global resources, so DR runbooks must add copy schedules and destination keys (GCP behavior UNVERIFIED this review).
-Restore behavior must be re-benchmarked because EBS lazy hydration is a specific, documented mechanism with paid accelerators.
+Snapshots are another difference: EBS snapshots are Regional and need explicit cross-Region copies, while GCP snapshots are global resources by default, so DR runbooks must add copy schedules and destination keys (Google Cloud docs, as of 2026-11).
+Restore behavior must be re-benchmarked because EBS lazy hydration is a specific, documented mechanism with paid accelerators, whereas Google documents no pre-warming requirement for disks created from snapshots.
 The trade-off of AWS's choice is lower write latency, since no synchronous cross-AZ hop on every write, and cleaner failure domains, at the cost of pushing cross-AZ durability into the application.
 I would document the change as an explicit RPO and RTO delta to stakeholders rather than a silent architecture translation.
 
@@ -618,6 +651,6 @@ What write latency penalty would you expect from synchronous cross-zone replicat
 - [Initialize Amazon EBS volumes, AWS docs](https://docs.aws.amazon.com/ebs/latest/userguide/initalize-volume.html) - authoritative description of lazy hydration and the initialization rate guarantee.
 - [Accelerate the transfer of data from an Amazon EBS snapshot to a new EBS volume, AWS News Blog](https://aws.amazon.com/blogs/aws/accelerate-the-transfer-of-data-from-an-amazon-ebs-snapshot-to-a-new-ebs-volume/) - launch details and billing model for Provisioned Rate for Volume Initialization.
 - [Improve application resiliency with larger and faster Amazon EBS gp3 volumes, AWS Storage Blog](https://aws.amazon.com/blogs/storage/improve-your-application-resiliency-with-larger-and-faster-gp3-volumes/) - the 2025 gp3 limit increase and the durability argument against striping.
-- AWS re:Invent 2025 STG319, Maximizing block storage performance for high-intensity workloads - EBS engineers on gp3 versus io2 latency behavior and tuning.
+- AWS re:Invent 2025 STG319, Maximizing block storage performance for high-intensity workloads - session on getting more performance from EBS volumes (existence confirmed through a third-party write-up, recording not reviewed).
 - Braam, The Lustre Storage Architecture - the MDS, OSS, and striping model under FSx for Lustre.
 - Related chapters: [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_08_S3_Deep_Dive_Consistency_and_ShardStore|S3 Deep Dive: Consistency and ShardStore]] for the store under snapshots, [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_05_Storage_Media_and_Block_Storage_Foundations|Storage Media and Block Storage Foundations]] for NVMe media behavior, and [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_10_Amazon_DynamoDB_Architecture_and_Partitioning|Amazon DynamoDB: Architecture and Partitioning]] for the next step in AWS partitioned replication.

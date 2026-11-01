@@ -2,7 +2,7 @@
 type: paper
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://m-cacm.acm.org/magazines/2011/6/108648-dremel-interactive-analysis-of-web-scale-datasets/fulltext"
@@ -13,6 +13,21 @@ sources:
   - "https://cloud.google.com/blog/products/bigquery/inside-capacitor-bigquerys-next-generation-columnar-storage-format"
   - "https://cloud.google.com/bigquery/pricing"
   - "https://parquet.apache.org/docs/"
+  - "https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/36632.pdf"
+  - "https://docs.cloud.google.com/bigquery/quotas"
+  - "https://docs.cloud.google.com/bigquery/docs/editions-intro"
+  - "https://docs.cloud.google.com/bigquery/docs/slots"
+  - "https://docs.cloud.google.com/bigquery/docs/slots-autoscaling-intro"
+  - "https://docs.cloud.google.com/bigquery/docs/best-practices-costs"
+  - "https://cloud.google.com/blog/products/bigquery/bigquery-under-the-hood"
+  - "https://aws.amazon.com/athena/pricing/"
+  - "https://docs.aws.amazon.com/athena/latest/ug/workgroups-setting-control-limits-cloudwatch.html"
+  - "https://docs.aws.amazon.com/athena/latest/ug/capacity-management.html"
+  - "https://docs.aws.amazon.com/athena/latest/ug/engine-versions-reference-0003.html"
+  - "https://docs.aws.amazon.com/athena/latest/ug/performance-tuning-query-optimization-techniques.html"
+  - "https://trino.io/docs/current/admin/fault-tolerant-execution.html"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://aws.amazon.com/message/101925/"
 ---
 
 # Dremel: Interactive Analysis of Web-Scale Datasets (2010 VLDB)
@@ -20,7 +35,7 @@ sources:
 ## TL;DR
 
 Dremel stores nested records one column at a time and encodes their structure losslessly with two small integers per value: the repetition level and the definition level, so NULLs take no value bytes and any column can be read on its own.
-What a query costs depends on the columns it touches and the partitions and blocks it fails to prune, not on how many rows it returns, and on-demand BigQuery bills exactly that quantity at $6.25 per TiB (Google Cloud pricing, as of 2026-10).
+What a query costs depends on the columns it touches and the partitions and blocks it fails to prune, not on how many rows it returns, and on-demand BigQuery bills exactly that quantity at $6.25 per TiB (Google Cloud pricing, as of 2026-11).
 The 2010 multi-level serving tree is a fixed aggregation fan-in, so it fails on high-cardinality GROUP BY and on joins; this is why Dremel added shuffle and in 2014 moved to a disaggregated in-memory shuffle tier (Melnik et al., PVLDB 2020).
 Storage (Colossus), compute (centrally scheduled slots), and memory (the shuffle tier) are separated, which turns a query into a DAG of stages; each stage boundary acts as a checkpoint that allows preemption, straggler re-execution, and re-planning while the query runs.
 The trade-off is that you get elasticity with no operations work, and you pay in per-byte or per-slot-second pricing, multi-tenant tail latency, and a proprietary storage format; on AWS the same ideas are split across Parquet on S3, Athena (Trino), and Redshift.
@@ -116,7 +131,7 @@ This is the deep reason why "pay only for columns you touch" holds even for nest
 Parquet adopted the Dremel encoding directly, while ORC tracks the lengths of repeated fields and the presence of optional values instead (Melnik et al., PVLDB 2020).
 With levels, every leaf column carries the full structural information, so a single column is self-describing and can be read alone; the cost is that the levels are duplicated across sibling leaves.
 With lengths, structural information is stored once per repeated ancestor, which is cheaper for wide sibling groups but forces the reader to fetch the ancestor's length stream along with the leaf.
-The retrospective presents this as a real trade-off rather than a strict win for either side, and Capacitor, BigQuery's successor to the original ColumnIO format, keeps the level-based model while adding its own encodings (Melnik et al., PVLDB 2020).
+The retrospective presents this as a real trade-off rather than a strict win for either side, and Capacitor, the improved columnar format BigQuery began migrating to in 2014, was built on the foundation of the 2010 paper while adding its own features (Melnik et al., PVLDB 2020); it succeeded the ColumnIO format that BigQuery used earlier ([BigQuery under the hood](https://cloud.google.com/blog/products/bigquery/bigquery-under-the-hood)).
 
 ### The 2010 serving tree
 
@@ -125,7 +140,7 @@ Intermediate servers rewrite again for their children, and leaf servers scan tab
 A query dispatcher assigns tablets to slots, which are execution threads on leaf servers, and it can move work off a slow server onto a server holding another replica of the same tablet.
 Partial aggregates flow upward, and each level merges the results of its children.
 For aggregations with small outputs such as `COUNT`, `SUM`, and low-cardinality `GROUP BY`, adding tree levels cuts the root's fan-in and therefore the root's merge time.
-The paper also exposes a tail-latency knob that MapReduce lacked: the client can ask for results after a chosen fraction of tablets has been processed, trading completeness for latency (the specific example percentages are UNVERIFIED).
+The paper also exposes a tail-latency knob that MapReduce lacked: the client can ask for results after a chosen fraction of tablets has been processed, trading completeness for latency; the paper's example is 98% instead of 100% (Melnik et al., VLDB 2010).
 Approximate one-pass algorithms handle top-k and count-distinct, which bounds the size of each partial result.
 
 ### Why the tree had to go: cardinality arithmetic
@@ -160,14 +175,15 @@ This is the mechanism behind the "spilled to disk" statistic in BigQuery query p
 ### Serverless scheduling and dynamic query execution
 
 Slots became a fungible unit of CPU, memory, and I/O allocated by a central scheduler with a cluster-wide view, which lets the service share capacity across tenants and preempt work at stage boundaries (Melnik et al., PVLDB 2020).
-BigQuery converts SQL into an execution graph of stages, which are made of steps, and it can modify the query plan while a query is running ([BigQuery query plan docs](https://cloud.google.com/bigquery/docs/query-plan-explanation), as of 2026-10).
+BigQuery converts SQL into an execution graph of stages, which are made of steps, and it can modify the query plan while a query is running ([BigQuery query plan docs](https://cloud.google.com/bigquery/docs/query-plan-explanation), as of 2026-11).
 Mid-query re-planning works because shuffle boundaries are materialized: once a stage's output is in the tier, the scheduler can see its real size and skew, then choose the number of consumers or the join strategy (broadcast versus hash-partitioned) for the next stage.
-Job statistics report cost as `totalSlotMs`, an abstract accounting of slot time, and that is the quantity capacity pricing bills ([BigQuery query plan docs](https://cloud.google.com/bigquery/docs/query-plan-explanation), as of 2026-10).
+Job statistics report cost as `totalSlotMs`, an abstract accounting of slot time ([BigQuery query plan docs](https://cloud.google.com/bigquery/docs/query-plan-explanation), as of 2026-11).
+Capacity pricing does not bill that number directly: autoscaled reservations are charged for the slots scaled, not the slots used, in multiples of 50 ([BigQuery autoscaling docs](https://docs.cloud.google.com/bigquery/docs/slots-autoscaling-intro), as of 2026-11).
 
 ### Capacitor and storage-side pruning
 
-BigQuery stores table data in Capacitor, a columnar encoding on Colossus described in the 2016 "Inside Capacitor" engineering post ([BigQuery storage overview](https://docs.cloud.google.com/bigquery/docs/storage_overview), as of 2026-10).
-The retrospective covers storage-side techniques including evaluating predicates directly on encoded data, partition and block pruning using per-block statistics, and reordering rows within a file to lengthen runs for run-length encoding (Melnik et al., PVLDB 2020; the claim that optimal row reordering is NP-hard and solved heuristically is UNVERIFIED).
+BigQuery stores table data in Capacitor, a columnar encoding on Colossus described in the 2016 "Inside Capacitor" engineering post ([BigQuery storage overview](https://docs.cloud.google.com/bigquery/docs/storage_overview), as of 2026-11).
+The retrospective covers storage-side techniques including evaluating predicates directly on encoded data, partition and block pruning using per-block statistics, and reordering rows within a file to lengthen runs for run-length encoding (Melnik et al., PVLDB 2020); the paper calls optimal row reordering NP-complete, so Capacitor uses sampling and heuristics to build an approximate model.
 Clustering a table on a column sorts data so that block-level min and max statistics become selective, which is the user-visible lever on the same pruning machinery.
 
 ### Control plane, data plane, failure domains
@@ -187,22 +203,23 @@ For the product view of slots, reservations, and BigQuery storage, see [[17-Clou
 | Shuffle on Colossus | Built 2012 | (Melnik et al., PVLDB 2020) |
 | In-memory shuffle tier | Settled 2014 | (Melnik et al., PVLDB 2020) |
 | In-memory shuffle gains | About 10x lower shuffle latency, about 10x larger shuffles, more than 20% lower service resource cost | (Melnik et al., PVLDB 2020) |
-| BigQuery on-demand compute | $6.25 per TiB scanned, US regions | (Google Cloud pricing, as of 2026-10) |
-| On-demand free tier | First 1 TiB of query data per billing account per month | (Google Cloud pricing, as of 2026-10) |
-| On-demand minimum | 10 MB billed per referenced table | (Google Cloud pricing, as of 2026-10) |
-| Editions pay-as-you-go | Standard $0.04, Enterprise $0.06, Enterprise Plus $0.10 per slot-hour, US | (Google Cloud pricing, as of 2026-10) |
-| Editions commitments | Enterprise $0.048 (1 yr) / $0.036 (3 yr); Enterprise Plus $0.08 / $0.06 per slot-hour | (Google Cloud pricing, as of 2026-10) |
-| Slot billing granularity | Per second, quoted per slot-hour | (Google Cloud pricing, as of 2026-10) |
-| Flat-rate and Flex Slots | Retired 2023-07-05, replaced by Editions | (Google Cloud pricing, as of 2026-10) |
-| Free storage | 10 GiB per month | (Google Cloud pricing, as of 2026-10) |
-| Active logical storage | About $0.02 per GiB-month | UNVERIFIED |
-| Standard edition reservation cap | 1,600 slots | UNVERIFIED |
-| On-demand per-project slot ceiling | About 2,000 concurrent slots | UNVERIFIED |
-| Maximum query run time | 6 hours | UNVERIFIED |
-| Amazon Athena on-demand | $5 per TB scanned, 10 MB minimum per query | UNVERIFIED |
-| Break-even slot-hours per TiB, Enterprise PAYG | 6.25 / 0.06 = 104 slot-hours per TiB | Derived from the rows above (as of 2026-10) |
+| BigQuery on-demand compute | $6.25 per TiB scanned, US regions | (Google Cloud pricing, as of 2026-11) |
+| On-demand free tier | First 1 TiB of query data per billing account per month | (Google Cloud pricing, as of 2026-11) |
+| On-demand minimum | 10 MB billed per referenced table and 10 MB per query | (Google Cloud pricing, as of 2026-11) |
+| Editions pay-as-you-go | Standard $0.04, Enterprise $0.06, Enterprise Plus $0.10 per slot-hour, US | (Google Cloud pricing, as of 2026-11) |
+| Editions resource CUDs | Enterprise $0.048 (1 yr) / $0.036 (3 yr); Enterprise Plus $0.08 / $0.06 per slot-hour; not applicable to autoscaled slots | (Google Cloud pricing and autoscaling docs, as of 2026-11) |
+| Editions BigQuery CUDs | Standard $0.036 (1 yr) / $0.032 (3 yr); Enterprise $0.054 / $0.048; Enterprise Plus $0.09 / $0.08 per slot-hour | (Google Cloud pricing, as of 2026-11) |
+| Slot billing granularity | Per second with a 1-minute minimum by default; fluid scaling opt-in removes the minimum | (Google Cloud pricing, as of 2026-11) |
+| Flat-rate and Flex Slots | Retired 2023-07-05, replaced by Editions | (Google Cloud pricing, as of 2026-11) |
+| Free storage | 10 GiB per month | (Google Cloud pricing, as of 2026-11) |
+| Active logical storage | About $0.023 per GiB-month, us-central1 | (Google Cloud pricing, as of 2026-11) |
+| Standard edition reservation cap | 1,600 slots, autoscaling only, no baseline | ([BigQuery editions docs](https://docs.cloud.google.com/bigquery/docs/editions-intro), as of 2026-11) |
+| On-demand per-project slot ceiling | 2,000 concurrent slots by default, 20,000 per organization | ([BigQuery quotas](https://docs.cloud.google.com/bigquery/quotas), as of 2026-11) |
+| Maximum query run time | 6 hours, up to 18 hours in total with transient-failure retries | ([BigQuery quotas](https://docs.cloud.google.com/bigquery/quotas), as of 2026-11) |
+| Amazon Athena on-demand | $5 per TB scanned, 10 MB minimum per query | ([Athena pricing](https://aws.amazon.com/athena/pricing/), as of 2026-11) |
+| Break-even slot-hours per TiB, Enterprise PAYG | 6.25 / 0.06 = 104 slot-hours per TiB | Derived from the rows above (as of 2026-11) |
 | Level bits for `Name.Language.Country` | 2 bits r + 2 bits d per value before RLE | Derived from the 2010 encoding |
-| 2010 test table T1 | About 85 billion records, about 87 TB | UNVERIFIED |
+| 2010 test table T1 | 85 billion records, 87 TB, 270 fields | (Melnik et al., VLDB 2010) |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -213,12 +230,12 @@ For the product view of slots, reservations, and BigQuery storage, see [[17-Clou
 | Metadata | Internal table metadata with per-block statistics | AWS Glue Data Catalog plus Parquet footer statistics | Glue partition listing is an extra control-plane hop per query |
 | Execution model | Stage DAG with central slot scheduler and mid-query re-planning | Athena: Trino-based engine with pipelined worker-to-worker exchange; Redshift: leader node plus compute node slices | Trino's default streaming exchange does not persist intermediates, so a worker loss fails the query |
 | Shuffle | Disaggregated in-memory tier with disk spooling | Athena: in-worker exchange with spill; Redshift: redistribution between compute nodes | GCP decouples shuffle memory from compute; AWS ties it to the workers |
-| On-demand price | $6.25 per TiB (as of 2026-10) | Athena $5 per TB (UNVERIFIED) | TiB versus TB units differ by about 10% |
-| Capacity model | Editions slots, autoscaled, with reservations and assignments | Athena provisioned capacity in DPUs; Redshift Serverless RPUs or provisioned nodes | Each vendor defines its capacity unit differently; benchmark per workload |
-| Per-query cost guardrail | `maximum_bytes_billed` on the job; custom daily quotas | Athena workgroup `BytesScannedCutoffPerQuery` | BigQuery checks before execution; Athena cancels once the cutoff is reached |
+| On-demand price | $6.25 per TiB (as of 2026-11) | Athena $5 per TB (Athena pricing, as of 2026-11) | TiB versus TB units differ by about 10% |
+| Capacity model | Editions slots, autoscaled, with reservations and assignments | Athena capacity reservations in DPUs; Redshift Serverless RPUs or provisioned nodes | Each vendor defines its capacity unit differently; benchmark per workload |
+| Per-query cost guardrail | `maximum_bytes_billed` on the job; custom daily quotas | Athena workgroup `BytesScannedCutoffPerQuery` | BigQuery checks before execution and charges nothing on rejection; Athena cancels once the cutoff is reached and still charges for the canceled query |
 | Fine-grained access | Column policy tags, row access policies, authorized views | Lake Formation column and row filters; Redshift row-level security and column grants | Both put enforcement in the engine, not in storage |
 | Network perimeter | VPC Service Controls around `bigquery.googleapis.com` | VPC interface endpoints for Athena, S3 gateway endpoints, `aws:SourceVpce` conditions | VPC-SC blocks cross-project copy exfiltration at the API layer; AWS needs SCPs plus endpoint and bucket policies together |
-| Failure recovery | Shuffle checkpoints allow re-running a single stage | Athena retries the whole query; Redshift aborts the transaction | Long queries survive worker loss more cheaply on BigQuery |
+| Failure recovery | Shuffle checkpoints allow re-running a single stage | Athena may automatically retry the whole query and does not support Trino fault-tolerant execution (AWS docs, as of 2026-11); Redshift aborts the transaction | Long queries survive worker loss more cheaply on BigQuery |
 
 See [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_05_Messaging_Streaming_and_Analytics_Translation|Messaging, Streaming, and Analytics Translation]] for the service-level mapping.
 
@@ -336,8 +353,8 @@ Expected tail of the output: `COUNT(Name) per record ... [3, 1]` from both colum
 
 ### Part B - BigQuery measurement lab
 
-Cost estimate: the lab loads about 200,000 synthetic nested documents, roughly 400 MB of logical data, using load jobs, which are not billed as queries.
-Storage costs under one cent per month at about $0.02 per GiB-month (UNVERIFIED), and the 10 GiB monthly free storage tier covers it (Google Cloud pricing, as of 2026-10).
+Cost estimate: the lab loads about 200,000 synthetic nested documents, roughly 400 MB of logical data, using load jobs, which are free on the shared slot pool (Google Cloud pricing, as of 2026-11).
+Storage costs under one cent per month at about $0.023 per GiB-month, and the 10 GiB monthly free storage tier covers it (Google Cloud pricing, as of 2026-11).
 The three executed queries scan a few tens of MB in total, which falls inside the 1 TiB monthly free query tier; with the free tier used up, the bound is well under $0.05 at $6.25 per TiB.
 `maximum_bytes_billed` puts a hard 2 GiB ceiling on every executed query: BigQuery rejects any query that would bill more, before it runs.
 
@@ -415,7 +432,7 @@ for label, sql in QUERIES.items():
     dry = client.query(sql, job_config=bigquery.QueryJobConfig(dry_run=True, use_query_cache=False))
     print(f"{label:26s} dry-run bytes={dry.total_bytes_processed:>12,}")
     if label == "select_star":
-        continue  # LIMIT does not bound bytes scanned; never pay for this one
+        continue  # the dry-run estimate ignores LIMIT; never pay for this one
     job = client.query(sql, job_config=bigquery.QueryJobConfig(
         use_query_cache=False, maximum_bytes_billed=CAP))
     job.result()
@@ -426,7 +443,7 @@ for label, sql in QUERIES.items():
 ```
 
 What to observe:
-- The `select_star` dry run reports about the full ~400 MB, because `body` is 2,000 bytes per row and `LIMIT` stops output, not the scan.
+- The `select_star` dry run reports about the full ~400 MB, because `body` is 2,000 bytes per row and `LIMIT` does not shrink the estimate; on a clustered table like this one the estimate is an upper bound, and the actual scan can be smaller ([BigQuery cost best practices](https://docs.cloud.google.com/bigquery/docs/best-practices-costs), as of 2026-11).
 - `narrow_column` reports a few MB, because only the `name.url` stripe (with its levels) is read.
 - `pruned_partition_cluster` reads fewer bytes than its unpruned equivalent, because day partitions before `2026-10-10` are skipped and clustering on `tenant` lets block statistics skip blocks that do not contain `t7`.
 - `shuffle_heavy` shows several stages with non-zero `shuffle_output_bytes`, which is the hash-partitioned exchange that the 2010 tree could not express.
@@ -457,9 +474,9 @@ aws athena delete-work-group --work-group dremel-lab --recursive-delete-option
 Scenario: a 100 TiB event table with 400 columns of roughly equal size, partitioned by day over 365 days; a typical dashboard query reads 8 columns over 7 days, and the workload runs 5,000 queries per day.
 Step 1, bytes per query: 100 TiB / 400 columns = 0.25 TiB per column, so 8 columns = 2 TiB, and 7/365 of that = 0.0384 TiB = 39.3 GiB.
 Step 2, on-demand cost per query: 0.0384 x $6.25 = $0.24, while an unpruned `SELECT *` over the full table costs 100 x $6.25 = $625, about 2,600x more.
-Step 3, on-demand monthly cost: 5,000 x 0.0384 TiB = 192 TiB per day, which is $1,199 per day or about $36,000 per 30-day month (Google Cloud pricing, as of 2026-10).
+Step 3, on-demand monthly cost: 5,000 x 0.0384 TiB = 192 TiB per day, which is $1,199 per day or about $36,000 per 30-day month (Google Cloud pricing, as of 2026-11).
 Step 4, measure slot intensity from `INFORMATION_SCHEMA.JOBS` (`total_slot_ms`); assume a measured 0.4 slot-hours per query, so the intensity is 0.4 / 0.0384 = 10.4 slot-hours per TiB.
-Step 5, break-even: Enterprise pay-as-you-go wins whenever intensity is below 6.25 / 0.06 = 104 slot-hours per TiB; Standard's threshold is 156, Enterprise Plus's is 62.5, and Enterprise on a 3-year commitment is 174.
+Step 5, break-even: Enterprise pay-as-you-go wins whenever intensity is below 6.25 / 0.06 = 104 slot-hours per TiB; Standard's threshold is 156, Enterprise Plus's is 62.5, and Enterprise on a 3-year resource CUD is 174.
 Step 6, capacity cost: 5,000 x 0.4 = 2,000 slot-hours per day x $0.06 = $120 per day, or $3,600 per month; a 1.5x factor for autoscaler granularity and headroom gives about $5,400 per month, about 6.7x cheaper than on-demand.
 Step 7, reservation shape: 2,000 slot-hours over 24 hours averages 83 slots, but if 80% of queries fall in a 10-hour business window that is 160 slots, so with a 3x peak-to-mean ratio, set the autoscaling maximum near 500 slots with a small baseline.
 Counter-case: if the same queries parse JSON strings with regular expressions and reach 150 slot-hours per TiB, Enterprise capacity costs 150 x $0.06 = $9.00 per TiB, more than $6.25, so on-demand is cheaper.
@@ -473,9 +490,9 @@ This is why the 2010 tree re-dispatched slow tablets to other replicas and offer
 
 ### Bill shock from `SELECT *` with `LIMIT`
 
-On-demand billing counts bytes in the columns read across the partitions not pruned, so `LIMIT` does not reduce bytes billed.
-A 40 TiB table queried with `SELECT * ... LIMIT 100` bills about 40 x $6.25 = $250 per run (Google Cloud pricing, as of 2026-10).
-Mitigations: set `maximum_bytes_billed` on every job submitted by tooling, set `require_partition_filter` on large partitioned tables, add per-user daily custom query quotas, and use table preview, which reads storage directly, instead of a query.
+On-demand billing counts bytes in the columns read across the partitions not pruned, so on a non-clustered table `LIMIT` does not reduce bytes billed; on a clustered table it can reduce bytes scanned ([BigQuery cost best practices](https://docs.cloud.google.com/bigquery/docs/best-practices-costs), as of 2026-11).
+A non-clustered 40 TiB table queried with `SELECT * ... LIMIT 100` bills about 40 x $6.25 = $250 per run (Google Cloud pricing, as of 2026-11).
+Mitigations: set `maximum_bytes_billed` on every job submitted by tooling, set `require_partition_filter` on large partitioned tables, add per-user daily custom query quotas, and use table preview, which is free and does not count against quotas, instead of a query.
 
 ### Repeated-field explosion
 
@@ -496,8 +513,8 @@ Mitigation: add `LIMIT`, or write to a table and let consumers sort downstream.
 
 ### Slot contention and the idle-slot cliff
 
-In a reservation, concurrent queries share slots under fair scheduling, so a backfill that launches 200 heavy queries cuts the per-query share for everyone in the reservation.
-Idle slots borrowed from other reservations can be taken back by their owner with no warning, which produces latency cliffs that look like regressions even though nothing in your query changed.
+In a reservation, fair scheduling splits slots equally among projects with running queries and then among each project's jobs, so a backfill that launches 200 heavy queries cuts the per-query share for everyone in its own project and claims one project's share from the rest of the reservation ([BigQuery slots docs](https://docs.cloud.google.com/bigquery/docs/slots), as of 2026-11).
+Idle slots borrowed from other reservations of the same edition can be taken back by their owner within milliseconds and with no warning (BigQuery slots docs, as of 2026-11), which produces latency cliffs that look like regressions even though nothing in your query changed.
 Mitigation: put latency-critical dashboards in their own reservation with a baseline, and treat borrowed idle capacity as best-effort.
 
 ### Clustering decay and the small-tablet tax
@@ -508,7 +525,8 @@ On AWS the equivalent is millions of small Parquet files: the 2020 retrospective
 ### Control-plane dependencies during regional events
 
 Query admission depends on IAM, quota, and metadata services, so incidents in shared control-plane services can fail queries while storage stays healthy.
-Google Cloud's 2025-06-12 incident, attributed to a Service Control quota-policy change that crashed globally, and AWS's 2025-10-20 us-east-1 incident, triggered by a DynamoDB DNS automation race, both affected many dependent services; the analytics-specific impact is UNVERIFIED here, so read the providers' PIRs before citing them in a review.
+Google Cloud's [2025-06-12 incident](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), caused by a quota policy with blank fields that crashed Service Control on a null pointer globally, lists BigQuery among the affected products.
+AWS's [2025-10-19/20 (PDT) us-east-1 incident](https://aws.amazon.com/message/101925/), triggered by a race condition in DynamoDB DNS management, describes Redshift API errors and cluster unavailability, and its summary does not mention Athena.
 Mitigation: if dashboards are business-critical, keep cached or materialized results outside the query path, and route through [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|outage-informed]] runbooks.
 
 ## Security and Cost Angles
@@ -538,7 +556,7 @@ The AWS equivalent needs several pieces together: SCPs, S3 bucket policies condi
 - Column pruning is free: projecting 8 of 400 columns cuts cost by 50x before any other optimization.
 - Materialized views and pre-aggregated tables turn repeated dashboard scans into small reads.
 - Choosing on-demand or Editions per project, based on measured slot-hours per TiB, is the largest single lever, as Part D shows.
-- Physical (compressed) versus logical storage billing pays off for highly compressible data; verify current rates before switching (rates UNVERIFIED here).
+- Physical (compressed) versus logical storage billing pays off for highly compressible data: about $0.04 versus $0.023 per GiB-month active, and $0.02 versus $0.016 long-term, us-central1 (Google Cloud pricing, as of 2026-11).
 
 ## Interview Questions and Model Answers
 
@@ -569,8 +587,8 @@ Explain the mechanism and the controls you would deploy.
 
 #### Model Answer
 
-Data is stored by column, and on-demand billing counts the bytes of every column referenced across every partition not pruned, so `SELECT *` touches all 40 TiB of columns.
-`LIMIT` stops output rows after the scan is scheduled across thousands of parallel workers; it does not shrink the set of column blocks to be read, so cost is about 40 x $6.25 = $250 (Google Cloud pricing, as of 2026-10).
+Data is stored by column, and on-demand billing counts the bytes of every column referenced across every partition not pruned, so on a non-clustered table `SELECT *` touches all 40 TiB of columns.
+`LIMIT` stops output rows after the scan is scheduled across thousands of parallel workers; it does not shrink the set of column blocks to be read, so cost is about 40 x $6.25 = $250 (Google Cloud pricing, as of 2026-11).
 Controls fall into three layers.
 Per-job: tools and notebooks set `maximum_bytes_billed`, which BigQuery checks against the dry-run estimate before execution, so the query fails without being charged.
 Per-table: `require_partition_filter` on large partitioned tables, plus clustering on common filter columns so block statistics can prune.
@@ -592,12 +610,12 @@ A serving tree is a reduction toward one node: each level merges partial results
 With K distinct groups, each partial result holds about K rows however deep the tree is, so the root merges F x K rows; with K = 10^8 and fan-in 30, that is 3 x 10^9 rows in one process.
 Joins need rows with equal keys from different leaves to meet, and the tree has no lateral data movement.
 Hash-partitioned shuffle replaces reduction-to-one with reduction-to-P, giving about M x K / P rows per consumer, with P chosen by the planner.
-The first shuffle used workers' local RAM and disk, so memory for intermediates was bound to compute nodes, and a large shuffle meant large workers sitting idle while waiting for it (Melnik et al., PVLDB 2020).
+The first shuffle used workers' local RAM and disk, so memory for intermediates was bound to compute nodes, which left shuffle's quadratic scaling unmitigated and caused resource fragmentation, stranding, and poor isolation (Melnik et al., PVLDB 2020).
 The 2014 tier manages shuffle RAM and disk separately in a transient distributed store, and the paper reports about 10x lower shuffle latency, about 10x larger shuffles, and more than 20% lower resource cost (Melnik et al., PVLDB 2020).
 Besides joins, persisting intermediates outside the producer gives three properties.
 Recovery is per stage: a lost consumer re-reads its partition, and producers do not recompute.
 Preemption becomes cheap: the scheduler can reclaim slots at stage boundaries for fairness across tenants.
-Plans can adapt: once a stage's output is materialized, its real size and skew are known, so the next stage's parallelism or join strategy can change mid-query, which BigQuery documents as modifying the plan while the query runs ([query plan docs](https://cloud.google.com/bigquery/docs/query-plan-explanation), as of 2026-10).
+Plans can adapt: once a stage's output is materialized, its real size and skew are known, so the next stage's parallelism or join strategy can change mid-query, which BigQuery documents as modifying the plan while the query runs ([query plan docs](https://cloud.google.com/bigquery/docs/query-plan-explanation), as of 2026-11).
 The cost is an extra network hop and a dependency on a full-bisection fabric, since an exchange between 3,000 producers and 10,000 partitions involves about 3 x 10^7 logical flows.
 Trino's default pipelined exchange shows the opposite trade: lower latency for small queries, but a single worker failure kills the query.
 
@@ -613,12 +631,12 @@ Leadership asks whether to buy Editions capacity; walk through the decision and 
 #### Model Answer
 
 The deciding metric is slot intensity: slot-hours consumed per TiB billed, computed per project and per workload class from `INFORMATION_SCHEMA.JOBS` as `SUM(total_slot_ms)/3.6e6` divided by `SUM(total_bytes_billed)/2^40`.
-On-demand costs $6.25 per TiB and Enterprise pay-as-you-go costs $0.06 per slot-hour, so capacity wins below 104 slot-hours per TiB; the thresholds are 156 for Standard and 62.5 for Enterprise Plus (Google Cloud pricing, as of 2026-10).
+On-demand costs $6.25 per TiB and Enterprise pay-as-you-go costs $0.06 per slot-hour, so capacity wins below 104 slot-hours per TiB; the thresholds are 156 for Standard and 62.5 for Enterprise Plus (Google Cloud pricing, as of 2026-11).
 Typical BI scans over well-pruned columnar data run at tens of slot-hours per TiB, so they move to capacity; regex- or JSON-heavy ELT over small inputs can exceed the threshold and should stay on-demand.
 The decision is per project, not per company, because projects are assigned to reservations independently.
 Design: a "bi-interactive" reservation with a baseline sized to the business-hours p50 slot demand plus autoscaling to the p95, and a separate "batch" reservation with no baseline, so batch backfills cannot take dashboard capacity.
-Commit to a 1-year or 3-year rate only for the baseline that is stable over several months; autoscaled slots are billed at pay-as-you-go rates.
-Risks: autoscaler granularity and scale-down lag inflate real cost above the theoretical number, so apply a 1.3x to 1.5x factor; and capacity removes the per-query byte guardrail, so runaway queries now cost latency for everyone instead of money.
+Commit to a 1-year or 3-year rate only for the baseline that is stable over several months; slot commitments do not apply to autoscaled slots, which bill at the edition's capacity rate ([BigQuery autoscaling docs](https://docs.cloud.google.com/bigquery/docs/slots-autoscaling-intro), as of 2026-11).
+Risks: billing on scaled rather than used slots, in multiples of 50 with a 1-minute default minimum, inflates real cost above the theoretical number, so apply a 1.3x to 1.5x factor; and capacity removes the per-query byte guardrail, so runaway queries now cost latency for everyone instead of money.
 Validate with a two-week shadow analysis, pricing actual job history under both models, before signing anything.
 
 #### Follow-up Interviewer Question
@@ -671,7 +689,7 @@ Design isolation so that one team's runaway workload cannot breach other teams' 
 
 #### Model Answer
 
-The underlying problem is that slots are fungible and scheduled fairly, so a team that launches 500 concurrent heavy queries gets a large aggregate share at the expense of tenants running a single query each.
+The underlying problem is that slots are fungible and fair scheduling splits a reservation equally among projects first and jobs second ([BigQuery slots docs](https://docs.cloud.google.com/bigquery/docs/slots), as of 2026-11), so 500 concurrent heavy queries in one project mostly hurt that project, but a team that fans out across many projects gets a large aggregate share at the expense of tenants running from one project each.
 Tier tenants by SLO: put tier-0 dashboards in dedicated reservations with committed baselines, tier-1 workloads in shared reservations with autoscaling caps, and tier-2 batch work in a no-baseline reservation that only borrows idle slots.
 Assign by project, so each team's billing project maps to exactly one reservation, and the blast radius of a runaway workload is its own reservation.
 Add admission control above BigQuery for tier-1: a per-team concurrent job budget enforced in the orchestration layer, because queueing inside BigQuery still lets one tenant hold slots that others are waiting for.
@@ -690,7 +708,7 @@ How would you size each tier-0 reservation baseline from history so the probabil
 - [In-memory query execution in Google BigQuery](https://cloud.google.com/blog/products/bigquery/in-memory-query-execution-in-google-bigquery) - engineering post on the memory-first shuffle with disk spooling and its dependence on datacenter networking.
 - [BigQuery query plan and timeline](https://cloud.google.com/bigquery/docs/query-plan-explanation) - how stages, steps, slot-ms accounting, and mid-query plan changes surface to users, essential for diagnosing shuffle problems.
 - [BigQuery storage overview](https://docs.cloud.google.com/bigquery/docs/storage_overview) - the official entry point to Capacitor and table storage layout.
-- [Inside Capacitor, BigQuery's next-generation columnar storage format](https://cloud.google.com/blog/products/bigquery/inside-capacitor-bigquerys-next-generation-columnar-storage-format) - Mosha Pasumansky's 2016 post on encoding and row reordering beyond the 2010 ColumnIO format.
+- [Inside Capacitor, BigQuery's next-generation columnar storage format](https://cloud.google.com/blog/products/bigquery/inside-capacitor-bigquerys-next-generation-columnar-storage-format) - Mosha Pasumansky's April 2016 post on encoding and row reordering beyond the 2010 paper.
 - [BigQuery pricing](https://cloud.google.com/bigquery/pricing) - check current on-demand and Editions rates before any sizing exercise.
 - [Apache Parquet documentation](https://parquet.apache.org/docs/) - the open-source implementation of Dremel levels that most AWS analytics stacks depend on.
 - MapReduce: Simplified Data Processing on Large Clusters (OSDI 2004) - the batch baseline Dremel was built to beat, and the origin of the shuffle abstraction.

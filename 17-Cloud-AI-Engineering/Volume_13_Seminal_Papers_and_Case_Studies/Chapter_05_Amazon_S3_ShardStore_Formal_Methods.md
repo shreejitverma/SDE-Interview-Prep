@@ -16,6 +16,19 @@ sources:
   - "https://www.usenix.org/conference/osdi14/technical-sessions/presentation/pillai"
   - "https://asatarin.github.io/talks/2022-02-formal-methods-at-amazon-s3/"
   - "https://cloud.google.com/blog/products/storage-data-transfer/a-peek-behind-colossus-googles-file-system"
+  - "https://jamesbornholt.com/papers/shardstore-sosp21.slides.pdf"
+  - "https://aws.amazon.com/blogs/aws/twenty-years-of-amazon-s3-and-building-whats-next/"
+  - "https://aws.amazon.com/about-aws/whats-new/2020/12/amazon-s3-now-delivers-strong-read-after-write-consistency-automatically-for-all-applications/"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3/current/us-east-1/index.json"
+  - "https://aws.amazon.com/ec2/pricing/on-demand/"
+  - "https://cloud.google.com/storage/pricing"
+  - "https://cloud.google.com/products/compute/pricing/general-purpose"
+  - "https://docs.cloud.google.com/storage/docs/consistency"
+  - "https://docs.cloud.google.com/storage/docs/storage-classes"
+  - "https://www.microsoft.com/en-us/research/publication/a-randomized-scheduler-with-probabilistic-guarantees-of-finding-bugs/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://aws.amazon.com/message/41926/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
 ---
 
 # Validating Amazon S3 ShardStore with Formal Methods (2021 SOSP)
@@ -47,7 +60,7 @@ flowchart LR
   CRASH --> RM
   CONC["Stateless model checking: Loom exhaustive, Shuttle randomized"] --> API
   CONC --> RM
-  GATE["Every deployment: tens of millions of sequences on AWS Batch"] --> PBT
+  GATE["Every deployment: hundreds of millions of scenarios on AWS Batch"] --> PBT
   GATE --> CRASH
   GATE --> CONC
 ```
@@ -56,7 +69,7 @@ The core idea is that the specification is just another, much simpler implementa
 Every checker does the same thing: it drives the implementation and the model with the same inputs and compares what it observes.
 The checkers differ only in which nondeterminism they control.
 Property-based testing controls the operation sequence.
-The crash checker controls which in-flight IOs reach the media before power is lost.
+The crash checker controls which components' volatile state reaches the media before power is lost.
 The model checker controls thread interleavings.
 Each source of nondeterminism is attacked separately with a tool sized to it. That is why the approach scales to a codebase that a full team changes every week, where a one-off proof would go stale within a quarter.
 
@@ -67,12 +80,14 @@ Each source of nondeterminism is attacked separately with a tool sized to it. Th
 S3's storage nodes are key-value stores holding shards of object data, and the control plane replicates those shards across multiple nodes for durability ([Bornholt et al., SOSP 2021](https://jamesbornholt.com/papers/shardstore-sosp21.pdf)).
 S3's metadata subsystem maps customer requests to shard identifiers. ShardStore only sees keys (shard IDs) and values (shard bytes), so it is a pure data-plane component.
 The talk slides gave S3's scale at the time as over 100 trillion objects ([SOSP 2021 slides](https://jamesbornholt.com/papers/shardstore-sosp21.slides.pdf), as of 2021-10).
+AWS now reports more than 500 trillion objects ([AWS News Blog](https://aws.amazon.com/blogs/aws/twenty-years-of-amazon-s3-and-building-whats-next/), as of 2026-03).
 ShardStore is API-compatible with the storage node software it replaces. Requests can be served by either implementation, which made a gradual fleet rollout possible ([The Stack, quoting the paper](https://www.thestack.technology/aws-shardstore-s3/), as of 2026-10).
 
 The paper's argument for crash consistency is operational, not about customer durability.
 Cross-node replicas already provide the eleven-nines durability design goal.
 The real risk is cost. A crash that loses a whole node's data turns into a flood of repair traffic and IO load across the fleet, and a node that recovers into an unexpected state may need a human operator.
 So the failure domain ShardStore defends is "one node rebooted", and the property it guarantees is that a reboot stays a reboot and never becomes a rebuild.
+The paper's own unit is finer than the host: storage hosts have multiple HDDs, each disk is an isolated failure domain running an independent key-value store, and a shared RPC layer steers requests to disks by shard ID.
 For how the layers above ShardStore provide strong consistency, see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_08_S3_Deep_Dive_Consistency_and_ShardStore|S3 Deep Dive: Consistency and ShardStore]].
 
 ### On-disk layout: extents, chunks, the LSM index, and the superblock
@@ -83,21 +98,23 @@ All persistent data is stored as chunks, including the backing storage for the L
 A chunk store abstraction maps chunks onto extents.
 Object data lives outside the LSM tree, which holds only key-to-chunk-locator mappings, and this cuts write amplification compared with storing values inline.
 To delete a chunk from the middle of an extent, the store copies the extent's remaining live chunks to other extents and then resets the write pointer. The extent becomes empty and reusable.
-That append-plus-reset contract is the same one zoned and shingled media expose (this is an analogy, not a claim about S3 hardware). It lets one code path serve "diverse storage media", which the paper names as a design goal.
+That append-plus-reset contract is the one zoned media exposes, and the paper says ShardStore implements extent append on top of the write system call, with a soft write pointer per extent, specifically to support both zoned and conventional disks.
+It lets one code path serve "diverse storage media", which the paper names as a design goal.
 
 There is no single global log. ShardStore spreads shard data across extents so it can place data by expected heat and access pattern, for example to cut seek latency on hard disks.
 That placement freedom is exactly what makes crash consistency hard. A put touches a data extent, an LSM chunk in another extent, and the metadata that records where the current LSM tree lives. No single append orders all three.
+Every append also updates that extent's soft write pointer in the superblock (extent 0), which is flushed on a regular cadence, so the superblock joins the dependency graph ([Bornholt et al., section 2](https://jamesbornholt.com/papers/shardstore-sosp21.pdf)).
 
 ### Crash consistency without a WAL: the soft-updates dependency graph
 
 ShardStore uses a crash consistency protocol inspired by soft updates (Ganger and Patt, OSDI 1994; Ganger, McKusick, Soules and Patt, ACM TOCS 2000).
 Every mutating API call returns a `Dependency` value, which callers can query to learn whether the write is durable.
-A put has three ordered steps: write the chunked data to an extent, write the index entry into the LSM tree, then make the metadata point at the new LSM state. Each step depends on the one before it becoming durable ([Satarin, Formal Methods at Amazon S3](https://asatarin.github.io/talks/2022-02-formal-methods-at-amazon-S3.pdf), as of 2022-02).
+A put has three ordered steps: write the chunked data to an extent, write the index entry into the LSM tree, then make the metadata point at the new LSM state. Each step depends on the one before it becoming durable ([Bornholt et al., section 2.2](https://jamesbornholt.com/papers/shardstore-sosp21.pdf), as of 2026-11).
 The IO scheduler enforces the graph at issue time: it sends a write to the device only after every write it depends on has been acknowledged as durable.
 So every crash state of the disk is consistent by construction, and no write has to be paid for twice the way it is in a WAL.
 
 The cost moves somewhere else. The dependency rules are spread through the codebase as code, not data, and one missing edge is a latent data-loss bug that no ordinary test will ever hit.
-Later work from the same group, DepSynth (ECOOP 2023), synthesizes soft-updates dependency rules automatically. It was demonstrated on a 1,200-line Racket reimplementation of a ShardStore-like system ([Bornholt et al., DepSynth](https://jamesbornholt.com/papers/depsynth-ecoop23.pdf)).
+Later work with overlapping authors, DepSynth (ECOOP 2023), synthesizes soft-updates dependency rules automatically. It was demonstrated on a 1,200-line Racket reimplementation of a ShardStore-like system ([Van Geffen, Wang, Torlak and Bornholt, "Synthesis-Aided Crash Consistency for Storage Systems"](https://jamesbornholt.com/papers/depsynth-ecoop23.pdf)).
 The paper also notes that production ShardStore does not use a dependency-rule language: its dependencies are built in the Rust code itself.
 
 ### Reference models as specifications
@@ -120,18 +137,19 @@ The lab in this chapter measures the effect. On an injected overwrite bug, shrin
 
 Coverage as an effectiveness metric: code coverage reports show where generated sequences never reach. Coverage is the feedback loop that tells you when the bias is wrong.
 
-Failure injection: fail-stop crashes go to the crash checker. Disk IO errors are injected, and the check against the model is relaxed so that an operation that saw an IO error may fail but must not corrupt other state. Resource exhaustion is explicitly out of scope for property-based testing.
+Failure injection: fail-stop crashes go to the crash checker. Disk IO errors are injected, and a "has failed" flag relaxes the check against the model: effects of the IOs that succeeded may be visible and an operation may fail by returning no data, but it must never return wrong data. Resource exhaustion is explicitly out of scope for property-based testing.
 
 ### Crash consistency checking: DirtyReboot and a weaker model
 
 Crash checking extends the operation alphabet with `DirtyReboot` (crash and recover) and `IndexFlush` (force the LSM to persist).
-A dirty reboot chooses which pending IOs reached the media. The implementation then runs its real recovery code, and the harness checks two properties against the model.
+A dirty reboot's `RebootType` parameter chooses, per component, whether its volatile state (for example the in-memory LSM section or the buffer cache) is flushed by the crash. The implementation then runs its real recovery code, and the harness checks two properties against the model.
 Persistence: if an operation's dependency reported it persisted before the crash, it must be readable after the crash, unless a later persisted operation superseded it.
 Forward progress: after a non-crashing shutdown, every operation's dependency must report itself persistent.
 Forward progress is the half most people miss when they design this from scratch. A `Dependency` whose `is_persistent()` always returns false satisfies persistence vacuously, so without forward progress the specification would accept a store that never acknowledges durability.
 The paper deliberately says nothing about how strong a dependency must be beyond these two properties. That leaves the implementation free to batch and reorder.
 
-The crash-state space is chosen at component granularity: which whole IOs completed.
+The crash-state space is chosen at component granularity: one flush-or-not choice per component, not a choice per IO.
+Flush operations such as `IndexFlush`, interleaved with other operations, produce partially flushed states.
 The team also tried block-level crash states, where a multi-block write can tear. These runs were slower and did not uncover new bugs. The paper still reports an issue that showed up only when a crash lost the second page of a write, and the conformance checker found and minimized it automatically.
 The lesson is to model crashes at the atomicity unit the device actually guarantees, and to move to finer units only when there is evidence they find bugs the coarse ones miss.
 
@@ -148,7 +166,7 @@ Even a small ShardStore test involves tens of thousands of atomic steps, and the
 
 Shuttle offers a uniformly random scheduler and a PCT scheduler. PCT is Probabilistic Concurrency Testing (Burckhardt, Kothari, Musuvathi and Nagarakatte, ASPLOS 2010).
 PCT assigns random thread priorities and inserts d-1 random priority-change points. For a program with n threads and k steps, it finds any bug of depth d with probability at least `p = 1 / (n * k^(d-1))` per run.
-Bug depth is the number of ordering constraints that must hold at once for the bug to show. Most real concurrency bugs have depth 1 or 2.
+Bug depth is the minimum number of scheduling constraints that must hold for the bug to show. The PCT authors report that many bugs, including ordering errors, atomicity violations and deadlocks, have small depth ([MSR-TR-2010-3](https://www.microsoft.com/en-us/research/publication/a-randomized-scheduler-with-probabilistic-guarantees-of-finding-bugs/)).
 The number of runs needed for confidence c is `N = ln(1/(1-c)) / p`.
 
 With n = 4 threads, k = 10,000 steps, d = 2 and c = 0.99: p = 2.5e-5, so N = 4.605 / 2.5e-5, about 184,000 runs.
@@ -156,17 +174,20 @@ With k = 1,000,000 steps, as in ShardStore's largest tests: p = 2.5e-7, so N is 
 With d = 3 and k = 10,000: p = 2.5e-9, so N is about 1.8 billion runs, which is out of reach.
 
 Three operational rules follow, and none of them are in any getting-started guide.
-First, the paper's practice of running tens of millions of random sequences before every deployment is the right order of magnitude for depth-2 bugs in the largest harnesses, and too few for depth-3 bugs.
+First, the paper's "tens of millions of random test sequences before every ShardStore deployment" counts property-based test sequences, and the paper gives no Shuttle schedule count.
+A Shuttle budget of that same order would suit depth-2 bugs in the largest harnesses and would be too few for depth-3 bugs.
 Second, harness step count k is the main cost lever, because it enters the bound as k^(d-1). Small, focused harnesses with a few threads and a few operations each find deep bugs that large "realistic" harnesses statistically cannot.
 Third, a clean Shuttle run is a probabilistic statement about bounded-depth bugs, not a proof. That is why the paper also uses Loom for sound exhaustive checking of small critical components.
 
 ### Deep mechanism: extent reset is an on-disk use-after-free
 
 This subsection is the author's analysis of the layout the paper describes, not a bug the paper reports.
+The paper does state the requirement: the chunk store "must enforce a crash-consistent ordering for chunk evacuations, index updates, and extent resets".
 Reclaiming an extent has three steps: copy the live chunks to new extents, update the LSM index to point at the new locations, then reset the old extent's write pointer.
 If the reset reaches the media, or is merely visible to new appends, before the index update that removes the last reference is durable, then a crash can recover an index that points into an extent that now holds different data.
 That is a use-after-free in the disk address space. Unlike a memory use-after-free, it survives reboots and propagates through replication repair if nothing detects it.
 The defenses are an extra dependency edge (the reset depends on the durable index update) plus a self-identifying chunk format, so recovery can reject a locator whose target bytes do not match.
+ShardStore frames each chunk with a two-byte magic header and a random UUID repeated at both ends, which is that kind of format, and issue #10 in the paper shows a crash that still defeated it through a UUID collision with the magic bytes.
 This is exactly the kind of property that the crash checker with a `Reclaim` operation and argument bias toward reclaiming hot extents is built to probe. It is also why a missing edge stays silent under every non-crash test.
 
 ### Lineage and where this sits among verification approaches
@@ -175,7 +196,7 @@ Full verification of storage systems exists. FSCQ (Chen et al., SOSP 2015) prove
 Both verify systems built for verification. They are not fast-moving production codebases with full-time feature teams.
 Black-box crash testing went the other way. ALICE (Pillai et al., OSDI 2014) found crash vulnerabilities across widely used applications by exploring file system reordering, and CrashMonkey (Mohan et al., OSDI 2018) did bounded black-box crash testing of Linux file systems.
 ShardStore takes the middle path. It writes white-box executable specifications and uses automated, unsound-but-scalable checking, and it accepts weaker guarantees so that future engineers can validate their own changes without a formal-methods expert.
-That positioning matches AWS's broader practice described in [Systems Correctness Practices at AWS](https://dl.acm.org/doi/10.1145/3729175) (CACM 2025). That survey calls ShardStore AWS's most notable example of property-based testing and also describes deterministic simulation testing used across AWS.
+That positioning matches AWS's broader practice described in [Systems Correctness Practices at AWS](https://dl.acm.org/doi/10.1145/3729175) (CACM 2025). That survey calls ShardStore AWS's most notable example of property-based testing and also describes deterministic simulation testing used across AWS (UNVERIFIED: ACM and Queue full text returned HTTP 403, as of 2026-11).
 
 ## Numbers to Know
 
@@ -185,18 +206,18 @@ That positioning matches AWS's broader practice described in [Systems Correctnes
 | Reference model size | About 1% of implementation code | Bornholt et al., SOSP 2021 (as of 2026-10) |
 | Property definitions plus harnesses | 12% of codebase | Bornholt et al., SOSP 2021 (as of 2026-10) |
 | Issues prevented from reaching production | 16, including crash-consistency and concurrency bugs | Bornholt et al., SOSP 2021 (as of 2026-10) |
-| Concurrency test size | Tens of thousands of atomic steps typical, over 1 million largest | Bornholt et al., via The Stack (as of 2026-10) |
-| Pre-deployment random sequences | Tens of millions per deployment | Bornholt et al., via The Stack (as of 2026-10) |
+| Concurrency test size | Tens of thousands of atomic steps even in a relatively small test, over 1 million largest | Bornholt et al., SOSP 2021, section 6 (as of 2026-11) |
+| Pre-deployment random property-based test sequences | Tens of millions per deployment (not a Shuttle run count) | Bornholt et al., SOSP 2021, section 4.2 (as of 2026-11) |
 | Pre-deployment scenarios | Hundreds of millions, run on AWS Batch, for every deployment | Amazon Science blog (as of 2021-11) |
 | Extents per disk | Tens of thousands | Amazon Science blog (as of 2021-11) |
-| S3 objects stored | Over 100 trillion | SOSP 2021 talk slides (as of 2021-10); current figure UNVERIFIED |
+| S3 objects stored | Over 100 trillion in 2021; more than 500 trillion in 2026 | SOSP 2021 talk slides (as of 2021-10); [AWS News Blog](https://aws.amazon.com/blogs/aws/twenty-years-of-amazon-s3-and-building-whats-next/) (as of 2026-03) |
 | S3 durability design goal | Eleven nines | Bornholt et al., SOSP 2021 (as of 2026-10) |
 | PCT detection bound | p >= 1/(n k^(d-1)) per run | Burckhardt et al., ASPLOS 2010 |
 | Runs for 99% on depth-2 bug, n=4, k=1e6 | About 18.4 million | Derived from PCT bound (this chapter, 2026-10) |
 | Argument bias effect on overwrite bug | Median 3 cases (3 keys) vs 234 cases (1,000 keys) | Measured, `bias.py`, 30 seeds (this chapter, 2026-10) |
-| Toy harness throughput | About 16,000 histories per second per core | Measured, `shardlab.py`, sandbox x86 core (this chapter, 2026-10) |
-| S3 Standard storage list price, us-east-1, first 50 TB | 0.023 USD per GB-month | AWS pricing page (UNVERIFIED, as of 2026-10) |
-| GCS Standard storage list price, us-central1 | 0.020 USD per GB-month | Google Cloud pricing page (UNVERIFIED, as of 2026-10) |
+| Toy harness throughput | About 16,000 histories per second per core; about 32,500 on an Apple Silicon Mac | Measured, `shardlab.py`, sandbox x86 core (this chapter, 2026-10); re-measured on the Mac with Python 3.15 (as of 2026-11) |
+| S3 Standard storage list price, us-east-1, first 50 TB | 0.023 USD per GB-month | [AWS Price List API](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3/current/us-east-1/index.json) (as of 2026-11) |
+| GCS Standard storage list price, us-central1 | 0.020 USD per GiB-month (listed as 0.000027397 USD per GiB-hour, x 730 hours) | [Google Cloud pricing page](https://cloud.google.com/storage/pricing) (as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -210,8 +231,8 @@ Google has not published a ShardStore-equivalent paper on how it validates its s
 | Open-source concurrency tooling | Shuttle (randomized and PCT), Kani bounded model checker for Rust | ThreadSanitizer and the Go race detector built on it, which detect races dynamically | Shuttle controls the schedule (systematic); TSan observes one schedule (detection) |
 | Open-source fuzzing | Property-based testing in Rust ecosystems | ClusterFuzz and OSS-Fuzz | PBT checks semantics against a model; coverage fuzzing mainly finds crashes and sanitizer violations unless you add an oracle |
 | Design-level formal methods | TLA+ since at least 2011 (Newcombe et al., CACM 2015), P language, Zelkova for IAM policies | Not publicly documented at comparable breadth for storage | Prior AWS publications make AWS's portfolio easier to cite |
-| Customer-visible consistency | Strong read-after-write for all S3 objects since 2020-12 | Strong consistency for object reads after writes and for listings (Google Cloud docs, UNVERIFIED as of 2026-10) | Node-level crash consistency underpins both; neither exposes node internals |
-| Customer-visible durability design | Eleven nines | Eleven nines (Google Cloud docs, UNVERIFIED as of 2026-10) | Same headline number; it comes from cross-node redundancy, not node crash consistency |
+| Customer-visible consistency | Strong read-after-write for all S3 objects since 2020-12 ([AWS announcement](https://aws.amazon.com/about-aws/whats-new/2020/12/amazon-s3-now-delivers-strong-read-after-write-consistency-automatically-for-all-applications/)) | Strong consistency for object reads after writes and for object listings; access changes and cached public objects are the exceptions ([Google Cloud docs](https://docs.cloud.google.com/storage/docs/consistency), as of 2026-11) | Node-level crash consistency underpins both; neither exposes node internals |
+| Customer-visible durability design | Eleven nines | Eleven nines, 99.999999999% annual ([Google Cloud docs](https://docs.cloud.google.com/storage/docs/storage-classes), as of 2026-11) | Same headline number; it comes from cross-node redundancy, not node crash consistency |
 | Repair cost containment | Crash consistency keeps a reboot from becoming a full-node re-replication | Background repair by Custodians (Google blog, 2021) | Node-level correctness directly sets fleet repair bandwidth on both clouds |
 
 ## Worked Example: A ShardStore-Style Crash-Consistency Checker in 240 Lines
@@ -219,6 +240,7 @@ Google has not published a ShardStore-equivalent paper on how it validates its s
 ### What you build
 
 `shardlab.py` is a stdlib-only Python model of the ShardStore write path. A put appends a data chunk to an extent. A flush writes an index chunk that depends on the data chunks, then a superblock write that depends on the index chunk and on the previous superblock write.
+The toy's superblock plays the role of ShardStore's LSM-tree metadata record, which the paper keeps in a reserved metadata extent; ShardStore's real superblock holds soft write pointers.
 A `Disk` class enforces the soft-updates rule at issue time and completes in-flight IOs in any order. On crash it keeps a random subset of in-flight writes and drops everything not yet issued.
 The harness checks refinement against a dict, persistence after `crash`, and forward progress after `clean_reboot`, then shrinks any failure with greedy delta debugging.
 The `--buggy` flag removes one dependency edge (superblock on index).
@@ -524,7 +546,7 @@ for nkeys in (3, 30, 1000):
     print("keys=%4d  median=%6.1f  max=%5d" % (nkeys, statistics.median(runs), max(runs)))
 ```
 
-Measured output (as of 2026-10):
+Measured output (as of 2026-10; a re-run in 2026-11 reproduced it exactly):
 
 ```text
 keys=   3  median=   3.0  max=   23
@@ -537,7 +559,7 @@ That is the paper's guideline in numbers. Bias helps only for bugs whose trigger
 
 ### Step 3: optional scale-out on one spot VM (billable)
 
-Cost estimate: one 16-vCPU compute-optimized spot VM for 15 minutes, hard-capped at 2 hours. Even at on-demand rates of roughly 0.7 to 0.8 USD per hour for c7i.4xlarge or n2-standard-16 (UNVERIFIED, as of 2026-10), the worst case is under 2 USD.
+Cost estimate: one 16-vCPU compute-optimized spot VM for 15 minutes, hard-capped at 2 hours. Even at on-demand rates of 0.714 USD per hour for c7i.4xlarge in us-east-1 ([AWS on-demand pricing data](https://aws.amazon.com/ec2/pricing/on-demand/), as of 2026-11) or 0.777 USD per hour for n2-standard-16 in us-central1 ([Google Cloud pricing](https://cloud.google.com/products/compute/pricing/general-purpose), as of 2026-11), the worst case is under 2 USD.
 The VM has no SSH ingress and needs no internet access. It prints results to the serial console, which you read through the API.
 
 Build the startup script once:
@@ -607,7 +629,7 @@ gcloud billing budgets list --billing-account="$BILLING" --filter='displayName=s
 Inputs: the target is 100 million scenarios per deployment, matching the "hundreds of millions" order of magnitude AWS reports. The mean cost of a production-grade harness case is assumed to be 20 ms of single-core time, which is about 300x the toy's 61 microseconds and reflects real IO-path code and larger states (assumption).
 Compute: 1e8 cases x 0.020 s = 2.0e6 core-seconds = about 556 vCPU-hours per deployment.
 Wall clock: to fit the gate in 30 minutes you need 556 / 0.5 = about 1,112 concurrent vCPUs, or 70 instances of 16 vCPUs.
-Cost: at an assumed 0.04 USD per vCPU-hour on demand (UNVERIFIED, as of 2026-10), one gate costs about 22 USD. At 20 deployments a day that is about 450 USD a day before spot discounts.
+Cost: at about 0.045 USD per vCPU-hour on demand (c7i.4xlarge at 0.714 USD per hour across 16 vCPUs, AWS pricing data, as of 2026-11), one gate costs about 25 USD. At 20 deployments a day that is about 500 USD a day before spot discounts.
 Compare the cost of the failure it prevents. Take a hypothetical 1 PB storage node with data in a hypothetical RS(10,4) erasure code. Losing the node means reconstructing 1 PB, which reads about 10 PB from peers because each lost fragment needs k = 10 surviving fragments.
 At 100 Gbps of aggregate repair bandwidth dedicated to that node, 10 PB takes 10e15 x 8 / 100e9 = 800,000 s, about 9.3 days of fleet repair load. One avoided crash-consistency bug in a rollout wave pays for years of gates.
 The PCT arithmetic caps the gate's value. 1e8 runs buys 99% confidence for depth-2 bugs up to about k = 5e6 steps with 4 threads, and essentially nothing for depth-3 bugs in large harnesses. Spend the budget on many small harnesses, not one big one.
@@ -630,7 +652,7 @@ This lab's own first draft had this bug. The harness found it within 3 random ca
 ### IO error handling is a crash-consistency problem in disguise
 
 PostgreSQL's 2018 "fsyncgate" showed that after a failed fsync, Linux may mark dirty pages clean, so retrying fsync reports success while the data is gone. Rebello et al. (USENIX ATC 2020, "Can Applications Recover from fsync Failures?") found that widely used applications mishandle this.
-ShardStore's harness injects disk IO errors and relaxes the model check: the failed operation may fail, but no other state may change. That is the right specification, because "retry and assume success" is the classic wrong one.
+ShardStore's harness injects disk IO errors and relaxes the model check: partial effects of the IOs that succeeded may be visible and a read may fail by returning no data, but it may never return wrong data. That is the right specification, because "retry and assume success" is the classic wrong one.
 
 ### The specification can be wrong in the same way as the code
 
@@ -650,7 +672,7 @@ On 2025-10-19 and 2025-10-20, a latent race condition in DynamoDB's automated DN
 The bug class is the one Shuttle targets: two automation actors interleaving so that a delayed one applies a stale plan and cleanup removes the live one. It lived in operational automation, not in a storage engine, which is why model-checked harnesses should cover control-plane workflows as well as data structures.
 The 2017-02-28 S3 us-east-1 outage began when a command input removed more capacity than intended. The index and placement subsystems then needed full restarts that had not been exercised at that scale in years ([AWS PIR](https://aws.amazon.com/message/41926/)).
 Its lesson for this chapter: recovery paths are code too, and a recovery path that runs once every few years is effectively untested unless a checker exercises it on every build, as `DirtyReboot` does for ShardStore's.
-Google Cloud's 2025-06-12 incident report describes a new Service Control quota-policy code path that was not behind a feature flag. A policy with blank fields triggered a null-pointer crash loop across regions, and restarts without randomized backoff overloaded the backing Spanner tables.
+Google Cloud's 2025-06-12 incident report describes a new Service Control quota-policy code path that was not behind a feature flag. A policy with blank fields triggered a null-pointer crash loop across regions, and restarts without randomized exponential backoff overloaded the Spanner table in us-central1 ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
 For defect elimination, an unflagged path reached global production without a test that generated the malformed input. That is exactly the input-space coverage that property-based generation of policy records would provide.
 For deeper incident analysis, see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
@@ -673,7 +695,7 @@ Failing seeds and shrunk traces from a storage engine can embed fragments of tes
 
 Recovery code deserializes bytes from media that may be torn, bit-rotted, or written by an older or buggy software version.
 Treat every on-disk decoder as parsing hostile input: bounds-check every length, refuse rather than panic, and fuzz the decoder independently of the store.
-The paper notes that localized properties such as undefined behavior and bounds checking are checked with specialized tools. That is the right decomposition, because these properties are local to a function and suit bounded model checkers such as Kani, unlike the global refinement checks.
+The paper notes that localized properties such as undefined behavior and bounds checking are checked with specialized tools: Miri for undefined behavior, and the Crux bounded symbolic evaluator plus fuzzing for panic-freedom of deserializers. That is the right decomposition, because these properties are local to a function and suit bounded model checkers such as Kani, unlike the global refinement checks.
 
 ### Unit economics
 
@@ -711,8 +733,8 @@ ShardStore places shard data across many extents to optimize for heat and seek p
 A single WAL would serialize all mutations through one log, write every byte twice, and fight the placement freedom the design exists to provide.
 With soft updates, each write carries dependencies, and the IO scheduler issues a write only after its dependencies are durable. Every crash state is consistent without a second copy of the data.
 The risk is that correctness now lives in a graph scattered through the code.
-A missing edge, for example a superblock that can become durable before the index chunk it points to, passes every test in which the device completes in order. It shows up only when a crash hits the reorder window, and at fleet scale that happens regularly.
-That is why the crash checker controls IO completion order and checks both persistence and forward progress after `DirtyReboot`.
+A missing edge, for example an LSM-tree metadata write that can become durable before the index chunk it points to, passes every test in which the device completes in order. It shows up only when a crash hits the reorder window, and at fleet scale that happens regularly.
+That is why the crash checker controls which components flush before a crash, interleaves explicit flush operations, and checks persistence after `DirtyReboot` and forward progress after a clean reboot.
 It is also why later research (DepSynth, ECOOP 2023) synthesizes dependency rules instead of trusting humans to write them.
 
 #### Follow-up Interviewer Question
@@ -748,7 +770,7 @@ Both are stateless model checkers for Rust. They replace the concurrency primiti
 Loom explores interleavings exhaustively up to bounds. It is sound within those bounds but grows exponentially, so it works only for small harnesses on critical primitives.
 Shuttle samples schedules with a random or PCT scheduler. It gives up soundness for scale, which suits ShardStore-sized harnesses with tens of thousands to over a million atomic steps.
 For sizing I use PCT's guarantee: per-run detection probability of at least 1/(n k^(d-1)) for n threads, k steps and bug depth d.
-With 4 threads and 10,000 steps, a depth-2 bug needs about 184,000 runs for 99% confidence. At a million steps it needs about 18 million, which matches the "tens of millions of sequences per deployment" practice.
+With 4 threads and 10,000 steps, a depth-2 bug needs about 184,000 runs for 99% confidence. At a million steps it needs about 18 million, the same order as the paper's tens of millions of property-based sequences per deployment, though the paper gives no Shuttle-specific run count.
 A depth-3 bug in a 10,000-step harness needs about 1.8 billion runs, so the real lever is harness design, not more compute. Write many small harnesses with 2 to 3 threads and few operations, because k enters as k^(d-1).
 A clean run means "no depth-at-most-2 bug reachable in this harness with probability above roughly 99%". It says nothing about schedules the harness cannot express, such as a background task the harness never spawns.
 So I pair Shuttle with Loom on the smallest critical components, and I track which background tasks each harness spawns as a coverage metric.
@@ -827,7 +849,7 @@ Halfway through rollout, scrubbing finds a rare checksum mismatch only on new-im
 - [tokio-rs/loom](https://github.com/tokio-rs/loom) - the sound bounded model checker ShardStore uses for small critical components.
 - [Brooker and Desai et al., "Systems Correctness Practices at Amazon Web Services", CACM 2025](https://dl.acm.org/doi/10.1145/3729175) - places ShardStore within AWS's full portfolio, from proofs to deterministic simulation.
 - [Newcombe et al., "How Amazon Web Services Uses Formal Methods", CACM 2015](https://dl.acm.org/doi/10.1145/2699417) - the TLA+ predecessor that explains why design-level checking comes before code-level checking.
-- [Bornholt et al., "Synthesizing Soft Updates Dependency Rules" (DepSynth), ECOOP 2023](https://jamesbornholt.com/papers/depsynth-ecoop23.pdf) - automates the hardest part of soft updates, using a ShardStore-like system as the case study.
+- [Van Geffen, Wang, Torlak and Bornholt, "Synthesis-Aided Crash Consistency for Storage Systems" (DepSynth), ECOOP 2023](https://jamesbornholt.com/papers/depsynth-ecoop23.pdf) - automates the hardest part of soft updates, using a ShardStore-like system as the case study.
 - Ganger, McKusick, Soules and Patt, "Soft Updates: A Solution to the Metadata Update Problem in File Systems", ACM TOCS 2000 - the original ordering-based crash consistency protocol ShardStore adapts.
 - Burckhardt, Kothari, Musuvathi and Nagarakatte, "A Randomized Scheduler with Probabilistic Guarantees of Finding Bugs", ASPLOS 2010 - the PCT bound that drives run-count sizing.
 - [Pillai et al., "All File Systems Are Not Created Equal", OSDI 2014](https://www.usenix.org/conference/osdi14/technical-sessions/presentation/pillai) - shows how often real applications get crash consistency wrong on top of real file systems.

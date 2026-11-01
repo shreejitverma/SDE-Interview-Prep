@@ -16,6 +16,34 @@ sources:
   - "https://docs.cloud.google.com/dataflow/docs/concepts/streaming-with-cloud-pubsub"
   - "https://aws.amazon.com/builders-library/avoiding-insurmountable-queue-backlogs/"
   - "https://aws.amazon.com/message/11201/"
+  - "https://docs.cloud.google.com/pubsub/quotas"
+  - "https://cloud.google.com/pubsub/pricing"
+  - "https://cloud.google.com/dataflow/pricing"
+  - "https://docs.cloud.google.com/pubsub/docs/ordering"
+  - "https://docs.cloud.google.com/pubsub/docs/retry-requests"
+  - "https://docs.cloud.google.com/pubsub/docs/dead-letter-topics"
+  - "https://docs.cloud.google.com/pubsub/docs/push"
+  - "https://docs.cloud.google.com/pubsub/docs/bigquery"
+  - "https://docs.cloud.google.com/pubsub/docs/subscription-properties"
+  - "https://docs.cloud.google.com/pubsub/docs/cmek"
+  - "https://docs.cloud.google.com/pubsub/docs/reference/rpc/google.pubsub.v1"
+  - "https://docs.cloud.google.com/python/docs/reference/pubsub/latest/google.cloud.pubsub_v1.types.FlowControl"
+  - "https://docs.cloud.google.com/pubsub/lite/docs/deprecations"
+  - "https://docs.cloud.google.com/pubsub/lite/docs/release-notes"
+  - "https://docs.cloud.google.com/dataflow/docs/pipeline-lifecycle"
+  - "https://docs.cloud.google.com/dataflow/docs/streaming-engine"
+  - "https://cloud.google.com/blog/products/data-analytics/introducing-cloud-dataflows-new-streaming-engine"
+  - "https://docs.cloud.google.com/dataflow/docs/guides/streaming-modes"
+  - "https://docs.cloud.google.com/dataflow/docs/guides/stopping-a-pipeline"
+  - "https://docs.cloud.google.com/bigquery/docs/write-api"
+  - "https://beam.apache.org/documentation/io/built-in/google-bigquery/"
+  - "https://beam.apache.org/releases/pydoc/current/apache_beam.io.gcp.pubsub.html"
+  - "https://github.com/apache/beam/issues/17982"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://docs.aws.amazon.com/streams/latest/dev/service-sizes-and-limits.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-messages.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/standard-queues.html"
+  - "https://aws.amazon.com/kinesis/data-streams/faqs"
 ---
 
 # Messaging and Streaming: Cloud Pub/Sub and Dataflow
@@ -23,7 +51,7 @@ sources:
 ## TL;DR
 
 Pub/Sub has no partitions: any forwarder can serve any topic, so you scale by adding servers, not by resharding, and the price is that the service has to track ack state per message instead of a single offset per partition.
-A publish is acknowledged only after the message is written to at least half of N storage clusters (N odd), so publish latency is a quorum latency and one slow cluster does not stall publishers (Google Cloud docs, as of 2026-10).
+A publish is acknowledged only after the message is written to at least ceil(N/2) of N storage clusters (N odd), so publish latency is a quorum latency and one slow cluster does not stall publishers (Google Cloud docs, as of 2026-11).
 Subscriber correctness depends on lease management: the client library keeps renewing ack deadlines (10 to 600 s per renewal), and once a lease lapses the message can be redelivered to any stream, so lease expiry storms are the main cause of duplicate-delivery cascades.
 Dataflow turns Pub/Sub's per-message at-least-once delivery into exactly-once processing inside the pipeline: it deduplicates record IDs and commits state, timers, and outputs together per work item, which comes from the MillWheel "strong productions" design.
 The watermark is a heuristic estimated from the Pub/Sub backlog, triggers decide when panes are emitted, and allowed lateness decides when window state is garbage-collected, so every lateness setting trades correctness against memory and cost.
@@ -42,7 +70,7 @@ flowchart LR
   SF -->|"StreamingPull - messages + ack deadline"| SUB
   SUB -->|"ack / modack"| SF
   SF -->|"StreamingPull"| DFS["Dataflow source - dedup + watermark estimate"]
-  DFS --> SE["Streaming Engine - shuffle, per-key state, timers"]
+  DFS --> SE["Streaming Engine - shuffle, per-key state"]
   SE --> WT["Window + trigger - emits panes"]
   WT --> SK["Sink - BigQuery, Bigtable, Pub/Sub"]
 ```
@@ -59,18 +87,18 @@ The decoupling has a cost: Pub/Sub's backlog can look healthy while the pipeline
 ### Control plane versus data plane
 
 Pub/Sub's data plane servers are called forwarders and its control plane servers are called routers.
-When a client is connected to its assigned forwarders, it needs no information from the routers as long as those forwarders stay reachable (Google Cloud docs, as of 2026-10).
+When a client is connected to its assigned forwarders, it needs no information from the routers as long as those forwarders stay reachable (Google Cloud docs, as of 2026-11).
 That is static stability in the sense of [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]]: a router brownout blocks new connections and reassignments but not publishes or deliveries on streams that already exist.
-Any forwarder can serve clients for any topic or subscription, and the router picks data centers by shortest network distance, then spreads load across the forwarders in that data center (Google Cloud docs, as of 2026-10).
-Load balancing sends publisher traffic to the nearest data center where storage is allowed by the resource location restriction policy (Google Cloud docs, as of 2026-10).
-Each message is stored in a single region, but one topic can hold messages stored in many regions (Google Cloud docs, as of 2026-10).
+Any forwarder can serve clients for any topic or subscription, and the router picks data centers by shortest network distance, then spreads load across the forwarders in that data center (Google Cloud docs, as of 2026-11).
+Load balancing sends publisher traffic to the nearest data center where storage is allowed by the resource location restriction policy (Google Cloud docs, as of 2026-11).
+Each message is stored in a single region, but one topic can hold messages stored in many regions (Google Cloud docs, as of 2026-11).
 This "global topic, regional message" design is the source of most cross-region surprises: it affects ordering scope, residency, latency, and network cost.
 
 ### Life of a publish: quorum durability
 
-The publishing forwarder writes the message to N storage clusters, with N odd, and treats it as persisted once at least N/2 clusters have it (Google Cloud docs, as of 2026-10).
-Only after the message is persisted does the forwarder acknowledge the publisher, and that acknowledgment is a promise to deliver to every subscription attached at that time (Google Cloud docs, as of 2026-10).
-With N odd, "at least N/2" in practice means a strict majority, for example 2 of 3, though the public doc does not say how clusters map to zones.
+The publishing forwarder writes the message to N storage clusters, with N odd, and treats it as persisted once at least ceil(N/2) clusters have it (Google Cloud docs, as of 2026-11).
+Only after the message is persisted does the forwarder acknowledge the publisher, and that acknowledgment is a promise to deliver to every subscription attached at that time (Google Cloud docs, as of 2026-11).
+With N odd, ceil(N/2) is a strict majority, for example 2 of 3, though the public doc does not say how clusters map to zones.
 This has two consequences.
 First, publish p99 is set by the k-th fastest cluster write, not the slowest, which makes the write path tolerant of tail latency in the same way hedged quorum reads are.
 Second, a message that has been acknowledged survives the loss of a minority of clusters, so the durability unit is a cluster quorum inside one region, not a single disk or a single zone.
@@ -84,7 +112,7 @@ In Kafka or Kinesis, a topic or stream is an ordered log split into partitions o
 Consumer parallelism is capped by the partition count, and adding partitions means a resharding operation that remaps keys (see [[04-System-Design/06-Messaging-and-Streaming/Apache-Kafka|Apache Kafka]]).
 Pub/Sub removes the partition from the user-visible model.
 Publishing forwarders take whatever traffic arrives, and subscribing forwarders pull from the publish sources for a topic.
-A subscribing forwarder does not need to know about every publish source for a topic (Google Cloud docs, as of 2026-10).
+A subscribing forwarder does not need to know about every publish source for a topic (Google Cloud docs, as of 2026-11).
 What the getting-started guide leaves out is where the bookkeeping goes.
 A partitioned log stores O(partitions) consumer state: one integer offset each, and acknowledgment is cumulative.
 Pub/Sub stores per-message delivery state for every outstanding message in every subscription, because acknowledgments are individual and can arrive out of order.
@@ -96,26 +124,26 @@ Replay follows from the same design: there are no offsets, so replay is a seek t
 ### Ordering keys reintroduce affinity
 
 Ordering keys are how you get per-entity ordering on a partitionless service.
-Messages with the same ordering key, published in the same region, are delivered in publish order (Google Cloud docs, UNVERIFIED as of 2026-10).
+Messages with the same ordering key, published in the same region, are delivered in publish order (Google Cloud docs, as of 2026-11).
 Per-key ordering forces per-key serialization on both sides.
 On the publish side, the client has at most one batch in flight per key.
-On the delivery side, the service delivers a key's messages in order and redelivers later messages if an earlier one is nacked or its lease lapses.
-The throughput ceiling per ordering key is commonly documented as 1 MBps (Google Cloud docs, UNVERIFIED as of 2026-10).
-If a publish fails for an ordering key, the client library pauses that key until the application calls `resume_publish`, which turns a transient error into a per-key stall if nobody handles it.
+On the delivery side, the service delivers a key's messages in order and redelivers later messages, even acknowledged ones, if an earlier one is nacked or its lease lapses (Google Cloud docs, as of 2026-11).
+The publish throughput ceiling per ordering key is 1 MBps (Google Cloud docs, as of 2026-11).
+If a publish fails for an ordering key, the client library pauses that key until the application calls `resume_publish` (Python name; Google Cloud docs, as of 2026-11), which turns a transient error into a per-key stall if nobody handles it.
 Design rule: choose the ordering key as the smallest entity whose order matters, such as a single account, and never a tenant or region.
 
 ### Subscriber lease management: the mechanism behind duplicate storms
 
 When Pub/Sub delivers a message on a StreamingPull stream, the message is leased to that stream for the ack deadline.
-The subscription's ack deadline must be between 10 and 600 seconds (Google Cloud docs, as of 2026-10).
-A single ModifyAckDeadline request can set any deadline from 0 to 600 seconds, and 0 means nack and immediate redelivery eligibility (Google Cloud docs, as of 2026-10).
-The StreamingPull stream deadline must be at least 10 seconds and at most 600 seconds (Google Cloud docs, as of 2026-10).
+The subscription's ack deadline must be between 10 and 600 seconds (Google Cloud docs, as of 2026-11).
+A single ModifyAckDeadline request can set any deadline from 0 to 600 seconds, and 0 means nack and immediate redelivery eligibility (Google Cloud docs, as of 2026-11).
+The StreamingPull stream deadline must be at least 10 seconds and at most 600 seconds (Google Cloud docs, as of 2026-11).
 The high-level client libraries run a leaser loop on top of these primitives.
 For every message received and not yet acked, the leaser sends modacks before the current deadline expires, until the application acks, nacks, or reaches the maximum lease duration.
-The deadline each modack asks for is adaptive: the library tracks a histogram of the application's receive-to-ack latency and uses roughly its 99th percentile, clamped to the 10 to 600 s range (Google Cloud client library behavior, UNVERIFIED as of 2026-10).
-The default maximum total lease extension is 60 minutes, after which the library stops renewing and the message becomes eligible for redelivery (Google Cloud client library behavior, UNVERIFIED as of 2026-10).
+The deadline each modack asks for is adaptive: the Python, Go, and Java high-level libraries track the application's receive-to-ack latency and use its 99th percentile, within the 10 to 600 s range (Google Cloud docs, as of 2026-11).
+The default maximum total lease extension is 60 minutes (`max_lease_duration` = 3600 s in Python), after which the library stops renewing and the message becomes eligible for redelivery (Google Cloud docs, as of 2026-11).
 Flow control (`max_messages`, `max_bytes`) caps the number of outstanding leased messages.
-The client also sends these limits to the server in the StreamingPull request, but the server-side limit is best-effort, so the library can still receive messages beyond the limit and hold them in a local buffer.
+The client also sends these limits to the server in the StreamingPull request, but the server-side limit is best-effort, so the library can still receive messages beyond the limit and hold them in a local buffer (UNVERIFIED: best-effort wording not found in the RPC reference, as of 2026-11).
 Here is the failure physics.
 Leases are kept alive by a background thread or task that needs CPU and network.
 If a subscriber has a long GC pause, CPU starvation from a noisy neighbor, an event-loop block, or a saturated egress path, its modacks go out late, the leases lapse, and the service redelivers those messages to other streams.
@@ -124,19 +152,19 @@ This is the queue version of a retry storm, and the damping levers are the same 
 
 ### Exactly-once delivery is a lease contract, not end-to-end exactly-once
 
-With exactly-once delivery enabled on a pull subscription, Pub/Sub promises not to redeliver a message after a successful ack, and not to redeliver it while its ack deadline is still valid (Google Cloud docs, UNVERIFIED as of 2026-10).
-The guarantee is regional, and it applies to pull and StreamingPull subscribers, not push (Google Cloud docs, UNVERIFIED as of 2026-10).
+With exactly-once delivery enabled on a pull subscription, Pub/Sub promises not to redeliver a message after a successful ack, and not to redeliver it while its ack deadline is still valid (Google Cloud docs, as of 2026-11).
+The guarantee is regional, holding only when subscribers connect to the service in the same region, and it applies to pull and StreamingPull subscribers, not push or export subscriptions (Google Cloud docs, as of 2026-11).
 The operational change is that an ack becomes a confirmed RPC whose result the application has to check: if the lease has already expired, the ack fails, and the application has to assume someone else will process the message.
 Exactly-once delivery only covers Pub/Sub's own boundary.
 A subscriber that writes to a database and then crashes before acking will still write twice unless the write is idempotent or happens in the same transaction as a dedup record.
-The cost is higher ack latency and lower per-subscription throughput than at-least-once mode, because each ack has to be durably reconciled.
+The documented cost is significantly higher publish-to-subscribe latency than a standard subscription, plus per-minute regional quotas on messages consumed and acknowledged (Google Cloud docs, as of 2026-11).
 
 ### Push, export subscriptions, and dead letters
 
 Push subscriptions invert the lease: Pub/Sub sends HTTPS requests and treats a success status code as the ack.
-Pub/Sub adjusts its own push concurrency based on the endpoint's success rate, so an endpoint that fails intermittently gets throttled, not flooded (Google Cloud docs, UNVERIFIED as of 2026-10).
-BigQuery and Cloud Storage subscriptions are managed writers that remove a Dataflow job entirely for plain ingestion (Google Cloud docs, UNVERIFIED as of 2026-10).
-Dead-letter topics forward a message after a configurable number of delivery attempts, commonly documented as 5 to 100 (Google Cloud docs, UNVERIFIED as of 2026-10).
+Pub/Sub adjusts its own push concurrency with a slow-start push window that grows on successful delivery and shrinks on failure, so an endpoint that fails intermittently gets throttled, not flooded (Google Cloud docs, as of 2026-11).
+BigQuery and Cloud Storage subscriptions are managed writers that remove a Dataflow job entirely for plain ingestion (Google Cloud docs, as of 2026-11).
+Dead-letter topics forward a message after a configurable number of delivery attempts, 5 to 100 with a default of 5, and the count is approximate because forwarding is best-effort (Google Cloud docs, as of 2026-11).
 Dead-lettering only works if the Pub/Sub service agent can publish to the dead-letter topic and subscribe to the source subscription, and that IAM pair is the most common misconfiguration.
 
 ### Dataflow streaming execution model
@@ -146,7 +174,7 @@ The service optimizes the graph by fusing consecutive element-wise steps into st
 In streaming, work is organized by key: each key range belongs to one worker at a time, and processing for a single key is serialized.
 Autoscaling and rebalancing move key ranges between workers.
 There are no partitions to reassign, which mirrors Pub/Sub's partitionless design.
-Streaming Engine moves shuffle, per-key state, and timers out of worker VMs into a Google-managed backend, so workers hold little durable state and can be added or removed faster than in the older VM-resident model (Google Cloud docs, UNVERIFIED as of 2026-10).
+Streaming Engine moves streaming shuffle and state storage out of worker VMs into a Google-managed backend, so workers hold little durable state and can be added or removed faster than in the older VM-resident model (Google Cloud docs and launch post, as of 2026-11; neither names timers separately).
 Exactly-once processing in Dataflow is a descendant of MillWheel (Akidau et al., VLDB 2013).
 Each record carries a unique ID.
 The receiving stage checks it against a per-key record of already-processed IDs, with Bloom filters keeping the common "not seen" path off storage, and the state mutations, timer updates, and produced records for a work item are committed atomically before anything is acknowledged upstream.
@@ -156,15 +184,15 @@ For a deeper paper reading, see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Pape
 
 ### The Pub/Sub source: acks, dedup, and watermark estimation
 
-The Dataflow Pub/Sub source acknowledges messages to Pub/Sub only after the first fused stage has committed them durably in Dataflow (Google Cloud docs, UNVERIFIED as of 2026-10).
-Dataflow deduplicates Pub/Sub redeliveries by Pub/Sub message ID, and it can deduplicate publisher-side retries if you supply a unique ID attribute (`id_label` in the Python SDK) (Google Cloud docs, UNVERIFIED as of 2026-10).
+The Dataflow Pub/Sub source acknowledges messages to Pub/Sub only after the first fused stage has committed them durably in Dataflow (Google Cloud docs, as of 2026-11).
+Dataflow deduplicates Pub/Sub redeliveries by Pub/Sub message ID, and it can deduplicate publisher-side retries if you supply a unique ID attribute (`id_label` in the Python SDK), provided the duplicates are published within 10 minutes of each other (Google Cloud docs and Beam pydoc, as of 2026-11).
 Watermark estimation is the part the getting-started guide leaves out.
-If elements are timestamped by publish time, the source can get its watermark from the oldest unacknowledged publish time in the subscription backlog, together with messages that have been pulled but not yet committed.
-If you set a custom `timestamp_attribute`, publish time no longer bounds event time, so Dataflow creates an extra tracking subscription on the same topic and uses it to inspect event timestamps in the backlog (Google Cloud docs, UNVERIFIED as of 2026-10).
+If elements are timestamped by publish time, the source can get its watermark from the oldest unacknowledged publish time in the subscription backlog, through a private Pub/Sub API that reports that age (Google Cloud docs, as of 2026-11), together with messages that have been pulled but not yet committed (UNVERIFIED: the pulled-but-uncommitted term is not in the current docs).
+If you set a custom `timestamp_attribute`, publish time no longer bounds event time, so Dataflow creates an extra tracking subscription on the same topic and uses it to inspect event timestamps in the backlog (Google Cloud docs, as of 2026-11).
 The tracking subscription has three operational effects.
-It needs permission to create subscriptions on the topic.
-It roughly doubles delivery throughput billing for that source, because the tracking subscription also receives the messages.
-And deleting it by hand breaks the watermark.
+It needs `pubsub.subscriptions.create`, `pubsub.subscriptions.consume`, and `pubsub.subscriptions.delete` on the project, plus `pubsub.topics.attachSubscription` on the topic (Google Cloud docs, as of 2026-11).
+It roughly doubles delivery throughput billing for that source, because the tracking subscription also receives the messages (UNVERIFIED: inferred from per-subscription subscribe billing; the Dataflow docs do not state it, as of 2026-11).
+And deleting it by hand breaks the watermark (UNVERIFIED: not stated in the current docs, as of 2026-11).
 The estimate is a heuristic.
 A publisher that sends an event-time-old message after the watermark has passed that time produces late data by definition, and Pub/Sub cannot prevent that.
 
@@ -173,7 +201,7 @@ A publisher that sends an event-time-old message after the watermark has passed 
 MillWheel defines the low watermark of a computation A as the minimum of the timestamp of the oldest pending work in A and the low watermarks of all computations upstream of A (MillWheel, VLDB 2013).
 Dataflow applies the same recurrence: a stage's output watermark is held back by its input watermark, its oldest unprocessed element, and its oldest pending timer.
 The consequence for operations is that one stuck element anywhere upstream holds back every window downstream, across every key.
-Dataflow streaming retries a failing work item indefinitely, unlike batch, which gives up after a bounded number of attempts (Google Cloud docs, UNVERIFIED as of 2026-10).
+Dataflow streaming retries a failing work item indefinitely, unlike batch, which fails the pipeline after a bundle has failed four times (Google Cloud docs, as of 2026-11).
 So a poison message that throws in a DoFn freezes the watermark, event-time windows never fire on time, and data freshness grows without bound, even though Pub/Sub's backlog may look empty because the message was already acknowledged into Dataflow.
 
 ### Windows, triggers, accumulation, and allowed lateness
@@ -188,7 +216,7 @@ Session windows merge as new elements extend them, and the paper implements this
 The default trigger fires once when the watermark passes the end of the window.
 Composite triggers add early panes on a processing-time delay or element count, and late panes for each late element.
 DISCARDING mode emits only the delta since the last pane, while ACCUMULATING mode emits the running total, so downstream sinks have to either sum deltas or overwrite totals, and mixing the two corrupts results.
-The paper also proposed an accumulating-and-retracting mode, which Beam has not shipped as a general feature (UNVERIFIED as of 2026-10).
+The paper also proposed an accumulating-and-retracting mode, which Beam has not shipped as a general feature ([Beam issue 17982](https://github.com/apache/beam/issues/17982) is still open, as of 2026-11).
 Allowed lateness is a garbage-collection horizon.
 Window state is kept until the watermark passes the end of the window plus allowed lateness, and after that, late elements for that window are dropped and counted, not processed.
 That makes allowed lateness a memory knob: open windows per key are approximately 1 + allowed_lateness / window_size for fixed windows.
@@ -205,29 +233,30 @@ Snapshots and seek give you replay after a bad deploy, as long as message retent
 
 | Quantity | Value | Source |
 |---|---|---|
-| Subscription ack deadline | 10 to 600 s | (Google Cloud Pub/Sub RPC reference, as of 2026-10) |
-| ModifyAckDeadline per request | 0 to 600 s; 0 = immediate nack | (Google Cloud Pub/Sub RPC reference, as of 2026-10) |
-| StreamingPull stream ack deadline | 10 to 600 s | (Google Cloud Pub/Sub RPC reference, as of 2026-10) |
-| Publish durability rule | written to N clusters, N odd, persisted at >= N/2 | (Google Cloud Pub/Sub architecture doc, as of 2026-10) |
-| Message storage scope | each message stored in one region; topic spans many | (Google Cloud Pub/Sub architecture doc, as of 2026-10) |
-| Max message size | 10 MB | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Max publish request | 10 MB or 1,000 messages | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Subscription retention of unacked messages | 10 min to 7 days, default 7 days | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Topic retention | up to 31 days | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Default subscription expiration on inactivity | 31 days | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Throughput per ordering key | 1 MBps | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Dead-letter max delivery attempts | 5 to 100 | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Client library default max lease extension | 60 min | (Google Cloud client docs, UNVERIFIED as of 2026-10) |
-| Throughput price | USD 40 per TiB, first 10 GiB per month free | (Google Cloud pricing, UNVERIFIED as of 2026-10) |
-| Minimum billable size per publish or pull request | 1,000 bytes | (Google Cloud pricing, UNVERIFIED as of 2026-10) |
-| Pub/Sub Lite | deprecated; turndown 2026-03-18 | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Dataflow streaming retry of failing work items | indefinite | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Kinesis Data Streams shard write | 1 MB/s or 1,000 records/s | (AWS docs, UNVERIFIED as of 2026-10) |
-| Kinesis Data Streams shard read, shared | 2 MB/s per shard | (AWS docs, UNVERIFIED as of 2026-10) |
-| SQS visibility timeout | 0 s to 12 h, default 30 s | (AWS docs, UNVERIFIED as of 2026-10) |
-| SQS retention | 1 min to 14 days, default 4 days | (AWS docs, UNVERIFIED as of 2026-10) |
+| Subscription ack deadline | 10 to 600 s | (Google Cloud Pub/Sub RPC reference, as of 2026-11) |
+| ModifyAckDeadline per request | 0 to 600 s; 0 = immediate nack | (Google Cloud Pub/Sub RPC reference, as of 2026-11) |
+| StreamingPull stream ack deadline | 10 to 600 s | (Google Cloud Pub/Sub RPC reference, as of 2026-11) |
+| Publish durability rule | written to N clusters, N odd, persisted at >= ceil(N/2) | (Google Cloud Pub/Sub architecture doc, as of 2026-11) |
+| Message storage scope | each message stored in one region; topic spans many | (Google Cloud Pub/Sub architecture doc, as of 2026-11) |
+| Max message size | 10 MB | (Google Cloud docs, as of 2026-11) |
+| Max publish request | 10 MB or 1,000 messages | (Google Cloud docs, as of 2026-11) |
+| Subscription retention of unacked messages | 10 min to 31 days, default 7 days | (Google Cloud Pub/Sub RPC reference, as of 2026-11) |
+| Topic retention | up to 31 days | (Google Cloud docs, as of 2026-11) |
+| Default subscription expiration on inactivity | 31 days | (Google Cloud docs, as of 2026-11) |
+| Publish throughput per ordering key | 1 MBps | (Google Cloud docs, as of 2026-11) |
+| Dead-letter max delivery attempts | 5 to 100, default 5, approximate | (Google Cloud docs, as of 2026-11) |
+| Client library default max lease extension | 60 min | (Google Cloud client docs, as of 2026-11) |
+| Throughput price | USD 40 per TiB, first 10 GiB per month free | (Google Cloud pricing, as of 2026-11) |
+| BigQuery or Cloud Storage subscription throughput | USD 50 per TiB, no free tier | (Google Cloud pricing, as of 2026-11) |
+| Minimum billable size per request | 1 KB | (Google Cloud pricing, as of 2026-11) |
+| Pub/Sub Lite | deprecated; turndown effective 2027-01-31 per the deprecation notice, while an older release note still says 2026-03-18 | (Google Cloud docs, as of 2026-11) |
+| Dataflow streaming retry of failing work items | indefinite | (Google Cloud docs, as of 2026-11) |
+| Kinesis Data Streams shard write, provisioned | 1 MB/s or 1,000 records/s | (AWS docs, as of 2026-11) |
+| Kinesis Data Streams shard read, shared | 2 MB/s per shard | (AWS docs, as of 2026-11) |
+| SQS visibility timeout | 0 s to 12 h, default 30 s | (AWS docs, as of 2026-11) |
+| SQS retention | 1 min to 14 days, default 4 days | (AWS docs, as of 2026-11) |
 
-Treat every UNVERIFIED row as a value to re-check against the live quotas and pricing pages before you use it in a design review.
+Re-check these values against the live quotas and pricing pages before you use them in a design review.
 
 ## AWS vs GCP Mechanism Parity
 
@@ -237,7 +266,7 @@ Treat every UNVERIFIED row as a value to re-check against the live quotas and pr
 | Ordered partitioned log | none user-visible; ordering keys give per-key order | Kinesis Data Streams shards, MSK partitions | Kinesis and MSK cap consumer parallelism by shard or partition count; Pub/Sub caps it per ordering key only |
 | Consumer progress state | per-message ack/lease, server-side | Kinesis: per-shard sequence checkpoint (KCL lease table in DynamoDB); SQS: per-message visibility | KCL leases a shard to a worker; Pub/Sub leases a message to a stream |
 | Lease primitive | ack deadline + modack, 10 to 600 s per renewal | SQS visibility timeout + ChangeMessageVisibility | same mechanism with different bounds; both redeliver on expiry |
-| Durability on ack | quorum of N odd clusters in one region | SQS and Kinesis replicate across AZs before ack (AWS docs, UNVERIFIED as of 2026-10) | Pub/Sub states cluster quorum; AWS states multi-AZ replication |
+| Durability on ack | quorum of N odd clusters in one region | SQS stores messages in multiple AZs before ack; Kinesis synchronously replicates across three AZs (AWS docs, as of 2026-11) | Pub/Sub states cluster quorum; AWS states multi-AZ replication |
 | Replay | seek to timestamp or snapshot | Kinesis: iterator at sequence or timestamp; SQS: none | SQS has no replay after delete; design archival separately |
 | Exactly-once | Pub/Sub exactly-once delivery (regional, pull); Dataflow exactly-once processing | SQS FIFO dedup window; Flink checkpoints with transactional sinks | Dataflow commits per work item; Flink uses asynchronous barrier snapshots |
 | Stream processor | Dataflow (Beam), Streaming Engine | Amazon Managed Service for Apache Flink | Dataflow rebalances by key range; Flink rescales by key groups at a savepoint or restart |
@@ -258,8 +287,8 @@ A billing budget with alert thresholds.
 
 ### Cost estimate for the lab
 
-Pub/Sub at lab volumes (a few thousand messages) stays inside the monthly free throughput tier (Google Cloud pricing, UNVERIFIED as of 2026-10).
-The Dataflow job is the real cost: one small streaming worker plus Streaming Engine usage, on the order of tens of US cents per hour (UNVERIFIED as of 2026-10).
+Pub/Sub at lab volumes (a few thousand messages) stays inside the monthly free throughput tier of 10 GiB (Google Cloud pricing, as of 2026-11).
+The Dataflow job is the real cost: at USD 0.069 per vCPU-hour and USD 0.003557 per GiB-hour, one default streaming worker (4 vCPU, 15 GB) is about USD 0.33 per hour before disk and Streaming Engine usage (Google Cloud Dataflow pricing, as of 2026-11).
 Budget USD 10 for a two-hour session, and tear down the job as soon as you are done, because a streaming job bills by the hour whether or not data is flowing.
 
 ### Terraform / OpenTofu
@@ -564,7 +593,7 @@ What to observe:
 Each window first emits EARLY panes every 10 s, then one ON_TIME pane when the watermark passes the window end, then LATE panes for the 3-minute-late events.
 The 15-minute-late events never show up, because they arrive after the watermark has passed window end plus 600 s and are dropped as late.
 Poison messages from the worker subscription land in the dead-letter topic after five attempts.
-If you delete the two IAM bindings for the Pub/Sub service agent, they redeliver forever instead.
+If you delete the two IAM bindings for the Pub/Sub service agent, delivery attempts are not counted and nothing is forwarded, so they keep being redelivered until retention expires instead (Google Cloud docs, as of 2026-11).
 
 ### Teardown
 
@@ -586,9 +615,9 @@ Assume a workload of 50,000 events/s at 1.5 KB average, three subscriptions (a D
 Publish bytes: 50,000 x 1,500 B = 75 MB/s.
 Monthly publish: 75e6 x 2.592e6 = 1.944e14 B = 176.8 TiB.
 Delivery: 3 subscriptions x 176.8 TiB = 530.4 TiB.
-Billable throughput: 707.2 TiB, which is about USD 28,289 per month at USD 40/TiB (price UNVERIFIED as of 2026-10).
-If the Dataflow source uses a custom timestamp attribute, the tracking subscription adds roughly another 176.8 TiB of delivery, about USD 7,072 per month.
-Batching lever: for 200-byte messages published one per request, the 1,000-byte minimum bills 117.9 TiB per month of publish instead of 23.6 TiB with batching, about USD 4,715 versus USD 943 per month on the publish side alone (minimum UNVERIFIED as of 2026-10).
+Billable throughput: 707.2 TiB, of which 530.4 TiB (publish plus two regular subscriptions) is billed at USD 40/TiB and 176.8 TiB (the BigQuery subscription) at USD 50/TiB, so about USD 21,217 + USD 8,840 = USD 30,057 per month (Google Cloud pricing, as of 2026-11).
+If the Dataflow source uses a custom timestamp attribute, the tracking subscription adds roughly another 176.8 TiB of delivery, about USD 7,072 per month (UNVERIFIED: same billing inference as in Internals, as of 2026-11).
+Batching lever: for 200-byte messages published one per request, the 1 KB per-request minimum (taken as 1,000 B here) bills 117.9 TiB per month of publish instead of 23.6 TiB with batching, about USD 4,715 versus USD 943 per month on the publish side alone (Google Cloud pricing, as of 2026-11).
 Ordering check: if the busiest entity emits 400 KB/s, it fits under the per-key ceiling of about 1 MBps; a tenant-level key at 20 MB/s would not.
 Dataflow compute: measure per-vCPU throughput in a load test, never assume it.
 For illustration, take a measured 5,000 events/s per vCPU, so steady state needs 10 vCPU.
@@ -609,12 +638,12 @@ This is the queue version of the insurmountable backlog described in the AWS Bui
 
 ### Silent dead-letter failure
 
-If the Pub/Sub service agent lacks publisher rights on the dead-letter topic or subscriber rights on the source subscription, forwarding fails and poison messages keep getting redelivered.
+If the Pub/Sub service agent lacks publisher rights on the dead-letter topic or subscriber rights on the source subscription, delivery attempts are not counted, forwarding fails, and poison messages keep getting redelivered (Google Cloud docs, as of 2026-11).
 Make both IAM bindings part of the same module as the subscription, as in the lab, so neither can exist without the other.
 
 ### Subscription expiration deletes your backlog
 
-A subscription with no activity expires by default after a period commonly documented as 31 days, and with it goes all of its unacked messages (UNVERIFIED as of 2026-10).
+A subscription with no activity expires by default after 31 days, and with it goes all of its unacked messages (Google Cloud docs, as of 2026-11).
 DR standby subscriptions and seasonal consumers are exactly the ones that go idle, so set `expiration_policy { ttl = "" }` on anything you would miss.
 
 ### Ordering key stall
@@ -625,7 +654,7 @@ Ordered subscriptions need a dead-letter policy even more than unordered ones.
 
 ### Stuck watermark from a poison element in Dataflow
 
-Streaming retries failing work items indefinitely (UNVERIFIED as of 2026-10), so an exception in a DoFn freezes the watermark for every downstream window.
+Streaming retries failing work items indefinitely (Google Cloud docs, as of 2026-11), so an exception in a DoFn freezes the watermark for every downstream window.
 Pub/Sub backlog metrics may look normal because the source already acknowledged the message into Dataflow state.
 Alert on Dataflow data freshness and system lag, not only on Pub/Sub `oldest_unacked_message_age`.
 Wrap user code in a try/except that routes failures to a side output, a dead-letter pattern inside the pipeline.
@@ -657,7 +686,7 @@ The AWS Kinesis us-east-1 event of 2020-11-25 is the canonical cascading-failure
 Adding front-end capacity pushed each server past an operating-system thread limit, because servers kept threads per peer.
 Shard-map construction failed, recovery was slow because servers could only be restarted gradually, and dependent services such as Cognito and CloudWatch degraded ([AWS PIR](https://aws.amazon.com/message/11201/)).
 The lesson for Pub/Sub users: keep publisher-side buffering and fallback paths, because the messaging service is a shared dependency for many teams at once.
-The Google Cloud incident of 2025-06-12 began with a crash loop in Service Control, caused by a globally replicated policy change with unexpected blank fields, and it broke API request processing for many products across regions ([Google Cloud status history](https://status.cloud.google.com/); the exact list of affected Pub/Sub operations is UNVERIFIED).
+The Google Cloud incident of 2025-06-12 began with a crash loop in Service Control, caused by a globally replicated policy change with unexpected blank fields, and it broke API request processing for many products across regions and Pub/Sub is listed among the affected products ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
 The lesson: the API admission and authorization path is a dependency of every publish.
 Clients therefore need bounded local buffers, jittered retries, and an explicit drop policy, so an upstream outage does not become memory exhaustion in your own fleet.
 More dissections are in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
@@ -675,7 +704,7 @@ Use Workload Identity Federation instead of service account keys for out-of-clou
 ### Encryption hierarchy
 
 Pub/Sub encrypts messages at rest by default.
-With CMEK, Pub/Sub uses envelope encryption: per-topic data encryption keys are wrapped by your Cloud KMS key (Google Cloud docs, UNVERIFIED as of 2026-10).
+With CMEK, Pub/Sub uses envelope encryption: per-topic data encryption keys are wrapped by your Cloud KMS key (Google Cloud docs, as of 2026-11).
 Revoking or disabling the KMS key makes publishes and deliveries for that topic fail, so treat a key policy change like a production deploy.
 Key hierarchy mechanics continue in [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_15_Security_and_Confidential_Computing_Cloud_KMS|Security and Confidential Computing: Cloud KMS]].
 
@@ -692,10 +721,10 @@ A message storage policy is a residency control, but it narrows the failover set
 Batch on the publisher to amortize the per-request billing minimum.
 The worked example shows a 5x difference for small messages.
 Every subscription is billed delivery throughput, so remove dead subscriptions and avoid the extra tracking subscription when publish time is an acceptable event-time proxy.
-Replace a Dataflow job that only lands rows with a BigQuery subscription, which removes worker-hours entirely for schema-mapped ingestion.
+Replace a Dataflow job that only lands rows with a BigQuery subscription, which removes worker-hours entirely for schema-mapped ingestion, at USD 50/TiB instead of USD 40/TiB of subscribe throughput (Google Cloud pricing, as of 2026-11).
 Keep subscribers in the same region as the publishers that feed them, because cross-region delivery adds latency and inter-region network charges (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]]).
 In Dataflow, allowed lateness and window count drive state size, and state size drives Streaming Engine cost and worker memory, so size lateness from the measured event-time delay distribution.
-At-least-once streaming mode exists for pipelines whose sinks are already idempotent, and it lowers per-element cost (Google Cloud docs, UNVERIFIED as of 2026-10).
+At-least-once streaming mode exists for pipelines whose sinks are already idempotent or that deduplicate downstream; it requires Streaming Engine with resource-based billing and can significantly lower cost and latency (Google Cloud docs, as of 2026-11).
 
 ## Interview Questions and Model Answers
 
@@ -752,7 +781,7 @@ Pub/Sub assigns clients to any forwarder and tracks ack state per message per su
 That buys unlimited consumer fan-in, independent acks, per-message redelivery and dead-lettering, and no resharding events.
 The cost is more server-side state per outstanding message, no offset-based replay (seek by time or snapshot instead), and no ordering unless you ask for it.
 Ordering keys put affinity back only where it is requested: messages for a key are serialized at the publisher with one batch in flight, and delivered in order with redelivery of later messages on failure.
-Each key has a throughput ceiling of about 1 MBps (verify current limit).
+Each key has a publish throughput ceiling of 1 MBps (Google Cloud docs, as of 2026-11).
 For 500 MB/s with per-account ordering, the key has to be the account, not the tenant.
 Check the per-key rate distribution: if the top account exceeds the per-key ceiling, split its stream into sub-entities whose order is independent, or accept ordering only within a sub-entity.
 Publish from the same region as the key's producers, because ordering only holds within a publish region.
@@ -797,7 +826,7 @@ Pub/Sub to Dataflow is at-least-once delivery.
 Dataflow deduplicates redeliveries by message ID, and deduplicates publisher retries via the custom ID attribute.
 Inside Dataflow, processing is effectively exactly-once: record IDs are deduplicated at each shuffle boundary, and each work item's state mutations, timers, and outputs are committed atomically, with outputs checkpointed before they are sent downstream, so retries replay committed results.
 Dataflow to BigQuery can be exactly-once if the sink path is transactional or deduplicated.
-The Storage Write API offers exactly-once with stream offsets, and Beam's BigQuery IO exposes an exactly-once mode and an at-least-once mode that trade cost for duplicates (exact mode names: verify against current Beam docs).
+The Storage Write API offers exactly-once with stream offsets, and Beam's BigQuery IO exposes an exactly-once mode (`STORAGE_WRITE_API`) and an at-least-once mode (`STORAGE_API_AT_LEAST_ONCE`) that trade cost for duplicates (Beam docs, as of 2026-11).
 Dataflow to an external payment API cannot be exactly-once from Dataflow's side, because a retried bundle can re-issue the HTTP call after a crash before commit.
 The only correct design is an idempotency key derived from the business ID, enforced by the payment API, or a transactional outbox.
 So the honest statement is: end-to-end exactly-once is a property of idempotent effects plus deduplicated transport, not a checkbox on any single service.
@@ -822,7 +851,7 @@ A cheaper warm-standby variant keeps the second job running at minimum workers a
 At 1 GB/s, a 10-minute regional loss leaves 600 GB of backlog, so to recover within 10 minutes, the standby needs 2x steady-state capacity.
 The fraud sink has to be idempotent across both jobs, keyed by event ID plus window, so that an active-active overlap produces upserts, not double counting.
 Freshness SLO design: page on per-stage data freshness, add an in-pipeline dead-letter path so poison elements cannot pin the watermark, and size allowed lateness from the measured event-time delay distribution, because lateness drives state size and therefore failover warm-up time.
-Cost check at 1 GB/s: about 2.4 PiB per month of publish, plus about 2.4 PiB of delivery per subscription.
+Cost check at 1 GB/s: about 2.3 PiB per month of publish, plus about 2.3 PiB of delivery per subscription.
 Two subscriptions put the throughput bill alone in the hundreds of thousands of dollars per month at list price, so I would push producers toward compression and batching.
 I would also challenge whether the archive path needs Dataflow at all, or whether a BigQuery subscription can do it.
 Finally, I would document the control-plane dependencies, such as API admission and IAM, and require bounded producer-side buffers with a drop-or-spill policy, because a control-plane incident affects both regions at the same time.

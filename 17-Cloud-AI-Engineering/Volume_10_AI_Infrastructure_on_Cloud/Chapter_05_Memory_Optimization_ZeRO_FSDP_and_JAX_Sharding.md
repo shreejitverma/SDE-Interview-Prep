@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/abs/1910.02054"
@@ -19,6 +19,21 @@ sources:
   - "https://arxiv.org/abs/1604.06174"
   - "https://arxiv.org/abs/2205.05198"
   - "https://arxiv.org/abs/2407.21783"
+  - "https://github.com/pytorch/pytorch/issues/147168"
+  - "https://github.com/pytorch/pytorch/blob/v2.8.0/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp"
+  - "https://docs.pytorch.org/tutorials/intermediate/FSDP_tutorial.html"
+  - "https://www.nvidia.com/en-us/data-center/h100/"
+  - "https://aws.amazon.com/ec2/instance-types/p5/"
+  - "https://aws.amazon.com/ec2/instance-types/g6e/"
+  - "https://docs.aws.amazon.com/dlami/latest/devguide/aws-deep-learning-x86-gpu-pytorch-2.12-ubuntu-24-04.html"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/archive/nxd-training/index.html"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/v2.32.0/_sources/frameworks/torch/about/index.rst"
+  - "https://docs.cloud.google.com/tpu/docs/v5p"
+  - "https://docs.cloud.google.com/tpu/docs/v6e"
+  - "https://docs.cloud.google.com/tpu/docs/tpu7x"
+  - "https://docs.cloud.google.com/tpu/docs/regions-zones"
+  - "https://docs.cloud.google.com/compute/docs/gpus/gpu-network-bandwidth"
+  - "https://docs.cloud.google.com/ai-hypercomputer/docs/workloads/pathways-on-cloud/resilient-training"
 ---
 
 # Memory Optimization: ZeRO, FSDP, and JAX Sharding
@@ -129,7 +144,8 @@ So grouping is still at module granularity even though storage is per parameter.
 The official tutorial says FSDP2 reaches lower, deterministic GPU memory by avoiding `recordStream`, without any CPU synchronization, and declares FSDP1 deprecated ([PyTorch FSDP2 tutorial, as of 2026-10](https://docs.pytorch.org/tutorials/intermediate/FSDP_tutorial.html)).
 FSDP2 makes the compute stream wait on the communication stream's event and frees buffers in program order, rather than tagging blocks for deferred reuse.
 That is the wait_event approach in the PyTorch devlog above.
-One known gap: `record_stream` is still built into c10d collectives called with `async_op=True`, and a filed issue proposes `TORCH_NCCL_AVOID_RECORD_STREAMS=1` as the workaround ([pytorch/pytorch#147168](https://github.com/pytorch/pytorch/issues/147168)).
+One historical gap: through PyTorch 2.7, `record_stream` was built into c10d collectives called with `async_op=True`, and a filed issue showed it over-allocating under FSDP2 and proposed making `TORCH_NCCL_AVOID_RECORD_STREAMS=1` the default ([pytorch/pytorch#147168](https://github.com/pytorch/pytorch/issues/147168)).
+Since PyTorch 2.8, avoiding `record_stream` is the default for NCCL collectives and the variable is deprecated; `record_stream` remains only on paths such as point-to-point ops ([ProcessGroupNCCL.cpp, v2.8.0](https://github.com/pytorch/pytorch/blob/v2.8.0/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp), as of 2026-10).
 
 FSDP2 controls that matter in production:
 
@@ -219,9 +235,9 @@ That property matters for in-memory peer recovery, covered in [[17-Cloud-AI-Engi
 | Full recomputation FLOP tax | +2P per token on 6P, about +33% | derived from the 2P/4P forward/backward split |
 | JAX `pjit` and `experimental.shard_map` | deprecated in JAX 0.8.0 (2025-10-15) | JAX changelog (as of 2026-10) |
 | FSDP1 status | deprecated; FSDP2 `fully_shard` recommended | PyTorch FSDP2 tutorial (as of 2026-10) |
-| H100 SXM HBM / dense bf16 peak | 80 GB / about 989 TFLOP/s | UNVERIFIED (vendor spec, not re-checked this revision) |
-| AWS p5.48xlarge | 8x H100, 3,200 Gbps EFA (about 50 GB/s per GPU) | UNVERIFIED (AWS docs, not re-checked this revision) |
-| TPU HBM per chip, v5p / v6e / Ironwood | 95 / 32 / 192 GB | UNVERIFIED (Google Cloud docs, not re-checked this revision) |
+| H100 SXM HBM / dense bf16 peak | 80 GB / about 989 TFLOP/s (NVIDIA lists 1,979 with sparsity) | NVIDIA H100 product page (as of 2026-10) |
+| AWS p5.48xlarge | 8x H100, 3,200 Gbps EFA (about 50 GB/s per GPU) | AWS EC2 P5 page (as of 2026-10) |
+| TPU HBM per chip, v5p / v6e / Ironwood | 95 GiB / 32 GB / 192 GiB | Google Cloud TPU docs (as of 2026-10) |
 | GPU and TPU on-demand list prices | query at lab time (commands below) | not stated; prices change, see Worked Example |
 
 ## AWS vs GCP Mechanism Parity
@@ -229,11 +245,11 @@ That property matters for in-memory peer recovery, covered in [[17-Cloud-AI-Engi
 | Dimension | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
 | Primary sharding runtime on GPU | PyTorch FSDP2 or DeepSpeed ZeRO on P5/P6 instances; SageMaker model parallel library v2 builds on FSDP | PyTorch FSDP2 or DeepSpeed on A3/A4 VMs and GKE | Same software; differences live in the collective transport |
-| Primary sharding runtime on custom silicon | Trainium with NeuronX Distributed; ZeRO-1 optimizer sharding is the common path (UNVERIFIED) | TPU with JAX/XLA SPMD; FSDP is a mesh axis (MaxText `ici_fsdp_parallelism`) | TPU FSDP is compiled and statically scheduled; GPU FSDP is eager hooks plus an allocator |
-| Collective transport | NCCL over EFA via the aws-ofi-nccl libfabric plugin; SRD multipath ([[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI\|Interconnects]]) | NCCL over Google GPU networking stacks (TCPXO or RDMA by VM family, UNVERIFIED); XLA collectives over ICI on TPU | ICI is a direct torus inside a slice, so FSDP all-gathers never touch the DC network; across slices (DCN) use DP, not FSDP |
+| Primary sharding runtime on custom silicon | Trainium: NeuronX Distributed Training used ZeRO-1 optimizer sharding (`NeuronZero1Optimizer`), but it reached end-of-support in Neuron 2.32; new training goes to TorchNeuron native PyTorch (Beta) with standard FSDP, DTensor, and DDP APIs (AWS Neuron docs, as of 2026-10) | TPU with JAX/XLA SPMD; FSDP is a mesh axis (MaxText `ici_fsdp_parallelism`) | TPU FSDP is compiled and statically scheduled; GPU FSDP is eager hooks plus an allocator |
+| Collective transport | NCCL over EFA via the aws-ofi-nccl libfabric plugin; SRD multipath ([[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI\|Interconnects]]) | NCCL over Google GPU networking stacks by VM family: GPUDirect-TCPX on A3 High, TCPXO on A3 Mega, GPUDirect RDMA on A3 Ultra, A4, and A4X (Google Cloud docs, as of 2026-10); XLA collectives over ICI on TPU | ICI is a direct torus inside a slice, so FSDP all-gathers never touch the DC network; across slices (DCN) use DP, not FSDP |
 | Where the shard group should live | Within an UltraCluster placement group; HSDP shard group inside NVLink domain when it fits | Within one TPU slice (ICI); multislice replicas over DCN | Getting B wrong in T_min = F/B is the main sizing error on both |
 | Memory determinism | FSDP2 deterministic by design; FSDP1 and DeepSpeed depend on allocator and stream timing | XLA buffer assignment is static; `memory_analysis()` before run | TPU OOMs show up at compile time; GPU OOMs show up at step N |
-| Failure semantics | Bulk-synchronous; one rank failure kills the step; HyperPod or job-level restart | Bulk-synchronous; slice failure kills the step; GKE JobSet or Pathways-level restart (UNVERIFIED) | Neither cloud gives collective-level fault tolerance; recovery is checkpoint or peer-replica based |
+| Failure semantics | Bulk-synchronous; one rank failure kills the step; HyperPod or job-level restart | Bulk-synchronous; slice failure kills the step; GKE JobSet restart, or Pathways elastic training that surfaces the slice failure as an exception for user recovery code (Google Cloud Pathways docs, as of 2026-10) | Neither cloud gives collective-level fault tolerance; recovery is checkpoint or peer-replica based |
 | Activation checkpointing API | `torch.utils.checkpoint`, selective checkpoint contexts | `jax.checkpoint` with `checkpoint_policies`, including host offload policies | JAX policies are compiler-visible; PyTorch policies are runtime hooks |
 
 ## Worked Example: Sizing and Running FSDP2 and JAX FSDP
@@ -255,7 +271,7 @@ With full recomputation, compute is 8PT FLOPs.
 Comm time is 6P / B and compute time is 8PT / F_eff, so overlap requires T >= 0.75 x F_eff / B.
 Without recomputation, the requirement is T >= F_eff / B.
 P cancels, so the threshold does not depend on model size.
-With F_eff = 400 TFLOP/s (about 40% of an H100 peak, UNVERIFIED spec) and B = 50 GB/s per GPU (EFA share, UNVERIFIED), T_min is 6,000 tokens.
+With F_eff = 400 TFLOP/s (about 40% of the 989 TFLOP/s dense bf16 H100 SXM peak, NVIDIA spec as of 2026-10) and B = 50 GB/s per GPU (3,200 Gbps EFA across 8 GPUs on p5.48xlarge, AWS docs as of 2026-10), T_min is 6,000 tokens.
 At T = 8,192, compute takes 8 x 70e9 x 8192 / 400e12 = 11.5 s and comm takes 420e9 / 50e9 = 8.4 s, so comm is hideable with prefetch.
 
 Per-GPU memory at N = 64, T = 8,192:
@@ -274,7 +290,7 @@ At that point you must shrink B's role with HSDP, TP, or ZeRO++, not add more FS
 
 ### Step 2 - Cost estimate, budget alarm, and lab provisioning (AWS)
 
-The lab runs the FSDP2 script on one 4-GPU instance (g6e.12xlarge, 4x L40S, UNVERIFIED spec) for under 1 hour.
+The lab runs the FSDP2 script on one 4-GPU instance (g6e.12xlarge, 4x L40S with 192 GB total GPU memory, AWS EC2 G6e page as of 2026-10) for under 1 hour.
 Expected spend = hourly on-demand price x 1 hour, plus EBS for the root volume.
 Fetch the live price instead of trusting a number printed in a book:
 
@@ -302,8 +318,9 @@ aws budgets create-budget --account-id "$ACCOUNT_ID" \
 Launch with a dead-man switch that terminates the instance after 120 minutes even if you forget:
 
 ```bash
+# DLAMI SSM parameter names are versioned; PyTorch 2.12 on Ubuntu 24.04 is current as of 2026-10 (AWS DLAMI docs).
 AMI=$(aws ssm get-parameter --region us-east-1 \
-  --name /aws/service/deeplearning/ami/x86_64/pytorch-latest/ubuntu-22.04/ami-id \
+  --name /aws/service/deeplearning/ami/x86_64/oss-nvidia-driver-gpu-pytorch-2.12-ubuntu-24.04/latest/ami-id \
   --query Parameter.Value --output text)
 SG_ID=$(aws ec2 describe-security-groups --region us-east-1 --filters "Name=group-name,Values=default" --query "SecurityGroups[0].GroupId" --output text)
 IID=$(aws ec2 run-instances --region us-east-1 --image-id "$AMI" \
@@ -327,6 +344,7 @@ aws budgets delete-budget --account-id "$ACCOUNT_ID" --budget-name fsdp-lab
 ### Step 3 - FSDP2 training script with checkpointing, prefetch, HSDP, and accumulation
 
 Save as `fsdp2_lab.py` and run with `torchrun --nproc_per_node=4 fsdp2_lab.py` (set `REPLICAS=2` to exercise HSDP on 4 GPUs).
+On the PyTorch DLAMI, first run `source /opt/pytorch/bin/activate`, because from PyTorch 2.9 the DLAMI installs PyTorch and CUDA inside that virtual environment (AWS DLAMI docs, as of 2026-10).
 
 ```python
 import os, time, torch, torch.nn as nn, torch.nn.functional as F
@@ -546,7 +564,7 @@ The symptom is a job that runs for hours and then OOMs at a random step, or OOMs
 The mechanism is `record_stream`-deferred frees plus a CPU thread running ahead of the GPU (PyTorch DevLog, as of 2026-09).
 Different CPU speeds or kernel timings change the peak.
 The diagnostic is `num_alloc_retries` climbing in `torch.cuda.memory_stats()` (FSDP paper, VLDB 2023).
-Fixes are to migrate to FSDP2, set `TORCH_NCCL_AVOID_RECORD_STREAMS=1` if you use async c10d collectives (pytorch/pytorch#147168), and try `expandable_segments:True`.
+Fixes are to migrate to FSDP2, set `TORCH_NCCL_AVOID_RECORD_STREAMS=1` if you use async c10d collectives on PyTorch 2.7 or older (pytorch/pytorch#147168; it is the default from 2.8), and try `expandable_segments:True`.
 
 ### Over-wrapping: all-gathers below the efficiency cliff
 
@@ -709,7 +727,7 @@ The retry path releases cached blocks, which synchronizes the device, and that i
 FSDP1's mitigation is the rate limiter (`limit_all_gathers=True`), which bounds in-flight all-gathers by blocking the CPU.
 I would check it was not disabled, and check `num_alloc_retries`.
 The structural fix is FSDP2, which uses stream waits and ordered frees, so memory is deterministic without CPU sync.
-If async c10d collectives are still in use, I would add `TORCH_NCCL_AVOID_RECORD_STREAMS=1`, plus `expandable_segments` to reduce fragmentation.
+If async c10d collectives are still in use on PyTorch 2.7 or older, I would add `TORCH_NCCL_AVOID_RECORD_STREAMS=1` (the default from 2.8), plus `expandable_segments` to reduce fragmentation.
 I would also add `num_alloc_retries` to the training dashboard as an SLO-style signal, since a rising value is an early warning before an OOM.
 
 #### Follow-up Interviewer Question
@@ -775,7 +793,7 @@ Offload saves HBM by moving the 12-byte-per-parameter optimizer state and the Ad
 Gradients go down and weights come back, and that path is shared with the NIC on many server designs.
 On top of that, the CPU Adam step is limited by host memory bandwidth.
 On cloud, GPUs are billed per instance-hour, so what matters is cost per token: (half the instances) x (step-time slowdown).
-If offload makes steps 2.2x slower, halving the GPUs raises cost by about 10% and doubles wall-clock time, which also raises exposure to interruptions.
+If offload makes steps 2.2x slower, halving the GPUs raises cost by about 10% and more than doubles wall-clock time, which also raises exposure to interruptions.
 I would model it as follows.
 Bytes per step per GPU over PCIe is roughly 8P / N for fp32 gradients and weights, which you compare against the achievable host-to-device bandwidth with pinned, NUMA-local buffers.
 CPU Adam time is roughly 16P / N bytes through host DRAM.

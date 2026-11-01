@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://developer.hashicorp.com/terraform/language/backend/s3"
@@ -19,6 +19,32 @@ sources:
   - "https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html"
   - "https://research.google/pubs/the-chubby-lock-service-for-loosely-coupled-distributed-systems/"
   - "https://aws.amazon.com/builders-library/static-stability-using-availability-zones/"
+  - "https://developer.hashicorp.com/terraform/language/v1-compatibility-promises"
+  - "https://developer.hashicorp.com/terraform/cli/commands/plan"
+  - "https://developer.hashicorp.com/terraform/cli/commands/state/push"
+  - "https://developer.hashicorp.com/terraform/language/state/locking"
+  - "https://github.com/hashicorp/terraform/blob/main/internal/backend/remote-state/s3/client.go"
+  - "https://github.com/hashicorp/terraform/blob/main/internal/backend/remote-state/gcs/client.go"
+  - "https://github.com/hashicorp/terraform/blob/main/internal/backend/remote-state/gcs/backend_state.go"
+  - "https://github.com/hashicorp/terraform/blob/main/internal/terraform/upgrade_resource_state.go"
+  - "https://github.com/hashicorp/terraform/blob/v1.11/CHANGELOG.md"
+  - "https://github.com/opentofu/opentofu/blob/main/internal/backend/remote-state/s3/client.go"
+  - "https://github.com/opentofu/opentofu/blob/v1.7/CHANGELOG.md"
+  - "https://opentofu.org/docs/language/state/encryption/"
+  - "https://opentofu.org/blog/opentofu-1-10-0/"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/08/amazon-s3-conditional-writes/"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-s3-functionality-conditional-writes/"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/troubleshooting-versioning.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/lifecycle-configuration-examples.html"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3/current/us-east-1/index.json"
+  - "https://aws.amazon.com/cloudformation/pricing/"
+  - "https://aws.amazon.com/config/pricing/"
+  - "https://aws.amazon.com/kms/pricing/"
+  - "https://docs.cloud.google.com/storage/quotas"
+  - "https://docs.cloud.google.com/storage/docs/availability-durability"
+  - "https://docs.cloud.google.com/infrastructure-manager/docs/release-notes"
+  - "https://endoflife.date/terraform"
 ---
 
 # State Management, Drift Detection, and Compliance
@@ -28,9 +54,9 @@ sources:
 1. Terraform and OpenTofu state is a schema-shaped cache of provider Read results, so its correctness depends on two things you must run yourself: a serialized writer and a faithful refresh.
 2. The remote lock is an advisory create-only object with no lease, no heartbeat and no fencing token.
    On S3 it is a `<key>.tflock` object written with `If-None-Match: *`.
-   On GCS it is a `<prefix>/<workspace>.tflock` object that fails with HTTP 412 when it already exists (HashiCorp and OpenTofu docs, as of 2026-10).
+   On GCS it is a `<prefix>/<workspace>.tflock` object that fails with HTTP 412 when it already exists (Terraform and OpenTofu backend source, as of 2026-11).
 3. Drift has four detection planes: the IaC refresh plane, the provider config-history plane (AWS Config, Cloud Asset Inventory), the event plane (CloudTrail to EventBridge, Cloud Audit Logs to Pub/Sub), and the controller plane (Config Connector style reconcilers).
-   Only the refresh plane can see attribute drift inside the state's schema, and none of the planes except the config-history plane can see resources that were never in state.
+   Only the refresh plane can see attribute drift inside the state's schema, and none of the planes except the config-history plane can enumerate resources that were never in state (the event plane only sees them when they are written).
 4. Migrations fail when the lineage and serial relationship is broken, usually by `init -reconfigure` or a restored object version.
    Gate every migration on a no-op `plan -detailed-exitcode` before unfreezing the pipeline.
 5. Auto-remediation is a blast-radius decision, not a feature flag.
@@ -93,13 +119,14 @@ Four mechanisms follow from that structure that getting-started guides skip:
   `terraform state push` compares them and refuses mismatched lineage or older serial unless forced.
   This is the guardrail that `init -reconfigure` bypasses by creating a brand new empty state at the new location.
 - **The version ratchet.**
-  When a newer CLI writes state it records its own `terraform_version`, and older CLIs refuse to read state written by a newer one.
-  Provider schema upgrades also run on read and are persisted on the next write.
-  A mixed fleet during a CLI upgrade therefore can only move forward, and your rollback path is the bucket's object version history, not the CLI.
+  When a newer CLI writes state it records its own `terraform_version`, but within 1.x that field alone does not block an older CLI: Terraform 1.9.8 planned cleanly against a format-4 state written by 1.15.7 (tested locally, 2026-11).
+  HashiCorp still does not guarantee downgrades, because a later 1.x release may introduce a state snapshot format that earlier versions cannot read ([v1.x compatibility promises](https://developer.hashicorp.com/terraform/language/v1-compatibility-promises), as of 2026-11).
+  Provider schema upgrades run on read and are persisted on the next write, and an older provider then fails with "Resource instance managed by newer provider version" ([Terraform source](https://github.com/hashicorp/terraform/blob/main/internal/terraform/upgrade_resource_state.go), as of 2026-11).
+  A mixed fleet during an upgrade should therefore plan to move forward only, and your reliable rollback path is the bucket's object version history, not the CLI.
 - **Sensitive values are stored in plaintext in state.**
   `sensitive = true` redacts UI output only.
   Read access to the state object is equivalent to read access to every secret attribute in it.
-  OpenTofu added client-side state encryption in 1.7 with pluggable key providers (UNVERIFIED this session for exact providers), whereas Terraform relies on backend encryption at rest only.
+  OpenTofu added client-side state encryption in 1.7 with pluggable key providers: PBKDF2 passphrase, AWS KMS, GCP KMS and OpenBao at launch ([1.7 changelog](https://github.com/opentofu/opentofu/blob/v1.7/CHANGELOG.md)), with Azure Vault, external and others documented now ([OpenTofu docs](https://opentofu.org/docs/language/state/encryption/), as of 2026-11), whereas Terraform relies on backend encryption at rest only.
 - **`terraform_remote_state` couples blast radius.**
   A consumer that reads another stack's state needs read on the entire state object, secrets included.
   Publish narrow outputs to SSM Parameter Store or Secret Manager instead, and keep the state bucket readable by only the CI roles.
@@ -123,7 +150,7 @@ What the refresh plane cannot see, by construction:
   Only an inventory plane can find it.
 - **Attributes outside the provider schema** or ignored by `lifecycle.ignore_changes`.
 - **Changes that revert before the next scan.**
-  A temporary console change that is rolled back between scans is invisible, and only the event plane records it.
+  A temporary console change that is rolled back between scans is invisible to refresh, and only the event plane or continuous config recording captures it.
 - **Apparent drift that is not drift.**
   Provider normalization (case, ordering, JSON whitespace), server-side defaults changing under you, and eventually consistent read APIs immediately after an apply all produce false positives.
 
@@ -131,20 +158,21 @@ What the refresh plane cannot see, by construction:
 
 **S3 native lock.**
 With `use_lockfile = true`, the backend writes a lock object next to the state using a conditional `PutObject` with `If-None-Match: *`, so exactly one concurrent writer wins.
-The lock body is JSON with `ID`, `Operation`, `Info`, `Who`, `Version`, `Created` and `Path`, which is what contenders print when they fail (OpenTofu docs, as of 2026-10).
-S3 added create-only conditional writes in August 2024 and `If-Match` in November 2024 (AWS what's-new posts, from memory, UNVERIFIED this session).
+The lock body is JSON with `ID`, `Operation`, `Info`, `Who`, `Version`, `Created` and `Path`, which is what contenders print when they fail ([`statemgr.LockInfo`](https://github.com/hashicorp/terraform/blob/main/internal/states/statemgr/locker.go), as of 2026-11).
+S3 added create-only conditional writes on [2024-08-20](https://aws.amazon.com/about-aws/whats-new/2024/08/amazon-s3-conditional-writes/) and `If-Match` on [2024-11-25](https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-s3-functionality-conditional-writes/) (AWS what's-new posts).
 Conditional writes are only meaningful because S3 has been strongly consistent for reads after writes and lists since December 2020 ([AWS announcement](https://aws.amazon.com/blogs/aws/amazon-s3-update-strong-read-after-write-consistency/)).
-A losing writer sees HTTP 412, and I recall a distinct 409 `ConditionalRequestConflict` for racing conditional writes (UNVERIFIED).
+A losing writer sees HTTP 412, and S3 can also return a retryable 409 Conflict when a delete succeeds before the conditional write completes, which is exactly the unlock-versus-lock race ([AWS S3 docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html), as of 2026-11).
+On a versioned bucket a delete marker as current version counts as "no object", so the next `If-None-Match: *` succeeds after an unlock (same docs).
 
 **DynamoDB legacy lock.**
 The older path does a conditional `PutItem` on a `LockID` key.
-It also kept a second digest item holding the MD5 of the state object, which was originally a defense against S3's pre-2020 eventual consistency (recalled, UNVERIFIED).
+It also kept a second digest item holding the MD5 of the state object, which is a consistency check against delayed S3 reads: the client retries for 10 seconds, then fails with "state data in S3 does not have the expected content" ([S3 backend source](https://github.com/hashicorp/terraform/blob/main/internal/backend/remote-state/s3/client.go), as of 2026-11).
 The digest creates a restore trap: if you restore an older S3 object version out of band, the digest no longer matches and the backend refuses to read until you update or delete the digest item.
 HashiCorp now documents DynamoDB-based locking as deprecated and slated for removal in a future minor version, and says both mechanisms may be enabled together to ease migration (HashiCorp docs, as of 2026-10).
 OpenTofu states it has no plans to deprecate either (OpenTofu docs, as of 2026-10).
 
 **GCS lock.**
-The GCS backend writes `<prefix>/<workspace>.tflock` using a generation precondition, so a second writer receives `412 conditionNotMet` (HashiCorp backend docs and a public GitHub issue showing the error, as of 2026-10).
+The GCS backend writes `<prefix>/<workspace>.tflock` using a does-not-exist generation precondition and uses the resulting object generation as the lock ID ([GCS backend source](https://github.com/hashicorp/terraform/blob/main/internal/backend/remote-state/gcs/client.go), as of 2026-11), so a second writer receives `412 Precondition Failed` ([Cloud Storage docs](https://cloud.google.com/storage/docs/request-preconditions), as of 2026-11).
 GCS generation numbers are the natural CAS primitive.
 See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_09_Cloud_Storage_and_Colossus_Filesystem|Cloud Storage and Colossus]] for why object metadata operations are strongly consistent.
 
@@ -156,13 +184,13 @@ Specifically:
   A SIGKILLed CI job leaves the lock forever, and recovery is a human running `force-unlock`.
   This is deliberate: an automatic expiry would let two writers race, which is worse than a stuck pipeline.
   Compare with leases in [Gray and Cheriton, SOSP 1989].
-- The state write is, to my reading, not conditional on the object's ETag or generation, so a writer whose lock was force-unlocked can still overwrite the state (UNVERIFIED against backend source).
+- The state write is not conditional on the object's ETag or generation in the [S3](https://github.com/hashicorp/terraform/blob/main/internal/backend/remote-state/s3/client.go) or [GCS](https://github.com/hashicorp/terraform/blob/main/internal/backend/remote-state/gcs/client.go) backends, in Terraform or OpenTofu (`main` branch source, as of 2026-11), so a writer whose lock was force-unlocked can still overwrite the state.
   S3 `If-Match` makes a stronger design possible, but treat it as an architectural option, not a current guarantee.
 - Locks are objects, so they replicate.
   If the state bucket has cross-region replication, a `.tflock` can replicate to the DR region and present as a stale lock after failover.
   Exclude lock objects from the replication filter or accept a documented `force-unlock` step in the DR runbook.
 - On versioned buckets every lock/unlock cycle creates a version and a delete marker.
-  Hundreds of workspaces times dozens of runs per day produce tens of thousands of tiny versions per day, and very large delete-marker populations slow `ListObjectVersions` on a prefix (general S3 behavior, recalled).
+  Hundreds of workspaces times dozens of runs per day produce tens of thousands of tiny versions per day, and AWS warns that excessive delete markers can reduce bucket performance ([S3 versioning troubleshooting](https://docs.aws.amazon.com/AmazonS3/latest/userguide/troubleshooting-versioning.html), as of 2026-11).
   Add lifecycle rules for noncurrent versions and expired delete markers.
 
 ### Detection planes and what each costs
@@ -208,21 +236,21 @@ See [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chap
 
 | Item | Value | Source and date | Verification |
 |---|---|---|---|
-| S3 backend DynamoDB locking status | Deprecated, to be removed in a future minor version | HashiCorp S3 backend docs, as of 2026-10 | Verified 2026-10 |
-| OpenTofu native S3 locking | Introduced in 1.10, via `If-None-Match`; OpenTofu says no plans to deprecate DynamoDB | OpenTofu S3 backend docs, as of 2026-10 | Verified 2026-10 |
-| Terraform release cadence | 1.14 released 2025-11-19, security support ended 2026-08-26; 1.15 released 2026-04-29 | endoflife.date, as of 2026-10 | Verified 2026-10; a different source listed a 1.16.x line, so confirm the latest minor |
-| Lock file object | `<key>.tflock` on S3, `<prefix>/<workspace>.tflock` on GCS | HashiCorp and OpenTofu docs, as of 2026-10 | Verified 2026-10 |
-| Lock TTL | None; no heartbeat | Terraform CLI behavior (`force-unlock`), as of 2026-10 | Recalled, UNVERIFIED |
-| `plan -detailed-exitcode` | 0 no changes, 1 error, 2 changes | Terraform CLI docs, as of 2026-10 | Recalled, UNVERIFIED |
-| Default `-parallelism` | 10 concurrent resource operations | Terraform CLI docs, as of 2026-10 | Recalled, UNVERIFIED |
-| S3 request rates | 3,500 write and 5,500 read requests per second per prefix | AWS S3 docs, as of 2026-10 | Recalled, UNVERIFIED |
-| S3 consistency | Strong read-after-write and list consistency since 2020-12 | AWS announcement | Recalled, UNVERIFIED this session |
-| GCS same-object write rate | About one write per second per object name | Google Cloud Storage quotas docs, as of 2026-10 | Recalled, UNVERIFIED |
-| GCS dual-region default replication RPO | Target 100 percent within 12 hours, turbo replication 15 minutes | Google Cloud Storage docs, as of 2026-10 | Recalled, UNVERIFIED |
-| S3 Standard list price, us-east-1 | About 0.023 USD per GB-month for the first 50 TB | AWS S3 pricing, as of 2026-10 | Recalled, UNVERIFIED |
-| CloudFormation drift detection charge | No additional charge | AWS CloudFormation pricing, as of 2026-10 | Recalled, UNVERIFIED |
+| S3 backend DynamoDB locking status | Native `use_lockfile` added in 1.10, GA in 1.11 when the DynamoDB arguments were deprecated; to be removed in a future minor version | HashiCorp S3 backend docs and [1.11 changelog](https://github.com/hashicorp/terraform/blob/v1.11/CHANGELOG.md), as of 2026-11 | Verified 2026-11 |
+| OpenTofu native S3 locking | Introduced in 1.10, via `If-None-Match`; OpenTofu says no plans to deprecate DynamoDB | [OpenTofu 1.10 announcement](https://opentofu.org/blog/opentofu-1-10-0/) and S3 backend docs, as of 2026-11 | Verified 2026-11 |
+| Terraform release cadence | 1.15 released 2026-04-29, security support ended 2026-10-21; 1.16 released 2026-08-26; 1.17 released 2026-10-21, latest 1.17.1 | [endoflife.date](https://endoflife.date/terraform) and HashiCorp checkpoint API, as of 2026-11 | Verified 2026-11 |
+| Lock file object | `<key>.tflock` on S3, `<prefix>/<workspace>.tflock` on GCS | Terraform and OpenTofu backend source, as of 2026-11 | Verified 2026-11 |
+| Lock TTL | None; no heartbeat; `force-unlock` is the only documented manual release | [Terraform state locking docs](https://developer.hashicorp.com/terraform/language/state/locking) and `LockInfo` source, as of 2026-11 | Verified 2026-11 |
+| `plan -detailed-exitcode` | 0 no changes, 1 error, 2 changes | [Terraform CLI docs](https://developer.hashicorp.com/terraform/cli/commands/plan), as of 2026-11 | Verified 2026-11 |
+| Default `-parallelism` | 10 concurrent operations during the graph walk | [Terraform CLI docs](https://developer.hashicorp.com/terraform/cli/commands/plan), as of 2026-11 | Verified 2026-11 |
+| S3 request rates | At least 3,500 write and 5,500 read requests per second per partitioned prefix | [AWS S3 docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html), as of 2026-11 | Verified 2026-11 |
+| S3 consistency | Strong read-after-write and list consistency since 2020-12-01 | [AWS announcement](https://aws.amazon.com/blogs/aws/amazon-s3-update-strong-read-after-write-consistency/) | Verified 2026-11 |
+| GCS same-object write rate | One write per second per object name; exceeding it may throttle | [Google Cloud Storage quotas docs](https://docs.cloud.google.com/storage/quotas), as of 2026-11 | Verified 2026-11 |
+| GCS dual-region replication RPO | Default replication 12 hours (typically one hour or less), turbo replication 15 minutes (dual-region only) | [Google Cloud Storage docs](https://docs.cloud.google.com/storage/docs/availability-durability), as of 2026-11 | Verified 2026-11 |
+| S3 Standard list price, us-east-1 | 0.023 USD per GB-month for the first 50 TB | AWS Price List API, published 2026-10-15 | Verified 2026-11 |
+| CloudFormation drift detection charge | No drift charge listed; no additional charge for `AWS::*` resource providers | [AWS CloudFormation pricing](https://aws.amazon.com/cloudformation/pricing/), as of 2026-11 | Verified 2026-11; the page does not name drift detection |
 
-Treat the Recalled rows as pointers to re-check before they appear in a design review.
+Prices and release lines move, so re-check these rows before they appear in a design review.
 
 ## AWS vs GCP Mechanism Parity
 
@@ -234,7 +262,7 @@ Treat the Recalled rows as pointers to re-check before they appear in a design r
 | Consistency substrate | S3 strongly consistent for object reads and lists | GCS strongly consistent for object reads and metadata, including dual-region and multi-region buckets |
 | State encryption | `encrypt = true` with `kms_key_id` (SSE-KMS) | Default Google-managed keys, `kms_encryption_key` for CMEK, `encryption_key` for CSEK |
 | Replication hazard | CRR copies `.tflock` and can strand a lock in the DR region | Dual-region or turbo replication carries lock objects too |
-| Native drift detection for IaC stacks | CloudFormation `DetectStackDrift` on supported resource types and template-declared properties | No first-party equivalent verified for Terraform state; Config Connector reconciles KRM-managed resources continuously |
+| Native drift detection for IaC stacks | CloudFormation `DetectStackDrift` on supported resource types and template-declared properties | Infrastructure Manager shows resource drift through preview deployments, for its own deployments only ([release notes](https://docs.cloud.google.com/infrastructure-manager/docs/release-notes), 2025-07-07); Config Connector reconciles KRM-managed resources continuously |
 | Inventory plane | AWS Config configuration items and rules | Cloud Asset Inventory snapshots, exports to BigQuery, and real-time feeds to Pub/Sub |
 | Event plane | CloudTrail management events to EventBridge | Cloud Audit Logs Admin Activity to a log sink and Pub/Sub |
 | Auto-remediation primitive | AWS Config remediation actions invoking SSM Automation documents | Pub/Sub triggered Cloud Run or Cloud Run functions, or Config Sync revert |
@@ -272,19 +300,20 @@ Assume one platform team with 400 workspaces, an average of 3,000 resources per 
    With 8 runners and a per-account concurrency cap of 2, a sweep fits in well under an hour.
    Without the per-account cap the same sweep causes throttling and long retry tails.
 4. Version storage: 50 applies per day on a 9 MB state is 450 MB per day.
-   With 90-day noncurrent retention that is about 40 GB, or about 0.9 USD per month at 0.023 USD per GB-month (price UNVERIFIED).
-   Keeping only the newest 20 noncurrent versions bounds it at 180 MB for that workspace.
+   With 90-day noncurrent retention that is about 40 GB, or about 0.9 USD per month at 0.023 USD per GB-month (AWS Price List API, as of 2026-11).
+   Keeping only the newest 20 noncurrent versions would bound it at 180 MB for that workspace.
+   The lab rule below does not do that: S3 expires a version only when both `noncurrent_days` and `newer_noncurrent_versions` are exceeded ([S3 lifecycle docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/lifecycle-configuration-examples.html), as of 2026-11), so at this apply rate the 90-day window governs.
 5. Lock contention: a scheduled drift plan holds the lock for its whole refresh, 90 s here.
    Running scans with `-lock=false` avoids blocking deploys, because a plan does not write state.
    The trade-off is that a scan overlapping an in-flight apply may report transient false drift, which the debounce step absorbs.
 
-Lab cost estimate: under 1 USD for a few hours (KMS key 1 USD per month prorated, S3 and requests pennies; prices UNVERIFIED).
+Lab cost estimate: under 1 USD for a few hours (KMS key 1 USD per month prorated hourly, first 20,000 KMS requests per month free, [AWS KMS pricing](https://aws.amazon.com/kms/pricing/), as of 2026-11; S3 and requests pennies).
 
 ### Step 1 - Bootstrap bucket and key (`bootstrap/main.tf`)
 
 ```hcl
 terraform {
-  required_version = ">= 1.10"
+  required_version = ">= 1.11"
   required_providers {
     aws = { source = "hashicorp/aws", version = ">= 5.80" }
   }
@@ -388,7 +417,7 @@ output "bucket" { value = aws_s3_bucket.state.id }
 
 ```hcl
 terraform {
-  required_version = ">= 1.10"
+  required_version = ">= 1.11"
   required_providers {
     aws = { source = "hashicorp/aws", version = ">= 5.80" }
   }
@@ -444,7 +473,7 @@ def one_scan(workdir):
         ch = d["change"]
         before, after = ch.get("before") or {}, ch.get("after") or {}
         keys = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
-        drift[d["address"]] = {"actions": ch["actions"], "attributes": keys}
+        drift[d["address"]] = {"type": d["type"], "actions": ch["actions"], "attributes": keys}
     return drift
 
 
@@ -459,7 +488,8 @@ def scan(workdir, settle_seconds=60):
 
 def publish(workspace, drift):
     cw = boto3.client("cloudwatch")
-    critical = [a for a in drift if a.split(".")[0].startswith(CRITICAL_PREFIXES)]
+    # Use the resource type: addresses may start with "module.child." (JSON format docs).
+    critical = [a for a, d in drift.items() if d["type"].startswith(CRITICAL_PREFIXES)]
     cw.put_metric_data(Namespace="IaC/Drift", MetricData=[
         {"MetricName": "DriftedResources", "Value": len(drift),
          "Dimensions": [{"Name": "Workspace", "Value": workspace}]},
@@ -525,7 +555,7 @@ aws cloudwatch delete-alarms --alarm-names iac-critical-drift-lab-drift-demo
 aws budgets delete-budget --account-id "$ACCT" --budget-name iac-state-lab
 ```
 
-The KMS key enters its 7-day deletion window, which is the minimum, after destroy.
+The KMS key enters its 7-day deletion window, which is the minimum (7 to 30 days, [AWS KMS docs](https://docs.aws.amazon.com/kms/latest/developerguide/deleting-keys.html), as of 2026-11), after destroy.
 
 ### GCP equivalent
 
@@ -589,8 +619,9 @@ The digest mismatch makes every subsequent run fail with a state integrity error
 This only applies to setups still using DynamoDB, which is another reason to complete the migration to `use_lockfile` before the DynamoDB path is removed.
 
 **Mixed CLI versions during the lock migration.**
-Clients older than the native-lock release ignore `use_lockfile` and take only the DynamoDB lock.
-If you remove `dynamodb_table` from the backend block while old clients are still in use, those clients lose mutual exclusion.
+Clients older than the native-lock release do not silently ignore `use_lockfile`: Terraform 1.9.8 fails `init` with `Unsupported argument` (tested locally, 2026-11).
+The real gap is an old client on an older commit or branch, which takes only the DynamoDB lock.
+If upgraded clients drop `dynamodb_table` while such clients are still in use, the two groups hold different locks and lose mutual exclusion.
 Run both mechanisms until every runner image is upgraded, as HashiCorp documents for migration.
 
 **Scan-induced throttling.**
@@ -625,7 +656,7 @@ Add the expired-delete-marker lifecycle rule shown above.
 ## Security and Cost Angles
 
 **IAM scoping.**
-The CI role for one stack needs `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on that stack's key and its `.tflock` (and `s3:ListBucket` on the prefix), plus `kms:Decrypt` and `kms:GenerateDataKey` on the state key.
+The CI role for one stack needs `s3:GetObject` and `s3:PutObject` on that stack's key, `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on its `.tflock` (and `s3:ListBucket` on the bucket, conditioned to the prefix), plus `kms:Encrypt`, `kms:Decrypt` and `kms:GenerateDataKey` on the state key ([HashiCorp S3 backend docs](https://developer.hashicorp.com/terraform/language/backend/s3), as of 2026-11).
 It should not have access to other stacks' keys.
 Use one prefix per environment and bucket-policy conditions on `aws:PrincipalOrgID` or on the CI role ARN.
 Separate the plan role (read-only on the cloud, read on state, lock write) from the apply role.
@@ -660,7 +691,7 @@ Levers:
 - Tiered cadence: hourly for security-critical stacks, daily for the rest.
 - Smaller states, because refresh time is linear in resources.
 - Skipping refresh in the deploy path where a separate scheduled scan already covers it (`-refresh=false`), with the trade-off that the deploy plan then trusts stale state.
-- Bounding Config recording to resource types you actually remediate, since recording is billed per configuration item (price UNVERIFIED).
+- Bounding Config recording to resource types you actually remediate, since recording is billed per configuration item (0.003 USD continuous, 0.012 USD periodic, us-east-1, [AWS Config pricing](https://aws.amazon.com/config/pricing/), as of 2026-11).
 
 See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_06_FinOps_Organizational_Practices_and_Automation|FinOps Organizational Practices and Automation]] for the alerting thresholds.
 
@@ -702,11 +733,11 @@ Describe the procedure and the traps.
 HashiCorp documents DynamoDB locking as deprecated, and it permits enabling both mechanisms at once for migration.
 I would do it in three phases.
 
-Phase one: upgrade all runner images and developer CLIs to a version that supports `use_lockfile`, and pin `required_version` so older clients fail fast instead of silently skipping the new lock.
-Clients that do not know `use_lockfile` would ignore it, so removing DynamoDB too early removes their only mutual exclusion.
+Phase one: upgrade all runner images and developer CLIs to a version that supports `use_lockfile`, and pin `required_version` so older clients fail with a clear version error rather than the `Unsupported argument` error that a pre-1.10 CLI gives for `use_lockfile`.
+A client still running an older commit takes only the DynamoDB lock, so removing DynamoDB too early removes mutual exclusion between it and upgraded clients.
 
 Phase two: add `use_lockfile = true` alongside `dynamodb_table`, run `terraform init -reconfigure` per stack (safe here because the bucket and key are unchanged, so no state needs copying), and verify with a deliberate lock contention test that both lock objects appear.
-I would grant `s3:PutObject` and `s3:DeleteObject` on the `.tflock` keys in the bucket policy before the change, since a missing permission shows up as a lock failure.
+I would grant `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on the `.tflock` keys before the change, since a missing permission shows up as a lock failure.
 
 Phase three: after a soak period, remove `dynamodb_table`, re-init, and delete the table last.
 The traps are the digest item (if I ever restore an S3 version while DynamoDB is still configured, the digest check fails), replication rules that copy lock objects, and lifecycle rules that must cope with the new lock object churn.
@@ -763,7 +794,7 @@ Then describe what you would build or configure to close the gap.
 A correct lock for protecting a shared resource needs a way for the resource itself to reject stale holders, usually a monotonic fencing token checked at write time, as argued by Kleppmann and implemented as sequencers in Chubby.
 Terraform's lock is a create-only object that proves who got there first, but it has no expiry, so a stalled or partitioned holder cannot lose it.
 Combined with an operator-driven `force-unlock`, a holder can continue to run after someone else has legitimately taken the lock.
-The state write path does not, to my reading, carry a precondition tying it to the lock identity (I would verify against the backend source before asserting it in a review).
+The state write path carries no precondition tying it to the lock identity: the S3 and GCS backend `Put` calls in Terraform and OpenTofu are unconditional (`main` branch source, as of 2026-11).
 So last writer wins, and the loser's resources become orphans, or the survivor's state loses entries.
 
 The practical failure is a split brain on the recorded truth: both applies called real APIs, but only one state records the results.
@@ -875,7 +906,7 @@ State bucket version history is immutable with Object Lock or retention policy, 
 The weak points I would state openly.
 Audit logs have delivery latency and some services or data-plane changes are not captured as management events.
 Resources and attributes outside provider schema coverage are invisible to the refresh plane.
-Changes reverted between scans are visible only through the event plane.
+Changes reverted between scans are visible only through the event plane or continuous config recording.
 Break-glass periods are evidence of control bypass and must be documented as accepted exceptions.
 The state itself can be wrong if a provider's Read has a bug.
 Finally, the Config recording and data-event costs scale with change rate, so I would scope the highest-fidelity recording to in-scope resource types rather than the full account.

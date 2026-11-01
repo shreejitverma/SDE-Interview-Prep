@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.allthingsdistributed.com/2015/07/under-the-hood-of-the-amazon-ec2-container-service.html"
@@ -18,6 +18,33 @@ sources:
   - "https://aws.amazon.com/builders-library/static-stability-using-availability-zones/"
   - "https://aws.amazon.com/message/101925/"
   - "https://aws.amazon.com/message/12721/"
+  - "https://docs.aws.amazon.com/general/latest/gr/ecs-service.html"
+  - "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html"
+  - "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-tasks-services.html"
+  - "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-security-considerations.html"
+  - "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-task-networking.html"
+  - "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-capacity-providers.html"
+  - "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-task-storage.html"
+  - "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-create-storage-key.html"
+  - "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/eni-trunking-supported-instance-types.html"
+  - "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-rebalancing.html"
+  - "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-lifecycle-explanation.html"
+  - "https://docs.aws.amazon.com/AmazonECR/latest/userguide/vpc-endpoints.html"
+  - "https://aws.amazon.com/fargate/pricing/"
+  - "https://aws.amazon.com/vpc/pricing/"
+  - "https://aws.amazon.com/elasticloadbalancing/pricing/"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/target-group-health-checks.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/06/amazon-ecs-fargate-32vcpu/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/10/amazon-ecs-managed-instances-commercial-regions/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/10/amazon-ecs-built-in-linear-canary-deployments/"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-ecs-az-rebalancing-speeds-mean-time-recovery-event/"
+  - "https://aws.amazon.com/blogs/containers/aws-fargate-launches-platform-version-1-4/"
+  - "https://aws.amazon.com/blogs/containers/graceful-shutdowns-with-ecs/"
+  - "https://www.allthingsdistributed.com/2015/04/state-management-and-scheduling-with-ecs.html"
+  - "https://cloud.google.com/blog/products/serverless/cloud-run-gpus-are-now-generally-available"
+  - "https://docs.cloud.google.com/run/docs/release-notes"
+  - "https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_CreateService.html"
 ---
 
 # Container Services: ECS and Fargate
@@ -27,7 +54,7 @@ sources:
 - Amazon ECS splits a regional control plane from a per-host data plane. The control plane holds the cluster state store, the schedulers, and the Agent Communication Service. The data plane is the ECS agent, which keeps moving each container's known status toward the desired status it is pushed.
 - Scheduling works on shared state with optimistic concurrency. A scheduler reads cluster state, filters hosts on resources and constraints, ranks them with up to five ordered placement strategies, and commits. If another writer committed first, the scheduler has to retry.
 - When the control plane goes away, already-running tasks keep running, because the agent keeps the last state it was given. What you lose is scale-out, replacement, and deployment. Design for static stability: provision for the loss of a zone before the event, not during it.
-- `awsvpc` mode gives every task its own ENI, security group, and VPC IP. Without ENI trunking, density on EC2 is capped by the instance's ENI limit (a c5.large fits 2 tasks; with trunking its ENI limit rises to 12). On Fargate, every task always uses one subnet IP.
+- `awsvpc` mode gives every task its own ENI, security group, and VPC IP. Without ENI trunking, density on EC2 is capped by the instance's ENI limit (a c5.large fits 2 tasks; with trunking it fits 10). On Fargate, every task always uses one subnet IP.
 - Fargate swaps host management for a per-task VM isolation boundary, per-second vCPU and GB billing, and a cold start on every task. Fargate has no placement strategies, no GPUs, no image cache between tasks, and no automatic fallback from Spot to On-Demand.
 
 ## Mental Model
@@ -85,7 +112,7 @@ This is one structural reason to keep very large, contended workloads in separat
 
 The service scheduler is a level-triggered reconciliation loop over `desiredCount`, the deployment configuration, and the health signals from ELB and container health checks.
 It compares running tasks against desired tasks, then emits start or stop intents and writes them back through the state store. This is the same pattern Kubernetes controllers use, covered in [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_01_Kubernetes_Control_Loop_Internals|Kubernetes Control Loop Internals]].
-There are two scheduling strategies, `REPLICA` and `DAEMON`. By default, `REPLICA` spreads tasks across Availability Zones (AWS ECS service definition docs, as of 2026-10).
+There are two scheduling strategies, `REPLICA` and `DAEMON`. By default, `REPLICA` spreads tasks across Availability Zones (AWS ECS service definition docs, as of 2026-11).
 
 ### The agent protocol: how desired state reaches a host
 
@@ -115,10 +142,10 @@ The control plane exposes the task lifecycle as `PROVISIONING -> PENDING -> ACTI
 
 ### Placement: filter, constrain, rank
 
-For EC2-backed capacity, the placement engine runs a fixed pipeline for each task (AWS ECS task placement docs, as of 2026-10):
+For EC2-backed capacity, the placement engine runs a fixed pipeline for each task (AWS ECS task placement docs, as of 2026-11):
 
 1. Filter on resources. Drop instances that lack free CPU units, memory, GPUs, host ports (in `bridge` and `host` modes), or a free ENI or branch ENI slot (in `awsvpc` mode).
-2. Apply constraints. `distinctInstance` puts each task of the group on a different instance. `memberOf` restricts candidates with a cluster query language expression, for example `attribute:ecs.instance-type =~ g5.*` or `attribute:ecs.availability-zone in [us-east-1a, us-east-1b]`. `distinctInstance` is accepted on services and `RunTask`, not in task definitions (AWS ECS service definition docs, as of 2026-10).
+2. Apply constraints. `distinctInstance` puts each task of the group on a different instance. `memberOf` restricts candidates with a cluster query language expression, for example `attribute:ecs.instance-type =~ g5.*` or `attribute:ecs.availability-zone in [us-east-1a, us-east-1b]`. `distinctInstance` is accepted on services and `RunTask`, not in task definitions (AWS ECS service definition docs, as of 2026-11).
 3. Rank with strategies, in order. `spread` balances on a field (`instanceId`, `attribute:ecs.availability-zone`, or any custom attribute). `binpack` picks the instance with the least remaining `cpu` or `memory`. `random` picks uniformly. Each later strategy only breaks ties left by the earlier ones.
 
 Order matters, and the default order is the safe one.
@@ -140,60 +167,61 @@ A capacity provider strategy splits tasks across providers with `base` (a guaran
 In `awsvpc` mode on EC2, the agent first starts an `amazon-ecs-pause` container, whose only job is to own the task's network namespace. Application containers then join that namespace.
 The ECS CNI plugins ([aws/amazon-ecs-cni-plugins](https://github.com/aws/amazon-ecs-cni-plugins), [aws/amazon-vpc-cni-plugins](https://github.com/aws/amazon-vpc-cni-plugins)) attach an ENI, move it into the namespace, assign the ENI's primary private IP, and set up a bridge so the namespace can reach `169.254.170.2` for credentials and metadata.
 Every task therefore has its own security group, its own VPC flow log identity, and its own IP. A target group of type `ip` routes straight to that IP, with no dynamic host-port mapping.
-The cost is density. The primary network interface counts against the instance's ENI limit, so a c5.large, which takes 3 ENIs, can run only 2 `awsvpc` tasks (AWS ECS ENI trunking docs, as of 2026-10).
+The cost is density. The primary network interface counts against the instance's ENI limit, so a c5.large, which takes 3 ENIs, can run only 2 `awsvpc` tasks (AWS ECS ENI trunking docs, as of 2026-11).
 
 ENI trunking (the `awsvpcTrunking` account setting) attaches a trunk ENI when the instance registers. Each task then gets a branch ENI that is multiplexed over the trunk with 802.1Q VLAN tagging, and the CNI creates a VLAN sub-interface inside the task's namespace.
-With trunking, a c5.large's ENI limit becomes 12 (AWS ECS ENI trunking docs, as of 2026-10). That is primary, plus trunk, plus 10 branches. An r5.xlarge goes from 3 `awsvpc` tasks to 20 ([DoiT, as of 2026-04](https://www.doit.com/blog/increasing-ecs-tasks-per-host)).
-Trunking only applies to instances launched after the setting is enabled, and only to supported Nitro instance types. The trunk ENI also takes one ENI slot and one subnet IP per instance.
+With trunking, a c5.large can run 10 `awsvpc` tasks (AWS ECS ENI trunking docs, as of 2026-11). That is 10 branch ENIs on the trunk. An r5.xlarge goes from 3 `awsvpc` tasks to 20 ([AWS supported instance table](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/eni-trunking-supported-instance-types.html), as of 2026-11).
+Trunking only applies to instances launched after the setting is enabled, and only to the instance types in that table. Being Nitro is not enough: families such as `c5n`, `r5n`, and `g4dn` are excluded, and Windows containers are not supported (AWS ECS ENI trunking docs, as of 2026-11). The trunk ENI also takes one ENI slot and one subnet IP per instance.
 EKS security groups for pods uses the same trunk-and-branch mechanism, covered in [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_07_Amazon_EKS_Control_Plane_and_Networking|Amazon EKS: Control Plane and Networking]].
 How the ENI is plumbed underneath, through the Nitro card and the VPC mapping service, is covered in [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_03_VPC_Networking_Internals|VPC Networking Internals]].
 
 ### Fargate: the per-task VM boundary
 
-The contract AWS documents is that each Fargate task has its own isolation boundary and does not share the underlying kernel, CPU resources, memory resources, or ENI with any other task (AWS ECS docs, as of 2026-10).
+The contract AWS documents is that each Fargate task has its own isolation boundary and does not share the underlying kernel, CPU resources, memory resources, or ENI with any other task (AWS ECS docs, as of 2026-11).
 The Firecracker paper says Firecracker was deployed in production for Lambda and Fargate ([Agache et al., NSDI 2020](https://www.usenix.org/conference/nsdi20/presentation/agache)).
-AWS documentation, however, does not name the VMM that backs Fargate today. AWS CDK documentation even notes that a task's CPU and memory values determine "the instance type and size that tasks run on" (AWS CDK docs, as of 2026-10).
-The engineering-grade reading: the guarantee is VM-level isolation with a guest kernel per task, and whether that VM is a Firecracker microVM or a single-use Nitro EC2 instance is an implementation detail AWS can change without notice. The specific VMM in use as of 2026-10 is UNVERIFIED.
+AWS documentation, however, does not name the VMM that backs Fargate today. AWS CDK documentation even notes, in a Windows-specific remark, that a task's CPU and memory values are used to determine "the instance type and size that tasks run on" (AWS CDK docs, as of 2026-11).
+The engineering-grade reading: the guarantee is VM-level isolation with a guest kernel per task, and whether that VM is a Firecracker microVM or a single-use Nitro EC2 instance is an implementation detail AWS can change without notice. The current ECS docs say only that Fargate runs each task in "a hardware virtualization environment" and name no VMM, so treat the VMM in use today as not publicly documented (AWS ECS task placement constraint docs, as of 2026-11).
 Do not build anything that depends on the substrate: kernel version, CPU model, or noisy-neighbor behavior. Treat Fargate as "one task, one VM, one ENI, one IP".
 
-Platform version 1.4.0 on Linux moved the runtime to containerd and sends all task traffic through the task ENI. That includes ECR image pulls, Secrets Manager and SSM Parameter Store fetches, and awslogs delivery (UNVERIFIED against current docs).
+Platform version 1.4.0 on Linux, which is still the `LATEST` Linux version, moved the runtime to containerd ([AWS Containers blog](https://aws.amazon.com/blogs/containers/aws-fargate-launches-platform-version-1-4/)) and sends all task traffic through the task ENI. That includes ECR image pulls, Secrets Manager and SSM Parameter Store fetches, and awslogs delivery ([AWS ECS Fargate task networking docs](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-task-networking.html), as of 2026-11).
 As a result, a Fargate task in a private subnet needs either a NAT path or VPC endpoints for `ecr.api`, `ecr.dkr`, S3 (gateway endpoint, for image layers), `logs`, and any secrets service it uses.
 Each task is a fresh VM, so no image layers are cached across tasks, and image pull time is paid on every task start.
-Seekable OCI (SOCI) indexes let Fargate start a container before the whole image has been pulled, by fetching layers on demand. This matters most for multi-gigabyte ML inference images (current SOCI capabilities on Fargate are UNVERIFIED).
+Seekable OCI (SOCI) indexes let Fargate start a container before the whole image has been pulled, by fetching layers on demand. This matters most for multi-gigabyte ML inference images (AWS ECS Fargate docs, as of 2026-11).
+On Fargate, SOCI works only for images in Amazon ECR private registries with gzip or uncompressed layers, and AWS suggests trying it on images above 250 MiB compressed (AWS ECS Fargate docs, as of 2026-11).
 For the ML angle: Fargate does not offer GPUs. GPU and Neuron workloads on ECS need EC2 capacity providers with GPU-capable AMIs, plus `resourceRequirements` of type `GPU` or device mappings, as covered in [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_08_Cloud_GPU_Autoscaling_and_Cold_Start_Mitigation|Cloud GPU Autoscaling and Cold-Start Mitigation]].
 
 ### Newer capacity modes
 
-AWS launched ECS Managed Instances, in which AWS runs and patches EC2 capacity in the customer's account while ECS picks instance types (UNVERIFIED: GA status and feature set as of 2026-10).
-ECS also gained built-in blue/green, linear, and canary deployment strategies alongside rolling updates (UNVERIFIED: GA dates and parameter names as of 2026-10).
-Verify both against the current ECS developer guide before you depend on them.
+AWS launched ECS Managed Instances, in which AWS runs and patches EC2 capacity in the customer's account while ECS picks instance types (announced 2025-09-30, available in all commercial Regions since 2025-10-27; [AWS What's New](https://aws.amazon.com/about-aws/whats-new/2025/10/amazon-ecs-managed-instances-commercial-regions/), as of 2026-11).
+ECS also gained built-in blue/green (July 2025), linear and canary ([2025-10-30](https://aws.amazon.com/about-aws/whats-new/2025/10/amazon-ecs-built-in-linear-canary-deployments/)) deployment strategies alongside rolling updates (AWS What's New, as of 2026-11).
+Both are documented in the current ECS developer guide, but check the Region and feature limits there before you depend on them (as of 2026-11).
 
 ## Numbers to Know
 
 | Quantity | Value | Source |
 | --- | --- | --- |
-| Services per cluster | 5,000, not adjustable | (AWS ECS service quotas via OneUptime summary, as of 2026-10) |
-| Tasks per service | 5,000, not adjustable | (AWS ECS service quotas, as of 2026-10) |
-| Container instances per cluster | 5,000 | (AWS ECS service quotas, as of 2026-10) |
-| Tasks launched per `RunTask` call | 10 | (AWS ECS service quotas, as of 2026-10) |
-| Containers per task definition | 10 | (AWS ECS service quotas, as of 2026-10) |
-| Subnets per `awsvpcConfiguration` | 16 | (AWS ECS service quotas, as of 2026-10) |
-| Capacity providers per cluster | 20 | (AWS ECS service quotas via awsfundamentals, as of 2026-10) |
-| Fargate tasks launched by one service | 500 per minute | (AWS ECS service quotas; [AWS Containers blog](https://aws.amazon.com/blogs/containers/scale-to-15000-tasks-in-a-single-amazon-elastic-container-service-ecs-cluster/), as of 2026-10) |
-| Observed service scale-out on Fargate | about 1,000 tasks in about 15 min, 5,000 in about 40 min, including ALB and service discovery registration | (AWS Containers blog, published 2023, as of 2026-10) |
-| Largest Fargate task | 16 vCPU, 120 GB memory, set in 8 GB steps | (AWS CDK FargateTaskDefinition docs, as of 2026-10) |
-| Smallest Fargate task | 0.25 vCPU with 0.5, 1, or 2 GB | (AWS CDK FargateTaskDefinition docs, as of 2026-10) |
-| Fargate ephemeral storage | 20 GiB default, 200 GiB max (Linux platform version 1.4.0+) | (AWS CDK FargateTaskDefinition docs, as of 2026-10) |
-| Fargate Linux/x86 On-Demand, us-east-1 | $0.04048 per vCPU-hour, $0.004445 per GB-hour | ([AWS Fargate pricing](https://aws.amazon.com/fargate/pricing/), cross-checked via Usage.ai snapshot, as of 2026-10) |
-| Fargate Linux/ARM On-Demand, us-east-1 | $0.03238 per vCPU-hour, $0.00356 per GB-hour | (AWS Fargate pricing via Vantage and Pump snapshots, as of 2026-10) |
-| Fargate billing granularity | per second, 1-minute minimum | (AWS Fargate pricing via Vantage, as of 2026-10) |
-| Fargate Spot, us-east-1, historical snapshot | $0.01246287 per vCPU-hour, $0.00136851 per GB-hour; price varies | (Vantage snapshot, 2020; current price UNVERIFIED) |
-| `awsvpc` tasks on a c5.large | 2 without trunking; ENI limit 12 with trunking (10 tasks) | (AWS ECS ENI trunking docs, as of 2026-10) |
-| `awsvpc` tasks on an r5.xlarge | 3 without trunking, 20 with trunking | (DoiT, citing the AWS table, as of 2026-10) |
-| Fargate Spot interruption notice | 2 minutes, delivered as SIGTERM plus an EventBridge task state change | UNVERIFIED against current docs |
-| Fargate `stopTimeout` maximum | 120 seconds | UNVERIFIED against current docs |
-| Reserved IPs per VPC subnet | 5 (a /24 gives 251 usable) | UNVERIFIED against current docs; long-standing VPC behavior |
-| Public IPv4 address charge | $0.005 per IP-hour | UNVERIFIED against current VPC pricing |
+| Services per cluster | 5,000, not adjustable | ([AWS ECS service quotas](https://docs.aws.amazon.com/general/latest/gr/ecs-service.html), as of 2026-11) |
+| Tasks per service | 5,000, not adjustable; services using Cloud Map service discovery are capped at 1,000 tasks | (AWS ECS service quotas, as of 2026-11) |
+| Container instances per cluster | 5,000 | (AWS ECS service quotas, as of 2026-11) |
+| Tasks launched per `RunTask` call | 10 | (AWS ECS service quotas, as of 2026-11) |
+| Containers per task definition | 10 | (AWS ECS service quotas, as of 2026-11) |
+| Subnets per `awsvpcConfiguration` | 16 | (AWS ECS service quotas, as of 2026-11) |
+| Capacity providers per cluster | 20, not adjustable | (AWS ECS service quotas, as of 2026-11) |
+| Fargate tasks launched by one service | 500 per minute, not adjustable, in us-east-1 and most Regions; 125 per minute in the Regions AWS lists, including every Region introduced after 2025-05-20 | (AWS ECS service quotas; [AWS Containers blog](https://aws.amazon.com/blogs/containers/scale-to-15000-tasks-in-a-single-amazon-elastic-container-service-ecs-cluster/), as of 2026-11) |
+| Observed service scale-out on Fargate | about 1,000 tasks in about 15 min, including ALB and service discovery registration, and 5,000 in about 40 min, with four services scaling at once; the service with Cloud Map service discovery stopped at 1,000 tasks | (AWS Containers blog, published 2023-10-24, checked 2026-11) |
+| Largest Fargate task | 32 vCPU with 60, 120, or 244 GB memory (Linux platform version 1.4.0+); below that, 16 vCPU with 32 to 120 GB in 8 GB steps | ([AWS What's New, 2026-06](https://aws.amazon.com/about-aws/whats-new/2026/06/amazon-ecs-fargate-32vcpu/); [AWS ECS Fargate docs](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-tasks-services.html), as of 2026-11) |
+| Smallest Fargate task | 0.25 vCPU with 0.5, 1, or 2 GB | (AWS ECS Fargate docs, as of 2026-11) |
+| Fargate ephemeral storage | 20 GiB default, 200 GiB max (Linux platform version 1.4.0+) | ([AWS ECS Fargate storage docs](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-task-storage.html), as of 2026-11) |
+| Fargate Linux/x86 On-Demand, us-east-1 | $0.04048 per vCPU-hour, $0.004445 per GB-hour | ([AWS Fargate pricing](https://aws.amazon.com/fargate/pricing/) and AWS Price List, as of 2026-11) |
+| Fargate Linux/ARM On-Demand, us-east-1 | $0.03238 per vCPU-hour, $0.00356 per GB-hour | (AWS Fargate pricing and AWS Price List, as of 2026-11) |
+| Fargate billing granularity | per second, 1-minute minimum on Linux, 5-minute minimum on Windows | (AWS Fargate pricing, as of 2026-11) |
+| Fargate Spot, us-east-1 | x86: $0.01349428 per vCPU-hour, $0.00148177 per GB-hour; ARM: $0.01079409 per vCPU-hour, $0.00118675 per GB-hour; about 67% below On-Demand, and the price varies | (price feed behind the AWS Fargate pricing page, which advertises up to 70% off, as of 2026-11) |
+| `awsvpc` tasks on a c5.large | 2 without trunking, 10 with trunking | (AWS ECS ENI trunking docs, as of 2026-11) |
+| `awsvpc` tasks on an r5.xlarge | 3 without trunking, 20 with trunking | (AWS supported instance table, as of 2026-11) |
+| Fargate Spot interruption notice | 2 minutes, delivered as SIGTERM plus an EventBridge task state change | (AWS ECS Fargate capacity provider docs, as of 2026-11) |
+| Fargate `stopTimeout` maximum | 120 seconds (default 30 seconds) | (AWS ECS Fargate capacity provider docs, as of 2026-11) |
+| Reserved IPs per VPC subnet | 5 (a /24 gives 251 usable) | ([AWS VPC subnet sizing docs](https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html), as of 2026-11) |
+| Public IPv4 address charge | $0.005 per IP-hour, in use or idle | ([AWS VPC pricing](https://aws.amazon.com/vpc/pricing/), as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -210,7 +238,7 @@ Verify both against the current ECS developer guide before you depend on them.
 | Spot | `FARGATE_SPOT` capacity provider; no automatic fallback to On-Demand | GKE Spot VMs and Spot Pods on Autopilot; Cloud Run has no Spot tier | Fallback has to be engineered on both clouds. |
 | Workload credentials | Task role served at `169.254.170.2` by the agent, delivered through ACS | GKE Workload Identity Federation and Cloud Run service identity via the metadata server | AWS separates the execution role (agent: pull, logs, secrets) from the task role (application). |
 | Image start acceleration | SOCI lazy loading | GKE image streaming; Cloud Run image handling | Fargate never reuses a host cache, so lazy loading is the main lever. |
-| Accelerators | GPU and Neuron only on EC2 capacity; none on Fargate | GPUs on GKE node pools; NVIDIA GPUs on Cloud Run (GA status UNVERIFIED as of 2026-10) | On AWS, serverless GPU containers mean SageMaker or Bedrock rather than Fargate. |
+| Accelerators | GPU and Neuron only on EC2 capacity; none on Fargate | GPUs on GKE node pools; NVIDIA GPUs on Cloud Run services are GA (L4 since 2025-04-07, RTX PRO 6000 Blackwell since 2026-04-13; [Google Cloud Run release notes](https://docs.cloud.google.com/run/docs/release-notes), as of 2026-11) | On AWS, serverless GPU containers mean SageMaker or Bedrock rather than Fargate. |
 
 ## Worked Example: Fargate service with Spot mix, launch-phase timing, and budget guard
 
@@ -220,13 +248,14 @@ You will deploy a three-AZ Fargate service that splits tasks between the `FARGAT
 You will read a task's ENI attachment and its `lastStatus` versus `desiredStatus`, which is the reconciliation contract from the Internals section, as data.
 You will then break cold-start latency into ENI provisioning, image pull, and container start with a `boto3` script.
 
-### Cost estimate (us-east-1, as of 2026-10)
+### Cost estimate (us-east-1, as of 2026-11)
 
 The task shape is 0.25 vCPU and 0.5 GB on ARM64. Cost per task-hour is `0.25 x 0.03238 + 0.5 x 0.00356 = 0.008095 + 0.00178 = $0.009875`.
 Three tasks at On-Demand rates cost `$0.029625` per hour, and the Spot share lowers that further.
-Three public IPv4 addresses add about `$0.015` per hour (UNVERIFIED rate).
+Three public IPv4 addresses add `3 x 0.005 = $0.015` per hour (AWS VPC pricing, as of 2026-11).
 The total is at most about `$0.045` per hour, roughly `$1.07` per day. CloudWatch Logs ingestion at this volume is negligible.
-The lab avoids NAT gateways, load balancers, and interface endpoints on purpose, because each of those would cost more per hour than all three tasks together.
+The lab avoids NAT gateways, load balancers, and interface endpoints on purpose, because each would add about as much per hour as the tasks themselves, or more.
+A NAT gateway costs about `$0.045` per hour (the rate in the AWS VPC pricing example, which is for US East (Ohio)), an ALB `$0.0225` per hour plus LCU charges, and one interface endpoint in three AZs `3 x 0.01 = $0.03` per hour, against `$0.029625` for the three tasks (AWS pricing, as of 2026-11).
 
 ### Terraform / OpenTofu
 
@@ -521,15 +550,15 @@ For static stability, the 2 surviving AZs must hold 15 tasks on their own: `ceil
 Cost on x86: `0.04048 + 2 x 0.004445 = $0.04937` per task-hour, `24 x 0.04937 = $1.18488` per hour, and `x 730 = $864.96` per month.
 Cost on ARM: `0.03238 + 2 x 0.00356 = $0.0395` per task-hour, `24 x 0.0395 = $0.948` per hour, and `x 730 = $692.04` per month, a 20.0% saving before any Savings Plan.
 Subnet IPs: with `maximumPercent=200`, a deployment can briefly run 48 tasks, so each AZ subnet needs 16 free IPs. Add headroom for 3x autoscaling during deployment (`72 x 2 / 3 = 48` per subnet), which a /24 holds easily and a /27 (27 usable) does not.
-Time to new capacity: scale-out is quota-bounded at 500 tasks per minute per service, so adding 48 tasks is not the bottleneck. The bottleneck is `connectivityAt` plus the pull, plus the container start, plus load balancer health checks. With ALB target group defaults of a 30-second interval and a healthy threshold of 5 (UNVERIFIED as current defaults), health checks alone can add up to 150 seconds. Set an explicit 10-second interval and a threshold of 2 to 3 for services that autoscale.
+Time to new capacity: scale-out is quota-bounded at 500 tasks per minute per service in us-east-1, so adding 48 tasks is not the bottleneck. The bottleneck is `connectivityAt` plus the pull, plus the container start, plus load balancer health checks. ALB target group defaults are a 30-second interval and a healthy threshold of 5, but a newly registered target only has to pass one health check, so a new task waits up to about 30 seconds; the threshold of 5, up to 150 seconds, applies when an unhealthy target recovers ([AWS ALB health check docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/target-group-health-checks.html), as of 2026-11). Set an explicit 10-second interval and a threshold of 2 to 3 for services that autoscale.
 Fargate versus EC2 break-even: EC2 is cheaper when `P_instance / (vCPU_instance x E_pack) < P_fargate_per_vCPU_equivalent`. Here `E_pack` is the fraction of registered CPU and memory that tasks actually use after binpacking and the buffer kept by `targetCapacity`. Measure `E_pack` from your own cluster rather than assuming it.
 
 ## Failure Modes and Pitfalls
 
 ### Control plane impairment: tasks keep running, but nothing heals
 
-The AWS summary of the 2025-10-19/20 us-east-1 event describes a DynamoDB DNS failure that cascaded into EC2 instance launches and network configuration propagation. Container services in the region saw launch failures and scaling delays ([AWS PIR 101925](https://aws.amazon.com/message/101925/); ECS-specific details UNVERIFIED).
-The 2021-12-07 us-east-1 event, triggered by congestion on AWS's internal network, impaired control plane APIs for many services. Existing workloads mostly kept running ([AWS PIR 12721](https://aws.amazon.com/message/12721/)).
+The AWS summary of the 2025-10-19/20 us-east-1 event describes a DynamoDB DNS failure that cascaded into EC2 instance launches and network configuration propagation. ECS, EKS, and Fargate saw container launch failures and cluster scaling delays from 11:45 PM PDT on October 19 to 2:20 PM PDT on October 20. The PIR gives no separate root cause for them ([AWS PIR 101925](https://aws.amazon.com/message/101925/)).
+The 2021-12-07 us-east-1 event, triggered by congestion on AWS's internal network, impaired control plane APIs for many services. ECS and Fargate saw increased API errors and latency, while existing container instances kept operating normally ([AWS PIR 12721](https://aws.amazon.com/message/12721/)).
 Both match the agent model: data plane tasks keep running, but replacing crashed tasks, scaling out, and deploying all depend on a control plane that is down.
 Mitigation: run at the AZ-loss provisioning level all the time, avoid tying load-proportional autoscaling to emergency response, and freeze deployments during regional events. Background is in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
@@ -559,7 +588,7 @@ Mitigation: mirror images into ECR with pull-through cache, keep images small, a
 
 ### Fargate Spot does not fall back
 
-When Spot capacity is reclaimed or unavailable, the scheduler keeps trying `FARGATE_SPOT` for the Spot-weighted share. It does not move that share to On-Demand (UNVERIFIED that no fallback exists in current behavior; design as if it does not).
+When Spot capacity is reclaimed or unavailable, the scheduler keeps trying `FARGATE_SPOT` for the Spot-weighted share. It does not move that share to On-Demand (AWS ECS Fargate capacity provider docs, as of 2026-11).
 Reclamations are correlated within a zone and a capacity pool, so a weight-heavy Spot service can lose most of its tasks at once.
 Mitigation: set `base` on `FARGATE` to cover your static-stability floor, keep Spot for headroom only, and use EventBridge task state change events to drive an out-of-band On-Demand surge. Spot economics are covered in [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_03_Spot_Economics_and_Interruption_Handling|Spot Economics and Interruption Handling]].
 
@@ -568,13 +597,15 @@ Mitigation: set `base` on `FARGATE` to cover your static-stability floor, keep S
 ECS sends SIGTERM, waits `stopTimeout`, then sends SIGKILL.
 If the application runs as PID 1 under a shell wrapper, SIGTERM never reaches it, and every scale-in or Spot interruption becomes a hard kill with in-flight requests dropped.
 `initProcessEnabled` adds an init process that forwards signals and reaps zombies.
-Load balancer deregistration delay has to be shorter than `stopTimeout`, or connections are cut while the target is still draining.
+ECS deregisters a service task from its ALB target group during `DEACTIVATING`, before it sends SIGTERM, and Fargate Spot tasks have followed that order since an enhancement noted in February 2023 ([AWS Containers blog](https://aws.amazon.com/blogs/containers/graceful-shutdowns-with-ecs/); AWS ECS task lifecycle docs, as of 2026-11).
+So the deregistration delay does not consume `stopTimeout`, and the application still has to finish its in-flight work within `stopTimeout` after SIGTERM.
+On Spot, all of this has to fit inside the two-minute warning, so keep the target group's deregistration delay well under 120 seconds there.
 
 ### Binpack hotspots and post-event AZ skew
 
 `binpack` alone concentrates replicas, so one instance failure is a correlated loss.
 After a zone recovers, the replacement tasks launched in the surviving zones stay there, and the service is left skewed until something forces new placements.
-ECS has added Availability Zone rebalancing for services (UNVERIFIED: GA status and default-on behavior as of 2026-10). Without it, skew lasts until the next deployment.
+ECS has added Availability Zone rebalancing for services (announced 2024-11-20; since 2025-09-05 it is enabled for eligible services, meaning AZ spread is the first placement strategy or there is no strategy; AWS ECS developer guide, as of 2026-11). Without it, skew lasts until the next deployment.
 
 ### Deployment health-check misconfiguration
 
@@ -605,22 +636,22 @@ On Fargate, the instance-role risk does not exist, because the customer has no h
 ### Isolation tiers for untrusted code
 
 On EC2 capacity, tasks share a Linux kernel, so container escape crosses tenant boundaries. Treat a host as a single trust domain.
-On Fargate, the boundary is a VM. Privileged containers are not allowed, and only a narrow set of Linux capabilities can be added (UNVERIFIED: exact allow list, commonly cited as `SYS_PTRACE` only).
+On Fargate, the boundary is a VM. Privileged containers are not allowed, and only the `SYS_PTRACE` Linux capability can be added (AWS ECS Fargate task definition docs, as of 2026-11).
 For multi-tenant platforms that run customer-supplied code, Fargate or a microVM substrate is the minimum. See [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_01_Hypervisors_MicroVMs_and_Sandboxing|Hypervisors, MicroVMs, and Sandboxing]] and [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_08_Cloud_Security_for_AI_Systems_Attacks_and_Defenses|Cloud Security for AI Systems]].
 
 ### Encryption and private boundaries
 
-Fargate encrypts ephemeral storage on platform version 1.4.0 and later with an AWS-managed key, and customer-managed KMS keys for ephemeral storage are available at the cluster level (UNVERIFIED: current GA scope).
+Fargate encrypts ephemeral storage on platform version 1.4.0 and later with AES-256 under an AWS owned key, and customer-managed KMS keys for ephemeral storage are set at the cluster level through `managedStorageConfiguration.fargateEphemeralStorageKmsKeyId`. Customer-managed keys are not available for Windows task clusters, and a key change only takes effect on new service deployments ([AWS ECS docs](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-create-storage-key.html), as of 2026-11).
 Secrets injected through `secrets` are fetched at task start, decrypted with KMS envelope encryption, and exposed as environment variables. That makes them visible to anything that can read the process environment, including ECS Exec sessions. Prefer fetching secrets at runtime, with caching, for high-value credentials. Envelope encryption is covered in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 ECS Exec runs through the SSM agent and needs `ssmmessages` permissions on the task role. Gate it with an SCP or permission boundary and log sessions, because it is interactive shell access to production.
 Put ECR, S3, Logs, Secrets Manager, and STS behind VPC endpoints with endpoint policies restricted to your organization, as part of [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
 
 ### Unit-economics levers
 
-- Graviton. ARM Fargate is about 20% cheaper per vCPU-hour and per GB-hour than x86 at the published us-east-1 rates (as of 2026-10), assuming your images are multi-arch.
+- Graviton. ARM Fargate is about 20% cheaper per vCPU-hour and per GB-hour than x86 at the published us-east-1 rates (as of 2026-11), assuming your images are multi-arch.
 - Task-shape rounding. Fargate only accepts fixed CPU and memory combinations. A container that needs 1.1 GB on 0.25 vCPU pays for 2 GB, so profile and fit the shape.
 - Spot as headroom only. Put the static-stability floor on `FARGATE` `base` and the elastic share on `FARGATE_SPOT`.
-- Commitments. Compute Savings Plans apply to Fargate as well as EC2, so the commitment survives a migration between them (current discount levels UNVERIFIED). See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Commitment Discounts]].
+- Commitments. Compute Savings Plans apply to Fargate as well as EC2, so the commitment survives a migration between them. AWS advertises savings of up to 50% on Fargate usage, against up to 66% for Compute Savings Plans overall (AWS Fargate and Savings Plans pricing pages, as of 2026-11). See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Commitment Discounts]].
 - Network. NAT gateway data processing on image pulls and log shipping can exceed task compute for small, chatty services. Compare interface endpoint hourly cost against NAT per-GB processing for your actual volumes (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics]]).
 - Public IPv4. Every Fargate task with `assign_public_ip=true` carries a per-hour IPv4 charge. At fleet scale, private subnets with shared egress or IPv6 are cheaper.
 
@@ -655,8 +686,8 @@ A team moved a service from `bridge` to `awsvpc` mode on m5.large instances, and
 In `awsvpc` mode, every task needs its own ENI. The resource filter in the placement pipeline counts ENI slots as a resource, just like CPU and memory.
 An m5.large has a small ENI attachment limit, and the primary interface uses one slot, so only a couple of tasks fit no matter how much CPU is free.
 Managed scaling sees tasks waiting in `PROVISIONING`, raises `CapacityProviderReservation` above target, and adds instances. The team ends up buying CPU it will not use, just to get ENI slots.
-The fix is the `awsvpcTrunking` account setting plus replacing the instances, because the trunk ENI is only attached at registration on supported Nitro types.
-With trunking, branch ENIs ride the trunk using VLAN tags, and density rises by several times: a c5.large goes from 2 tasks to 10 (AWS docs, as of 2026-10).
+The fix is the `awsvpcTrunking` account setting plus replacing the instances, because the trunk ENI is only attached at registration on supported instance types, and m5.large is one of them.
+With trunking, branch ENIs ride the trunk using VLAN tags, and density rises by several times: an m5.large or a c5.large goes from 2 tasks to 10 (AWS docs, as of 2026-11).
 Then check subnet IP capacity, because higher density moves the bottleneck from ENI slots to subnet addresses.
 Alternatives are larger instances, which have more ENIs, or moving the service to Fargate, which removes the ENI-slot problem but keeps the one-IP-per-task cost.
 
@@ -699,7 +730,7 @@ Fargate wins for spiky, small, or numerous services, where the buffer EC2 needs 
 Non-price factors usually decide it.
 Isolation: Fargate gives a per-task VM boundary, while EC2 shares a kernel per host. For multi-tenant or untrusted code, that difference is a requirement, not a preference.
 Operations: on EC2 you own AMI patching, agent upgrades, the ENI trunking rollout, drain automation, and responses to instance retirement, which means headcount.
-Capability gaps on Fargate: no GPUs, no privileged containers, no host-level daemons, a 16 vCPU / 120 GB ceiling (as of 2026-10), no image cache, and no placement strategies.
+Capability gaps on Fargate: no GPUs, no privileged containers, no host-level daemons, a 32 vCPU / 244 GB ceiling (AWS ECS Fargate docs, as of 2026-11), no image cache, and no placement strategies.
 Cold start: Fargate pulls the image on every task, so large ML images favor EC2 with pre-pulled AMIs, or SOCI on Fargate.
 A Compute Savings Plan covers both, so the commitment decision can be separated from the substrate decision.
 A defensible answer is per workload class: Fargate as the default for stateless services, EC2 capacity providers for GPU, very large fleets, and pull-heavy images, with the measured packing efficiency on EC2 as the number that decides.
@@ -714,12 +745,12 @@ A marketing event will take a Fargate service from 200 to 2,000 tasks in ten min
 
 #### Model Answer
 
-Launch rate: one service can launch at most 500 Fargate tasks per minute (AWS quotas, as of 2026-10), so 1,800 new tasks need at least about 4 minutes of rate even in an ideal case. AWS's own test reached about 1,000 tasks in about 15 minutes including ALB and service discovery registration, so do not plan on the theoretical rate.
-Tasks per service: the cap is 5,000, so 2,000 fits.
+Launch rate: one service can launch at most 500 Fargate tasks per minute in us-east-1 and most Regions, and 125 in the Regions AWS lists with the lower quota (AWS quotas, as of 2026-11), so at 500 per minute 1,800 new tasks need at least about 4 minutes of rate even in an ideal case. AWS's own 2023 test reached about 1,000 tasks in about 15 minutes including ALB and service discovery registration (AWS Containers blog, checked 2026-11), so do not plan on the theoretical rate.
+Tasks per service: the cap is 5,000, so 2,000 fits, unless the service uses Cloud Map service discovery, which caps it at 1,000 tasks.
 Fargate vCPU quota: account-level Fargate On-Demand and Spot vCPU quotas must cover `2000 x task vCPU`. Raise them weeks ahead, not on the day.
 Subnet IPs: 2,000 tasks need 2,000 IPs, plus room for a deployment that might overlap. Three /24 subnets (753 usable) cannot hold that, so you need /21-class subnets or more of them.
 Image pull: 1,800 cold pulls from ECR. Keep images small, keep everything in-region, check that NAT or endpoint throughput can absorb the burst, and use SOCI if the image is large.
-Health checks: with ALB defaults, a new target can spend up to 150 seconds proving itself healthy (UNVERIFIED as current defaults). Tighten interval and threshold for this service.
+Health checks: with the ALB default 30-second interval, a new target needs one passing check, so it can wait up to about 30 seconds, and a target that went unhealthy needs 5 passes, up to 150 seconds (AWS ALB docs, as of 2026-11). Tighten interval and threshold for this service.
 Downstream: 10x tasks means 10x database connections, so check connection limits, RDS Proxy, and the warm-up behavior of caches.
 Mechanics: do not rely on reactive target tracking for a known event. Use scheduled scaling to pre-warm to about 2,000 thirty minutes early, which turns a latency problem into a cost of about 30 minutes of idle tasks.
 At `0.5 vCPU / 1 GB` x86, that pre-warm costs `1800 x 0.024685 x 0.5 = $22.22` per half hour, which is cheap insurance.
@@ -763,7 +794,7 @@ Kubernetes is in between: one scheduler process does the binding, optimistic con
 Omega's own analysis showed that conflict rates, and so wasted scheduling work, grow with how much the schedulers' targets overlap and how long each decision takes.
 For ECS, that means one very dense, binpacked EC2 cluster where many services scale at once is the worst case: everyone fights over the same nearly full hosts, retries pile up, and placement latency degrades just when demand spikes.
 Mitigations follow from the model: shard into multiple clusters, use separate capacity providers so schedulers target disjoint host sets, keep a `targetCapacity` buffer so the hosts are not all near full, or use Fargate, where the contention is pushed down into AWS's capacity layer.
-The quotas, 5,000 instances per cluster and 5,000 tasks per service (as of 2026-10), also effectively bound the size of any one optimistic-concurrency domain.
+The quotas, 5,000 instances per cluster and 5,000 tasks per service (as of 2026-11), also effectively bound the size of any one optimistic-concurrency domain.
 At principal level, the answer is to treat the cluster as a contention and blast-radius boundary, the same way cells are treated in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture]], and not as an organizational container.
 
 #### Follow-up Interviewer Question
@@ -773,7 +804,7 @@ How would you instrument ECS to detect that scheduling contention, rather than c
 ## Further Reading
 
 - [Under the Hood of Amazon EC2 Container Service (Vogels, 2015)](https://www.allthingsdistributed.com/2015/07/under-the-hood-of-the-amazon-ec2-container-service.html) - The only first-party description of the ECS state store and its optimistic-concurrency commit rule.
-- [State Management and Scheduling with the Amazon EC2 Container Service (Vogels, 2015)](https://www.allthingsdistributed.com/articles.html) - The companion post explaining why ECS separates state management from pluggable schedulers.
+- [State Management and Scheduling with the Amazon EC2 Container Service (All Things Distributed, 2015-04-09)](https://www.allthingsdistributed.com/2015/04/state-management-and-scheduling-with-ecs.html) - The companion post explaining why ECS separates state management from pluggable schedulers; the July 2015 post refers back to it as the author's previous post.
 - [Omega: flexible, scalable schedulers for large compute clusters (EuroSys 2013)](https://research.google/pubs/omega-flexible-scalable-schedulers-for-large-compute-clusters/) - The theory of shared-state optimistic scheduling and its conflict costs, which apply directly to ECS.
 - [Large-scale cluster management at Google with Borg (EuroSys 2015)](https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/) - The monolithic-scheduler baseline against which to judge ECS and Kubernetes placement.
 - [Firecracker: Lightweight Virtualization for Serverless Applications (NSDI 2020)](https://www.usenix.org/conference/nsdi20/presentation/agache) - The microVM design and isolation reasoning behind AWS serverless, including Fargate's stated history.

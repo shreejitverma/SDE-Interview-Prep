@@ -20,6 +20,25 @@ sources:
   - "https://www.usenix.org/conference/nsdi12/technical-sessions/presentation/zaharia"
   - "https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/"
   - "https://aws.amazon.com/message/12721/"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines-default-keys.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines-retry-policy.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines-selective-ex.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines-local-mode.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/lineage-tracking-entities.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_QueryLineage.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-limits.html"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonSageMaker/current/us-east-1/index.json"
+  - "https://aws.amazon.com/blogs/machine-learning/best-practices-for-amazon-sagemaker-training-managed-warm-pools/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://docs.cloud.google.com/vertex-ai/docs/pipelines/configure-caching"
+  - "https://docs.cloud.google.com/vertex-ai/docs/pipelines/machine-types"
+  - "https://cloud.google.com/vertex-ai/pricing"
+  - "https://www.kubeflow.org/docs/components/pipelines/user-guides/core-functions/caching/"
+  - "https://www.kubeflow.org/docs/components/pipelines/user-guides/components/importer-component/"
+  - "https://www.kubeflow.org/docs/components/pipelines/user-guides/core-functions/execute-kfp-pipelines-locally/"
+  - "https://kubeflow-pipelines.readthedocs.io/en/stable/source/dsl.html"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
 ---
 
 # MLOps Pipelines: SageMaker vs Vertex AI Pipelines
@@ -79,13 +98,13 @@ The SageMaker JSON format has no open-source executor, so a SageMaker pipeline d
 
 On SageMaker, the control plane evaluates `DependsOn` and data dependencies, resolves property references from upstream step outputs, checks the cache if `CacheConfig.Enabled` is true, and otherwise calls the job API with the pipeline's IAM role.
 It then polls the job to a terminal state and exposes the job's describe-response fields as properties for downstream steps.
-Retries are declared per step through retry policies keyed on exception classes such as throttling, service faults, capacity errors, and resource limits (UNVERIFIED exact enum names in this revision).
+Retries are declared per step through retry policies keyed on exception types `Step.SERVICE_FAULT`, `Step.THROTTLING`, `SageMaker.JOB_INTERNAL_ERROR`, `SageMaker.CAPACITY_ERROR`, and `SageMaker.RESOURCE_LIMIT`, with `IntervalSeconds`, `BackoffRate`, and either `MaxAttempts` (default 5, maximum 20) or `ExpireAfterMin` ([AWS docs](https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines-retry-policy.html), as of 2026-10).
 `ParallelismConfiguration.MaxParallelExecutionSteps` caps how many steps in one execution run at the same time, which is the main defense against self-inflicted API throttling and quota exhaustion when you fan out.
 
 In KFP v2, each task is split into a driver and an executor.
 The driver resolves upstream outputs and parameters, computes the cache fingerprint, looks up the cache, and either records a cached execution or emits the executor's runtime spec.
 The executor is the user container wrapped by a launcher binary, which stages input artifacts, runs the user command, uploads output artifacts to the pipeline root, and records outputs in metadata.
-On open-source KFP running on Argo Workflows the driver and executor are visible as separate pods, while on Vertex the same protocol is hidden behind managed CustomJobs (KFP architecture; UNVERIFIED for Vertex's internal implementation).
+On open-source KFP running on Argo Workflows the driver and executor are visible as separate pods, while on Vertex each component runs as a Vertex AI CustomJob, on an `e2-standard-4` machine unless the task sets resources ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/docs/pipelines/machine-types), as of 2026-10); whether Vertex reuses the KFP driver and launcher protocol behind those CustomJobs is UNVERIFIED (Vertex internals are not documented).
 The cache decision is made before any compute is requested, so a cache hit costs no accelerator capacity and no container image pull.
 
 ### Step caching is memoization over declared references
@@ -96,7 +115,7 @@ Both pipeline services implement constructive traces, but the "hash" they record
 
 SageMaker documents the exact attributes per step type.
 For a Processing step the key is `AppSpecification`, `Environment`, and `ProcessingInputs` (AWS docs, as of 2026-10).
-For a Training step it includes `AlgorithmSpecification`, `CheckpointConfig`, `DebugHookConfig`, `DebugRuleConfigurations`, `Environment`, `HyperParameters`, and `InputDataConfig`, plus any further attributes in the current documentation (AWS docs, as of 2026-10).
+For a Training step it is exactly `AlgorithmSpecification`, `CheckpointConfig`, `DebugHookConfig`, `DebugRuleConfigurations`, `Environment`, `HyperParameters`, and `InputDataConfig` ([AWS docs](https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines-default-keys.html), as of 2026-10).
 A step does not rerun when you change an attribute that is not on its list (AWS docs, as of 2026-10).
 A hit reuses only successful runs, picks the most recent successful run inside the `ExpireAfter` window, and the window is an ISO 8601 duration (AWS docs, as of 2026-10).
 
@@ -110,12 +129,13 @@ If you change `ProcessingOutputConfig` destinations, a hit hands downstream step
 Third, the cache index and the artifact bytes have independent lifetimes.
 A 30-day `ExpireAfter` combined with a 7-day S3 lifecycle expiration on the pipeline bucket gives you hits that point at deleted objects, and the failure shows up one step later as a 404 inside a downstream job.
 
-Vertex AI Pipelines defines the key as the step's inputs (parameter values and input artifact IDs), its output definitions, and its component specification (image, command, arguments, environment variables, and their order), with caching on by default (Google Cloud docs, UNVERIFIED in this revision).
-Only pipelines with the same pipeline name share cache entries (Google Cloud docs, UNVERIFIED in this revision).
+Vertex AI Pipelines defines the key as the step's inputs (parameter values and input artifact IDs), its output definitions, and its component specification (image, command, arguments, environment variables, and their order), and a cached result has no TTL and stays reusable until its entry is deleted from Vertex ML Metadata ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/docs/pipelines/configure-caching), as of 2026-10).
+Caching is on by default: KFP enables it for every component unless compiled otherwise, and Vertex's `enable_caching=None` defers to those per-component settings ([Kubeflow docs](https://www.kubeflow.org/docs/components/pipelines/user-guides/core-functions/caching/) and Google Cloud docs, as of 2026-10).
+Only pipelines with the same pipeline name share cache entries (Google Cloud docs, as of 2026-10).
 The input artifact is identified by its metadata-store ID, not by a digest of its bytes.
 That is where KFP's `dsl.importer` matters.
 With `reimport=False` the importer reuses an existing artifact with the same URI, so the artifact ID stays the same and the downstream step keeps hitting the cache even after you overwrite the object.
-With `reimport=True` every run mints a new artifact ID, so downstream steps miss every time, even when the bytes are identical.
+With `reimport=True` every run mints a new artifact ID, so downstream steps miss every time, even when the bytes are identical ([Kubeflow importer docs](https://www.kubeflow.org/docs/components/pipelines/user-guides/components/importer-component/), as of 2026-10).
 Neither setting gives content-correct caching; the fix is to make the URI itself content-addressed (a version ID or hash in the path), so that a change in identity always means a change in content.
 
 The same idea goes back further.
@@ -127,11 +147,11 @@ Pipeline services use lineage for audit, not for recomputation, and their finger
 
 MLMD models the world as Artifacts (typed, with URIs and properties), Executions (runs of a component), Events (input or output edges between an execution and an artifact), and Contexts (groupings such as a pipeline or a run), linked by Attributions and Associations.
 Vertex ML Metadata exposes this model as a regional, per-project metadata store, and Vertex AI Pipelines writes into it automatically.
-This means that on Vertex the lineage graph and the cache index sit in the same system: the driver's cache lookup is a query for a prior execution with a matching fingerprint (KFP design; UNVERIFIED as a statement about Vertex internals).
+This means that on Vertex the lineage graph and the cache index sit in the same system: the cache lookup checks Vertex ML Metadata for a prior execution with a matching step interface, and deleting that execution's entry from ML Metadata invalidates the hit (Google Cloud docs, as of 2026-10).
 
-SageMaker ML Lineage Tracking models Artifacts, Actions, and Contexts joined by typed Associations (`ContributedTo`, `AssociatedWith`, `DerivedFrom`, `Produced`).
+SageMaker ML Lineage Tracking models Trial Components (jobs), Artifacts, Actions, and Contexts joined by typed Associations (`ContributedTo`, `AssociatedWith`, `DerivedFrom`, `Produced`, and `SameAs` for cross-account entities) ([AWS docs](https://docs.aws.amazon.com/sagemaker/latest/dg/lineage-tracking-entities.html), as of 2026-10).
 SageMaker creates these entities automatically for jobs, model packages, and endpoints.
-The `QueryLineage` API walks the graph from start ARNs in a given direction to a maximum depth, optionally with filters and edges (UNVERIFIED parameter names in this revision).
+The `QueryLineage` API walks the graph from `StartArns` (at most one ARN per call) in a `Direction` of `Ascendants`, `Descendants`, or `Both`, to a `MaxDepth` of at most 10, optionally with `Filters` and `IncludeEdges`, returning at most 50 vertices per page ([AWS API reference](https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_QueryLineage.html), as of 2026-10).
 AWS does not document the Pipelines cache index as backed by lineage entities, so deleting lineage entities should not be assumed to invalidate the cache, and the reverse is also true.
 
 Lineage is only as complete as the paths that write to it.
@@ -160,18 +180,22 @@ A step whose job writes to an external system (a database, a feature store, a ti
 | SageMaker cache TTL format | ISO 8601 duration; year, month, week, day, hour, or minute units | (AWS docs, as of 2026-10) |
 | SageMaker cache reuse rule | Only successful runs; the most recent successful match inside TTL wins | (AWS docs, as of 2026-10) |
 | SageMaker Processing cache key | `AppSpecification`, `Environment`, `ProcessingInputs` | (AWS docs, as of 2026-10) |
-| SageMaker Training cache key (partial) | `AlgorithmSpecification`, `CheckpointConfig`, `DebugHookConfig`, `DebugRuleConfigurations`, `Environment`, `HyperParameters`, `InputDataConfig`, and more | (AWS docs, as of 2026-10) |
+| SageMaker Training cache key | `AlgorithmSpecification`, `CheckpointConfig`, `DebugHookConfig`, `DebugRuleConfigurations`, `Environment`, `HyperParameters`, `InputDataConfig` (complete list) | (AWS docs, as of 2026-10) |
 | SageMaker code-change detection | Local code file hashed into its S3 upload path | (SageMaker Python SDK v2 docs, as of 2026-10) |
 | SageMaker default `CacheConfig` | Caching off unless `enable_caching=True` | (SageMaker Python SDK v2 docs, as of 2026-10) |
-| Vertex AI Pipelines default caching | On by default; override per run with `enable_caching` or per task | UNVERIFIED (Google Cloud docs, not re-checked 2026-10) |
-| Vertex cache sharing scope | Same pipeline name only | UNVERIFIED (Google Cloud docs, not re-checked 2026-10) |
-| Vertex AI Pipelines orchestration fee | Per-run fee, historically USD 0.03 per run, plus underlying compute | UNVERIFIED |
-| SageMaker Pipelines orchestration fee | No separate charge; pay for jobs, storage, and other resources used | UNVERIFIED |
-| Parallel training jobs per HPO tuning job | 10 per a 2021 re:Post answer; current value may differ | UNVERIFIED (re:Post, 2021) |
-| SageMaker managed job start overhead | Minutes per job for provisioning and image pull (rule of thumb) | UNVERIFIED |
+| Vertex AI Pipelines default caching | On by default; override per run with `enable_caching` (`True`, `False`, or `None` to defer to components) or per task with `set_caching_options` | (Google Cloud docs and Kubeflow docs, as of 2026-10) |
+| Vertex cache TTL | None; a hit is reusable until its entry is deleted from Vertex ML Metadata | (Google Cloud docs, as of 2026-10) |
+| Vertex cache sharing scope | Same pipeline name only | (Google Cloud docs, as of 2026-10) |
+| Vertex AI Pipelines orchestration fee | USD 0.03 per pipeline run, plus underlying compute at Vertex training rates | (Google Cloud pricing page, as of 2026-10) |
+| Vertex default component machine | `e2-standard-4` (4 vCPU, 16 GB) run as a CustomJob | (Google Cloud docs, as of 2026-10) |
+| SageMaker Pipelines orchestration fee | No separate charge; pay for Studio and the orchestrated jobs and storage | (AWS docs, as of 2026-10) |
+| Parallel training jobs per HPO tuning job | 10 by default, increasable to 100 | (AWS docs, as of 2026-10) |
+| SageMaker training job start overhead | About 2-3 minutes cold; about 20 seconds P90 on a managed warm pool | (AWS ML blog, 2022) |
+| `QueryLineage` limits | `MaxDepth` at most 10, at most 50 vertices per page, one start ARN | (AWS API reference, as of 2026-10) |
+| SageMaker retry policy `MaxAttempts` | Default 5, maximum 20 | (AWS docs, as of 2026-10) |
 | Metadata growth, 300 runs per night at 5 steps | About 45,000 executions per month, about 540,000 per year | Derived in this chapter |
 
-Treat every UNVERIFIED row as a placeholder to confirm against the current pricing and quotas pages before you use it in a design review.
+Prices and quotas drift, so reconfirm every price and quota row against the current pricing and quotas pages before you use it in a design review.
 For cross-cutting numbers, see [[17-Cloud-AI-Engineering/Volume_14_Staff_Plus_Interview_Arena/Chapter_06_Cloud_AI_Numbers_Every_Staff_Engineer_Must_Know|Cloud AI Numbers Every Staff Engineer Must Know]] and [[17-Cloud-AI-Engineering/Appendices/Appendix_C_Limits_Quotas_and_Thresholds_Matrix|Appendix C]].
 
 ## AWS vs GCP Mechanism Parity
@@ -182,9 +206,9 @@ For cross-cutting numbers, see [[17-Cloud-AI-Engineering/Volume_14_Staff_Plus_In
 | Compiled IR | SageMaker JSON pipeline definition; step arguments mirror job API requests | KFP `PipelineSpec` YAML or JSON | KFP IR is portable to self-hosted Kubeflow |
 | Step substrate | Processing, Training, Tuning, Transform, EMR, Lambda, Callback, Condition, and other step types | Containerized components run as CustomJobs, plus Google Cloud pipeline components that call other services | SageMaker steps are typed job requests; Vertex steps are mostly arbitrary containers |
 | Runtime expressions | `Get` property references, `Std:Join`, `JsonGet`, execution variables | Task output references and pipeline parameters resolved by the driver | Both resolve before the cache key is computed |
-| Cache key | Fixed per-step-type list of resolved request attributes | Input parameter values, input artifact IDs, output definitions, container spec (UNVERIFIED) | SageMaker keys on URIs; Vertex keys on metadata artifact identity |
-| Cache default and TTL | Off by default; `ExpireAfter` TTL per step | On by default; no documented TTL (UNVERIFIED) | A cache that is on by default with no TTL needs explicit invalidation discipline |
-| Cache scope | Prior runs of the same step of the current pipeline | Pipelines with the same name (UNVERIFIED) | Renaming a pipeline is an accidental cache reset on Vertex |
+| Cache key | Fixed per-step-type list of resolved request attributes | Input parameter values, input artifact IDs, output definitions, container spec (Google Cloud docs, as of 2026-10) | SageMaker keys on URIs; Vertex keys on metadata artifact identity |
+| Cache default and TTL | Off by default; `ExpireAfter` TTL per step | On by default; no TTL, valid until the ML Metadata entry is deleted (Google Cloud docs, as of 2026-10) | A cache that is on by default with no TTL needs explicit invalidation discipline |
+| Cache scope | Prior runs of the same step of the current pipeline | Pipelines with the same name (Google Cloud docs, as of 2026-10) | Renaming a pipeline is an accidental cache reset on Vertex |
 | Lineage store | SageMaker ML Lineage Tracking: Artifacts, Actions, Contexts, Associations | Vertex ML Metadata (MLMD): Artifacts, Executions, Contexts, Events | On Vertex, cache and lineage share a store |
 | Lineage query | `QueryLineage` graph traversal from ARNs | Metadata store lineage subgraph queries and filters | Both are regional and per account or project |
 | Partial re-run | Selective execution: rerun chosen steps and reuse a source execution's other outputs | Re-submit with caching; failed tasks rerun, cached ones are skipped | Selective execution is explicit; Vertex relies on cache semantics |
@@ -195,7 +219,7 @@ For cross-cutting numbers, see [[17-Cloud-AI-Engineering/Volume_14_Staff_Plus_In
 | Identity | Pipeline `RoleArn` plus per-job execution roles; caller needs `iam:PassRole` | Run `service_account`; caller needs `iam.serviceAccounts.actAs` | Both are confused-deputy surfaces |
 | Network | Per-job `NetworkConfig` (VPC, network isolation), SageMaker API interface endpoints | Run `network` (VPC peering), VPC Service Controls perimeter | VPC SC covers the control plane APIs; AWS uses endpoint policies plus SCPs |
 | Encryption | Per-job KMS keys for volumes and outputs | `encryption_spec_key_name` CMEK on the run | GCP sets CMEK once per run; AWS sets keys per job argument |
-| Local testing | `LocalPipelineSession` runs steps in local containers | Local execution of KFP components (SDK feature; UNVERIFIED maturity) | Neither reproduces managed IAM and network behavior |
+| Local testing | `LocalPipelineSession` runs Training, Processing, Transform, Model, Condition, and Fail steps sequentially in local containers (AWS docs, as of 2026-10) | KFP `local.init()` with `DockerRunner` or `SubprocessRunner`; no caching, retries, resource limits, `dsl.Condition`, or `dsl.ParallelFor` (Kubeflow docs, as of 2026-10) | Neither reproduces managed IAM and network behavior |
 
 See also [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_06_AI_and_ML_Platform_Translation|AI and ML Platform Translation]] for the broader SageMaker to Vertex mapping.
 
@@ -207,8 +231,8 @@ Build a one-step pipeline on each cloud, run it twice to observe a cache hit, ov
 
 ### Cost estimate
 
-SageMaker side: three Processing runs on `ml.m5.large`, each a few minutes, at an illustrative list price of about USD 0.12 per hour, total under USD 0.10 (UNVERIFIED price; check the SageMaker AI pricing page for your region).
-Vertex side: three pipeline runs of one small component at the per-run fee plus a few minutes of default component compute, total under USD 0.50 (UNVERIFIED price).
+SageMaker side: three Processing runs on `ml.m5.large`, each a few minutes, at USD 0.115 per hour in us-east-1 (AWS Price List API, as of 2026-10), total under USD 0.10; check the SageMaker AI pricing page for your region.
+Vertex side: three pipeline runs at USD 0.03 each, USD 0.09 in run fees (Google Cloud pricing page, as of 2026-10), plus a few minutes of default `e2-standard-4` component compute, total under USD 0.50 (the compute share is an estimate).
 Storage: a few kilobytes in S3 and GCS, effectively zero.
 Set a USD 5 budget alarm on each cloud before you start.
 
@@ -376,8 +400,8 @@ Step 1, uncached GPU demand: 300 trains times 1 hour gives 300 GPU instance-hour
 Step 2, concurrency: an 8-hour window with 60-minute trains needs at least 300 / 8 = 38 concurrent trains, and allowing 20 percent for provisioning overhead and retries gives a planned 46, so request a training-instance quota of at least 48 and set `MaxParallelExecutionSteps` and the tenant-level concurrency to match.
 Step 3, job launch rate: 300 pipelines times 3 job-backed steps gives 900 job launches per night, which is trivial on average but arrives as a burst if every pipeline starts at 00:00, so stagger start times with jitter across the first hour to keep `Create*Job` calls under API throttling limits.
 Step 4, caching: if 60 percent of tenants have no new data on a given night and the data path is content-addressed, all three steps hit the cache for those tenants, and GPU demand falls from 300 to 120 instance-hours.
-Step 5, cost with a placeholder GPU price G per hour: uncached is 300G per night, cached is 120G per night, and the monthly saving is 30 times 180G, which is 5,400G; at an illustrative G of USD 1.50 that is USD 8,100 per month (UNVERIFIED price).
-Step 6, orchestration fee on Vertex at the historical per-run fee: 300 runs times 30 nights times USD 0.03 is USD 270 per month, which cached runs still incur, and which is small next to compute (UNVERIFIED fee).
+Step 5, cost with a placeholder GPU price G per hour: uncached is 300G per night, cached is 120G per night, and the monthly saving is 30 times 180G, which is 5,400G; at an illustrative G of USD 1.50 that is USD 8,100 per month (G is a placeholder, not a quoted list price; substitute your instance's regional rate).
+Step 6, orchestration fee on Vertex at the current per-run fee of USD 0.03 (Google Cloud pricing page, as of 2026-10): 300 runs times 30 nights times USD 0.03 is USD 270 per month, which cached runs still incur because the fee is charged per pipeline run, and which is small next to compute.
 Step 7, metadata growth: 300 runs times about 5 executions per run is about 1,500 executions per night, about 45,000 per month, and about 540,000 per year, plus about twice as many artifacts and events, so lineage queries must use filters and depth limits.
 Spot and preemptible training can cut G further with checkpoint-aware retries, as covered in [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_03_Spot_Economics_and_Interruption_Handling|Spot Economics and Interruption Handling]].
 
@@ -398,7 +422,7 @@ Keep a `CacheBuster` pipeline parameter that is wired into every step's environm
 ### Cache entries pointing at deleted artifacts
 
 Cache metadata and object-store lifecycle rules are not coordinated, so a hit can propagate URIs to objects that a lifecycle rule has already deleted.
-Set `ExpireAfter` well below the shortest lifecycle expiration on pipeline output prefixes, and on Vertex, where no TTL is documented, either never expire the pipeline root or disable caching for runs older than its retention.
+Set `ExpireAfter` well below the shortest lifecycle expiration on pipeline output prefixes, and on Vertex, where cached results have no TTL (Google Cloud docs, as of 2026-10), either never expire the pipeline root or disable caching for runs older than its retention.
 
 ### Downstream reads from hard-coded paths
 
@@ -419,8 +443,8 @@ Treat capacity as a reserved, scheduled resource with fallback instance types, n
 ### Regional control plane dependency
 
 The AWS summary of the December 7, 2021 us-east-1 event describes congestion in the internal network that impaired control plane APIs while many data planes kept running, which is exactly the shape that stalls job-launching orchestrators ([AWS summary](https://aws.amazon.com/message/12721/)).
-The AWS us-east-1 event of October 2025, triggered by a DynamoDB DNS failure, similarly broke control plane workflows across many dependent services (UNVERIFIED detail in this revision).
-Google Cloud's June 2025 incident, caused by a Service Control policy change, returned errors from many Google Cloud APIs at once (UNVERIFIED detail in this revision).
+The AWS us-east-1 event of October 19-20, 2025, triggered by a latent race condition in DynamoDB's DNS management system that left the regional DynamoDB endpoint with an empty DNS record, similarly broke control plane workflows across many dependent services, including EC2 instance launches, while already-running instances kept working ([AWS summary](https://aws.amazon.com/message/101925/)).
+Google Cloud's June 12, 2025 incident, caused by a quota policy with blank fields that crashed Service Control binaries through an unguarded null-pointer code path, returned 503 errors from many Google Cloud APIs at once ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
 The lesson is static stability: serving must never depend on the training pipeline's control plane, and the last approved model must stay deployable without the pipeline running ([[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]]).
 
 ### Lineage gaps from side channels
@@ -430,7 +454,7 @@ In an audit or a data-deletion request, those gaps make "which models touched th
 
 ### Renaming pipelines on Vertex
 
-If the cache is scoped by pipeline name, renaming a pipeline for cosmetic reasons silently disables caching and can multiply nightly compute (UNVERIFIED scope rule).
+Because the cache is scoped by pipeline name (Google Cloud docs, as of 2026-10), renaming a pipeline for cosmetic reasons silently disables caching and can multiply nightly compute.
 
 ## Security and Cost Angles
 
@@ -463,7 +487,7 @@ The lineage graph is the provenance record an SLSA-style attestation for a model
 ### Unit-economics levers
 
 Compute dominates: content-addressed caching, Spot or preemptible training with checkpointing, and right-sized CPU steps are the main levers.
-Orchestration fees are second-order but scale linearly with run count, so on Vertex, collapsing many tiny scheduled runs into fewer runs with `ParallelFor` reduces per-run overhead (UNVERIFIED fee model).
+Orchestration fees are second-order but scale linearly with run count, so on Vertex, collapsing many tiny scheduled runs into fewer runs with `ParallelFor` reduces per-run overhead, since the fee is USD 0.03 per pipeline run regardless of how many tasks it contains (Google Cloud pricing page, as of 2026-10).
 Each cache miss on cross-region input pays egress again, so co-locate data and pipelines ([[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics]]).
 Tag every job with pipeline name, execution ID, and tenant, so that billing export to BigQuery or AWS Cost and Usage Reports attributes cost per model ([[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cloud_Billing_Models_and_Unit_Cost_Allocation|Cloud Billing Models and Unit Cost Allocation]]).
 
@@ -494,13 +518,13 @@ Compare how SageMaker Pipelines and Vertex AI Pipelines decide that a step is a 
 #### Model Answer
 
 SageMaker uses a documented, per-step-type list of resolved job-request attributes, for example `AppSpecification`, `Environment`, and `ProcessingInputs` for Processing, and it considers only successful runs inside an explicit TTL, picking the most recent.
-Vertex uses the KFP interface: input parameter values, input artifact IDs from ML Metadata, output definitions, and the full container spec, with caching on by default and no TTL that I would rely on.
+Vertex uses the KFP interface: input parameter values, input artifact IDs from ML Metadata, output definitions, and the full container spec, with caching on by default and no TTL at all, since a hit stays valid until its ML Metadata entry is deleted (Google Cloud docs, as of 2026-10).
 One divergence is changing a command-line argument that is not an environment variable.
 On Vertex, arguments are part of the container spec, so the change is a miss.
 On SageMaker Processing, container arguments live under `AppSpecification`, which is also in the key, so this one matches, which shows you must check per field.
 A real divergence is the output destination.
 On SageMaker Processing, output configuration is not in the key, so changing only the output prefix is a hit that returns the old URIs.
-On Vertex, output definitions are in the key, but the output URI is generated under the pipeline root, so changing the pipeline root alone is likely still a hit (UNVERIFIED nuance), and I would confirm it empirically.
+On Vertex, output definitions are in the key, but the output URI is generated under the pipeline root, so changing the pipeline root alone is likely still a hit (UNVERIFIED: the documented key lists output names, not output URIs, but Google does not state the pipeline-root case), and I would confirm it empirically.
 A second divergence is data identity: SageMaker keys on the S3 URI string, while Vertex keys on artifact ID, so `reimport=True` on an importer causes a miss on every run even with identical bytes, which has no SageMaker equivalent.
 
 #### Follow-up Interviewer Question

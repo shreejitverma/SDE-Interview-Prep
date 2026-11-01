@@ -4,7 +4,24 @@ track: [cloud-ai, ai-eng]
 level:
 status: draft
 last_reviewed:
-sources: []
+sources:
+  - "https://www.nvidia.com/en-us/data-center/h100/"
+  - "https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/"
+  - "https://www.nvidia.com/en-us/data-center/h200/"
+  - "https://www.nvidia.com/en-us/data-center/dgx-b200/"
+  - "https://www.nvidia.com/en-us/data-center/hgx/"
+  - "https://www.nvidia.com/en-us/data-center/l4/"
+  - "https://docs.cloud.google.com/tpu/docs/v5p"
+  - "https://docs.cloud.google.com/tpu/docs/v6e"
+  - "https://docs.cloud.google.com/tpu/docs/tpu7x"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/arch/neuron-hardware/trainium2.html"
+  - "https://aws.amazon.com/ec2/instance-types/trn2/"
+  - "https://aws.amazon.com/ec2/instance-types/p5/"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/03/amazon-bedrock-observability-ttft-quota"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/migrate-gke-inference-gateway"
+  - "https://docs.vllm.ai/en/latest/design/prefix_caching/"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-load-balancer-attributes.html"
+  - "https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues"
 ---
 
 # LLM Inference Mechanics: Prefill vs Decode Phases
@@ -90,7 +107,7 @@ A budget of 2000 instead of 2048 can lose a few percent of prefill throughput fo
 
 Megatron-style tensor parallelism shards each layer across TP chips and needs two all-reduces per layer, one after attention and one after the MLP, which is 160 all-reduces per generated token for an 80-layer model.
 In decode the payload is tiny (B x d_model x 2 bytes, 1 MiB at B = 64), so each all-reduce costs mostly fixed latency, not bandwidth.
-At an assumed 10 to 20 microseconds per NVLink all-reduce (UNVERIFIED, measure with nccl-tests on your topology), that adds 1.6 to 3.2 ms per token, which is 25% to 50% of the 6.6 ms weight-streaming floor computed below.
+At an assumed 10 to 20 microseconds per NVLink all-reduce (UNVERIFIED: no published 8x H100 small-message figure found; measure with nccl-tests on your topology), that adds 1.6 to 3.2 ms per token, which is 25% to 50% of the 6.6 ms weight-streaming floor computed below.
 TP across nodes over EFA or RoCE raises per-hop latency by an order of magnitude, which is why decode TP almost always stays inside one NVLink, ICI, or NeuronLink domain, with pipeline or expert parallelism used across nodes.
 Pope et al. (MLSys 2023, "Efficiently Scaling Transformer Inference") formalize this trade for TPU v4: weight-stationary 1D and 2D layouts for decode latency, and different layouts for prefill throughput, chosen per phase.
 
@@ -113,23 +130,23 @@ A TP group is one failure domain of TP chips: one bad GPU in an 8-way group take
 
 | Quantity | Value | Source |
 | --- | --- | --- |
-| H100 SXM dense BF16 / FP8 | 989 / 1,979 TFLOPS | NVIDIA H100 datasheet via secondary summary, as of 2026-10 |
-| H100 SXM HBM3 | 80 GB at 3.35 TB/s, ridge ~295 FLOP/byte | NVIDIA H100 datasheet, as of 2026-10 |
-| H100 SXM SM count | 132 | NVIDIA Hopper architecture, UNVERIFIED this batch |
-| H200 HBM3e | 141 GB at 4.8 TB/s, same Hopper compute, ridge ~206 | NVIDIA developer blog, as of 2026-10 |
-| B200 (HGX B200) | ~180 GB HBM3e per GPU (1.4 TB per 8-GPU board), ~8 TB/s, ~4.5 PFLOPS dense FP8 | NVIDIA HGX B200 datasheet and secondary sources, as of 2026-10; per-GPU dense figures UNVERIFIED |
+| H100 SXM dense BF16 / FP8 | 989 / 1,979 TFLOPS | NVIDIA H100 product page (sparse 1,979 / 3,958 halved), as of 2026-10 |
+| H100 SXM HBM3 | 80 GB at 3.35 TB/s, ridge ~295 FLOP/byte | NVIDIA H100 product page, as of 2026-10 |
+| H100 SXM SM count | 132 | NVIDIA Hopper architecture in-depth blog, as of 2026-10 |
+| H200 HBM3e | 141 GB at 4.8 TB/s, same Hopper compute, ridge ~206 | NVIDIA H200 product page, as of 2026-10 |
+| B200 (HGX B200) | ~180 GB HBM3e per GPU (1,440 GB per 8-GPU DGX B200), ~8 TB/s (64 TB/s per 8 GPUs), ~4.5 PFLOPS dense FP8 (72 PFLOPS sparse per 8 GPUs) | NVIDIA DGX B200 and HGX B200 pages, as of 2026-10; per-GPU values derived by dividing by 8 and halving the sparse figure |
 | TPU v5p per chip | 459 BF16 TFLOPS, 95 GiB HBM, 2,765 GB/s, ridge ~166 | Google Cloud TPU docs, as of 2026-10 |
-| TPU v6e (Trillium) per chip | 918 BF16 TFLOPS, 32 GiB HBM, 1,638 GB/s, ridge ~560 | Google Cloud TPU docs, as of 2026-10 |
+| TPU v6e (Trillium) per chip | 918 BF16 TFLOPS, 32 GB HBM, 1,638 GB/s, ridge ~560 | Google Cloud TPU docs, as of 2026-10 |
 | TPU7x (Ironwood) per chip | 2,307 BF16 / 4,614 FP8 TFLOPS, 192 GiB HBM, 7,380 GB/s, ridge ~313 | Google Cloud TPU docs, as of 2026-10 |
 | Trainium2 per chip | 667 BF16 / 1,299 FP8 dense TFLOPS, 96 GiB HBM at 2.9 TB/s, ridge ~230 | AWS Neuron docs, as of 2026-10 |
-| NVIDIA L4 | ~121 dense BF16 TFLOPS, 24 GB GDDR6 at ~300 GB/s | UNVERIFIED this batch |
+| NVIDIA L4 | ~121 dense BF16 TFLOPS, 24 GB GDDR6 at ~300 GB/s | NVIDIA L4 product page (242 sparse halved), as of 2026-10 |
 | Llama 3.1 70B KV per token (BF16, GQA 8 KV heads) | 320 KiB; 8k-token prompt = 2.68 GB | Derived from public model config |
 | Llama 3.1 8B KV per token (BF16) | 128 KiB | Derived from public model config |
 | 70B BF16 decode floor, 8x H100, B = 1 | 5.3 ms/token at 100% HBM BW, 6.6 ms at 80% | Derived, this chapter |
 | 70B BF16 prefill, 2048 tokens, 8x H100 at 50% MFU | ~75 ms | Derived, this chapter |
 | KV capacity, 70B BF16 on 8x H100 at 90% memory | ~435 GB = ~1.33M tokens | Derived, this chapter |
 | TP all-reduces per decoded token (Megatron TP) | 2 x layers (160 for 80 layers) | Megatron-LM design |
-| Instance list prices (p5.48xlarge, a3-highgpu-8g, trn2.48xlarge, ct6e) | Not stated; pull live with the AWS Price List API or Cloud Billing Catalog API | UNVERIFIED this batch |
+| Instance list prices (p5.48xlarge, a3-highgpu-8g, trn2.48xlarge, ct6e) | Not stated; pull live with the AWS Price List API or Cloud Billing Catalog API | Intentionally not stated; list prices vary by region and change often |
 
 Peak numbers are marketing ceilings.
 Plan on 40% to 60% MFU for prefill and 60% to 85% MBU (model bandwidth utilization, achieved bytes per second over peak) for decode until you have measured your own kernels.
@@ -139,13 +156,13 @@ Plan on 40% to 60% MFU for prefill and 60% to 85% MBU (model bandwidth utilizati
 | Mechanism | AWS | Google Cloud | Critical difference |
 | --- | --- | --- | --- |
 | Decode-optimized GPU (HBM capacity and BW) | P5en (8x H200), P6-B200 (8x B200) (AWS docs, as of 2026-10) | A3 Ultra (8x H200), A4 (8x B200) (Google Cloud docs, as of 2026-10) | Same silicon, so decode per-step floors match; differences come from host NIC, driver, and NCCL plugin behavior |
-| Prefill-optimized FLOPS per dollar | P5 (8x H100), Trn2 (667 BF16 TFLOPS per chip) | A3 High (8x H100), TPU v6e (918 BF16 TFLOPS per chip) | v6e's ridge of ~560 makes it strong at prefill and weak at small-batch decode per chip; its 32 GiB per chip pushes large models to wide slices |
-| Custom silicon for decode | Trainium2: 96 GiB, 2.9 TB/s per chip | TPU7x: 192 GiB, 7.38 TB/s per chip | TPU7x holds much more KV per chip; Trn2 relies on 16-chip trn2.48xlarge and 64-chip UltraServer NeuronLink domains (AWS docs, as of 2026-10, not re-fetched) |
+| Prefill-optimized FLOPS per dollar | P5 (8x H100), Trn2 (667 BF16 TFLOPS per chip) | A3 High (8x H100), TPU v6e (918 BF16 TFLOPS per chip) | v6e's ridge of ~560 makes it strong at prefill and weak at small-batch decode per chip; its 32 GB per chip pushes large models to wide slices |
+| Custom silicon for decode | Trainium2: 96 GiB, 2.9 TB/s per chip | TPU7x: 192 GiB, 7.38 TB/s per chip | TPU7x holds much more KV per chip; Trn2 relies on 16-chip trn2.48xlarge and 64-chip UltraServer NeuronLink domains (AWS Trn2 page, as of 2026-10) |
 | Scale-up domain for TP | NVLink within an 8-GPU instance; NeuronLink within Trn2 instance or UltraServer | NVLink within an 8-GPU VM; ICI within a TPU slice (up to 256 chips for v6e) | TPU ICI lets decode TP span far more chips without leaving the low-latency fabric, which changes how far all-reduce latency limits TP width |
-| Scale-out for PD disaggregation | EFA with SRD multipath transport (3,200 Gbps on p5.48xlarge) | GPUDirect RDMA over RoCE on A3 Ultra / A4; DCN between TPU slices | KV transfer between prefill and decode pools rides the scale-out fabric; SRD's out-of-order delivery has to be handled by the transport library (libfabric / NIXL plugins) |
+| Scale-out for PD disaggregation | EFA with SRD multipath transport (3,200 Gbps on p5.48xlarge, AWS P5 page, as of 2026-10) | GPUDirect RDMA over RoCE on A3 Ultra / A4; DCN between TPU slices | KV transfer between prefill and decode pools rides the scale-out fabric; SRD's out-of-order delivery has to be handled by the transport library (libfabric / NIXL plugins) |
 | Serving stack on custom silicon | vLLM / NxD Inference on Neuron SDK | vLLM TPU backend, JetStream on XLA | Static-shape compilation on both: prefill buckets and decode batch sizes are compiled ahead, so an unexpected shape means recompilation or padding waste |
 | Managed model APIs | Amazon Bedrock (CloudWatch `AWS/Bedrock`: InvocationLatency, TimeToFirstToken, InputTokenCount, OutputTokenCount) | Vertex AI Model Garden MaaS and Gemini API | Both expose tokens and end-to-end latency; Bedrock also publishes `TimeToFirstToken` in milliseconds for the ConverseStream and InvokeModelWithResponseStream streaming operations (AWS Bedrock docs, as of 2026-10), but it is a service-side view, so still measure TTFT at the client to capture network and gateway time |
-| Self-managed endpoints | SageMaker AI real-time endpoints and inference components; EKS | Vertex AI online prediction endpoints; GKE | GKE Inference Gateway adds queue- and KV-utilization-aware routing (GA status UNVERIFIED); on EKS you assemble this yourself |
+| Self-managed endpoints | SageMaker AI real-time endpoints and inference components; EKS | Vertex AI online prediction endpoints; GKE | GKE Inference Gateway adds queue- and KV-utilization-aware routing (its v1 API is GA, Google Cloud docs, as of 2026-10); on EKS you assemble this yourself |
 | Capacity procurement | EC2 Capacity Blocks for ML, On-Demand Capacity Reservations | Dynamic Workload Scheduler (flex-start, calendar mode), reservations | Serving needs steady capacity, so reservations, not spot, back the decode floor; spot fits only stateless overflow prefill |
 
 ## Worked Example: Measure the Roofline, Then Size a 70B Fleet
@@ -169,7 +186,7 @@ ACCEL = {
     "h100-sxm": (989.0, 3.35, 80.0),
     "h200": (989.0, 4.8, 141.0),
     "l4": (121.0, 0.30, 24.0),
-    "tpu-v6e": (918.0, 1.638, 34.4),
+    "tpu-v6e": (918.0, 1.638, 32.0),
     "trn2": (667.0, 2.9, 103.1),
     "tpu7x": (2307.0, 7.38, 206.2),
 }
@@ -247,7 +264,7 @@ Adding `--allreduce-us 15` raises the B = 1 step from 6.65 to 9.05 ms, which sho
 
 ### Step 2 - Validate the model against a real GPU (billable, about 1 to 2 hours)
 
-Cost estimate: one g2-standard-8 (1x L4) on demand plus a 200 GB balanced boot disk, about $1/hour (UNVERIFIED, check the Compute Engine pricing page for your region), so a 2-hour lab costs about $2 to $3.
+Cost estimate: one g2-standard-8 (1x L4) on demand plus a 200 GB balanced boot disk, about $1/hour (UNVERIFIED: Google's pricing page does not expose this rate in fetchable text; third-party trackers list about $0.85/hour for g2-standard-8 in us-central1, so check the Compute Engine pricing page for your region), so a 2-hour lab costs about $2 to $3.
 
 ```bash
 export PROJECT=my-lab-project ZONE=us-central1-a BILLING_ACCOUNT=XXXXXX-XXXXXX-XXXXXX
@@ -358,7 +375,7 @@ python3 measure_stream.py --concurrency 8 --requests 64 --prompt-tokens 256 &
 sleep 5; python3 measure_stream.py --concurrency 1 --requests 4 --prompt-tokens 6000; wait
 ```
 
-The model predicts a single-sequence decode floor of 16.1 GB / (300 GB/s x 0.8), about 68 ms per token on the L4.
+The model predicts a single-sequence decode floor of 16.1 GB / (300 GB/s x 0.8), about 67 ms per token on the L4 (68 ms in the script output, which adds the 2k-token KV read).
 It also predicts KV room for only about 42k tokens after weights, so concurrency above roughly 20 at 2k context will trigger queueing or preemption.
 If measured TPOT at concurrency 1 comes in well under the predicted floor, your bandwidth or model-size inputs are wrong.
 If it comes in far over, look at kernel-launch overhead or a missing CUDA graph.
@@ -434,7 +451,7 @@ The lesson for this chapter is that the sampler, which runs once per decode step
 
 Servers often coalesce several tokens into one SSE chunk, so client-measured "ITL" is a chunk gap, and the sum of gaps divided by completion tokens (TPOT) is the honest per-token number.
 Proxies that buffer responses (some API gateways, a misconfigured NGINX `proxy_buffering`, compression middleware) turn a stream into one late response, so TTFT appears equal to E2E.
-Load-balancer idle timeouts (the ALB default is 60 seconds, not re-verified this batch) cut off non-streaming long generations that send no bytes until the end.
+Load-balancer idle timeouts (the ALB default is 60 seconds, AWS ELB docs, as of 2026-10) cut off non-streaming long generations that send no bytes until the end.
 
 ### Cross-node tensor parallelism
 
@@ -457,7 +474,7 @@ Private connectivity: an interface VPC endpoint for `com.amazonaws.<region>.bedr
 
 The KV cache holds a derived form of every prompt in HBM, so in a multi-tenant replica it has the same sensitivity as the prompts themselves.
 Cross-tenant prefix caching creates a timing side channel: a short TTFT tells the caller that another tenant recently sent the same prefix.
-Scope the prefix cache key per tenant (vLLM's per-request cache salt for this purpose is UNVERIFIED), or turn off cross-tenant sharing for regulated workloads, and accept the extra prefill compute as a security cost.
+Scope the prefix cache key per tenant (vLLM's per-request `cache_salt` field mixes a salt into the first block hash for this purpose, vLLM docs, as of 2026-10), or turn off cross-tenant sharing for regulated workloads, and accept the extra prefill compute as a security cost.
 
 ### Unit-economics levers, ordered by typical impact
 
@@ -576,7 +593,7 @@ RAG is prefill-dominated: 6k input tokens at 2 x 70.6e9 FLOPs each is about 8.5e
 Its cost is mostly prefill compute, and prefix caching helps little because the retrieved documents differ per query.
 The coding agent is decode-dominated: 1k output steps per request, long contexts that grow across turns, and a high prefix-hit rate that removes most prefill FLOPs.
 Its cost is HBM bandwidth multiplied by step count, and its concurrency is limited by KV capacity.
-On the chip numbers: the TPU v6e ridge of about 560 FLOP/byte and 918 BF16 TFLOPS make it strong for RAG prefill per chip, but 32 GiB per chip forces wide slices and TP for a 70B model, with more all-reduces per token.
+On the chip numbers: the TPU v6e ridge of about 560 FLOP/byte and 918 BF16 TFLOPS make it strong for RAG prefill per chip, but 32 GB per chip forces wide slices and TP for a 70B model, with more all-reduces per token.
 H200 has the same FLOPS as H100 but 43% more bandwidth and 76% more capacity, so it gains little on RAG and a lot on the agent's TPOT and concurrency.
 Trainium2 offers 2.9 TB/s and 96 GiB per chip, so it is competitive on decode if the Neuron stack supports the model and its compiled shape buckets match the traffic; I would treat software maturity and compile-bucket padding as explicit risks.
 The decision is then cost per goodput token at each product's SLO, measured on a benchmark that replays real length distributions, not peak specs.

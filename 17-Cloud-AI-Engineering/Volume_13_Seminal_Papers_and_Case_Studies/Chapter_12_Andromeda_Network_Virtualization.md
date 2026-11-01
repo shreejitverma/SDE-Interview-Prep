@@ -20,6 +20,27 @@ sources:
   - "https://www.usenix.org/conference/nsdi14/technical-sessions/presentation/koponen"
   - "https://www.usenix.org/conference/nsdi15/technical-sessions/presentation/pfaff"
   - "https://www.usenix.org/system/files/nsdi22-paper-zhang_qianyu.pdf"
+  - "https://storage.googleapis.com/gweb-research2023-media/pubtools/5281.pdf"
+  - "https://news.ycombinator.com/item?id=15640462"
+  - "https://docs.cloud.google.com/vpc/docs/mtu"
+  - "https://docs.cloud.google.com/vpc/docs/firewalls"
+  - "https://cloud.google.com/vpc/pricing"
+  - "https://cloud.google.com/products/compute/pricing/general-purpose"
+  - "https://docs.cloud.google.com/compute/docs/network-bandwidth"
+  - "https://docs.cloud.google.com/compute/docs/networking/configure-vm-with-high-bandwidth-configuration"
+  - "https://docs.cloud.google.com/compute/docs/networking/using-gvnic"
+  - "https://docs.cloud.google.com/compute/docs/instances/placement-policies-overview"
+  - "https://docs.cloud.google.com/compute/docs/instances/use-compact-placement-policies"
+  - "https://docs.cloud.google.com/compute/docs/accelerator-optimized-machines"
+  - "https://docs.cloud.google.com/iam/docs/roles-permissions/compute"
+  - "https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/the-components-of-the-nitro-system.html"
+  - "https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/zonal-services.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/monitoring-network-performance-ena.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/security-group-connection-tracking.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-strategies.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa.html"
+  - "https://aws.amazon.com/blogs/compute/announcing-improved-vpc-networking-for-aws-lambda-functions/"
+  - "https://instances.vantage.sh/aws/ec2/c7i.xlarge"
 ---
 
 # Andromeda: Cloud Network Virtualization (2018 NSDI)
@@ -77,7 +98,8 @@ The Cluster Management (CM) layer provisions compute, storage, and networking fo
 The Fabric Management (FM) layer exposes an intent-level API that hides how the network is built: the switch programming mechanism, the encapsulation format, and which network elements perform which functions.
 The Switch layer has two kinds of software switch: the virtual switch on each VM host, based on Open vSwitch, and the standalone Hoverboard gateways.
 VM Controllers (VMCs) in the FM layer work by convergence. They compare the desired state with each switch's actual state and push the difference, the same reconcile pattern covered in [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_01_Kubernetes_Control_Loop_Internals|Kubernetes Control Loop Internals]].
-VMCs send OpenFlow through an OpenFlow Front End (OFE) to a userspace vswitchd on each host. The OFE decouples controller scale from the number of switch connections and lets the host side be upgraded on its own schedule.
+VMCs send OpenFlow through an OpenFlow Front End (OFE) to a userspace vswitchd on each host. The OFE decouples the controller architecture from the OpenFlow protocol.
+Because it holds little state, it also gives each switch a stable connection across controller upgrades and repartitioning (Dalton et al., NSDI 2018).
 Each cluster runs several VMC partitions, and each partition owns a share of the cluster's hosts chosen by consistent hashing (see [[08-Distinguished-Engineering/02-Distributed-Systems-Internals/Consistent-Hash-Ring|Consistent Hash Ring]]).
 Each partition is a Chubby-elected master with two standbys. The overall control plane is split into a regionally aware control plane (RACP) and a globally aware control plane (GACP) (Dalton et al., NSDI 2018, as summarized by [The Morning Paper](https://blog.acolyer.org/2018/05/02/andromeda-performance-isolation-and-velocity-at-scale-in-cloud-network-virtualization/)).
 Isolation is a first-class control plane property.
@@ -95,7 +117,8 @@ Flow count grows as O(n x h), where n is the number of VMs and h is the number o
 So programming time grows quadratically until n is about h, and linearly after that. Quadratic growth means provisioning a large network takes control plane CPU and memory, and data plane memory, in proportion to the square of its size.
 On-demand model: the host punts the first packet of an unknown flow to the controller, which installs a route.
 This is efficient while it works, and fails in a metastable way.
-The paper's warning is exact: if the control plane falls behind, every VM host starts asking for on-demand programming. That adds load to the already slow control plane, and the feedback loop ends in an outage (Dalton et al., NSDI 2018).
+The paper's warning comes from experience with the pre-Andromeda network, which also supported on-demand lookups: when the control plane fell behind, all VM hosts requested on-demand programming.
+That added load to the already slow control plane, and the feedback loop led to an outage (Dalton et al., NSDI 2018, Section 6.3).
 This is the same retry-amplification loop covered in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Retries, Jitter, and Circuit Breakers]]. The on-demand model puts the control plane in the data path for first packets, which breaks control/data plane separation.
 Gateway model: send all traffic through gateways that hold all routes. Performance is predictable and control plane cost is minimal, but you need a very large gateway fleet and every packet takes an extra hop.
 The Hoverboard model combines on-demand and gateway.
@@ -104,6 +127,7 @@ When a flow crosses a usage threshold, the controller programs an *offload flow*
 It works because flow bandwidth is extremely skewed.
 In a production cluster measured over 30 minutes, 84% of VM pairs never communicated, and 98% of flows peaked below 20 kbps (Dalton et al., NSDI 2018).
 The paper evaluated a 20 kbps offload threshold, and the NSDI talk reported that more than 99.5% of traffic is offloaded ([NSDI '18 slides](https://www.usenix.org/sites/default/files/conference/protected-files/andromeda_nsdi18_slides.pdf)).
+The paper's own figure is that shifting about 50k flows, less than 0.1% of those possible, drops peak Hoverboard throughput below 1% of cluster bandwidth (Dalton et al., NSDI 2018).
 On a test with VMs placed on a fixed pool of 10k physical hosts and a 40k-VM network, the preprogrammed model needed 487M flows, 74 s, and 10 GB RAM per VMC partition. The Hoverboard model needed 1.5M flows, 1.9 s, and a peak of 513 MB per partition (Dalton et al., NSDI 2018).
 
 ### The mechanism most readers miss: whose telemetry triggers offload, and the offload lag
@@ -116,7 +140,9 @@ A new flow between two VMs that have not recently talked starts on the Hoverboar
 The extra hop and the gateway queue add latency to first-RTT and connection-setup traffic. A medium-sized transfer that finishes inside the lag window may never be offloaded at all.
 At 10 Gbps, a 500 MB transfer takes 0.4 s, which is comparable to the p99 programming latency above.
 This is why an all-to-all shuffle across freshly created VMs is the worst case for any gateway-plus-offload design: many new elephant pairs appear at once and all of them hit the gateways before the controller catches up.
-Later work on gateway-based designs, such as Zeta (Zhang et al., [NSDI 2022](https://www.usenix.org/system/files/nsdi22-paper-zhang_qianyu.pdf)), used the 20 kbps elephant threshold from the Andromeda paper as an empirical baseline. It reports that slow on-host flow detection in a comparable design let gateway load climb sharply before elephants were offloaded.
+The paper confirms this: batch workloads in which many VM pairs start communicating at high bandwidth consume substantial Hoverboard capacity until the control plane reacts, and Google responded by detecting and offloading such flows faster (Dalton et al., NSDI 2018, Section 6.3).
+Later work on gateway-based designs, such as Zeta (Zhang et al., [NSDI 2022](https://www.usenix.org/system/files/nsdi22-paper-zhang_qianyu.pdf)), used the 20 kbps elephant threshold from the Andromeda paper as an empirical baseline.
+It argues that gateways are easily overloaded by burst traffic when the control plane cannot offload immediately, and that the on-host detection program can itself be overloaded by a simultaneous batch of workloads.
 The reporting interval and the current production threshold are not public. Treat the lag numbers here as a model built from the paper's latencies, not as a measured property of today's Google Cloud.
 
 ### Data plane: Fast Path, vswitchd slow path, Coprocessors
@@ -135,16 +161,18 @@ A Google engineer described the same trade-off informally in 2017: dedicating pr
 
 ### Evolution: removing the hypervisor from the packet path
 
-Pre-Andromeda, Google ran a global control plane that preprogrammed VM-to-VM routes. Andromeda 1.0 launched in 2014 ([Google Cloud blog, 2017-11](https://cloud.google.com/blog/products/gcp/andromeda-2-1-reduces-gcps-intra-zone-latency-by-40-percent)).
+Pre-Andromeda, Google ran a global control plane that preprogrammed VM-to-VM routes and also supported on-demand lookups (Dalton et al., NSDI 2018).
+Andromeda 1.0 launched in 2014 ([Google Cloud blog, 2017-11](https://cloud.google.com/blog/products/gcp/andromeda-2-1-reduces-gcps-intra-zone-latency-by-40-percent)).
 Andromeda 1.5 added ingress virtual NIC offloads and merged redundant lookups in the VMM with the kernel OVS flow table lookup (Dalton et al., NSDI 2018).
-Andromeda 2.0 merged VMM and host kernel packet processing into one OS-bypass, busy-polling userspace data plane, so performance-critical packets are processed end to end on one CPU with no thread handoffs or context switches.
-Andromeda 2.1 lets the data plane read and write the virtual NIC rings directly, bypassing the VMM.
+Andromeda 2.0 merged VMM and host kernel packet processing into one OS-bypass, busy-polling userspace data plane, but the VMM still handled virtual NIC ring access and interrupts and exchanged packets with the data plane over SPSC shared-memory rings.
+Andromeda 2.1 lets the data plane read and write the virtual NIC rings directly, bypassing the VMM, so performance-critical packets are processed end to end on the busy-polling CPU with no thread handoffs or context switches.
 Taking the VMM out of the datapath removed four thread wakeups per network round trip (Dalton et al., NSDI 2018).
 Google's launch post describes 2.1 as a hypervisor bypass built on virtio, with the guest and the Andromeda switch talking through shared-memory queues. Previously a hypervisor thread bridged them and was descheduled when idle, which raised tail latency on the next packet (Google Cloud blog, 2017-11).
 Andromeda 2.1 cut VM-to-VM latency by 40% versus 2.0 and by nearly 8x versus the 2014 launch (Google Cloud blog, 2017-11).
 Andromeda 2.2 uses Intel QuickData DMA engines to offload large packet copies (Dalton et al., NSDI 2018).
 Compared with the initial production deployment, the paper reports 19x higher throughput and 16x better CPU efficiency (cycles per byte).
-After the paper, Google built the gVNIC guest driver, and Andromeda was rebuilt on the Snap microkernel-style host networking framework ([Stanford CS244 lecture slides, 2022](https://2022-cs244.github.io/slides/Lecture_09_2022.pdf); [Snap, SOSP 2019](https://research.google/pubs/pub48630/)).
+After the paper, Google built the gVNIC guest driver, which moved transmit DMA to the Google NIC ([Stanford CS244 lecture slides, 2022](https://2022-cs244.github.io/slides/Lecture_09_2022.pdf)).
+Snap is not a later rebuild: the Snap paper says its architecture had already run in production for several years, including network virtualization for cloud VMs, and the CS244 slides label the circa 2016 data plane "Snap/Andromeda 2.0" ([Snap, SOSP 2019](https://research.google/pubs/pub48630/)).
 In 2021 Google reported upgrading Andromeda to use hardware offloads such as zero-copy, TSO, and encryption without VM downtime, reaching up to 100 Gbps of encrypted VM-to-VM traffic ([Google Cloud blog, 2021-03](https://cloud.google.com/blog/products/networking/increasing-bandwidth-to-c2-and-n2-vms/)).
 With Titanium, Andromeda runs on the IPU offload device and still sends packets without a route to Hoverboard gateways, which still handle the long tail of flows ([Google Cloud blog, Titanium](https://cloud.google.com/blog/products/compute/titanium-underpins-googles-workload-optimized-infrastructure)). See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_06_Compute_Engine_and_Titanium_Architecture|Compute Engine and Titanium Architecture]].
 The paper's own future-work section predicted this path: offload more of the Fast Path to hardware, and prepare for much larger and more dynamic virtual networks of lightweight endpoints such as containers.
@@ -153,9 +181,11 @@ The paper's own future-work section predicted this path: offload more of the Fas
 
 The paper credits non-disruptive upgrades and VM live migration with letting Google make major architectural changes in production with essentially no customer impact (Dalton et al., NSDI 2018).
 A userspace data plane can be replaced like a process.
-The talk describes a weekly rollout cadence. The upgrade sequence is a brownout (the new process starts and gets state), a short blackout (the old process stops its engines), and a transfer of network state to the new data plane ([NSDI '18 talk](https://crossminds.ai/video/nsdi-18-andromeda-performance-isolation-and-velocity-at-scale-in-cloud-network-virtualization-606cf292a4e4dc35a6cf670f/); CS244 slides, 2022).
+The paper describes a weekly rollout cadence.
+The upgrade sequence is a brownout (the new process starts and receives state while the old one keeps serving), then a blackout (the old process stops serving and transfers delta state to the new data plane), which ends for a VM when its VMM reconnects and attaches the virtual NIC (Dalton et al., NSDI 2018, Section 6.2.2; CS244 slides, 2022).
 Live migration is the escape hatch for changes that cannot be applied in place. Drain a host's VMs, change its stack completely, then move VMs back, with the guest seeing only a brief pause.
-Blackout durations for upgrades and migrations are not reproduced here because they could not be verified in this batch.
+The paper reports a median upgrade blackout of 270 ms and a migration blackout of 65 ms median and 388 ms p99 (Dalton et al., NSDI 2018).
+Later lecture slides give 200 ms median and 1 s p99 for upgrades (CS244 slides, 2022).
 The general lesson: if you build in the ability to replace components safely from the start, a software data plane can evolve faster than any fixed-function design. Without it, the same software turns into a fleet-wide single point of failure, as covered in [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_06_Progressive_Delivery_and_Deployment_Pipelines|Progressive Delivery]].
 
 ### Where Andromeda sits in the stack
@@ -184,34 +214,37 @@ The product-level view of VPCs, subnets, and network tiers is in [[17-Cloud-AI-E
 | Designed virtual network size | 100k VMs per network | (Dalton et al., NSDI 2018; NSDI '18 slides) |
 | VMM removal in 2.1 | four fewer thread wakeups per round trip | (Dalton et al., NSDI 2018) |
 | Gains vs initial production deployment | 19x throughput, 16x CPU efficiency | (Dalton et al., NSDI 2018) |
+| Data plane upgrade blackout | 270 ms median; later slides: 200 ms median, 1 s p99 | (Dalton et al., NSDI 2018; CS244 slides, 2022) |
+| VM live migration blackout | 65 ms median, 388 ms p99 | (Dalton et al., NSDI 2018) |
 | 2.1 latency gain | 40% vs 2.0; nearly 8x vs 2014 launch | (Google Cloud blog, 2017-11) |
-| 2.1 throughput gain | 47% vs 2.0 | (Data Center Knowledge reporting Google benchmarks, 2017-11) |
+| 2.1 throughput gain | 47% vs 2.0 | UNVERIFIED: not in the text of Google's 2017-11 post, and the Data Center Knowledge report it was taken from could not be located |
 | Same-zone VM RTT after 2.1 | about 40 us, informal engineer statement | (Hacker News, 2017-11; not official) |
-| Same-zone egress cap, Skylake+ VMs with at least 16 vCPUs | 32 Gbps, GA | (Google Cloud blog, 2019-06; current value UNVERIFIED as of 2026-10) |
-| GPU VM bandwidth at Next '19 | up to 100 Gbps on V100 and T4 platforms | (Google Cloud blog, 2019-06) |
-| N2/C2 high-bandwidth configs | 50, 75, 100 Gbps via gVNIC, launched in Preview | (Google Cloud blog, 2021-03; current GA scope UNVERIFIED as of 2026-10) |
-| Tier_1 VM-to-internet egress | up to 25 Gbps, GA for N2, N2D, C2D, M3 | (Google Cloud blog, page dated about 2023; UNVERIFIED as of 2026-10) |
-| gVNIC requirement | required for 100 Gbps egress | (Google Cloud blog, 2022 pi calculation post) |
+| Same-zone egress cap, Skylake+ VMs with at least 16 vCPUs | 32 Gbps, GA at the 2019 announcement; still the standard cap on N1 (Skylake and later) and N2, while newer series go higher | (Google Cloud blog, 2019-06; Google Cloud docs, as of 2026-11) |
+| GPU VM bandwidth at Next '19 | up to 100 Gbps on V100 and T4 platforms, alpha at announcement | (Google Cloud blog, 2019-06) |
+| N2/C2 high-bandwidth configs | 50, 75, 100 Gbps via gVNIC, launched in Preview; Tier_1 is now documented with priced SKUs and no Preview label; 75 Gbps is N2 only, and N2 needs at least 32 vCPUs | (Google Cloud blog, 2021-03; Google Cloud docs and pricing, as of 2026-11) |
+| Tier_1 egress outside the VPC | 25 Gbps total with Tier_1, otherwise 7 Gbps; 3 Gbps per flow; some series differ, such as C4N and H3 | (Google Cloud docs, as of 2026-11) |
+| gVNIC requirement | required for 50 to 100 Gbps on first- and second-generation series; the only supported virtual NIC on third-generation and later, excluding bare metal | (Google Cloud docs, as of 2026-11) |
 | Jupiter bisection bandwidth | more than 1 Pbps per fabric | (Google Cloud blog, 2019-06) |
-| Default VPC MTU / max MTU | 1460 / 8896 bytes | UNVERIFIED as of 2026-10 |
-| Inter-zone VM egress price | about USD 0.01 per GB | UNVERIFIED as of 2026-10 |
+| Default VPC MTU / max MTU | 1460 / 8896 bytes | (Google Cloud docs, as of 2026-11) |
+| Inter-zone VM egress price | USD 0.01 per GiB; same-zone internal traffic is no charge | (Google Cloud pricing, as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
-AWS-side entries could not be checked against primary AWS documentation in this batch, so every AWS cell is tagged UNVERIFIED. They reflect publicly presented architecture, not checked limits.
+AWS-side entries were checked against AWS documentation where it exists (as of 2026-11).
+AWS does not document how VPC forwarding state is distributed in the pages checked, so those two cells remain marked.
 
 | Dimension | Google Cloud (Andromeda) | AWS (Nitro VPC data plane) | Critical difference |
 |---|---|---|---|
-| Where per-packet work runs | Originally a userspace Fast Path on dedicated, busy-polling host cores (Dalton et al., NSDI 2018); now on the Titanium IPU (Google Cloud blog) | Nitro Card for VPC, a dedicated offload card, so host cores are not used for VPC processing (UNVERIFIED) | Andromeda optimized for software velocity first and moved to offload later; Nitro started as offload hardware |
-| Forwarding-state distribution | Hoverboard defaults plus usage-triggered offload flows over extended OpenFlow via OFE (Dalton et al., NSDI 2018) | Central mapping service queried and cached by the Nitro data plane (UNVERIFIED) | GCP publishes its long-tail strategy; AWS has not published an equivalent of usage-based offload |
-| Control plane partitioning | Per-cluster stacks, VMC partitions by consistent hashing, Chubby master plus two standbys, per-network queues (Dalton et al., NSDI 2018) | Cell-based, zonal control planes (UNVERIFIED for VPC specifics) | Both contain blast radius; only GCP has a peer-reviewed description |
-| Long-tail and first-packet path | Unrouted packets take the low-priority default route to Hoverboards; no controller punt (Dalton et al., NSDI 2018) | Mapping-cache miss handling is not publicly specified (UNVERIFIED) | Andromeda keeps the controller out of the first-packet path |
-| Expensive features | Coprocessor threads charged to the VM (Dalton et al., NSDI 2018) | Hyperplane-based shared services for NLB, NAT Gateway, PrivateLink (UNVERIFIED) | GCP charges feature CPU to the tenant's VM; AWS moves features to separate scale-out fleets |
-| Stateful filtering | VPC firewall rules enforced in the host data plane (UNVERIFIED detail) | Security groups enforced on Nitro, with per-instance connection-tracking allowances (UNVERIFIED) | Both put connection-tracking state on the host side; the tracking budget is a hidden quota on both |
-| Isolation of packet rate | Fast Path CPU sized to throughput targets; costly work billed per VM (Dalton et al., NSDI 2018) | Per-instance pps allowance, visible through ENA driver counters (UNVERIFIED) | AWS exposes an explicit pps-exceeded counter; GCP limits are mostly expressed as bandwidth caps |
-| Upgrade mechanism | Weekly hitless userspace upgrades plus live migration (Dalton et al., NSDI 2018; NSDI '18 talk) | Nitro live update without instance reboot (UNVERIFIED) | Both treat in-place data plane upgrade as table stakes |
-| Low-latency placement | Compact placement policy (UNVERIFIED limits) | Cluster placement group (UNVERIFIED limits) | Andromeda 2.1 cut same-zone latency without requiring placement constructs (Hacker News, informal) |
-| HPC and ML transport | Andromeda over Jupiter; dedicated GPU NIC paths on accelerator VMs (UNVERIFIED) | SRD for EFA and ENA Express (UNVERIFIED) | See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI\|Interconnect Technologies]] |
+| Where per-packet work runs | Originally a userspace Fast Path on dedicated, busy-polling host cores (Dalton et al., NSDI 2018); now on the Titanium IPU, introduced with third-generation instances (Google Cloud blog, 2023) | Nitro Card for VPC, a dedicated card physically separate from the main board that runs customer workloads (AWS Nitro whitepaper, as of 2026-11) | Andromeda optimized for software velocity first and moved to offload later; Nitro started as offload hardware |
+| Forwarding-state distribution | Hoverboard defaults plus usage-triggered offload flows over extended OpenFlow via OFE (Dalton et al., NSDI 2018) | Central mapping service queried and cached by the Nitro data plane (UNVERIFIED: not in the AWS docs checked) | GCP publishes its long-tail strategy; AWS has not published an equivalent of usage-based offload |
+| Control plane partitioning | Per-cluster stacks, VMC partitions by consistent hashing, Chubby master plus two standbys, per-network queues (Dalton et al., NSDI 2018) | Zonal data planes, zonal control planes for zonally aligned EC2 operations, and a regional endpoint; security groups are listed under regional control planes, and VPC-specific partitioning is not published (AWS fault isolation whitepaper, as of 2026-11) | Both contain blast radius; only GCP has a peer-reviewed description |
+| Long-tail and first-packet path | Unrouted packets take the low-priority default route to Hoverboards; no controller punt (Dalton et al., NSDI 2018) | Mapping-cache miss handling is not publicly specified (UNVERIFIED: not in the AWS docs checked) | Andromeda keeps the controller out of the first-packet path |
+| Expensive features | Coprocessor threads charged to the VM (Dalton et al., NSDI 2018) | Hyperplane-based shared services for NLB, NAT Gateway, PrivateLink (AWS Compute blog, 2019) | GCP charges feature CPU to the tenant's VM; AWS moves features to separate scale-out fleets |
+| Stateful filtering | Always-on connection-tracking firewall in the host data plane, with rules analysed by vswitchd on a flow miss (Dalton et al., NSDI 2018); 130,000 tracked connections per vCPU, capped at 1,040,000 (Google Cloud docs, as of 2026-11) | Security groups with a per-instance connection-tracking maximum, monitored through `conntrack_allowance` metrics (AWS docs, as of 2026-11) | Both budget tracked connections per instance; at the limit Google Cloud stops tracking the longest-idle connections, while AWS drops packets for new connections |
+| Isolation of packet rate | Fast Path CPU sized to throughput targets; costly work billed per VM (Dalton et al., NSDI 2018) | Per-instance pps maximum, visible through the ENA `pps_allowance_exceeded` counter (AWS docs, as of 2026-11) | AWS exposes an explicit pps-exceeded counter; GCP limits are mostly expressed as bandwidth caps |
+| Upgrade mechanism | Weekly hitless userspace upgrades plus live migration (Dalton et al., NSDI 2018; NSDI '18 slides) | Live update of Nitro Card firmware and the Nitro Hypervisor while instances keep running (AWS Nitro whitepaper, as of 2026-11) | Both treat in-place data plane upgrade as table stakes |
+| Low-latency placement | Compact placement policy, up to 1,500 VMs at the default maximum distance, which is the only distance setting N2 supports (Google Cloud docs, as of 2026-11) | Cluster placement group in a single Availability Zone, with 10 Gbps versus 5 Gbps single-flow traffic for enhanced-networking instances (AWS docs, as of 2026-11) | Andromeda 2.1 cut same-zone latency without requiring placement constructs (Hacker News, informal) |
+| HPC and ML transport | Andromeda over Jupiter; RoCE on ConnectX-7 NICs on A3 Ultra and A4, 3,600 Gbps maximum (Google Cloud docs, as of 2026-11) | SRD for EFA and ENA Express (AWS docs, as of 2026-11) | See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI\|Interconnect Technologies]] |
 | Published primary source | Peer-reviewed NSDI 2018 paper | Conference talks; no peer-reviewed VPC data plane paper known to this author | Interview answers about AWS internals should be framed as public talk material, not specification |
 
 ## Worked Example: Measuring the Andromeda Data Path and Sizing Against the 300 ns Budget
@@ -221,14 +254,15 @@ AWS-side entries could not be checked against primary AWS documentation in this 
 Provision two VMs on gVNIC in a compact placement group inside a private VPC with no external IPs.
 Measure request-response latency for (a) a dense back-to-back stream and (b) a sparse stream well below 20 kbps on a freshly created VM pair, plus single-stream bulk throughput.
 Then compare the measurements with the per-packet budget model.
-The dense-versus-sparse comparison is an experiment, not a promise. Google does not document whether intra-zone pairs on today's Titanium hosts are preprogrammed or Hoverboard-routed, or what the current threshold is.
+The dense-versus-sparse comparison is an experiment, not a promise. Google does not document whether intra-zone pairs on today's hosts are preprogrammed or Hoverboard-routed, or what the current threshold is.
+The lab's N2 is a second-generation series, while Google describes the IPU as part of its third-generation instances (Google Cloud docs, as of 2026-11; Google Cloud blog, 2023).
 If the sparse p50 matches the dense p50, the conclusion is that your pair was programmed directly. Do not read Hoverboard behaviour into noise.
 
 ### Cost estimate
 
-Two n2-standard-4 VMs for 1 hour at roughly USD 0.19 per VM-hour list price in us-central1 (UNVERIFIED as of 2026-10) is about USD 0.40.
+Two n2-standard-4 VMs for 1 hour at USD 0.194236 per VM-hour list price in us-central1 (Google Cloud pricing, as of 2026-11) is about USD 0.40.
 Two 10 GB pd-balanced boot disks for one hour cost well under USD 0.01.
-Intra-zone traffic between VMs using internal IPs in the same zone is not billed as inter-zone egress (UNVERIFIED as of 2026-10).
+Intra-zone traffic between VMs using internal IPs in the same zone is not billed (Google Cloud pricing, as of 2026-11).
 Budget the lab at USD 1 and set a USD 10 alarm as a safety net.
 
 ### Step 1 - Provision (gcloud)
@@ -375,11 +409,11 @@ Single-stream Python bulk throughput is usually limited by guest CPU, well below
 ### Step 4 - Back-of-the-envelope sizing against the per-packet budget
 
 Per-core packet rate from the published budget: 1 / 300 ns = 3.33 Mpps.
-At a 1500 B packet: 3.33e6 x 1500 x 8 = 40.0 Gbps, which matches the measured 32.8 Gb/s once you allow for cache misses and the guest copy.
+At a 1500 B packet: 3.33e6 x 1500 x 8 = 40.0 Gbps, the same order as the measured 32.8 Gb/s, though the paper does not derive one from the other: its 3 Mpps figure is for small packets, and its throughput benchmark is 200 TCP streams on 40 Gb/s NICs.
 At a 200 B RPC packet: 3.33e6 x 200 x 8 = 5.3 Gbps.
 At 64 B: 3.33e6 x 64 x 8 = 1.7 Gbps.
 So a VM sold as "32 Gbps" can be pps-bound at a few Gbps when sending small packets. The binding limit is packets per second, and only the vendor knows how many Fast Path or IPU cycles your VM is entitled to.
-Raising the MTU attacks the same denominator. If per-packet cost were flat, an 8896 B MTU (UNVERIFIED max) would move the same 3.33 Mpps to about 237 Gbps on paper, which is why bulk-transfer tuning starts with MTU and TSO and not with core counts.
+Raising the MTU attacks the same denominator. If per-packet cost were flat, an 8896 B MTU (Google Cloud docs, as of 2026-11) would move the same 3.33 Mpps to about 237 Gbps on paper, which is why bulk-transfer tuning starts with MTU and TSO and not with core counts.
 Control plane sizing from the paper: 487M flows / 40k VMs = about 12,200 flows per VM preprogrammed, versus 1.5M / 40k = about 38 flows per VM with Hoverboards. That is a 325x reduction in state, a 39x reduction in programming time (74 s / 1.9 s), and a 19.5x reduction in memory (10 GB / 513 MB).
 Hoverboard fleet sizing model, illustrative and not Google's real fleet: a cluster of 10,000 hosts averaging 5 Gbps egress carries 50 Tbps. If 0.5% stays on Hoverboards, that is 250 Gbps. At about 30 Gbps per forwarding core, that is about 9 cores of steady-state forwarding.
 The sizing driver is not the steady state but the offload-lag burst. If 2,000 VMs start an all-to-all shuffle at 10 Gbps each, up to 20 Tbps can hit the default route for up to one programming p99 (about 0.6 s in the paper's figures). That is 80x the steady-state load, so the gateway tier must shed load, rate-limit unoffloaded traffic, or be designed to pass back-pressure to senders.
@@ -401,8 +435,8 @@ aws budgets create-budget --account-id "$ACCT" \
   --notifications-with-subscribers '[{"Notification":{"NotificationType":"ACTUAL","ComparisonOperator":"GREATER_THAN","Threshold":50,"ThresholdType":"PERCENTAGE"},"Subscribers":[{"SubscriptionType":"EMAIL","Address":"you@example.com"}]}]'
 ```
 
-Cost for two c7i.xlarge instances for one hour is roughly USD 0.36 at list price (UNVERIFIED as of 2026-10).
-Run the same `rr.py` binary there, and check the ENA driver's `ethtool -S` allowance-exceeded counters while running the 64 B dense test (counter names UNVERIFIED).
+Cost for two c7i.xlarge instances for one hour is roughly USD 0.36 at the lowest listed on-demand price of USD 0.1785 per hour (Vantage instance listing, as of 2026-11).
+Run the same `rr.py` binary there, and check the ENA driver's `ethtool -S` counters, especially `pps_allowance_exceeded`, while running the 64 B dense test (AWS docs, as of 2026-11).
 
 ### Teardown (exact)
 
@@ -452,13 +486,15 @@ Diagnosis: measure pps, not bps. Batch at the application layer (pipelining, lar
 ### Connection-tracking state as a hidden quota
 
 Stateful firewalls in host data planes hold per-connection state. Workloads with huge numbers of short-lived or idle connections (NAT appliances, scanners, push-notification fan-out) can exhaust that state before CPU or bandwidth.
-The specific limits on both clouds are UNVERIFIED in this batch. The design rule is to recycle connections, tune idle timeouts, and load test with a realistic number of connections, not just a realistic number of requests.
+Google Cloud documents 130,000 tracked connections per vCPU, capped at 1,040,000 above 8 vCPUs, and stops tracking the longest-idle connections at the limit (Google Cloud docs, as of 2026-11).
+AWS gave no per-type number in the pages checked, but it exposes `conntrack_allowance_available` and `conntrack_allowance_exceeded`, and drops packets once the allowance is exhausted (AWS docs, as of 2026-11).
+The design rule is to recycle connections, tune idle timeouts, and load test with a realistic number of connections, not just a realistic number of requests.
 
 ### Expecting the advertised egress cap on one stream
 
 Per-VM caps (for example, the 32 Gbps same-zone cap for 16+ vCPU Skylake-or-newer VMs, Google Cloud blog, 2019-06) are aggregate caps.
 One TCP stream is bounded by one guest core, one Fast Path queue, and congestion control. Engineers who benchmark with a single `iperf` stream and file a ticket are measuring their own setup, not Andromeda.
-High-bandwidth configurations also need gVNIC (Google Cloud blog, 2022). A VM still on virtio will never reach them regardless of machine size.
+High-bandwidth configurations also need gVNIC (Google Cloud docs, as of 2026-11). A VM still on virtio will never reach them regardless of machine size.
 
 ### Data plane upgrades as a correlated failure source
 
@@ -488,14 +524,14 @@ The key hierarchy for provider-managed network encryption is not customer-contro
 
 ### IAM scoping
 
-Separate the people who can change topology (networks, subnets, routes) from the people who can change reachability policy (firewall rules). On Google Cloud this maps to the network-admin and security-admin role split (UNVERIFIED role names in this batch; see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions|Cloud IAM]]).
+Separate the people who can change topology (networks, subnets, routes) from the people who can change reachability policy (firewall rules). On Google Cloud this maps to the `roles/compute.networkAdmin` and `roles/compute.securityAdmin` split (Google Cloud docs, as of 2026-11; see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions|Cloud IAM]]).
 Use VPC Service Controls perimeters for exfiltration risk through Google APIs, because firewall rules in the VM data plane do not govern API-level data movement (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]]).
 The lab uses no external IPs, IAP-only SSH, and Private Google Access on the subnet. That is the minimum perimeter worth teaching, and it also avoids NAT data-processing charges.
 
 ### Unit economics levers
 
 The Hoverboard model is itself a cost lever: shared gateway cores in place of per-host memory and programming CPU that grows with O(n x h).
-For customers, the cost-relevant facts are: (1) high-bandwidth configurations need gVNIC and may need Tier_1 networking, whose pricing is UNVERIFIED as of 2026-10; (2) inter-zone traffic is billed while intra-zone internal traffic generally is not (UNVERIFIED as of 2026-10); (3) packets per second, not Gbps, decides how many VMs a small-packet service needs.
+For customers, the cost-relevant facts are: (1) high-bandwidth configurations need gVNIC and may need Tier_1 networking, billed hourly at list prices such as USD 0.8979 per hour for 100 Gbps on N2 (Google Cloud pricing, as of 2026-11); (2) inter-zone traffic is billed at USD 0.01 per GiB while same-zone internal traffic is not (Google Cloud pricing, as of 2026-11); (3) packets per second, not Gbps, decides how many VMs a small-packet service needs.
 Example: a 200 B RPC service needing 10 Mpps is bounded by data plane packet processing. Doubling VM size buys more bandwidth cap but may not buy proportionally more pps, so benchmark pps per dollar per machine shape before standardizing.
 Placement for latency (compact placement) concentrates VMs and therefore correlates failures. Pay that blast-radius cost only for workloads whose SLO actually depends on tens of microseconds.
 See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics]] for the full egress fee model.
@@ -579,10 +615,12 @@ How does Andromeda give performance isolation between tenants who share the same
 
 There are three mechanisms.
 First, CPU-heavy per-packet work runs on per-VM coprocessor threads charged to the VM's container, so a tenant whose traffic triggers DoS processing or other expensive features spends its own CPU instead of Fast Path cycles.
-Second, the Fast Path is given enough dedicated CPU for throughput targets and is kept to bounded work (300 ns budget, no locks, no syscalls). Its per-packet cost is predictable, and the hard limits are enforced at the VM boundary.
+Second, the Fast Path is given enough dedicated CPU for throughput targets and is kept to bounded work (300 ns budget, no locks, system calls only for coprocessor wakeups and virtual interrupts). Its per-packet cost is predictable, and the hard limits are enforced at the VM boundary.
 Third, in the control plane, VMCs keep separate update queues for each virtual network, so one tenant's churn does not delay programming latency for others. Separate control stacks per cluster keep failures within a hardware failure domain.
 The weak points are shared resources that are not CPU-accounted. Hoverboards carry many tenants' long-tail and not-yet-offloaded traffic, so one tenant's burst of new elephants can raise latency for others until offload catches up.
-The Fast Path cores, caches, and memory bandwidth on a host are physically shared, so a small-packet flood from one VM pushes against the same core budget as its neighbours unless per-VM pps shaping is strict. The paper does not detail that shaping, so I would not claim its specifics.
+The Fast Path cores, caches, and memory bandwidth on a host are physically shared, so a small-packet flood from one VM pushes against the same core budget as its neighbours.
+The paper describes the mitigation: on egress the Fast Path polls VMs round robin and rate limits each to its virtual NIC line rate, and on ingress a front half does NIC polling and flow lookup, then a back half serves per-VM queues, choosing the queue that recently consumed the least Fast Path CPU.
+The paper also admits the gap: noisy neighbours can still arise if the front half is overloaded (Dalton et al., NSDI 2018, Section 6.1.1).
 To verify isolation, I would run adversarial benchmarks: one VM generating 64 B floods and connection churn on a host while measuring a neighbour's p99 RTT, plus a job-launch storm in one network while measuring another network's programming latency.
 
 #### Follow-up Interviewer Question
@@ -648,14 +686,14 @@ How do you make offload invalidation safe against IP reuse when controller-to-no
 ## Further Reading
 
 - [Andromeda: Performance, Isolation, and Velocity at Scale in Cloud Network Virtualization (Dalton et al., NSDI 2018)](https://www.usenix.org/conference/nsdi18/presentation/dalton) - the primary source for every Hoverboard, Fast Path, and control plane number in this chapter.
-- [NSDI '18 paper PDF](https://www.usenix.org/system/files/conference/nsdi18/nsdi18-dalton.pdf) - read Section 3 (control plane models and the on-demand overload argument) and the scaling evaluation closely.
+- [NSDI '18 paper PDF](https://www.usenix.org/system/files/conference/nsdi18/nsdi18-dalton.pdf) - read Section 3 (control plane models), Section 5.3 (the scaling evaluation), and Section 6.3 (the on-demand outage) closely.
 - [NSDI '18 Andromeda slides](https://www.usenix.org/sites/default/files/conference/protected-files/andromeda_nsdi18_slides.pdf) - the clearest diagrams of the Fast Path, coprocessor, and Hoverboard offload loop, plus the 99.5% offload figure.
 - [The Morning Paper on Andromeda](https://blog.acolyer.org/2018/05/02/andromeda-performance-isolation-and-velocity-at-scale-in-cloud-network-virtualization/) - a compact walkthrough of VMC partitioning, Chubby election, and the RACP/GACP split.
 - [Andromeda 2.1 reduces GCP's intra-zone latency by 40% (Google Cloud blog, 2017-11)](https://cloud.google.com/blog/products/gcp/andromeda-2-1-reduces-gcps-intra-zone-latency-by-40-percent) - the hypervisor-bypass mechanism explained by one of the paper's authors.
 - [How Andromeda 2.2 enables high-throughput VMs (Google Cloud blog, 2019-06)](https://cloud.google.com/blog/products/networking/google-cloud-networking-in-depth-how-andromeda-2-2-enables-high-throughput-vms) - how the 32 Gbps and 100 Gbps tiers relate to the Andromeda and Jupiter stack.
 - [100 Gbps networking for N2 and C2 (Google Cloud blog, 2021-03)](https://cloud.google.com/blog/products/networking/increasing-bandwidth-to-c2-and-n2-vms/) - evidence of the move to hardware offloads (zero-copy, TSO, encryption) without VM downtime.
 - [Titanium underpins Google's workload-optimized infrastructure (Google Cloud blog)](https://cloud.google.com/blog/products/compute/titanium-underpins-googles-workload-optimized-infrastructure) - confirms Andromeda now runs on the IPU while Hoverboards remain the scale-out tier.
-- [Snap: a Microkernel Approach to Host Networking (SOSP 2019)](https://research.google/pubs/pub48630/) - the host networking framework Andromeda was rebuilt on, including its upgrade model.
+- [Snap: a Microkernel Approach to Host Networking (SOSP 2019)](https://research.google/pubs/pub48630/) - the host networking architecture underneath Andromeda's data plane, including its upgrade model.
 - [Stanford CS244 Andromeda lecture slides (2022)](https://2022-cs244.github.io/slides/Lecture_09_2022.pdf) - post-paper evolution (gVNIC, Snap, upgrade blackout sequencing) and a useful comparison with AccelNet.
 - [Azure Accelerated Networking: SmartNICs in the Public Cloud (Firestone et al., NSDI 2018)](https://www.usenix.org/conference/nsdi18/presentation/firestone) - the opposite design choice presented at the same conference; read the two together.
 - [VFP: A Virtual Switch Platform for Host SDN in the Public Cloud (Firestone, NSDI 2017)](https://www.usenix.org/conference/nsdi17/technical-sessions/presentation/firestone) - Microsoft's host SDN match-action design that preceded AccelNet.

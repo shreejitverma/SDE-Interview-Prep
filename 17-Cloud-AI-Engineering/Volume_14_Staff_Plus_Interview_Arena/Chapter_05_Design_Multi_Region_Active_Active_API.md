@@ -2,7 +2,7 @@
 type: playbook
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/conference/osdi12/technical-sessions/presentation/corbett"
@@ -18,6 +18,33 @@ sources:
   - "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/"
   - "https://docs.aws.amazon.com/global-accelerator/latest/dg/introduction-how-it-works.html"
   - "https://d1.awsstatic.com/Amazon%20Aurora%20High%20Availability%20and%20Disaster%20Recovery%20Features%20for%20Global%20Resilience%20Whitepaper.pdf"
+  - "https://docs.aws.amazon.com/global-accelerator/latest/dg/about-endpoints-endpoint-weights.unhealthy-endpoints.html"
+  - "https://docs.aws.amazon.com/global-accelerator/latest/dg/about-endpoint-groups-health-check-options.html"
+  - "https://docs.aws.amazon.com/global-accelerator/latest/api/API_CreateEndpointGroup.html"
+  - "https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/global-services.html"
+  - "https://docs.aws.amazon.com/r53recovery/latest/dg/introduction-components-routing.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_HowItWorks.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-global-table-design.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/06/amazon-dynamo-db-global-tables-multi-region-strong-consistency-generally-available/"
+  - "https://aws.amazon.com/dynamodb/pricing/on-demand/"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database-disaster-recovery.html"
+  - "https://aws.amazon.com/rds/aurora/global-database/"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/10/amazon-aurora-global-database-writer-endpoint/"
+  - "https://aws.amazon.com/blogs/aws/amazon-aurora-dsql-is-now-generally-available/"
+  - "https://docs.cloud.google.com/spanner/docs/instance-configurations"
+  - "https://docs.cloud.google.com/spanner/docs/editions-overview"
+  - "https://docs.cloud.google.com/spanner/docs/compute-capacity"
+  - "https://docs.cloud.google.com/spanner/docs/cmek"
+  - "https://cloud.google.com/spanner/pricing"
+  - "https://cloud.google.com/spanner/sla"
+  - "https://docs.cloud.google.com/load-balancing/docs/https/request-distribution"
+  - "https://docs.cloud.google.com/bigtable/docs/replication-overview"
+  - "https://docs.cloud.google.com/dns/docs/zones/manage-routing-policies"
+  - "https://docs.cloud.google.com/alloydb/docs/cross-region-replication/about-cross-region-replication"
+  - "https://docs.cloud.google.com/sql/docs/postgres/replication/cross-region-replicas"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
 ---
 
 # System Design: Multi-Region Active-Active API on AWS and GCP
@@ -84,9 +111,11 @@ The Global Accelerator traffic dial is not a global traffic split.
 It only caps the share of traffic that proximity already sent to that endpoint group; the remainder goes to the next closest healthy group (AWS Global Accelerator docs, as of 2026-10).
 For example, if two regions are both dialed to 50 percent, a client near region A has a 50 percent chance of landing in A and otherwise lands in the next closest region, not in a balanced pool.
 Unhealthy regions spill the same way: their traffic goes to the next closest healthy group.
+That failover ignores the dial, so even a group dialed to 0 can receive spilled traffic ([Global Accelerator failover docs](https://docs.aws.amazon.com/global-accelerator/latest/dg/about-endpoints-endpoint-weights.unhealthy-endpoints.html), as of 2026-11).
 That means losing one region roughly doubles the load on its nearest neighbor, while a region on another continent sees almost no change.
 If every endpoint is unhealthy, Global Accelerator fails open and sends traffic to an endpoint in the closest group anyway, so a deep health check that fails in every region at once does not black-hole traffic, but it does stop failover from protecting anyone (AWS Global Accelerator docs, as of 2026-10).
-GCP's global external ALB behaves differently: backends declare capacity through balancing modes and capacity scalers, and traffic overflows to the next closest region when the nearest region reaches its declared capacity, so headroom is something you declare rather than something you discover during an incident (UNVERIFIED).
+GCP's global external ALB behaves differently: backends declare capacity through balancing modes and capacity scalers, and in Premium Tier traffic spills to another region when all backends in the closest region are at capacity, so headroom is something you declare rather than something you discover during an incident ([GCP request distribution docs](https://docs.cloud.google.com/load-balancing/docs/https/request-distribution), as of 2026-11).
+Those targets are soft limits, and when every backend is at capacity the load balancer overfills rather than rejects, so declared capacity does not replace load shedding (GCP docs, as of 2026-11).
 The capacity consequence is worked through numerically in the Worked Example.
 
 ### Layer 2 - Stateless regional cells
@@ -105,42 +134,46 @@ The paper reported TrueTime uncertainty epsilon as a sawtooth of roughly 1 to 7 
 The detail that getting-started guides leave out is that commit wait runs in parallel with Paxos replication.
 In a multi-region configuration where the quorum round trip is larger than 2 * epsilon, commit wait is almost entirely hidden, and the latency you actually pay is the leader-to-majority round trip.
 Spanner multi-region configurations use read-write replicas (voting, can be leader), read-only replicas (non-voting, serve local strong or stale reads), and witness replicas (voting, no full data copy, never leader).
-In a configuration such as nam3, two read-write regions are close to each other and a witness region sits farther away (UNVERIFIED region composition).
+In nam3, the read-write regions are us-east4 (default leader) and us-east1 with two read-write replicas each, and the witness is in us-central1, which is farther away ([Spanner instance configurations](https://docs.cloud.google.com/spanner/docs/instance-configurations), as of 2026-11).
 With five voting replicas (2 + 2 + 1), the majority is 3, so a leader in the default leader region needs only one acknowledgment from the nearby second read-write region, and the distant witness is off the critical path in steady state.
 Aurora DSQL makes the same trade more explicitly.
-In a multi-region cluster of two peered regions plus a witness, the Journal commits to 2 of 3 regions ([Brooker, Aurora DSQL: Scalable, Multi-Region OLTP, arXiv 2607.13276](https://arxiv.org/abs/2607.13276)).
+In a multi-region cluster of two peered regions plus a witness, Journal commits make data durable in two or more regions, so 2 of 3 is enough ([Brooker, Aurora DSQL: Scalable, Multi-Region OLTP, arXiv 2607.13276](https://arxiv.org/abs/2607.13276)).
 The paper measured a cluster spanning us-east-1 and us-east-2 with a witness in us-west-2.
-In that setup, p99 COMMIT was about 30 ms against 7.4 ms single-region, even though the round trip to us-west-2 was 63 ms p99, because the nearest majority does not need the farthest region (Brooker, arXiv 2607.13276, as of 2026-10).
+In that setup, p99 COMMIT was about 30 ms against 7.4 ms single-region, even though the round trip to us-west-2 was 63 ms p99, because the nearest majority does not need the farthest region (Brooker, arXiv 2607.13276, as of 2026-11).
+The us-east-1 to us-east-2 round trip in that setup was 14.4 ms p99, and the paper's rule of thumb is that multi-region COMMIT adds approximately 2x the round-trip time between the nearest pair of regions (Brooker, arXiv 2607.13276, as of 2026-11).
 Primary-key SELECTs measured about 2 ms p99 and UPDATEs about 3 ms p99 in the same setup, because DSQL pays the cross-region cost once, at COMMIT, not per statement (Brooker, arXiv 2607.13276, as of 2026-10).
 DSQL uses optimistic concurrency control, so conflicting transactions are rejected at commit, and the application must retry the whole transaction with backoff.
-When one of the two active regions goes down, the surviving active region and the witness still form a majority, so commits continue without data loss (AWS Database Blog, as of 2026-10).
+When one of the two active regions goes down, the surviving active region and the witness still form a majority, so commits continue without data loss (Brooker, arXiv 2607.13276, as of 2026-11).
 The design rule follows: put the witness or third voter close enough to one active region that the steady-state majority round trip fits your write SLO, but in a separate failure domain.
 If the witness sits next to only one active region, losing that active region makes every commit pay the long round trip, so plan latency for the degraded state as well as the steady state.
 DynamoDB global tables in multi-Region strong consistency (MRSC) mode are generally available and give RPO 0 with reads of the latest data from any region (AWS, as of 2026-10).
-Treat the MRSC topology rule (three replicas, or two replicas plus a witness) and the limits on transactions and other features in MRSC mode as things to check in current docs before you design around them (UNVERIFIED).
+An MRSC table must span exactly three regions, as three replicas or as two replicas plus a witness, and it must be created from an empty table ([DynamoDB global tables docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_HowItWorks.html), as of 2026-11).
+MRSC does not support transaction APIs, TTL, or local secondary indexes, GSI reads stay eventually consistent, and a write to an item being modified in another region fails with a retryable `ReplicatedWriteConflictException` (DynamoDB docs, as of 2026-11).
 See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_10_Cloud_Spanner_TrueTime_and_External_Consistency|Cloud Spanner: TrueTime and External Consistency]] and [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_12_Aurora_DSQL_Multi_Region_Active_Active_SQL|Aurora DSQL: Multi-Region Active-Active SQL]].
 
 ### Layer 3b - Class S: single writer, storage-level async replication
 
 Aurora's storage keeps six copies of each segment across three AZs, with a 4/6 write quorum and a 3/6 read quorum ([Aurora, SIGMOD 2017](https://dl.acm.org/doi/10.1145/3035918.3056101)).
 Aurora Global Database extends this across regions by shipping redo log records from the primary cluster's storage to secondary-region storage volumes, not by logical binlog replication.
-That keeps primary write performance unaffected and keeps typical cross-region lag under one second (AWS Aurora FAQ, as of 2026-10).
-A global database supports up to ten secondary regions, and a secondary can be promoted to read/write in less than one minute (AWS Aurora FAQ, as of 2026-10).
+That has little performance impact on the primary and keeps typical cross-region lag under one second ([Aurora Global Database docs](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html), as of 2026-11).
+A global database supports up to ten secondary regions (Aurora Global Database docs, as of 2026-11).
+AWS's sources differ on promotion time: the [product page](https://aws.amazon.com/rds/aurora/global-database/) says recovery in less than one minute, while the [failover guide](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database-disaster-recovery.html) says RTO can be in the order of minutes and the secondary typically assumes the primary role within a few minutes, so plan on minutes (as of 2026-11).
 There are two very different promotion paths.
 Switchover is planned: the primary becomes read-only, secondaries catch up, and roles change with no data loss.
 Failover is for a real outage: you promote a secondary and accept losing whatever had not replicated.
-The `AuroraGlobalDBRPOLag` metric measures your actual exposure, and Aurora PostgreSQL's managed RPO parameter `rds.global_db_rpo` can block commits on the primary when lag exceeds a bound, turning an RPO target into a write-availability trade-off (AWS Aurora HA/DR whitepaper, as of 2026-10).
+The `AuroraGlobalDBRPOLag` metric measures your actual exposure, and Aurora PostgreSQL's managed RPO parameter `rds.global_db_rpo` can block commits on the primary when every secondary's RPO lag exceeds a bound (minimum 20 seconds), turning an RPO target into a write-availability trade-off (Aurora failover guide, as of 2026-11).
 Since 2024-10-22, a Global Database writer endpoint follows the primary across switchover and failover, so applications do not need to change connection strings (AWS What's New, 2024-10-22).
 That endpoint is still DNS, so client-side DNS caching and pooled connections to the old writer still matter.
 A headless secondary (storage volume with no DB instances) keeps the sub-second RPO but trades it for a longer RTO, because instances must be created before the region can serve (AWS Aurora HA/DR whitepaper, as of 2026-10).
 The fencing problem is the part interviewers probe.
 After an unplanned failover, the old primary must never accept writes again for the same logical database.
-Aurora handles this inside the global database topology, but your application-level singletons, such as cron leaders, outbox relays, and queue consumers keyed to "the writer region", need their own fencing token, typically the global database's current primary region read from a quorum store.
+Aurora only partly handles this: managed failover attempts write fencing through the storage layer, but AWS documents it as best effort, so writes might be momentarily accepted in the old primary region and split-brain is possible, and AWS recommends taking applications offline first (Aurora failover guide, as of 2026-11).
+Beyond that, your application-level singletons, such as cron leaders, outbox relays, and queue consumers keyed to "the writer region", need their own fencing token, typically the global database's current primary region read from a quorum store.
 See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_11_Amazon_Aurora_Log_Is_The_Database|Amazon Aurora: Log-Is-The-Database]].
 
 ### Layer 3c - Class M: convergent multi-writer and CRDTs
 
-DynamoDB global tables in the default multi-Region eventual consistency (MREC) mode accept writes in every replica region, replicate asynchronously, and resolve concurrent writes to the same item with last-writer-wins (UNVERIFIED as re-checked this pass; long-standing documented behavior).
+DynamoDB global tables in the default multi-Region eventual consistency (MREC) mode accept writes in every replica region, replicate asynchronously, and resolve concurrent writes to the same item with last-writer-wins, using the latest internal timestamp on a per-item basis ([DynamoDB global tables docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_HowItWorks.html), as of 2026-11).
 The behavior that surprises people is that the condition expressions and transactions you rely on in one region are evaluated only against that region's replica.
 Two regions can both pass `attribute_not_exists(pk)` for the same key, both commit, and LWW then silently discards one of the writes.
 An atomic `UPDATE ... ADD n :1` is atomic only within its region.
@@ -150,7 +183,7 @@ The fix is to change the data model, not to tune the store.
 A state-based CRDT is a replicated type whose merge function is commutative, associative, and idempotent (a join semilattice), so replicas converge no matter how often or in what order states are exchanged ([Shapiro et al., Conflict-free Replicated Data Types, SSS 2011](https://link.springer.com/chapter/10.1007/978-3-642-24550-3_29)).
 A G-Counter keeps one slot per replica and merges by element-wise max, and a PN-Counter is two G-Counters.
 On DynamoDB MREC, the conservative way to implement a G-Counter is one item per region (`pk = counter#us-east-1`), written only by that region and summed on read.
-Assume conflict resolution is item-granular, not attribute-granular, and never let two regions write the same item.
+Conflict resolution is per item, not per attribute (DynamoDB docs, as of 2026-11), so never let two regions write the same item.
 The original Dynamo paper took the other route, using vector clocks and returning siblings to the application, which makes concurrency visible instead of hiding it ([Dynamo, SOSP 2007](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf)).
 LWW on wall clocks is also exposed to clock skew: a region whose clock runs ahead wins every conflict during the skew window.
 Hybrid logical clocks bound this but cannot recover intent ([Kulkarni et al., Logical Physical Clocks, OPODIS 2014](https://cse.buffalo.edu/tech-reports/2014-04.pdf)).
@@ -160,9 +193,10 @@ Compare the evolution in [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_
 
 A failover mechanism is statically stable when it needs no new resource creation, no control-plane mutation, and no cross-region coordination at the moment of failure ([AWS Builders' Library, Static stability using Availability Zones](https://aws.amazon.com/builders-library/static-stability-using-availability-zones/)).
 For the front door, that means health-check-driven steering that is already configured and always running.
-Global Accelerator endpoint-group health checks are an example, and detection time is approximately interval times threshold count (UNVERIFIED defaults of 30 seconds and 3).
-Traffic dial and weight changes are control-plane calls, and the Global Accelerator API is served from us-west-2 (UNVERIFIED), so a dial-based runbook depends on the health of one specific region.
-Route 53 Application Recovery Controller routing controls exist for exactly this problem: they flip DNS answers through a highly available data-plane cluster spread across several regions (UNVERIFIED cluster topology).
+Global Accelerator health checks are an example, and detection time is approximately interval times threshold count, with defaults of 30 seconds and 3 ([CreateEndpointGroup API](https://docs.aws.amazon.com/global-accelerator/latest/api/API_CreateEndpointGroup.html), as of 2026-11).
+Those endpoint-group settings apply only to EC2 and Elastic IP endpoints; for ALB and NLB endpoints, health comes from Elastic Load Balancing target-group health checks, so configure timing there ([Global Accelerator health check docs](https://docs.aws.amazon.com/global-accelerator/latest/dg/about-endpoint-groups-health-check-options.html), as of 2026-11).
+Traffic dial and weight changes are control-plane calls, and the Global Accelerator control plane is hosted in us-west-2 ([AWS Fault Isolation Boundaries](https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/global-services.html), as of 2026-11), so a dial-based runbook depends on the health of one specific region.
+Amazon Application Recovery Controller (ARC, formerly Route 53 ARC) routing controls exist for exactly this problem: they flip DNS answers by updating Route 53 health checks, through a cluster of five redundant regional endpoints, and clients should try each endpoint in turn ([ARC docs](https://docs.aws.amazon.com/r53recovery/latest/dg/introduction-components-routing.html), as of 2026-11).
 For the data tier, class Q stores need no failover decision because they keep committing as long as a majority survives.
 That is the main operational argument for paying their latency.
 Class S stores need a decision, and the decision is where outages get longer: automating unplanned Aurora Global failover on a single health signal risks flapping and data loss on transient partitions, while requiring a human adds minutes of RTO.
@@ -174,9 +208,9 @@ See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04
 ### Latency physics you design around
 
 Light in fiber travels at roughly two-thirds of c, about 5 us per km one-way, so route length, not geodesic distance, sets the floor.
-Measured inter-region round trips are the honest input, for example 63 ms p99 between US East and us-west-2 in the DSQL paper (Brooker, arXiv 2607.13276, as of 2026-10).
+Measured inter-region round trips are the honest input, for example 63 ms p99 between us-east-1 and us-west-2 in the DSQL paper (Brooker, arXiv 2607.13276, as of 2026-10).
 A write path's latency is roughly: client-to-edge RTT, plus edge-to-region RTT over the provider backbone, plus app time, plus the store's commit cost.
-The commit cost is one nearest-majority RTT for class Q, a local commit (or local plus one round trip to the home region for remote writers) for class S, and a local commit for class M.
+The commit cost is on the order of one to two nearest-majority RTTs for class Q (DSQL's paper gives approximately 2x), a local commit (or local plus one round trip to the home region for remote writers) for class S, and a local commit for class M.
 PACELC frames the trade-off: even with no partition, you choose between latency and consistency on every write ([Abadi, IEEE Computer 2012](https://www.cs.umd.edu/~abadi/papers/abadi-pacelc.pdf)).
 
 ## Numbers to Know
@@ -187,36 +221,36 @@ PACELC frames the trade-off: even with no partition, you choose between latency 
 | Global Accelerator traffic dial | 0-100 percent per endpoint group, default 100 | AWS Global Accelerator docs, as of 2026-10 |
 | Global Accelerator endpoint weight | 0-255, default 128 | AWS Global Accelerator docs, as of 2026-10 |
 | Global Accelerator fixed fee | USD 0.025 per accelerator-hour, plus per-GB DT-Premium | AWS pricing, as of 2026-10 |
-| Global Accelerator health check interval and threshold | 10 or 30 s, threshold default 3 | UNVERIFIED |
-| Aurora Global Database secondary regions | up to 10 | AWS Aurora FAQ, as of 2026-10 |
-| Aurora Global Database typical cross-region lag | under 1 s | AWS Aurora FAQ, as of 2026-10 |
-| Aurora Global Database promote secondary | under 1 minute | AWS Aurora FAQ, as of 2026-10 |
-| Aurora Global Database writer endpoint | launched 2024-10-22 | AWS What's New, 2024-10 |
+| Global Accelerator health check interval and threshold | 10 or 30 s, default 30; threshold 1-10, default 3; EC2 and EIP endpoints only | AWS Global Accelerator API docs, as of 2026-11 |
+| Aurora Global Database secondary regions | up to 10 | Aurora Global Database docs, as of 2026-11 |
+| Aurora Global Database typical cross-region lag | under 1 s | Aurora Global Database docs, as of 2026-11 |
+| Aurora Global Database promote secondary | product page says under 1 minute; failover guide says typically within a few minutes | AWS product page and Aurora failover guide, as of 2026-11 |
+| Aurora Global Database writer endpoint | launched 2024-10-22 | AWS What's New, 2024-10-22 |
 | Aurora storage quorum | 6 copies across 3 AZs, write 4/6, read 3/6 | Aurora SIGMOD 2017 |
-| Aurora DSQL GA | 2025-05-27, 8 regions at GA | AWS press release, 2025-05 |
+| Aurora DSQL GA | 2025-05-27, 8 regions at GA, multi-region clusters only in the 3 US regions at GA | AWS What's New and AWS News Blog, 2025-05-27 |
 | Aurora DSQL availability design | 99.99 percent single-region, 99.999 percent multi-region | AWS DSQL features page, as of 2026-10 |
 | Aurora DSQL multi-region COMMIT p99 | about 30 ms (us-east-1 + us-east-2, witness us-west-2) vs 7.4 ms single-region | Brooker, arXiv 2607.13276, 2026 |
 | Aurora DSQL PK read p99, multi-region | about 2 ms | Brooker, arXiv 2607.13276, 2026 |
-| US East to us-west-2 RTT p99 | about 63 ms | Brooker, arXiv 2607.13276, 2026 |
-| DynamoDB global tables MRSC | GA mid-2025, RPO 0, 10 regions at launch, standard global tables pricing | AWS announcement, 2025-06 |
+| us-east-1 to us-west-2 RTT p99 | about 63 ms | Brooker, arXiv 2607.13276, 2026 |
+| DynamoDB global tables MRSC | GA 2025-06-30, RPO 0, 10 regions at launch (15 listed as of 2026-11), standard global tables pricing | AWS What's New, 2025-06-30; DynamoDB docs, as of 2026-11 |
 | Spanner TrueTime epsilon (2012 paper) | about 1-7 ms sawtooth | Spanner OSDI 2012 |
 | Spanner Paxos leader lease (2012 paper) | 10 s default | Spanner OSDI 2012 |
-| Spanner multi-region SLA | 99.999 percent | UNVERIFIED |
+| Spanner multi-region SLA | at least 99.999 percent monthly uptime; multi-region requires Enterprise Plus edition | Spanner SLA and editions docs, as of 2026-11 |
 | Fiber propagation | about 5 us per km one-way | physics, stable |
 
 ## AWS vs GCP Mechanism Parity
 
 | Concern | AWS mechanism | GCP mechanism | Critical difference |
 | --- | --- | --- | --- |
-| Anycast front door | Global Accelerator: 2 static anycast IPs, L4, endpoint groups per region | Global external ALB: 1 anycast IP, L7 on GFEs, Maglev in front | GA steering is proximity + dial + weight; GCLB overflow is driven by declared backend capacity (UNVERIFIED) |
+| Anycast front door | Global Accelerator: 2 static anycast IPs, L4, endpoint groups per region | Global external ALB: 1 anycast IP, L7 on GFEs, Maglev in front | GA steering is proximity + dial + weight; GCLB overflow is driven by declared backend capacity (GCP docs, as of 2026-11) |
 | Operator traffic shifting | Traffic dial (group), weight (endpoint) - control-plane API | Capacity scaler, backend drain - control-plane API | Both are control-plane changes; neither is safe as the only failover path |
-| DNS-level failover | Route 53 health checks, ARC routing controls on a multi-region data-plane cluster (UNVERIFIED topology) | Cloud DNS routing policies with health checks (UNVERIFIED scope) | DNS failover suffers client caching; anycast does not |
+| DNS-level failover | Route 53 health checks, ARC routing controls on a cluster of five regional endpoints (ARC docs, as of 2026-11) | Cloud DNS WRR, geolocation, and failover policies; health checks on internal LBs (private zones) or external endpoints (public zones) (Cloud DNS docs, as of 2026-11) | DNS failover suffers client caching; anycast does not |
 | Strongly consistent multi-region SQL | Aurora DSQL: OCC, 2-of-3 Journal quorum, witness region | Spanner: Paxos per split, 2PL plus TrueTime commit wait, witness replicas | DSQL aborts on conflict at commit; Spanner blocks on locks; both pay nearest-majority RTT |
-| Multi-region strong KV | DynamoDB global tables MRSC (GA) | Spanner used as KV; Bigtable replication is eventually consistent (UNVERIFIED conflict semantics) | Only DynamoDB offers both MREC and MRSC modes on the same API surface |
-| Single-writer relational DR | Aurora Global Database: storage-level redo shipping, up to 10 secondaries | AlloyDB and Cloud SQL cross-region replicas (UNVERIFIED feature parity) | Aurora replicates below the engine; failover is still a decision with RPO greater than 0 |
-| Multi-writer convergent | DynamoDB MREC: LWW, region-local conditions | No first-party LWW multi-writer equivalent with identical semantics (UNVERIFIED) | CRDT modeling is your job on both clouds |
-| Clock source | Amazon Time Sync (UNVERIFIED role in DSQL internals) | TrueTime (GPS + atomic clocks) | TrueTime exposes bounded uncertainty to the database; that is Spanner's core primitive |
-| Failure isolation of global config | Per-region control planes, some global services anchored to one region (UNVERIFIED specifics) | Global control planes replicated globally | A global, strongly consistent config store spreads bad config globally in seconds |
+| Multi-region strong KV | DynamoDB global tables MRSC (GA) | Spanner used as KV; Bigtable replication is eventually consistent, so it is not a strong KV option (Bigtable docs, as of 2026-11) | Only DynamoDB offers both MREC and MRSC modes on the same API surface |
+| Single-writer relational DR | Aurora Global Database: storage-level redo shipping, up to 10 secondaries | AlloyDB cross-region secondaries (async, up to 5, switchover supported, cross-region failover in Preview) and Cloud SQL cross-region read replicas (async, manual promotion) (GCP docs, as of 2026-11) | Aurora replicates below the engine; failover is still a decision with RPO greater than 0 |
+| Multi-writer convergent | DynamoDB MREC: LWW, region-local conditions | Bigtable replication: every cluster accepts writes, consistency is eventual, and conflicts resolve last-write-wins per cell by server-side time (Bigtable docs, as of 2026-11) | Granularity differs: DynamoDB per item, Bigtable per cell; CRDT modeling is your job on both clouds |
+| Clock source | EC2 precision time infrastructure: microsecond-accurate clocks with error bounds, used for DSQL transaction timestamps (Brooker, arXiv 2607.13276, 2026) | TrueTime (GPS + atomic clocks) | Both use bounded physical clocks; Spanner waits out uncertainty at commit, while DSQL states that skew beyond its bounds loses linearizability but not isolation, durability, or atomicity |
+| Failure isolation of global config | Per-region control planes, but global services anchor theirs to one region: IAM and Route 53 in us-east-1, Global Accelerator and ARC in us-west-2 (AWS Fault Isolation Boundaries, as of 2026-11) | Some policy metadata replicates globally, as Service Control's did in the 2025-06-12 incident (Google Cloud incident report) | A global, strongly consistent config store spreads bad config globally in seconds |
 
 ## Worked Example: Lost-Update Lab and Three-Region Capacity Sizing
 
@@ -228,9 +262,10 @@ Part C sizes a three-region deployment, including the anycast spill effect.
 
 ### Cost estimate
 
-DynamoDB part: about 200 on-demand writes plus replicated writes and a few reads, well under USD 0.01 at current on-demand rates (rates UNVERIFIED this pass; check the DynamoDB pricing page).
-Spanner part: one instance in a multi-region configuration at 100 processing units for under one hour, roughly on the order of USD 1 (UNVERIFIED rate; check the Spanner pricing page before you run it).
-If your chosen configuration rejects sub-node sizing, use `--nodes=1`, which costs about ten times more per hour (UNVERIFIED).
+DynamoDB part: about 200 on-demand writes plus 200 replicated writes and a few reads, about USD 0.00025 for the writes at the us-east-1 rate of USD 0.625 per million for both WRUs and replicated WRUs, so well under USD 0.01 ([DynamoDB pricing](https://aws.amazon.com/dynamodb/pricing/on-demand/), as of 2026-11).
+Spanner part: one Enterprise Plus instance in a multi-region configuration at 100 processing units for under one hour.
+The pricing page's default-rendered multi-region row (asia1) lists USD 3.705 per node-hour, which is about USD 0.37 per hour for 100 processing units; the nam3 row sits behind the page's drop-down, so read it before you run this ([Spanner pricing](https://cloud.google.com/spanner/pricing), as of 2026-11).
+If your chosen configuration rejects sub-node sizing, use `--nodes=1`, which costs ten times more per hour because 1 node is 1,000 processing units; the docs list no multi-region restriction on sub-node sizing but warn that such instances have limited resources ([Spanner compute capacity](https://docs.cloud.google.com/spanner/docs/compute-capacity), as of 2026-11).
 Global Accelerator is not provisioned in this lab; if you add one, it costs USD 0.025 per hour plus DT-Premium (AWS pricing, as of 2026-10).
 
 ### Budget alarms first
@@ -355,7 +390,7 @@ In production, also handle `UnprocessedKeys` from `batch_get_item`.
 set -euo pipefail
 gcloud services enable spanner.googleapis.com
 gcloud spanner instances create aa-lab --config=nam3 \
-  --description="active-active lab" --processing-units=100
+  --description="active-active lab" --processing-units=100 --edition=ENTERPRISE_PLUS
 gcloud spanner databases create aadb --instance=aa-lab \
   --ddl='CREATE TABLE counters (id STRING(64) NOT NULL, n INT64 NOT NULL) PRIMARY KEY (id)'
 ```
@@ -453,18 +488,18 @@ Step 4, interpretation: proximity spill costs 30 extra points of capacity over t
 You can recover some of that by spreading spill with dials, but dial changes are control-plane calls that must not be on the critical failover path, so the 180 percent figure is the statically stable one.
 Step 5, task count: E 48 tasks, W 39 tasks, U 21 tasks, plus 10 percent for deploy surge, giving 53, 43, and 24.
 Step 6, write path on DynamoDB MREC: each 1 KB write consumes one write unit in the origin region plus one replicated write unit in each other replica region, so 6,000 writes per second becomes 18,000 billed write units per second across three regions.
-Per month that is 6,000 * 2,592,000 s * 3 = 4.67e10 write units; multiply by the current on-demand price per million (UNVERIFIED this pass) to get the line item.
+Per month that is 6,000 * 2,592,000 s * 3 = 4.67e10 write units; at the us-east-1 on-demand rate of USD 0.625 per million for both WRUs and replicated WRUs, that is 46,656 * 0.625 = about USD 29,160 per month, and other regions may price differently (DynamoDB pricing, as of 2026-11).
 Write cost grows linearly with region count, so a fourth region costs about 33 percent more on writes.
-Step 7, write path on a quorum store: in steady state, p99 commit is about the nearest-majority RTT; a DSQL-like US East pair with a US West witness measured about 30 ms p99 (Brooker, arXiv 2607.13276, 2026).
+Step 7, write path on a quorum store: in steady state, p99 commit tracks the nearest-majority RTT, at about 2x that RTT for DSQL; a DSQL US East pair (14.4 ms p99 RTT) with a US West witness measured about 30 ms p99 (Brooker, arXiv 2607.13276, 2026).
 For an EU client of a US-anchored quorum, add the transatlantic RTT to reach a voting region, which can consume most of a 150 ms budget, so EU-homed entities should live in an EU-anchored quorum or a separate instance.
-Step 8, degraded-state latency: if the active region nearest the witness fails, the majority now spans the long link, so re-check the SLO against roughly the 63 ms cross-country RTT plus app time.
+Step 8, degraded-state latency: if the active region nearest the witness fails, the majority now spans the long link, so re-check the SLO against the 63 ms cross-country RTT; applying the paper's 2x rule gives roughly 125 ms of commit plus app time, which is an extrapolation rather than a measurement and leaves little of a 150 ms budget.
 Step 9, conclusion: use a quorum store for money and inventory, keyed per geography; use LWW multi-writer only for data that is single-writer per item or modeled as a CRDT; keep 180 percent stateless capacity, or reserve capacity for it.
 
 ## Failure Modes and Pitfalls
 
 ### Regional dependency hidden behind a "multi-region" design
 
-On 2025-10-19/20, AWS us-east-1 had a long disruption that AWS's post-event summary attributed to a latent race condition in DynamoDB's automated DNS management, which left the regional endpoint's DNS record empty, and recovery then cascaded through dependent EC2 and load-balancing subsystems (AWS post-event summary, UNVERIFIED details this pass).
+On 2025-10-19/20, AWS us-east-1 had a long disruption that AWS's post-event summary attributed to a latent race condition in DynamoDB's automated DNS management, which left the regional endpoint's DNS record empty, and recovery then cascaded through dependent EC2 and Network Load Balancer subsystems ([AWS post-event summary](https://aws.amazon.com/message/101925/), as of 2026-11).
 The lesson for active-active designers is not "avoid DynamoDB".
 It is that any workload with a synchronous path to one region's endpoint, control plane, or identity flow is single-region regardless of where its replicas are.
 Audit for hard-coded regional endpoints, single-region STS or IAM flows, deploy pipelines, secrets, and feature-flag services.
@@ -473,7 +508,7 @@ See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_o
 ### Globally consistent replication of a poison input
 
 On 2025-06-12, Google Cloud had a broad outage.
-Google's incident report described a policy change with unexpected blank fields that was replicated globally within seconds and hit a code path in Service Control that had no feature flag or null-pointer handling, causing crash loops in every region (Google Cloud incident report, UNVERIFIED details this pass).
+Google's incident report described a policy change with unexpected blank fields that was replicated globally within seconds and hit a code path in Service Control that had no feature flag or null-pointer handling, causing crash loops in every region ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-11).
 Recovery in the largest region was slower because restarting tasks overloaded a dependency without randomized backoff.
 The lesson is that a strongly consistent global store is also a global, very fast distribution system for bad data, so config and policy need staged, region-by-region propagation with validation, even when the database could replicate them instantly.
 Replication is not backup, and active-active is not isolation.
@@ -531,7 +566,7 @@ See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Eval
 AWS KMS multi-Region keys share key material and key ID across regions, so ciphertext written in one region can be decrypted in another without a cross-region KMS call.
 That removes a runtime cross-region dependency.
 The cost is that one key policy mistake now spans regions.
-For Spanner multi-region instances with CMEK, keys must be available in each region of the configuration, so a key disabled in one region can affect a multi-region database (UNVERIFIED specifics; check current Spanner CMEK docs).
+For Spanner multi-region instances with CMEK, each regional key must sit in the same region as its replica, and disabling only some of a database's keys is strongly discouraged because the database is disabled gradually, over up to 12 hours ([Spanner CMEK docs](https://docs.cloud.google.com/spanner/docs/cmek), as of 2026-11).
 Envelope encryption keeps the KMS call on the data-key path rather than per record; see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 
 ### Private network boundaries
@@ -561,7 +596,7 @@ Long-lived connections never re-resolve at all.
 Anycast keeps one client-visible IP, steers each new connection inside the provider network using health checks that are always running, and so removes client caching from the recovery path.
 On AWS, Global Accelerator gives two static anycast IPs with per-region endpoint groups, dials, and weights.
 On GCP, the global external ALB gives one anycast IP with L7 termination at GFEs.
-Anycast does not solve data consistency, does not move existing TCP connections (they reset and the client must reconnect), and does not add capacity: a failed region's traffic lands on the next closest region.
+Anycast does not solve data consistency, does not move existing TCP connections (Global Accelerator keeps directing an established connection to its endpoint, even an unhealthy one, until it is reset or hits the 340-second idle timeout, per AWS docs as of 2026-11), and does not add capacity: a failed region's traffic lands on the next closest region.
 It also adds a cost line: GA is USD 0.025 per hour plus DT-Premium per GB (AWS pricing, as of 2026-10).
 
 #### Follow-up Interviewer Question
@@ -592,7 +627,7 @@ Design the write path for a wallet balance service serving US and EU users with 
 Balances need an invariant (no negative balance) and RPO 0, which rules out LWW multi-writer and async single-writer replication for the ledger.
 I would use a quorum store and anchor each user's ledger in a quorum near the user's home geography: a US-anchored Spanner instance or DSQL cluster and an EU-anchored one, with users partitioned by residency.
 A single global quorum would make EU writes cross the Atlantic to reach a majority.
-Commit cost is the nearest-majority RTT; the DSQL paper measured about 30 ms p99 for a US East pair with a US West witness, versus 7.4 ms single-region (Brooker, arXiv 2607.13276, 2026).
+Commit cost tracks the nearest-majority RTT, at about 2x that RTT for DSQL; the DSQL paper measured about 30 ms p99 for a US East pair with a US West witness, versus 7.4 ms single-region (Brooker, arXiv 2607.13276, 2026).
 That leaves budget for edge RTT and app time under 200 ms in steady state.
 I would place the witness or third voter so the degraded state, with the near active region lost, still fits the SLO, and verify that with a game day, not a spreadsheet.
 Writes are an append-only ledger with an idempotency key per client operation, enforced by a unique key in the same transaction, so anycast reroutes and client retries cannot double-debit.
@@ -616,7 +651,7 @@ No.
 Uniform 50 percent assumes that failed traffic spreads evenly, but GA sends an unhealthy group's traffic to the next closest healthy group, and the dial only caps what proximity already sent (AWS Global Accelerator docs, as of 2026-10).
 If the 35 percent EU region fails and EU's next closest region is US East, US East carries 80 percent, well beyond 50 percent, saturates, fails health checks, and spills again: a cascade.
 Per-region capacity must be the maximum over single-failure scenarios, which in this example is 80, 65, and 35 percent, or 180 percent total versus 150 percent for even redistribution.
-You can lower that by redistributing with dials during the event, but dial changes are control-plane API calls served from one region (UNVERIFIED), so they cannot be the primary mechanism.
+You can lower that by redistributing with dials during the event, but dial changes are control-plane API calls served from us-west-2 (AWS Fault Isolation Boundaries, as of 2026-11), so they cannot be the primary mechanism.
 I would provision for the spill matrix, add admission control so overload degrades into shedding rather than cascade, and run a game day that fails each region to measure the real spill shares, because BGP and GA routing do not follow a map.
 
 #### Follow-up Interviewer Question
@@ -631,7 +666,7 @@ Write the unplanned-failover runbook for an Aurora Global Database primary regio
 
 Detection is automated from at least two independent vantage regions: writer endpoint health, `AuroraGlobalDBRPOLag`, regional service health, and synthetic transactions, combined by a quorum rule to avoid acting on one observer's partition.
 Preparation is automated: freeze deploys, scale the target region's app tier from the pre-provisioned floor, stop region-pinned singletons in the failing region by revoking their fencing token in a quorum store, and page the incident commander.
-Promotion is gated, because failover to a secondary accepts losing whatever had not replicated, typically under one second of lag (AWS Aurora FAQ, as of 2026-10).
+Promotion is gated, because failover to a secondary accepts losing whatever had not replicated, typically under one second of lag (Aurora Global Database docs, as of 2026-11).
 The gate is a human decision with a time box, or an automated decision only if the outage exceeds a threshold and RPO lag before the outage was within budget.
 Promote with the managed failover path; the Global Database writer endpoint follows the new primary (AWS What's New, 2024-10-22), and clients with short DNS TTLs and pool recycling reconnect.
 Afterwards, reconcile possibly lost writes by comparing application event logs or outboxes against the new primary, and do not switch back until a switchover (no data loss) can run under calm conditions.
@@ -648,7 +683,7 @@ The CTO asks for "active-active across AWS and GCP" for the core API to survive 
 #### Model Answer
 
 First separate the threat from the mechanism.
-Provider-wide outages are rare, but the 2025-06-12 Google Cloud event and the 2025-10 us-east-1 event both show that global control planes and region-anchored dependencies can have very wide blast radius (incident reports, UNVERIFIED details).
+Provider-wide outages are rare, but the 2025-06-12 Google Cloud event and the 2025-10 us-east-1 event both show that global control planes and region-anchored dependencies can have very wide blast radius (Google Cloud and AWS incident reports, as of 2026-11).
 Cross-provider active-active for write data means a quorum spanning providers, with every commit crossing provider interconnects, or LWW convergence with all the lost-update risks.
 Neither cloud's managed quorum stores (Spanner, DSQL, DynamoDB MRSC) span providers, so you would be operating your own consensus database across clouds, with cross-cloud egress on every replicated byte and two IAM, KMS, and network perimeters to keep in sync.
 My recommendation is tiered.
@@ -670,7 +705,7 @@ Your platform's feature flags and authorization policies live in a strongly cons
 #### Model Answer
 
 Instant global consistency is the wrong goal for config, because it turns every bad push into a simultaneous global incident.
-That is the pattern in Google's 2025-06-12 report, where a policy with blank fields replicated globally within seconds and crashed a binary everywhere (Google Cloud incident report, UNVERIFIED details).
+That is the pattern in Google's 2025-06-12 report, where a policy with blank fields replicated globally within seconds and crashed a binary everywhere (Google Cloud incident report, as of 2026-11).
 I would keep the authoritative store strongly consistent for audit and ordering, but decouple distribution: changes propagate as versioned snapshots through a staged pipeline (canary cell, one region, then waves), with schema validation and a feature flag on the consuming code path.
 Consumers must fail static: keep serving the last known good snapshot when the new one fails validation or the store is unreachable, so the data plane never needs a fresh config to keep serving.
 Bake times and automated rollback signals are per wave, and emergency changes such as revocations get a separate fast path with tighter validation, not a bypass of all safety.

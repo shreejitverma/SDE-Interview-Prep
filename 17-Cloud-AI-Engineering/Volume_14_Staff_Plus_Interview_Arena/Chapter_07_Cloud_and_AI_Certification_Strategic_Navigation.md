@@ -2,7 +2,7 @@
 type: playbook
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/aws-certification/latest/examguides/solutions-architect-professional-02.html"
@@ -20,6 +20,31 @@ sources:
   - "https://aws.amazon.com/message/101925/"
   - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
   - "https://arxiv.org/abs/2304.01433"
+  - "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-professional-02/solutions-architect-professional-02.html"
+  - "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-professional-03/solutions-architect-professional-03.html"
+  - "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-professional-03/sap-03-comparison.html"
+  - "https://docs.aws.amazon.com/aws-certification/latest/machine-learning-engineer-associate-02/machine-learning-engineer-associate-02.html"
+  - "https://docs.aws.amazon.com/aws-certification/latest/machine-learning-engineer-associate-02/mla-02-comparison.html"
+  - "https://docs.aws.amazon.com/aws-certification/latest/security-specialty-03/security-specialty-03.html"
+  - "https://aws.amazon.com/blogs/training-and-certification/september-2026-new-offerings/"
+  - "https://aws.amazon.com/blogs/training-and-certification/march-2026-new-offerings/"
+  - "https://aws.amazon.com/certification/certified-solutions-architect-professional/"
+  - "https://aws.amazon.com/certification/certified-machine-learning-engineer-associate/"
+  - "https://aws.amazon.com/certification/certified-machine-learning-specialty/"
+  - "https://aws.amazon.com/certification/certified-generative-ai-developer-professional/"
+  - "https://aws.amazon.com/certification/policies/general-policies/"
+  - "https://aws.amazon.com/sagemaker/ai/pricing/"
+  - "https://aws.amazon.com/message/41926/"
+  - "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html"
+  - "https://cloud.google.com/learn/certification/cloud-architect"
+  - "https://cloud.google.com/learn/certification/machine-learning-engineer"
+  - "https://services.google.com/fh/files/misc/professional_cloud_architect_exam_guide_english.pdf"
+  - "https://support.google.com/cloud-certification/answer/9438208?hl=en"
+  - "https://cloud.google.com/certification/terms"
+  - "https://docs.cloud.google.com/billing/docs/how-to/budgets"
+  - "https://docs.cloud.google.com/free/docs/free-cloud-features"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/vertex-ai-name-changes"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/access-context-manager/perimeters/dry-run/create"
 ---
 
 # Cloud and AI Certification Strategic Navigation Guide
@@ -27,9 +52,9 @@ sources:
 ## TL;DR
 
 A certification shows you cleared a minimum-competence cut on one versioned blueprint, under a compensatory scoring model; it does not show depth in any single domain.
-Plan from the exam guide's domain weights, not from service lists: SAP-C02 is 26/29/25/20 across four domains, and MLA-C01 is 28/26/22/24 (verify MLA-C02 before planning; AWS docs, as of 2026-10).
-The AWS ML track changed underneath most study plans: MLS-C01 had its last test day on 2026-03-31, and AWS's AI coverage now runs through the ML Engineer Associate and the Generative AI Developer - Professional (AIP-C01) (third-party reports, as of 2026-10).
-Google's blueprints change through guide versions and product renames: the PCA guide is v6.1 with four published case studies, and the current PMLE guide names "Gemini Enterprise Agent Platform" products (Google Cloud docs, as of 2026-10).
+Plan from the exam guide's domain weights, not from service lists: SAP-C02 is 26/29/25/20 across four domains through 2026-11-16, SAP-C03 is 25/25/15/15/20 across five domains from 2026-11-17, and MLA-C02 is 28/24/24/24 where MLA-C01 was 28/26/22/24 (AWS docs, as of 2026-11).
+The AWS ML track changed underneath most study plans: MLS-C01 had its last test day on 2026-03-31, and AWS's AI coverage now runs through the ML Engineer Associate and the Generative AI Developer - Professional (AIP-C01) (AWS certification pages, as of 2026-11).
+Google's blueprints change through guide revisions and product renames: the PCA certification page links a guide with no version label and four published case studies whose files are still named v6.1, and the current PMLE guide names "Gemini Enterprise Agent Platform" products (Google Cloud docs, as of 2026-11).
 The real cost of a credential is study hours times the probability of a retake, not the $200-$300 fee, so size your preparation with a pass-probability model and a safety margin of about two standard errors.
 
 ## Mental Model
@@ -37,8 +62,8 @@ The real cost of a credential is study hours times the probability of a retake, 
 ```mermaid
 flowchart LR
   R[Target role and level] --> T{Track choice}
-  T -->|architecture| SAP[AWS SAP-C02]
-  T -->|architecture| PCA[GCP PCA guide v6.1]
+  T -->|architecture| SAP[AWS SAP-C03 from 2026-11-17]
+  T -->|architecture| PCA[GCP PCA current guide]
   T -->|ML and GenAI| AML[AWS ML Engineer Associate and AIP-C01]
   T -->|ML and GenAI| PMLE[GCP PMLE 2026 guide]
   SAP --> BP[Exam guide: domains, weights, version]
@@ -69,57 +94,60 @@ Run it as a closed control loop with a measurable error signal, not as a reading
 ### Control plane: blueprint, standard setting, versioning
 
 Every exam in scope starts as a blueprint that splits scored content into weighted domains.
-The SAP-C02 guide lists Domain 1 "Design Solutions for Organizational Complexity" at 26%, Domain 2 "Design for New Solutions" at 29%, Domain 3 "Continuous Improvement for Existing Solutions" at 25%, and Domain 4 "Accelerate Workload Migration and Modernization" at 20% of scored content (AWS docs, as of 2026-10).
-AWS describes the pass/fail cut as a minimum standard set by AWS professionals following certification-industry best practices (AWS docs, as of 2026-10).
+The SAP-C02 guide lists Domain 1 "Design Solutions for Organizational Complexity" at 26%, Domain 2 "Design for New Solutions" at 29%, Domain 3 "Continuous Improvement for Existing Solutions" at 25%, and Domain 4 "Accelerate Workload Migration and Modernization" at 20% of scored content (AWS docs, as of 2026-11).
+SAP-C03, in use from 2026-11-17, replaces these with Domain 1 "Architecture Design and Implementation Built for the Cloud" at 25%, Domain 2 "Security, Compliance, and Governance" at 25%, Domain 3 "Cost-Optimized Architecture Design" at 15%, Domain 4 "Resilience, Migration, and Business Continuity" at 15%, and Domain 5 "Operational Excellence and Automation" at 20% ([AWS comparison of SAP-C02 and SAP-C03](https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-professional-03/sap-03-comparison.html), as of 2026-11).
+AWS describes the pass/fail cut as a minimum standard set by AWS professionals following certification-industry best practices (AWS docs, as of 2026-11).
 AWS does not publish which method it uses.
-The industry-standard method for criterion-referenced cuts is the modified Angoff procedure ([Angoff 1971](https://www.ets.org/research/policy_research_reports/publications/chapter/1971/hrdu.html); [Cizek and Bunch 2007](https://methods.sagepub.com/book/standard-setting)).
+The industry-standard method for criterion-referenced cuts is the modified Angoff procedure (Angoff 1971, in Thorndike, ed., Educational Measurement, 2nd edition; [Cizek and Bunch 2007](https://methods.sagepub.com/book/standard-setting)).
 In that procedure, subject-matter experts estimate, item by item, the probability that a "minimally qualified candidate" answers correctly, and the sum of those estimates becomes the raw cut for that form.
 In practice this means the cut is pinned to a hypothetical borderline engineer described by the "target candidate description", not to the average test taker.
 If you read that paragraph in each exam guide as a spec, it is the most precise statement of the bar you will get.
 
 Versioning is explicit on AWS and semi-explicit on Google.
-AWS encodes the blueprint generation in the exam code suffix (SAP-C02, MLA-C01, AIP-C01).
-One SAP-C02 study guide reports exam guide version 1.2 and no C03 announcement as of mid-2026 (third-party report, as of 2026-10).
-Google versions the guide document itself: the PCA guide PDF is labeled v6.1 (Google Cloud docs, as of 2026-10).
-Third parties report that the refreshed PCA exam went live on 2025-10-30 (third-party report, as of 2026-10).
+AWS encodes the blueprint generation in the exam code suffix (SAP-C02, SAP-C03, MLA-C02, AIP-C01).
+SAP-C02's last test day is 2026-11-16, and SAP-C03 delivery starts on 2026-11-17, with registration open since 2026-10-27 ([AWS Training and Certification blog](https://aws.amazon.com/blogs/training-and-certification/september-2026-new-offerings/), as of 2026-11).
+Google versions the guide document only loosely: a PCA PDF titled v6.1 announced the refresh, while the guide now linked from the certification page has no version label and different weights for Sections 2 through 6 (Google Cloud docs, as of 2026-11).
+The v6.1 PDF directs English candidates testing on or after October 30 to that guide, and third parties date that refresh to 2025-10-30 (Google Cloud docs and third-party reports, as of 2026-11).
 
 ### Data plane: forms, unscored items, and equating
 
 A candidate never sees "the exam"; they see one form drawn from an item bank under the constraint that the form matches the blueprint weights.
 Practically every form is a shard that must satisfy the same partition function, and the vendor must make the shards interchangeable.
 Equating does that work: it maps raw scores on forms of slightly different difficulty onto one reporting scale ([Kolen and Brennan, Test Equating, Scaling, and Linking](https://link.springer.com/book/10.1007/978-1-4939-0317-7)).
-AWS reports a scaled score from 100 to 1,000, with 750 as the passing score for professional and specialty exams (third-party reports citing AWS exam guides, as of 2026-10).
+AWS reports a scaled score from 100 to 1,000 with a minimum passing score published per exam: 750 for SAP-C02, AIP-C01, and SCS-C03, and 720 for SAP-C03 and MLA-C02 (AWS docs, as of 2026-11).
+AWS does not say that a 720 cut makes SAP-C03 easier than SAP-C02, so do not compare cuts across differently equated exams.
 The scaled score is not a percentage.
 The raw-to-scaled conversion is specific to each form and usually non-linear, which is why the folklore "you need 75%" is a category error.
 
 Unscored items are the canary deployment of the item bank.
-SAP-C02 is reported as 75 items, of which 65 are scored and 10 are unscored (third-party report, as of 2026-10).
+SAP-C02 and SAP-C03 each have 75 items, of which 65 are scored and 10 are unscored (AWS docs, as of 2026-11).
 Unscored items collect live response statistics, such as difficulty (p-value) and discrimination, before the item is promoted to scored status.
 That is the calibration step that Item Response Theory models need ([Lord 1980](https://www.taylorfrancis.com/books/mono/10.4324/9780203056615/applications-item-response-theory-practical-testing-problems-lord)).
 You cannot tell which items are canaries, so the only rational policy is to spend the same effort on every item.
 
-Scoring is compensatory on AWS: the total decides pass or fail, and no single domain has to be passed on its own (third-party reports citing AWS exam guides, as of 2026-10).
+Scoring is compensatory on AWS: the total decides pass or fail, and no single domain has to be passed on its own (AWS docs, as of 2026-11).
 This is an aggregate SLO, not a per-dependency SLO.
 A candidate can be very weak in a 20% domain and still pass, which matters for how a hiring manager should read the credential (see Question 6).
 
 Multiple-response items are all-or-nothing.
-AWS defines them as two or more correct responses out of five or more options, says you must select all the correct responses to get credit, scores unanswered items as incorrect, and applies no penalty for guessing (AWS docs, as of 2026-10).
+AWS defines them as two or more correct responses out of five or more options, says you must select all the correct responses to get credit, scores unanswered items as incorrect, and applies no penalty for guessing (AWS docs, as of 2026-11).
 If you get each required selection right independently with probability p, a two-answer item succeeds with probability p squared.
 At p = 0.80 that is 0.64, so multiple-response items pull your effective accuracy well below your single-answer accuracy.
 
 Distractors are engineered, not random.
-AWS defines a multiple-choice item as one correct response and three incorrect responses that it explicitly calls distractors (AWS docs, as of 2026-10).
+AWS defines a multiple-choice item as one correct response and three incorrect responses that it explicitly calls distractors (AWS docs, as of 2026-11).
 Well-written distractors are plausible to a candidate with partial knowledge ([Haladyna, Downing, and Rodriguez 2002](https://doi.org/10.1207/S15324818AME1503_5)).
 On architecture exams that usually means the distractor works technically but violates one stated constraint: least operational overhead, most cost-effective, minimal application change, or a compliance boundary.
 The skill being tested is parsing constraints, and it is the same skill a design review tests.
 
 ### The mechanism most guides skip: section feedback is statistically noisy
 
-The SAP-C02 guide says section-level feedback highlights strengths and weaknesses, and it tells you to use caution when you interpret it (AWS docs, as of 2026-10).
+The SAP-C02 guide says section-level feedback highlights strengths and weaknesses, and it tells you to use caution when you interpret it (AWS docs, as of 2026-11).
 The reason is binomial sampling error.
 With 65 scored items and a 20% domain, about 13 items fall in Domain 4.
 For a true accuracy of 0.70, the standard error of the observed domain accuracy is sqrt(0.70 x 0.30 / 13) = 0.127.
 A 95% interval is therefore about plus or minus 25 accuracy points, wide enough that "Needs improvement" in one domain is weak evidence on its own.
+SAP-C03's 15% domains hold about 10 items, where the same calculation gives 0.145, about plus or minus 28 points.
 For the whole exam, the standard error is sqrt(0.21 / 65) = 0.057, about plus or minus 11 points at 95%.
 If the raw cut on your form sits near 72%, a candidate whose true accuracy is 75% passes only about 70% of the time (z = 0.03 / 0.057 = 0.53).
 To pass about 97.5% of the time, true accuracy has to sit roughly two standard errors above the cut, near 83%.
@@ -127,30 +155,38 @@ This is the arithmetic behind the margin rule in the TL;DR.
 
 ### Google-specific mechanics: published case studies and pass/fail reporting
 
-Google publishes the PCA case studies in advance: Altostrat Media, Cymbal Retail, EHR Healthcare, and KnightMotives Automotive, several of which use Google's generative AI solutions (Google Cloud docs, as of 2026-10).
+Google publishes the PCA case studies in advance: Altostrat Media, Cymbal Retail, EHR Healthcare, and KnightMotives Automotive, several of which use Google's generative AI solutions (Google Cloud docs, as of 2026-11).
+The standard exam includes 2 case studies that make up 20-30% of the questions ([Google Cloud certification page](https://cloud.google.com/learn/certification/cloud-architect), as of 2026-11).
 Treat this as context injection: you can pre-compute the architecture for each fictional company and then answer case-study items as diffs against that design.
-The v6.1 guide says the Well-Architected Framework pillars (operational excellence, security, reliability, performance optimization, cost optimization, and sustainability) run implicitly and explicitly through the objectives (Google Cloud docs, as of 2026-10).
-PCA Section 1, "Designing and planning a cloud solution architecture", is about 25% of the exam (Google Cloud docs, as of 2026-10).
-Third parties report pass/fail results with no published score, 50-60 questions, 120 minutes, and a $200 fee (third-party report, as of 2026-10).
+The guide says the Well-Architected Framework pillars (operational excellence, security, reliability, performance optimization, cost optimization, and sustainability) run implicitly and explicitly through the objectives (Google Cloud docs, as of 2026-11).
+PCA Section 1, "Designing and planning a cloud solution architecture", is about 25% of the exam (Google Cloud docs, as of 2026-11).
+The standard exam has 50-60 questions, 120 minutes, and a $200 fee (Google Cloud certification page, as of 2026-11).
+Google reports pass or fail with no numeric score, and a candidate who fails a standard exam can open a section-level report in the Candidate Portal ([Google Cloud Certification FAQ](https://support.google.com/cloud-certification/answer/9438208?hl=en), as of 2026-11).
+The same FAQ says you do not have to pass each section, because the result depends on total correct answers (Google Cloud Certification FAQ, as of 2026-11).
 
-The PMLE guide is organized into six sections.
-Low-code AI is about 13%, collaborating on data and models about 16%, scaling prototypes into ML models about 21%, and serving and scaling models about 20% (Google Cloud docs, as of 2026-10).
-Pipelines (about 18%) and monitoring (about 13%) make up the rest (third-party report, as of 2026-10).
-The guide says it does not directly assess coding, but expects enough Python and SQL to read code snippets (Google Cloud docs, as of 2026-10).
-Section 3.3 explicitly covers choosing among CPU, GPU, and TPU, and distributed training with data and model parallelism (Google Cloud docs, as of 2026-10).
+The PMLE guide, dated as of June 1, 2026, is organized into six sections.
+Low-code AI is about 13%, collaborating on data and models about 16%, scaling prototypes into ML models about 21%, and serving and scaling models about 20% (Google Cloud docs, as of 2026-11).
+Pipelines (about 18%) and monitoring (about 13%) make up the rest (Google Cloud docs, as of 2026-11).
+The guide says it does not directly assess coding, but expects enough Python and SQL to read code snippets (Google Cloud docs, as of 2026-11).
+Section 3.3 explicitly covers choosing among CPU, GPU, and TPU, and distributed training with data and model parallelism (Google Cloud docs, as of 2026-11).
 That ties it directly to [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_04_Distributed_Training_Parallelism_Strategies|Distributed Training Parallelism Strategies]].
-The guide refers to products such as "AutoML on Gemini Enterprise Agent Platform" and "Agent Platform Pipelines" where older material says Vertex AI (Google Cloud docs, as of 2026-10).
+The guide refers to products such as "AutoML on Gemini Enterprise Agent Platform" and "Agent Platform Pipelines" where older material says Vertex AI (Google Cloud docs, as of 2026-11).
+Google documents this as a product rename, not only guide wording ([Google name-change page](https://docs.cloud.google.com/gemini-enterprise-agent-platform/vertex-ai-name-changes), as of 2026-11).
 Expect exam wording and older prep material to disagree on names.
 
 ### The AWS AI/ML track after MLS-C01
 
-MLS-C01 had its last test day on 2026-03-31, and credentials already earned stay valid for three years from the pass date (third-party reports, as of 2026-10).
+MLS-C01 had its last test day on 2026-03-31, and credentials already earned stay valid for three years from the pass date ([AWS certification page](https://aws.amazon.com/certification/certified-machine-learning-specialty/), as of 2026-11).
 The industry's reading is that MLS-C01 targeted custom model training from scratch and had no Bedrock or generative AI content, while its successors focus on MLOps and on building with foundation models (third-party report, as of 2026-10).
-MLA-C01 covers data preparation, model development, deployment and orchestration, and monitoring, maintenance, and security, weighted 28/26/22/24 (AWS docs, as of 2026-10).
-The English MLA-C01 is reported to have ended on 2026-09-28, with MLA-C02 taking over (third-party report, as of 2026-10; UNVERIFIED against AWS primary).
-AIP-C01 targets candidates with two or more years building production applications and one year of hands-on GenAI work (AWS docs, as of 2026-10).
-It covers vector stores, RAG, knowledge bases, FM integration, prompt engineering and management, and agentic AI solutions (AWS docs, as of 2026-10).
-AIP-C01 beta registration was reported to open on 2025-11-18 (third-party report, as of 2026-10).
+MLA-C01 covers data preparation, model development, deployment and orchestration, and monitoring, maintenance, and security, weighted 28/26/22/24 (AWS docs, as of 2026-11).
+The English MLA-C01 ended on 2026-09-28 and the English-only MLA-C02 beta began on 2026-09-29, while MLA-C01 in Japanese, Korean, and Simplified Chinese stays available until MLA-C02 general availability ([AWS certification page](https://aws.amazon.com/certification/certified-machine-learning-engineer-associate/), as of 2026-11).
+AWS's blog dates MLA-C02 general availability and the retirement of MLA-C01 in all languages to 2027-01-14, while the certification page still listed general availability as TBD ([AWS Training and Certification blog](https://aws.amazon.com/blogs/training-and-certification/september-2026-new-offerings/), as of 2026-11).
+MLA-C02 keeps four domains, reweights them to 28/24/24/24, and adds foundation-model, RAG, and agentic content ([AWS comparison of MLA-C01 and MLA-C02](https://docs.aws.amazon.com/aws-certification/latest/machine-learning-engineer-associate-02/mla-02-comparison.html), as of 2026-11).
+The MLA-C02 beta is 170 minutes, 85 questions, and $75, while the guide lists 50 scored and 15 unscored questions for the exam (AWS docs, as of 2026-11).
+AIP-C01 targets candidates with two or more years building production applications and one year of hands-on GenAI work (AWS docs, as of 2026-11).
+It covers vector stores, RAG, knowledge bases, FM integration, prompt engineering and management, and agentic AI solutions (AWS docs, as of 2026-11).
+AIP-C01 beta registration was reported to open on 2025-11-18 (third-party report, as of 2026-11).
+AWS gives 2026-03-31 as the last day of the AIP-C01 beta and says registration for the standard exam is open ([AWS Training and Certification blog](https://aws.amazon.com/blogs/training-and-certification/march-2026-new-offerings/), as of 2026-11).
 
 ### Syllabus alignment to this curriculum
 
@@ -167,6 +203,9 @@ AIP-C01 beta registration was reported to open on 2025-11-18 (third-party report
 | PMLE S5 Pipelines and S6 Monitoring | [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_04_MLOps_Pipelines_SageMaker_vs_Vertex_AI\|MLOps Pipelines]], [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_06_Model_Evaluation_Monitoring_and_Drift_Detection\|Drift Detection]] |
 | AIP-C01 RAG, agents, guardrails | [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_02_Enterprise_Retrieval_Augmented_Generation_Architecture\|Enterprise RAG]], [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_03_Agent_Runtimes_and_Cloud_Execution_Environments\|Agent Runtimes]], [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_07_AI_Safety_Guardrails_and_Governance\|Guardrails]] |
 
+The SAP rows above use SAP-C02 domains, which apply through 2026-11-16.
+For SAP-C03, AWS moves data perimeter controls into Task 2.1 and SCPs, RCPs, and landing zones into Task 2.3 of Domain 2, so those chapters now serve the 25% security domain (AWS comparison of SAP-C02 and SAP-C03, as of 2026-11).
+
 The exam answers themselves rest on foundational systems papers, which this curriculum covers.
 Examples are DynamoDB partitioning ([[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_01_Dynamo_and_DynamoDB|Dynamo and DynamoDB]]), Aurora quorum storage ([[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_02_Amazon_Aurora|Aurora SIGMOD 2017]]), Spanner external consistency ([[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_06_Google_Spanner|Spanner OSDI 2012]]), and TPU interconnects ([[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_15_Google_TPU_Architecture_Evolution|TPU ISCA papers]]).
 A candidate who knows why Aurora uses a 4-of-6 write quorum can eliminate a whole class of distractors without having memorized the product page.
@@ -175,27 +214,31 @@ A candidate who knows why Aurora uses a 4-of-6 write quorum can eliminate a whol
 
 | Item | Value | Source and date |
 |---|---|---|
-| SAP-C02 domain weights | 26% / 29% / 25% / 20% | (AWS docs, as of 2026-10) |
-| SAP-C02 items and time | 75 items (65 scored + 10 unscored), 180 min, about 2.4 min per item | (third-party report, as of 2026-10) |
-| SAP-C02 fee | $300 USD | (third-party report, as of 2026-10) |
-| AWS score scale and cut (Professional, Specialty) | 100-1,000 scaled, pass at 750, compensatory | (third-party reports citing AWS exam guides, as of 2026-10) |
-| AWS multiple-response scoring | all correct selections required; no guessing penalty | (AWS docs, as of 2026-10) |
-| MLS-C01 status | last test day 2026-03-31; existing credentials valid 3 years from pass | (third-party reports, as of 2026-10) |
-| MLA-C01 domain weights | 28% / 26% / 22% / 24% (verify MLA-C02 before planning) | (AWS docs, guide v1.0, as of 2026-10) |
-| MLA-C01 to MLA-C02 cutover | English MLA-C01 last day reported 2026-09-28 | (third-party report, as of 2026-10; UNVERIFIED) |
-| AIP-C01 target candidate | 2+ years production apps, 1 year hands-on GenAI | (AWS docs, as of 2026-10) |
-| AIP-C01 format | 75 items, 180 min; 65 scored per AWS guide | (third-party report and AWS docs, as of 2026-10) |
-| AIP-C01 heaviest domains | FM integration, data management, compliance 31%; implementation and integration 26% | (third-party report, as of 2026-10) |
-| PCA guide version and case studies | v6.1; Altostrat Media, Cymbal Retail, EHR Healthcare, KnightMotives Automotive | (Google Cloud docs, as of 2026-10) |
-| PCA Section 1 weight | ~25% | (Google Cloud docs, as of 2026-10) |
-| PCA format and fee | 50-60 items, 120 min, $200, pass/fail only, 2-year validity | (third-party report, as of 2026-10) |
-| PMLE section weights | ~13 / ~16 / ~21 / ~20 / ~18 / ~13 | (Google Cloud docs for S1-S4; third-party for S5-S6, as of 2026-10) |
-| PMLE format and fee | 2 h, 50-60 items, $200 | (third-party report, as of 2026-10) |
+| SAP-C02 domain weights | 26% / 29% / 25% / 20% | (AWS docs, as of 2026-11) |
+| SAP-C02 to SAP-C03 cutover | SAP-C02 last day 2026-11-16; SAP-C03 from 2026-11-17 | (AWS docs and AWS blog, as of 2026-11) |
+| SAP-C03 domain weights | 25% / 25% / 15% / 15% / 20% | (AWS docs, as of 2026-11) |
+| SAP-C02 and SAP-C03 items and time | 75 items (65 scored + 10 unscored), 180 min, about 2.4 min per item | (AWS docs, as of 2026-11) |
+| SAP-C02 and SAP-C03 fee | $300 USD | (AWS certification page and AWS blog, as of 2026-11) |
+| AWS score scale and cut | 100-1,000 scaled, compensatory; pass at 750 on SAP-C02, AIP-C01, SCS-C03; pass at 720 on SAP-C03, MLA-C02 | (AWS docs, as of 2026-11) |
+| AWS multiple-response scoring | all correct selections required; no guessing penalty | (AWS docs, as of 2026-11) |
+| MLS-C01 status | last test day 2026-03-31; existing credentials valid 3 years from pass | (AWS certification page, as of 2026-11) |
+| MLA-C01 domain weights | 28% / 26% / 22% / 24% | (AWS docs, as of 2026-11) |
+| MLA-C02 domain weights | 28% / 24% / 24% / 24% | (AWS docs, as of 2026-11) |
+| MLA-C01 to MLA-C02 cutover | English MLA-C01 last day 2026-09-28; MLA-C02 beta from 2026-09-29; GA 2027-01-14 per AWS blog (certification page still says TBD) | (AWS certification page and AWS blog, as of 2026-11) |
+| AIP-C01 target candidate | 2+ years production apps, 1 year hands-on GenAI | (AWS docs, as of 2026-11) |
+| AIP-C01 format | 75 items (65 scored + 10 unscored), 180 min, $300 | (AWS docs and AWS certification page, as of 2026-11) |
+| AIP-C01 domains | FM integration, data management, compliance 31%; implementation and integration 26%; safety, security, governance 20%; efficiency and optimization 12%; testing, validation, troubleshooting 11% | (AWS docs, as of 2026-11) |
+| PCA case studies | Altostrat Media, Cymbal Retail, EHR Healthcare, KnightMotives Automotive; 2 per standard exam, 20-30% of questions | (Google Cloud docs, as of 2026-11) |
+| PCA section weights | ~25 / ~17.5 / ~17.5 / ~15 / ~12.5 / ~12.5 in the linked guide; ~25 / ~18 / ~19 / ~15 / ~11 / ~12 in the v6.1 PDF | (Google Cloud docs, as of 2026-11) |
+| PCA format and fee | 50-60 items, 120 min, $200, pass/fail only, 2-year validity | (Google Cloud certification page and FAQ, as of 2026-11) |
+| PMLE section weights | ~13 / ~16 / ~21 / ~20 / ~18 / ~13 | (Google Cloud docs, guide as of June 1, 2026, as of 2026-11) |
+| PMLE format and fee | 2 h, 50-60 multiple-choice items, $200, 2-year validity | (Google Cloud certification page, as of 2026-11) |
 | Items per domain, SAP-C02 (derived) | 17 / 19 / 16 / 13 | computed from weights x 65 |
+| Items per domain, SAP-C03 (derived) | 16 / 16 / 10 / 10 / 13 | computed from weights x 65 |
 | Std. error of domain accuracy, 13 items at p = 0.70 (derived) | 0.127, so about +/- 25 pts at 95% | binomial math |
 | Std. error of total accuracy, 65 items (derived) | 0.057, so about +/- 11 pts at 95% | binomial math |
 | Practice items per domain for +/- 5 pts at 95% (derived) | about 323 | n = 1.96^2 x 0.21 / 0.05^2 |
-| AWS credential validity | 3 years | (third-party reports, as of 2026-10) |
+| AWS credential validity | 3 years | (AWS certification page, as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -203,14 +246,14 @@ A candidate who knows why Aurora uses a 4-of-6 write quorum can eliminate a whol
 
 | Mechanism | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
-| Blueprint versioning | Exam code suffix (C01, C02) | Guide document version (PCA v6.1) and dated guides | AWS bumps the code on a major change; Google can change wording and product names inside a guide revision |
+| Blueprint versioning | Exam code suffix (C01, C02, C03) | Guide document revisions (PCA v6.1 PDF, unlabeled linked guide, PMLE guide dated June 1, 2026) | AWS bumps the code on a major change; Google can change weights, wording, and product names inside a guide revision |
 | Weight disclosure | Exact percentages of scored content | Approximate percentages ("~25%") | Both are enough to allocate study hours; neither tells you which items are unscored |
-| Score reporting | Scaled 100-1,000 plus section-level classifications | Pass/fail only (third-party) | AWS gives you a noisy signal; Google gives you one bit |
-| Scoring model | Compensatory | Not published in detail | Do not assume Google behaves like AWS |
+| Score reporting | Scaled 100-1,000 plus section-level classifications | Pass/fail only, plus a section-level report after a failed standard exam (Google FAQ) | AWS gives you a noisy signal on every attempt; Google gives you one bit on a pass and a section report only on a failure |
+| Scoring model | Compensatory (AWS docs) | No per-section pass; result depends on total correct answers (Google FAQ) | Google publishes no numeric scale or cut, so do not assume its form equating behaves like AWS |
 | Context injection | None; every stem is self-contained | Four published case studies for PCA | PCA rewards designing the case-study companies in advance |
-| Item types | Multiple choice, multiple response (all-or-nothing) | Multiple choice, multiple select | Multiple-response math hits both |
-| Validity | 3 years (third-party) | 2 years (third-party) | GCP holders recertify 1.5x as often per credential-year |
-| Retirement pattern | Whole exam retired (MLS-C01) and replaced by a re-shaped track | Exam stays; blueprint and product names rotate | AWS risk: no successor to sit; Google risk: stale names in prep material |
+| Item types | Multiple choice, multiple response (all-or-nothing) | PCA: multiple choice, multiple select; PMLE: multiple choice (Google certification pages) | Multiple-response math hits AWS and PCA; Google does not publish a PCA credit rule, so treat it as an assumption there |
+| Validity | 3 years (AWS certification page) | 2 years (Google certification pages) | GCP holders recertify 1.5x as often per credential-year |
+| Retirement pattern | Whole exam retired (MLS-C01) and replaced by a re-shaped track, or re-coded with new domains (SAP-C03, MLA-C02) | Exam stays; blueprint and product names rotate | AWS risk: no successor to sit; Google risk: stale names in prep material |
 
 ### Technical content parity the exams test
 
@@ -221,7 +264,7 @@ A candidate who knows why Aurora uses a 4-of-6 write quorum can eliminate a whol
 | Private API access | VPC endpoints (Gateway and Interface/PrivateLink) | Private Google Access, Private Service Connect | Endpoint policies scope actions; VPC SC scopes API perimeters by project |
 | Data exfiltration perimeter | aws:SourceVpce, aws:ResourceOrgID, RCPs | VPC Service Controls with dry-run mode | VPC SC is a perimeter around managed APIs; AWS assembles the perimeter from several policy types |
 | Global entry | Global Accelerator, CloudFront, Route 53 | Global external Application Load Balancer on GFEs | GCP's single anycast VIP versus AWS's DNS-or-anycast choice |
-| Managed ML platform | SageMaker AI | Vertex AI, renamed in guide text to Gemini Enterprise Agent Platform | Product names in PMLE items may not match older docs |
+| Managed ML platform | SageMaker AI | Gemini Enterprise Agent Platform, formerly Vertex AI (Google name-change page) | Product names in PMLE items may not match older docs |
 | Foundation model access | Amazon Bedrock | Model Garden and Gemini | Quota and provisioned-throughput models differ; see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_09_Managed_Inference_Amazon_Bedrock_vs_Vertex_AI\|Managed Inference]] |
 | Custom accelerators | Trainium, Inferentia | TPU | PMLE tests hardware choice explicitly (Section 3.3) |
 
@@ -240,7 +283,7 @@ It uses only the standard library and was executed as written.
 
 Blueprint weights come from official exam guides (see chapter Numbers to Know).
 The raw cut score is NOT published by either vendor; it is modeled as a uniform prior.
-Scored-item counts for MLA-C01, PCA and PMLE are assumptions; edit them.
+Scored-item counts for PCA and PMLE are assumptions; edit them. AWS publishes 65 for SAP and 50 for MLA-C02.
 """
 import argparse
 import json
@@ -249,10 +292,15 @@ import random
 BLUEPRINTS = {
     "SAP-C02": {"scored": 65, "weights": {"D1-org-complexity": 0.26, "D2-new-solutions": 0.29,
                                           "D3-continuous-improvement": 0.25, "D4-migration": 0.20}},
+    "SAP-C03": {"scored": 65, "weights": {"D1-cloud-architecture": 0.25, "D2-security-governance": 0.25,
+                                          "D3-cost": 0.15, "D4-resilience-migration": 0.15,
+                                          "D5-operations": 0.20}},
     "MLA-C01": {"scored": 50, "weights": {"D1-data-prep": 0.28, "D2-model-dev": 0.26,
                                           "D3-deploy-orchestrate": 0.22, "D4-monitor-secure": 0.24}},
-    "PCA-v6.1": {"scored": 50, "weights": {"S1-design-plan": 0.25, "S2-provision": 0.175,
-                                           "S3-6-other": 0.575}},
+    "MLA-C02": {"scored": 50, "weights": {"D1-data-prep": 0.28, "D2-model-fm-dev": 0.24,
+                                          "D3-deploy-orchestrate": 0.24, "D4-operate-secure": 0.24}},
+    "PCA-current": {"scored": 50, "weights": {"S1-design-plan": 0.25, "S2-provision": 0.175,
+                                              "S3-6-other": 0.575}},
     "PMLE-2026": {"scored": 50, "weights": {"S1-low-code": 0.13, "S2-collab-data": 0.16,
                                             "S3-scale-prototypes": 0.21, "S4-serve-scale": 0.20,
                                             "S5-pipelines": 0.18, "S6-monitoring": 0.13}},
@@ -352,11 +400,12 @@ The next hours should go to D1, which is both weak and heavy, not to D2, which c
 Lift every domain to 78-85% and the same model reports P(pass) = 0.903 and an expected fee of $332.
 The "expected attempts" figure assumes no learning between attempts, so it is an upper bound.
 Its real use is to show that booking early is a negative-expected-value decision.
+SAP-C02 can be sat only through 2026-11-16, so after that pass `--exam SAP-C03` with its five domain keys; the run above is the SAP-C02 blueprint (AWS docs, as of 2026-11).
 
 ### Part B: back-of-the-envelope sizing for a four-credential plan
 
 Assumptions, which you should replace with your own measurements: an engineer at the L5 bar with production AWS and GCP experience, 8 focused hours per week, and a loaded opportunity cost of $100 per hour.
-SAP-C02: 65 scored items at 2.4 minutes each leaves no slack for re-reading long stems, so budget 20 hours just for timed practice.
+SAP-C02 or SAP-C03: 75 items at 2.4 minutes each leaves no slack for re-reading long stems, so budget 20 hours just for timed practice.
 Add about 60 hours of domain work driven by the model, for 80 hours total.
 PCA: about 50 hours, of which about 8 go to pre-designing the four case-study companies end to end.
 PMLE: about 60 hours, weighted toward Sections 3 and 4, which together are about 41% of the exam.
@@ -365,7 +414,9 @@ Total: 260 hours, or about 33 weeks at 8 hours per week.
 Fees at first attempt: $300 + $200 + $200 + $300 = $1,000.
 Opportunity cost: 260 x $100 = $26,000, so the fees are under 4% of the economic cost.
 If you book at P(pass) = 0.7 instead of 0.9, each exam carries a 30% chance of a retake costing about 15 extra hours.
-That is 4 x 0.3 x 15 x $100 = $1,800 in expected time plus $300 in expected fees, which far exceeds the cost of the additional preparation needed to reach 0.9.
+That is 4 x 0.3 x 15 x $100 = $1,800 in expected time plus $300 in expected fees, or $2,100.
+Booking at 0.9 still leaves a 10% retake chance, so moving from 0.7 to 0.9 saves two-thirds of that, about $1,400, which pays for about 14 extra preparation hours across all four exams.
+In Part A's model, moving from 0.7 to 0.9 takes about 4 accuracy points in every domain, and its default cost curve prices that well above 14 hours, so on these assumptions the 0.9 bar has to be justified by retake delay and calendar risk rather than by this direct cost alone.
 Lab spend: with the guardrails below, expect well under $20 per month (estimate).
 Unguarded GPU labs are the dominant cost risk, not exam fees.
 
@@ -453,29 +504,30 @@ The conversion above drops IAM role paths, so adjust it if your admin role uses 
 ### Stale control-plane cache: studying a retired blueprint
 
 The most expensive failure is preparing for an exam that no longer exists.
-MLS-C01 stopped testing on 2026-03-31 (third-party reports, as of 2026-10), yet ML study plans written in 2025 still point to it.
+MLS-C01 stopped testing on 2026-03-31 (AWS certification page, as of 2026-11), yet ML study plans written in 2025 still point to it.
+English MLA-C01 ended on 2026-09-28, and SAP-C02 joins the list after 2026-11-16 (AWS certification page and AWS docs, as of 2026-11).
 The PCA equivalent is quieter.
 At least one 2026 third-party PCA guide still lists Helicopter Racing League, Mountkirk Games, and TerramEarth as the case studies (third-party report, as of 2026-10).
-Google's v6.1 guide lists Altostrat Media, Cymbal Retail, EHR Healthcare, and KnightMotives Automotive (Google Cloud docs, as of 2026-10).
+Google's current guide lists Altostrat Media, Cymbal Retail, EHR Healthcare, and KnightMotives Automotive (Google Cloud docs, as of 2026-11).
 Mitigation: treat the vendor's exam guide as the only source of truth, record its version and date in your plan, and re-check it the week you book.
 
 ### Name drift inside a live blueprint
 
-The PMLE guide uses "Agent Platform" names where most courses, blogs, and older docs say Vertex AI (Google Cloud docs, as of 2026-10).
+The PMLE guide uses "Agent Platform" names where most courses, blogs, and older docs say Vertex AI (Google Cloud docs, as of 2026-11).
 Candidates who learned the product only under its old name lose time on items that use the new names.
 Mitigation: keep a two-column name ledger (old name, guide name) and drill with the guide's wording.
 
 ### Over-reading noisy telemetry
 
 Retaking with a plan built entirely on one domain's "Needs improvement" flag treats a measurement with about plus or minus 25 points of error as precise.
-AWS itself tells you to be careful with section-level feedback (AWS docs, as of 2026-10).
+AWS itself tells you to be careful with section-level feedback (AWS docs, as of 2026-11).
 Mitigation: estimate per-domain accuracy from hundreds of fresh practice items and feed those numbers into the pass model.
 
 ### Practice-test overfitting and fraudulent material
 
 Repeating the same practice bank turns recall into apparent mastery: accuracy on seen items climbs while accuracy on unseen items stays flat.
 Third-party authors warn explicitly about fake PCA practice tests after the refresh (third-party report, as of 2026-10).
-Using leaked live items breaches candidate agreements and puts the credential at risk (UNVERIFIED: exact revocation terms not re-checked this session).
+Using leaked live items breaches candidate agreements and puts the credential at risk: both vendors reserve the right to invalidate results and revoke certifications ([AWS general policies](https://aws.amazon.com/certification/policies/general-policies/); [Google exam terms](https://cloud.google.com/certification/terms), as of 2026-11).
 Mitigation: hold back a never-seen validation set and only trust accuracy measured on it.
 
 ### Time-budget exhaustion
@@ -487,8 +539,8 @@ Mitigation: take one pass with a hard per-item timeout, flag and move on, and us
 ### Lab cost leaks
 
 The study-time equivalent of an unbounded queue is a GPU instance or managed inference endpoint left running after a lab.
-Real-time endpoints bill while idle (UNVERIFIED: not re-checked against current pricing pages this session).
-Budgets alert; they do not cap spend by default (UNVERIFIED: not re-checked this session).
+SageMaker AI real-time endpoints bill per instance-hour while running, whatever the traffic ([SageMaker AI pricing](https://aws.amazon.com/sagemaker/ai/pricing/), as of 2026-11).
+Budgets alert; they do not cap spend by default: an alerts-only Google budget does not cap usage ([Google Cloud Billing docs](https://docs.cloud.google.com/billing/docs/how-to/budgets), as of 2026-11), and AWS Budgets only acts if you configure a budget action, with notifications that can lag charges ([AWS Budgets docs](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html), as of 2026-11).
 Mitigation: run labs in a sandbox account or project with an SCP or org policy that denies accelerator instance types, plus scripted teardown that runs before the budget is deleted.
 
 ### Exam answers that fail in production: read the PIRs
@@ -520,15 +572,15 @@ Both architecture exams test envelope encryption: a KMS or Cloud KMS key-encrypt
 The details are in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Envelope Encryption]].
 Perimeter questions reward knowing that AWS builds its perimeter from identity, resource, and network policies, while Google builds one perimeter object around managed APIs with a dry-run mode.
 See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Data Perimeter]].
-AIP-C01 and PMLE add AI-specific controls: guardrails, PII handling, and model-monitoring products such as Model Armor in the PMLE monitoring section (third-party report, as of 2026-10).
+AIP-C01 and PMLE add AI-specific controls: guardrails, PII handling, and security tools such as Model Armor in the PMLE monitoring section (Google Cloud docs, as of 2026-11).
 
 ### Unit economics of credentials
 
 Cost per credential = fee / P(pass) + hours x hourly opportunity cost + lab spend.
 Only the hours term moves the result.
 Recertification load scales as holders divided by validity years: 60 AWS holders on a 3-year cycle make 20 renewals per year, and 60 GCP holders on a 2-year cycle make 30.
-Free credits lower lab spend; third parties report $300 in credits for new Google Cloud accounts (third-party report, as of 2026-10).
-The cheapest lever is the pass model itself: book at P(pass) of at least 0.9 rather than 0.7.
+Free credits lower lab spend; new Google Cloud customers get a $300 welcome credit to spend over 90 days ([Google Cloud docs](https://docs.cloud.google.com/free/docs/free-cloud-features), as of 2026-11).
+The cheapest lever is the pass model itself: use it to compare the next preparation hour against the retake risk it removes, with P(pass) of 0.9 as the default booking bar rather than 0.7.
 
 ## Interview Questions and Model Answers
 
@@ -569,6 +621,7 @@ The score report carries less information than it appears to.
 Domain 4 is 20% of 65 scored items, about 13 items, so the standard error of the observed domain accuracy is around 0.127 and the 95% interval is plus or minus 25 points.
 That classification is consistent with my true Domain 4 accuracy being anywhere from mediocre to fine, and AWS itself warns against over-reading section feedback.
 The useful signal is the total: 712 against a 750 cut means I was close, and because scoring is compensatory, gains in any domain count the same per item.
+If the retake falls on or after 2026-11-17 it is SAP-C03, with five domains and a published 720 minimum, so I would re-map the plan to the new blueprint rather than reuse the old Domain 4 signal.
 Next I distrust my 76% practice average, because it probably includes items I had already seen and it counts multiple-response items as if they behaved like single-answer items.
 I would build a fresh holdout of a few hundred items, measure single-answer accuracy per domain, and run the pass model with a multiple-response share and a cut prior.
 I would allocate hours by marginal pass probability per hour, which favors domains that are both heavy and weak, since the last points in a strong domain are expensive.
@@ -641,8 +694,8 @@ Which credentials do you fund, in what order, and how do you show the money was 
 #### Model Answer
 
 I map credentials to roles, not to prestige.
-Platform and infrastructure engineers target SAP-C02 and PCA, because their blueprints (organizational complexity, migration, design and planning) match their daily work.
-ML platform engineers target PMLE and the AWS ML Engineer Associate.
+Platform and infrastructure engineers target SAP-C03, which replaces SAP-C02 on 2026-11-17, and PCA, because their blueprints (security and governance, resilience and migration, design and planning) match their daily work.
+ML platform engineers target PMLE and the AWS ML Engineer Associate (MLA-C02).
 Engineers building GenAI products target AIP-C01, which AWS aims at people with a year of hands-on GenAI work.
 Nobody starts MLS-C01, because it stopped testing on 2026-03-31.
 I sequence by dependency: architecture credentials before ML credentials for platform people, because PMLE serving and pipeline questions assume networking and IAM fluency.
@@ -712,10 +765,10 @@ Your CFO rejects paying for idle failover GPUs; quantify the trade between reser
 
 ## Further Reading
 
-- [AWS Certified Solutions Architect - Professional (SAP-C02) exam guide](https://docs.aws.amazon.com/aws-certification/latest/examguides/solutions-architect-professional-02.html) - the only authoritative source for domain weights, in-scope services, and the target-candidate description that defines the cut.
+- [AWS Certified Solutions Architect - Professional (SAP-C02) exam guide](https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-professional-02/solutions-architect-professional-02.html) and [SAP-C03 exam guide](https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-professional-03/solutions-architect-professional-03.html) - the only authoritative source for domain weights, in-scope services, and the target-candidate description that defines the cut.
 - [AWS Certified Generative AI Developer - Professional (AIP-C01) exam guide](https://docs.aws.amazon.com/aws-certification/latest/ai-professional-01/ai-professional-01.html) - AWS's professional-level AI credential now that MLS-C01 is retired, with explicit RAG, agent, and FM-integration tasks.
-- [AWS Certified Machine Learning Engineer - Associate exam guide (MLA-C01)](https://d1.awsstatic.com/training-and-certification/docs-machine-learning-engineer-associate/AWS-Certified-Machine-Learning-Engineer-Associate_Exam-Guide.pdf) - shows the MLOps-first shape of the AWS ML track; check for the MLA-C02 successor before booking.
-- [Google Professional Cloud Architect exam guide](https://cloud.google.com/learn/certification/guides/professional-cloud-architect) and [v6.1 PDF](https://services.google.com/fh/files/misc/v6.1_pca_professional_cloud_architect_exam_guide_english.pdf) - current section weights, links to the four case studies, and the Well-Architected Framework framing.
+- [AWS Certified Machine Learning Engineer - Associate exam guide (MLA-C02)](https://docs.aws.amazon.com/aws-certification/latest/machine-learning-engineer-associate-02/machine-learning-engineer-associate-02.html) and [MLA-C01 PDF](https://d1.awsstatic.com/training-and-certification/docs-machine-learning-engineer-associate/AWS-Certified-Machine-Learning-Engineer-Associate_Exam-Guide.pdf) - shows the MLOps-first shape of the AWS ML track and how MLA-C02 adds foundation-model and agentic content.
+- [Google Professional Cloud Architect certification page](https://cloud.google.com/learn/certification/cloud-architect), [linked exam guide](https://services.google.com/fh/files/misc/professional_cloud_architect_exam_guide_english.pdf), and [v6.1 PDF](https://services.google.com/fh/files/misc/v6.1_pca_professional_cloud_architect_exam_guide_english.pdf) - current section weights, links to the four case studies, and the Well-Architected Framework framing.
 - [Google Professional Machine Learning Engineer exam guide](https://services.google.com/fh/files/misc/professional_machine_learning_engineer_exam_guide_english_new.pdf) - the six-section blueprint and the Agent Platform naming that exam items use.
 - [Kolen and Brennan, Test Equating, Scaling, and Linking](https://link.springer.com/book/10.1007/978-1-4939-0317-7) - the standard reference for how multiple exam forms are made interchangeable on one scaled score.
 - [Lord 1980, Applications of Item Response Theory to Practical Testing Problems](https://www.taylorfrancis.com/books/mono/10.4324/9780203056615/applications-item-response-theory-practical-testing-problems-lord) - the foundation for item calibration, which is why unscored pretest items exist.

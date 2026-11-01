@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://aws.amazon.com/builders-library/avoiding-insurmountable-queue-backlogs/"
@@ -15,6 +15,36 @@ sources:
   - "https://cloud.google.com/pubsub/docs/exactly-once-delivery"
   - "https://cwiki.apache.org/confluence/display/KAFKA/KIP-392%3A+Allow+consumers+to+fetch+from+closest+replica"
   - "https://hadoop.apache.org/docs/stable/hadoop-aws/tools/hadoop-aws/committers.html"
+  - "https://docs.aws.amazon.com/streams/latest/dev/service-sizes-and-limits.html"
+  - "https://docs.aws.amazon.com/streams/latest/dev/key-concepts.html"
+  - "https://docs.aws.amazon.com/streams/latest/dev/enhanced-consumers.html"
+  - "https://docs.aws.amazon.com/kinesis/latest/APIReference/API_SubscribeToShard.html"
+  - "https://aws.amazon.com/kinesis/data-streams/pricing/"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-messages.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-queues.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-fifo.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-short-and-long-polling.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-server-side-encryption.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/08/amazon-sqs-max-payload-size-1mib/"
+  - "https://aws.amazon.com/sqs/pricing/"
+  - "https://aws.amazon.com/msk/pricing/"
+  - "https://aws.amazon.com/blogs/aws/introducing-express-brokers-for-amazon-msk-to-deliver-high-throughput-and-faster-scaling-for-your-kafka-clusters/"
+  - "https://aws.amazon.com/athena/pricing/"
+  - "https://docs.aws.amazon.com/general/latest/gr/athena.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html"
+  - "https://aws.amazon.com/emr/pricing/"
+  - "https://docs.cloud.google.com/pubsub/quotas"
+  - "https://docs.cloud.google.com/pubsub/docs/subscription-properties"
+  - "https://docs.cloud.google.com/pubsub/docs/lease-management"
+  - "https://docs.cloud.google.com/pubsub/lite/docs"
+  - "https://cloud.google.com/pubsub/pricing"
+  - "https://docs.cloud.google.com/managed-service-for-apache-kafka/docs/release-notes"
+  - "https://cloud.google.com/managed-service-for-apache-kafka/pricing"
+  - "https://cloud.google.com/bigquery/pricing"
+  - "https://docs.cloud.google.com/bigquery/quotas"
+  - "https://docs.cloud.google.com/bigquery/docs/write-api"
+  - "https://cloud.google.com/dataproc/pricing"
 ---
 
 # Messaging, Streaming, and Analytics Translation
@@ -57,7 +87,7 @@ BigQuery is an engine plus a storage system, so it trades control for freedom fr
 ### Kinesis Data Streams: hash-key ranges and the read budget
 
 A stream is a set of shards.
-Each record carries a partition key. Kinesis takes the MD5 of the key as a 128-bit integer and routes it to the shard whose contiguous hash-key range contains it (AWS docs, as of 2026-10; UNVERIFIED in this authoring pass, recalled from the API reference).
+Each record carries a partition key. Kinesis takes the MD5 of the key as a 128-bit integer and routes it to the shard whose contiguous hash-key range contains it (AWS Kinesis developer guide, as of 2026-11).
 The consequence is that capacity is allocated by key-space, not by load.
 A Pareto-distributed key population hashed onto 8 equal ranges in a local simulation put 58.5 percent of traffic on one shard (simulation in the Worked Example).
 Adding shards by uniform splitting halves the range of the hot shard but does not halve its load if one key dominates, because a single key cannot be split.
@@ -69,27 +99,29 @@ Shared fan-out consumers share both the 2 MB/s and the 5 transactions per second
 The 5 TPS budget is the mechanism most getting-started guides skip.
 With N shared consumers on a shard, a well-behaved poller can issue at most 5/N calls per second per shard, so the lower bound on end-to-end delivery delay at the tail is roughly N x 200 ms even when the stream is idle and bytes are nowhere near the limit.
 Three consumers means 600 ms of polling floor, and a fourth consumer added "just for audit" degrades every other consumer's latency.
-Enhanced fan-out (EFO) replaces polling with an HTTP/2 push through SubscribeToShard, with a dedicated 2 MiB/s per consumer per shard (AWS docs, recalled, UNVERIFIED), at a separate consumer-shard-hour and per-GB retrieval charge.
-The subscription connection is time-limited (5 minutes, UNVERIFIED), so the KCL renews it. A hand-rolled consumer must handle reconnect and resume from the last sequence number.
+Enhanced fan-out (EFO) replaces polling with an HTTP/2 push through SubscribeToShard, with a dedicated 2 MB/s per consumer per shard (AWS docs, as of 2026-11), at a separate consumer-shard-hour and per-GB retrieval charge.
+AWS states an average propagation delay of about 200 ms with one shared consumer, about 1,000 ms with five, and typically 70 ms with EFO (AWS docs, as of 2026-11).
+The subscription connection is time-limited (5 minutes, SubscribeToShard API reference, as of 2026-11), so the KCL renews it. A hand-rolled consumer must handle reconnect and resume from the last sequence number.
 
 Resharding preserves per-key ordering only if consumers respect lineage.
 A split or merge closes the parent shard and creates children. The consumer must fully drain the parent before reading children, or records for one key will be processed out of order across the boundary.
 The KCL enforces this through lease dependencies on parent shards. Custom consumers frequently do not, and this is a classic silent ordering bug.
-Data is replicated synchronously across three AZs (AWS Kinesis FAQ, recalled, UNVERIFIED) and retention defaults to 24 hours and extends to 365 days (AWS docs, recalled, UNVERIFIED).
-On-demand mode removes shard management but has its own ceiling: new streams start at a small write quota and by default scale to 200 MB/s and 200,000 records/s for writes (AWS Kinesis FAQ, as of 2026-10).
-Scaling is reactive to observed peaks, so a step change far above the previous peak can still throttle for the interval it takes to scale.
+Data is replicated synchronously across three AZs (AWS Kinesis FAQ, as of 2026-11) and retention defaults to 24 hours and extends to 365 days (AWS docs, as of 2026-11).
+On-demand mode removes shard management but has its own ceiling: new streams start at a write quota of 4 MB/s and 4,000 records/s and by default scale to 200 MB/s and 200,000 records/s (AWS Kinesis FAQ, as of 2026-11).
+The quotas page goes further and lists up to 10 GB/s of write in us-east-1, us-west-2, and eu-west-1, with 200 MB/s elsewhere unless raised by support ticket (AWS docs, as of 2026-11).
+A stream accommodates up to double its previous peak from the last 30 days (AWS Kinesis FAQ, as of 2026-11), and scaling is reactive to observed peaks, so a step change far above that can still throttle for the interval it takes to scale.
 
 ### SQS: replicated message state and the polling mechanism
 
 SQS stores each message redundantly across multiple servers and AZs in the region.
 The behavior that surprises engineers is short polling. A short-poll ReceiveMessage samples a subset of the servers that hold the queue's messages, so it can return empty or partial results while messages exist on servers it did not query.
-Long polling (WaitTimeSeconds up to 20) queries all servers and waits for a message (AWS docs, recalled, UNVERIFIED).
+Long polling (WaitTimeSeconds up to 20) queries all servers and waits for a message (AWS SQS docs, as of 2026-11).
 Empty receives are billed requests, so short polling at scale is both slower to drain and more expensive.
 
 Delivery is at-least-once with best-effort ordering on standard queues.
-Receiving a message does not delete it. It starts a visibility timeout (default 30 seconds, maximum 12 hours, UNVERIFIED) during which the receipt handle is the only way to delete or extend it.
+Receiving a message does not delete it. It starts a visibility timeout (default 30 seconds, maximum 12 hours, AWS SQS docs, as of 2026-11) during which the receipt handle is the only way to delete or extend it.
 SQS does not extend the timeout for you, so processing time must be bounded or a heartbeat must call ChangeMessageVisibility.
-FIFO queues add a MessageGroupId and a 5-minute deduplication window (AWS docs, recalled, UNVERIFIED).
+FIFO queues add a MessageGroupId and a 5-minute deduplication window (AWS SQS docs, as of 2026-11).
 Within a group, once any message is in flight, SQS withholds later messages of that group until the in-flight ones are deleted or become visible again.
 That is the mechanism that makes a single poison message block an entire group, and it is the head-of-line blocking failure in Question 8.
 Throughput on FIFO scales with the number of distinct group IDs in high-throughput mode, so a low-cardinality group key caps throughput regardless of the quota.
@@ -97,23 +129,23 @@ For queue backlog dynamics, read the Builders' Library article on avoiding insur
 
 ### Pub/Sub: no partitions, leases, and ordering keys
 
-Pub/Sub exposes no partition, offset, or shard. The service is a global control plane over regional storage, and it shards topics internally (Google Cloud Pub/Sub architecture docs, recalled, UNVERIFIED).
-Publishes are acknowledged after the message is durably stored in multiple zones of the region (UNVERIFIED).
+Pub/Sub exposes no partition, offset, or shard. A control plane assigns clients to data-plane servers called forwarders, and clients are unaware of where the data is stored (Google Cloud Pub/Sub architecture docs, as of 2026-11).
+Publishes are acknowledged after the forwarder has written the message to at least ceil(N/2) of N storage clusters, with N odd (Google Cloud Pub/Sub architecture docs, as of 2026-11).
 Delivery state is kept per subscription: each message has a state of outstanding, acked, or expired for that subscription, and a topic with N subscriptions stores independent cursors for each.
 This is why fan-out is a billing multiplier (each subscription's delivery is billed as throughput) but not an operational one.
 
-Consumers hold a lease. With StreamingPull, the client library extends the ack deadline automatically until a maximum lease duration, so a slow handler results in held messages and a growing backlog, not duplicate delivery.
+Consumers hold a lease. With StreamingPull, the client library extends the ack deadline automatically until a maximum lease duration, one hour by default (Google Cloud docs, as of 2026-11), so a slow handler results in held messages and a growing backlog, not duplicate delivery.
 SQS inverts this: the same slowness produces duplicates because the timeout expires on its own.
-The default ack deadline is 10 seconds and the maximum is 600 seconds (Google Cloud docs, recalled, UNVERIFIED).
+The default ack deadline is 10 seconds and the maximum is 600 seconds (Google Cloud docs, as of 2026-11).
 
 Ordering is per ordering key and scoped to a region.
 Messages with the same key must be published to the same regional endpoint to be ordered, which is why clients that need ordering set a regional endpoint.
 If a publish with an ordering key fails, the client library stops publishing for that key until the application calls resume_publish, because continuing would let later messages overtake the failed one.
 On the subscriber side, a nack or ack deadline expiry on one message causes redelivery of that message and every later message for the key that was already delivered, so the failure unit is the key.
-Exactly-once delivery is available on pull and StreamingPull subscriptions in a region, and ack returns a result that can fail, so a handler must treat a failed ack-with-response as a possible redelivery (Google Cloud docs, recalled, UNVERIFIED).
+Exactly-once delivery is available on pull and StreamingPull subscriptions in a region, and ack returns a result that can fail, so a handler must treat a failed ack-with-response as a possible redelivery (Google Cloud docs, as of 2026-11).
 It does not deduplicate publisher retries. Two publishes of the same payload get two message IDs.
-Replay is a first-class operation: seek to a timestamp or snapshot, and topic message retention can extend replay beyond subscription retention (Google Cloud docs, recalled, UNVERIFIED).
-Pub/Sub Lite, the zonal partitioned cheaper variant, was deprecated with a shutdown in 2026 (UNVERIFIED), so there is no current GCP analog to Kinesis-style provisioned zonal logs other than Managed Kafka.
+Replay is a first-class operation: seek to a timestamp or snapshot, and topic message retention can extend replay beyond subscription retention (Google Cloud docs, as of 2026-11).
+Pub/Sub Lite, the zonal partitioned cheaper variant, is deprecated: it closed to new customers after 2024-09-24 and turns down on 2027-01-31 (Google Cloud docs, as of 2026-11), so for new work there is no GCP analog to Kinesis-style provisioned logs other than Managed Kafka.
 
 ### Kafka: MSK versus Google Cloud Managed Service for Apache Kafka
 
@@ -125,36 +157,37 @@ Controller metadata moved from ZooKeeper to KRaft (KIP-500, a Raft-based quorum 
 The mechanism a getting-started guide misses is cross-AZ consumer traffic.
 By default consumers read from partition leaders, which are spread across AZs, so roughly two-thirds of consumer bytes cross an AZ boundary in a 3-AZ cluster with consumers in random AZs.
 Follower fetching (KIP-392, replica.selector.class=RackAwareReplicaSelector on brokers plus client.rack on consumers) lets a consumer read from an in-zone follower and removes most of that traffic, at the cost of slightly higher end-to-end latency, since followers lag the leader's high-water mark.
-Whether in-cluster replication traffic and consumer cross-AZ traffic are billed differs by provider and mode (UNVERIFIED for both), so model the data-transfer line item explicitly. See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]].
+The billing differs by provider: MSK does not charge for replication between brokers, and client traffic pays standard AWS data transfer (Amazon MSK pricing, as of 2026-11), while Managed Kafka bills 0.01 USD per GiB for inter-zone replication and 0.004 to 0.01 USD per GiB for cross-zone client traffic (Google Cloud pricing, as of 2026-11), so model the data-transfer line item explicitly. See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]].
 
-MSK offers provisioned clusters (brokers on EC2 with EBS storage, optional tiered storage), Serverless, and Express brokers. Express brokers were launched at re:Invent 2024 and decouple storage so you no longer size volumes (AWS announcement, recalled, UNVERIFIED).
-The Google Cloud service (Managed Service for Apache Kafka) provides clusters sized by vCPU and memory with Kafka Connect support (Google Cloud docs, recalled, UNVERIFIED; GA status and region coverage must be re-checked).
+MSK offers provisioned clusters (brokers on EC2 with EBS storage, optional tiered storage), Serverless, and Express brokers. Express brokers were announced on 2024-11-07, ahead of re:Invent, and decouple storage so you no longer size volumes (AWS News Blog; Amazon MSK docs, as of 2026-11).
+The Google Cloud service (Managed Service for Apache Kafka) has been GA since 2024-11-12 and provides clusters sized by vCPU and memory, with Kafka Connect GA since 2025-10-01 (Google Cloud release notes, as of 2026-11).
 Both give you real Kafka wire compatibility, so the portability story is the client protocol plus MirrorMaker 2, not the control plane APIs, which are entirely different.
 For the log semantics and broker internals in depth see [[04-System-Design/06-Messaging-and-Streaming/Apache-Kafka|Apache Kafka]].
 
 ### Analytics: files you own versus storage the engine owns
 
-Athena runs Trino-derived distributed SQL on S3 data, with table metadata in the Glue Data Catalog and a per-TB-scanned or provisioned-DPU meter (AWS docs, recalled, UNVERIFIED).
+Athena runs Trino-derived distributed SQL on S3 data, with table metadata in the Glue Data Catalog and a per-TB-scanned or provisioned-DPU meter (Athena docs and pricing, as of 2026-11).
 Query planning enumerates partitions and S3 objects, so a table of millions of tiny files spends its time in listing and split generation instead of scanning.
-S3 serves a prefix at roughly 5,500 GET or HEAD requests per second (S3 docs, recalled, UNVERIFIED), so a many-small-files scan against few prefixes ends in 503 SlowDown responses and retries.
+S3 serves at least 5,500 GET or HEAD requests per second per partitioned prefix (S3 docs, as of 2026-11), so a many-small-files scan against few prefixes ends in 503 SlowDown responses and retries.
 See [[04-System-Design/05-Data-Stores/Amazon-S3-and-Object-Storage|Amazon S3 and Object Storage]] for the storage side.
 
 Spark on EMR or Dataproc has a correctness mechanism that is invisible until it fails: the output commit protocol.
 The classic Hadoop FileOutputCommitter commits by renaming task output directories to the final location.
 On object stores, rename is copy plus delete, is not atomic, and is slow in proportion to data size. Algorithm version 2 of that committer also exposes partial output if a job fails mid-commit.
 EMR ships an S3-optimized committer that uses multipart upload to make commit a metadata operation, and S3A offers magic and staging committers for the same purpose (Hadoop S3A committers docs, linked in Further Reading).
-On GCS the same question exists, and the answer depends on the connector and bucket type (hierarchical namespace buckets support atomic rename, UNVERIFIED).
+On GCS the same question exists, and the answer depends on the connector and bucket type (hierarchical namespace buckets support atomic folder rename, Cloud Storage docs, as of 2026-11).
 Table formats such as Apache Iceberg sidestep directory-rename commits by committing through an atomic metadata pointer swap, which is why they are the portable answer across both clouds.
 
 BigQuery executes queries as a tree of stages on a shared pool of slots (units of compute), reading Capacitor columnar data from Colossus and exchanging intermediate results through a dedicated in-memory shuffle tier (Dremel, VLDB 2010; see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_13_BigQuery_Dremel_Capacitor_and_Slot_Orchestration|BigQuery: Dremel, Capacitor, and Slot Orchestration]]).
 Slots are fair-scheduled across concurrent queries within a reservation, so a heavy query does not fail under load but slows, and the same query can differ in wall time by an order of magnitude depending on neighbors in your reservation.
-On-demand projects draw from a shared pool with a per-project concurrent slot cap (2,000 slots by default, UNVERIFIED), while editions let you set a baseline and an autoscaling maximum.
-Streaming ingestion goes through the Storage Write API, whose committed streams give exactly-once appends by tracking stream offsets, which is the sink-side half of an exactly-once pipeline (Google Cloud docs, recalled, UNVERIFIED).
+On-demand projects draw from a shared pool with a per-project concurrent slot cap (2,000 slots per project and 20,000 per organization, BigQuery quotas, as of 2026-11), while editions let you set a baseline and an autoscaling maximum.
+Streaming ingestion goes through the Storage Write API, whose committed streams give exactly-once appends when the client supplies record offsets, which is the sink-side half of an exactly-once pipeline (Google Cloud docs, as of 2026-11).
 
 ## Numbers to Know
 
-Rows marked verified were checked against the cited page during this authoring pass on 2026-10-21.
-Rows marked UNVERIFIED are recalled from vendor documentation and must be re-checked against the primary page before this note reaches `status: solid`.
+Rows marked verified were checked against the cited page during the authoring pass on 2026-10-21.
+All other rows were checked against the cited vendor docs or price lists in the fact-check pass (as of 2026-11).
+Prices are US list prices unless stated.
 
 | Quantity | Value | Source and status |
 |---|---|---|
@@ -163,27 +196,27 @@ Rows marked UNVERIFIED are recalled from vendor documentation and must be re-che
 | GetRecords per call | up to 10 MiB and 10,000 records | AWS re:Post knowledge center (as of 2026-10), verified |
 | Shared fan-out consumers | share the shard's 2 MB/s and 5 TPS | AWS Kinesis FAQ (as of 2026-10), verified |
 | Kinesis on-demand default scale ceiling | 200 MB/s and 200,000 records/s writes | AWS Kinesis FAQ (as of 2026-10), verified |
-| Kinesis on-demand raised limit on request | 2 GB/s write announced in 2023 | AWS announcement page (as of 2026-10), verified only via a China-region mirror |
-| Kinesis default shards per account per region | 500 in us-east-1, us-west-2, eu-west-1, 200 elsewhere | third-party summary only, UNVERIFIED |
-| Kinesis retention | 24 h default, up to 365 days | AWS docs, UNVERIFIED |
-| Kinesis EFO throughput | 2 MiB/s per consumer per shard | AWS docs, UNVERIFIED |
-| Kinesis price (us-east-1) | about 0.015 USD per shard-hour, 0.014 USD per million PUT payload units | AWS pricing, UNVERIFIED |
-| SQS visibility timeout | default 30 s, max 12 h | AWS docs, UNVERIFIED |
-| SQS retention | 1 minute to 14 days, default 4 days | AWS docs, UNVERIFIED |
-| SQS max message size | 1 MiB after the 2025 increase from 256 KiB | AWS announcement, UNVERIFIED |
-| SQS in-flight limit | 120,000 standard, 20,000 FIFO | AWS docs, UNVERIFIED |
-| SQS price | about 0.40 USD per million standard requests, billed in 64 KiB chunks | AWS pricing, UNVERIFIED |
-| Pub/Sub max message size | 10 MB | Google Cloud docs, UNVERIFIED |
-| Pub/Sub ack deadline | default 10 s, max 600 s | Google Cloud docs, UNVERIFIED |
-| Pub/Sub retention | subscription up to 7 days, topic retention up to 31 days | Google Cloud docs, UNVERIFIED |
-| Pub/Sub price | about 40 USD per TiB for publish and each delivery, first 10 GiB per month free | Google Cloud pricing, UNVERIFIED |
-| Athena price | about 5 USD per TB scanned, 10 MB minimum per query | AWS pricing, UNVERIFIED |
-| Athena DML query timeout | 30 minutes default | AWS docs, UNVERIFIED |
-| BigQuery on-demand | about 6.25 USD per TiB scanned, first 1 TiB per month free | Google Cloud pricing, UNVERIFIED |
-| BigQuery editions slot-hour (US) | about 0.04 Standard, 0.06 Enterprise, 0.10 Enterprise Plus | Google Cloud pricing, UNVERIFIED |
-| Dataproc service fee | about 0.010 USD per vCPU-hour over Compute Engine | Google Cloud pricing, UNVERIFIED |
-| EMR service fee | per-instance-hour uplift that varies by instance type | AWS pricing, UNVERIFIED |
-| Inter-region and internet egress (typical list) | about 0.02 and 0.09 USD per GB | AWS and Google Cloud pricing, UNVERIFIED |
+| Kinesis on-demand maximum write | 10 GB/s in us-east-1, us-west-2, eu-west-1; 200 MB/s elsewhere, raisable to 10 GB/s by support ticket | AWS Kinesis quotas docs (as of 2026-11) |
+| Kinesis default shards per account | 20,000 in us-east-1, us-west-2, eu-west-1; 1,000 or 6,000 elsewhere | AWS Kinesis quotas docs (as of 2026-11) |
+| Kinesis retention | 24 h default, up to 365 days | AWS docs (as of 2026-11) |
+| Kinesis EFO throughput | 2 MB/s per consumer per shard | AWS docs (as of 2026-11) |
+| Kinesis price (us-east-1) | 0.015 USD per shard-hour, 0.014 USD per million PUT payload units; EFO 0.015 USD per consumer-shard-hour and 0.013 USD per GB | AWS pricing (as of 2026-11) |
+| SQS visibility timeout | default 30 s, max 12 h | AWS docs (as of 2026-11) |
+| SQS retention | 1 minute to 14 days, default 4 days | AWS docs (as of 2026-11) |
+| SQS max message size | 1 MiB after the increase from 256 KiB on 2025-08-04 | AWS announcement (as of 2026-11) |
+| SQS in-flight limit | about 120,000 standard, 120,000 FIFO | AWS docs (as of 2026-11) |
+| SQS price (us-east-1) | 0.40 USD per million standard requests and 0.50 USD per million FIFO requests at the first tier, billed in 64 KB chunks | AWS price list (as of 2026-11) |
+| Pub/Sub max message size | 10 MB | Google Cloud docs (as of 2026-11) |
+| Pub/Sub ack deadline | default 10 s, max 600 s | Google Cloud docs (as of 2026-11) |
+| Pub/Sub retention | subscription default 7 days, range 10 minutes to 31 days; topic retention up to 31 days | Google Cloud subscription properties and quotas docs (as of 2026-11); the quotas page still words subscription retention as 7 days |
+| Pub/Sub price | 40 USD per TiB for publish and each delivery, first 10 GiB per month free, 1 KB minimum per request; BigQuery and Cloud Storage subscriptions 50 USD per TiB | Google Cloud pricing (as of 2026-11) |
+| Athena price | 5 USD per TB scanned, 10 MB minimum per query; capacity reservations 0.30 USD per DPU-hour | AWS pricing (as of 2026-11) |
+| Athena DML query timeout | 30 minutes default, adjustable | AWS docs (as of 2026-11) |
+| BigQuery on-demand | 6.25 USD per TiB scanned, first 1 TiB per month free | Google Cloud pricing (as of 2026-11) |
+| BigQuery editions slot-hour (US) | 0.04 Standard, 0.06 Enterprise, 0.10 Enterprise Plus, pay as you go; per-second billing with a 1-minute minimum unless opted into Fluid scaling | Google Cloud pricing (as of 2026-11) |
+| Dataproc service fee | 0.010 USD per vCPU-hour over Compute Engine, per second with a 1-minute minimum | Google Cloud pricing (as of 2026-11) |
+| EMR service fee | per-second uplift over EC2 that varies by instance type, 1-minute minimum | AWS pricing (as of 2026-11) |
+| Inter-region and internet egress (typical list) | inter-region 0.02 USD per GB within North America on both clouds; internet 0.09 USD per GB for the first 10 TB per month on AWS, 0.12 down to 0.08 USD per GiB to North America on Google Cloud | AWS price list and Google Cloud network pricing (as of 2026-11) |
 
 Derived numbers used later (these follow from the table rows, not from separate sources):
 shared-consumer polling floor = N x 200 ms per shard;
@@ -196,20 +229,20 @@ Pub/Sub cost per day = TiB published x (1 + subscriptions) x unit price.
 |---|---|---|---|
 | Work queue | SQS standard and FIFO | Pub/Sub pull subscription (no separate queue product) | SQS per-message state with explicit visibility timeout; Pub/Sub auto-extends leases, so slow handlers cause backlog not duplicates |
 | Strict ordering | SQS FIFO by MessageGroupId; Kinesis by shard | Pub/Sub ordering key, regional | Pub/Sub ordering failure unit is the key, with republish of later delivered messages on nack; SQS FIFO blocks the group |
-| Partitioned log | Kinesis Data Streams | none native after Pub/Sub Lite shutdown; use Managed Kafka | Kinesis shards are exposed and billed per hour; Pub/Sub hides partitions and bills per byte |
+| Partitioned log | Kinesis Data Streams | none native for new customers (Pub/Sub Lite is closed to them and turns down on 2027-01-31); use Managed Kafka | Kinesis shards are exposed and billed per hour; Pub/Sub hides partitions and bills per byte |
 | Fan-out | SNS to SQS, or Kinesis EFO | Pub/Sub subscriptions | Pub/Sub fan-out is N independent cursors on one topic; AWS needs SNS plus N queues or EFO consumers |
 | Replay | Kinesis retention; none on SQS | Seek to time or snapshot; topic retention | SQS cannot replay acknowledged messages |
 | Dedup and exactly-once | SQS FIFO 5-minute send dedup; Kinesis none at the service level | Exactly-once delivery regional on pull; no publish dedup | Neither gives cross-system exactly-once effects |
 | Dead letter | SQS redrive policy with maxReceiveCount, plus redrive back | Dead-letter topic with max delivery attempts | Both are redelivery-count based, which counts expired leases as attempts |
-| Managed Kafka | MSK provisioned, Serverless, Express brokers | Managed Service for Apache Kafka (confirm GA status) | Same client protocol, different control planes, networking, and billing |
-| Delivery to storage | Amazon Data Firehose to S3 or Iceberg | Pub/Sub BigQuery and Cloud Storage subscriptions | GCP does it as a subscription type with no buffer config; Firehose buffers by size and interval |
+| Managed Kafka | MSK provisioned, Serverless, Express brokers | Managed Service for Apache Kafka (GA since 2024-11-12) | Same client protocol, different control planes, networking, and billing |
+| Delivery to storage | Amazon Data Firehose to S3 or Iceberg | Pub/Sub BigQuery and Cloud Storage subscriptions | GCP does it as a subscription type: BigQuery subscriptions batch through the Storage Write API without a buffer setting, while Cloud Storage subscriptions have a required batch max duration of 1 to 10 minutes plus optional size limits (Google Cloud docs, as of 2026-11); Firehose buffers by size and interval |
 | Stream processing | Managed Service for Apache Flink | Dataflow (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_14_Messaging_and_Streaming_Cloud_Pub_Sub_and_Dataflow\|Pub/Sub and Dataflow]]) | Flink code is portable; Beam on Dataflow is a different programming model |
 | Serverless SQL on files | Athena | BigQuery external or BigLake tables, or native BigQuery | Athena always reads files; BigQuery can read files but its performance and governance advantage is in native storage |
 | Warehouse | Redshift (Serverless or provisioned) | BigQuery | BigQuery is closer to Athena plus Redshift Serverless combined, with no cluster concept |
 | Hadoop and Spark | EMR on EC2, EKS, Serverless | Dataproc on GCE, on GKE, Serverless for Apache Spark | Both bill infrastructure plus a service fee; Serverless variants bill by Spark resource-time |
 | Metadata | Glue Data Catalog, Lake Formation | BigQuery datasets, Dataplex, Dataproc Metastore | Glue catalog is a separate service the engines call; BigQuery catalog is part of the engine |
-| Table format direction | Iceberg on S3 and S3 Tables | Iceberg via BigLake and BigQuery-managed Iceberg tables (confirm GA status) | Format is portable; catalog and commit authority are not |
-| Data plane failure domain | Regional services replicated across AZs | Regional Pub/Sub with global control plane; BigQuery multi-region or region location | Location choice at creation is hard to change on both clouds |
+| Table format direction | Iceberg on S3 and S3 Tables | Iceberg via BigLake and Apache Iceberg managed tables in BigQuery (no preview label in current docs, as of 2026-11; writes through the Lakehouse runtime catalog were announced as Preview in 2026-06) | Format is portable; catalog and commit authority are not |
+| Data plane failure domain | Regional services replicated across AZs | Pub/Sub with global data access and storage location control; BigQuery multi-region or region location | Location choice at creation is hard to change on both clouds |
 
 For the storage-side translation that this chapter builds on, see [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_04_Storage_and_Database_Translation|Storage and Database Translation]].
 For the AWS service internals, see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_13_Messaging_and_Streaming_SQS_SNS_EventBridge_and_MSK|Messaging and Streaming: SQS, SNS, EventBridge, and MSK]].
@@ -223,7 +256,7 @@ For the AWS service internals, see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_
 ### Step 1: capacity and cost calculator
 
 Prices are inputs.
-The defaults are the UNVERIFIED list prices from the Numbers table. Replace them from the pricing pages before relying on the output.
+The defaults are the list prices from the Numbers table (as of 2026-11). Refresh them from the pricing pages before relying on the output.
 
 ```python
 # capacity.py
@@ -302,7 +335,7 @@ So the latency you buy with EFO costs about 190 USD per day here, and the correc
 Pub/Sub publishes 3.219 TiB per day and is billed on publish plus three deliveries, 4 x 3.219 x 40 = about 515 USD per day.
 SQS at about 207 USD per day is for one consumer with batch size 10 (send, receive, delete each batched), and three consumers need three queues behind SNS, roughly tripling the request cost.
 The lesson is that per-byte pricing (Pub/Sub) and per-request pricing (SQS) scale with fan-out and with message count respectively, while Kinesis shard pricing is nearly flat in fan-out until you choose EFO.
-At 100 bytes per message, SQS cost is unchanged per message and Pub/Sub cost is tiny, which reverses the ranking.
+At 100 bytes per message, SQS cost is unchanged per message and Pub/Sub falls to about 25 USD per day before per-message overhead, which reverses the ranking, provided publishers batch into requests of at least 1 KB because Pub/Sub assesses a 1 KB minimum per request (Google Cloud pricing, as of 2026-11).
 Run the calculator with your own event size before choosing.
 
 ### Step 3: prove the shard-skew mechanism locally (no cloud calls)
@@ -380,7 +413,7 @@ except Exception:
 
 ### Step 5: provision, bound spend, tear down
 
-Estimated cost for a one-hour lab (UNVERIFIED prices): one provisioned Kinesis shard is about 0.015 USD per hour, and SQS, Pub/Sub, Athena, and BigQuery usage at lab scale falls within free tiers or costs cents. Expect under 1 USD if torn down the same day.
+Estimated cost for a one-hour lab (list prices, as of 2026-11): one provisioned Kinesis shard is about 0.015 USD per hour, and SQS, Pub/Sub, Athena, and BigQuery usage at lab scale falls within free tiers or costs cents. Expect under 1 USD if torn down the same day.
 
 ```bash
 # AWS (set REGION and ACCOUNT_ID)
@@ -452,7 +485,7 @@ WHERE creation_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
 ```
 
 Break-even: editions win when slot_hours x slot_price < tib_billed x on-demand price, with the caveat that editions bill autoscaled slots with a short minimum window and a baseline you pay for whether used or not.
-With the UNVERIFIED prices, 100 TiB of scanned bytes per day costs about 625 USD on-demand, so the Enterprise edition wins when the same work uses fewer than 625 / 0.06 = about 10,400 slot-hours per day.
+With the list prices (as of 2026-11), 100 TiB of scanned bytes per day costs about 625 USD on-demand, so the Enterprise edition wins when the same work uses fewer than 625 / 0.06 = about 10,400 slot-hours per day.
 For Athena the equivalent comparison is 5 USD per TB scanned against provisioned capacity in DPU-hours, and the same measurement discipline applies using the query execution statistics for data scanned and engine execution time.
 
 ## Failure Modes and Pitfalls
@@ -479,7 +512,7 @@ For Athena the equivalent comparison is 5 USD per TB scanned against provisioned
 - Slow ordered subscriber. Because later messages for a key are held behind an unacked one, a slow or failing handler on one key accumulates a per-key backlog that does not show in subscription-level age if other keys are healthy.
 - Exactly-once misread. Teams enable exactly-once delivery and then retry publishes after timeouts, producing duplicates with distinct message IDs that the feature will not remove.
 - Push endpoint overload. Pub/Sub push delivery adapts its rate to errors from the endpoint, so a downstream that returns 5xx under load can throttle delivery into long backlogs. Pull with flow control gives the consumer direct control.
-- A public example of control-plane blast radius on the Google side is the 2025-06-12 incident in which a quota policy path in Service Control crashed and many Google Cloud APIs returned errors across regions (Google Cloud incident report; UNVERIFIED for the list of affected products and the exact trigger description in this pass).
+- A public example of control-plane blast radius on the Google side is the 2025-06-12 incident: a policy change with unintended blank fields replicated globally within seconds and hit a null pointer in a Service Control code path that had no feature flag, crash-looping the binary so that Google Cloud APIs returned errors across regions (Google Cloud incident report, https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW).
 
 ### Kafka on MSK or Managed Kafka
 
@@ -501,7 +534,7 @@ For Athena the equivalent comparison is 5 USD per TB scanned against provisioned
 
 ### Security
 
-- Kinesis and SQS encryption use KMS. Kinesis SSE-KMS makes KMS calls per put and get path, so a hot stream can throttle on the KMS request quota. SQS caches data keys for a configurable reuse period (KmsDataKeyReusePeriodSeconds, default 300 seconds, UNVERIFIED), which trades key-rotation immediacy for KMS call volume.
+- Kinesis and SQS encryption use KMS. Kinesis SSE-KMS depends on KMS in the data path, and its read API lists KMSThrottlingException among its errors (SubscribeToShard API reference, as of 2026-11), so a hot stream can throttle on the KMS request quota. SQS caches data keys for a configurable reuse period (KmsDataKeyReusePeriodSeconds, default 300 seconds, AWS SQS docs, as of 2026-11), which trades key-rotation immediacy for KMS call volume.
 - Pub/Sub supports CMEK per topic and a message storage policy that restricts which regions may persist messages. BigQuery supports CMEK per dataset and column-level policy tags.
 - IAM scoping. Producers get kinesis:PutRecord on one stream ARN and nothing else. Consumers get kinesis:GetRecords, GetShardIterator, DescribeStream, and for KCL, scoped DynamoDB lease table and CloudWatch permissions. On GCP use roles/pubsub.publisher on the topic and roles/pubsub.subscriber on the subscription, never project-level editor roles.
 - SQS queue policies should require aws:SourceArn or aws:SourceAccount conditions for SNS and EventBridge senders to prevent confused-deputy writes.
@@ -511,13 +544,13 @@ For Athena the equivalent comparison is 5 USD per TB scanned against provisioned
 ### Cost levers
 
 - SQS: batch send, receive, and delete up to 10 messages, use long polling, and keep payloads under the billing chunk size. Batching cuts request cost by up to 10x in the calculator above.
-- Kinesis: choose shared fan-out with more shards for relaxed latency, EFO only for consumers with real latency SLOs, use KPL aggregation to pack small records under the 1,000 records/s limit, and use on-demand only when traffic is unpredictable, since provisioned is cheaper at steady load (UNVERIFIED comparison, check the pricing page).
+- Kinesis: choose shared fan-out with more shards for relaxed latency, EFO only for consumers with real latency SLOs, use KPL aggregation to pack small records under the 1,000 records/s limit, and use on-demand only when traffic is unpredictable, since provisioned is cheaper at steady load: at list prices the Worked Example costs about 709 USD per day on on-demand Standard and about 283 USD per day on on-demand Advantage, whose data-out rate includes enhanced fan-out, against 45 USD shared or 237 USD EFO on provisioned (AWS pricing, as of 2026-11).
 - Pub/Sub: bytes are the meter, so compress payloads, drop fields, use subscription filters to avoid delivering unwanted messages to a subscription, and count every subscription as a delivery multiplier.
 - Kafka: use follower fetching, tiered storage for long retention, compression at the producer, and right-size partitions, since each partition carries per-broker overhead.
 - Athena and BigQuery: columnar formats, partition and clustering keys, partition projection on Athena, require_partition_filter on BigQuery, workgroup and per-query byte caps, and the on-demand versus capacity break-even test from the Worked Example.
-- BigQuery storage billing can use physical bytes (compressed) instead of logical bytes, which helps compressible data and hurts high-churn tables with long time-travel windows (UNVERIFIED).
+- BigQuery storage billing can use physical bytes (compressed) instead of logical bytes, which helps compressible data and hurts high-churn tables with long time-travel windows, because time travel and fail-safe storage are charged separately under physical billing (BigQuery docs, as of 2026-11).
 - EMR and Dataproc: ephemeral clusters per job, Spot or preemptible secondary workers, autoscaling, and Serverless variants for bursty jobs, where the per-unit rate is higher but idle time is zero.
-- Cross-cloud data movement is the largest hidden line item: moving 100 MB/s between clouds is 8.64 TB per day, about 778 USD per day at 0.09 USD per GB (UNVERIFIED rate).
+- Cross-cloud data movement is the largest hidden line item: moving 100 MB/s between clouds is 8.64 TB per day, about 778 USD per day at the AWS first-tier internet rate of 0.09 USD per GB, or about 560 USD per day once AWS monthly volume tiers apply at this sustained rate (AWS price list, as of 2026-11).
 
 ## Interview Questions and Model Answers
 
@@ -569,7 +602,7 @@ For a single dominant key I have two options. I can salt the key with a small mo
 Consumer lag with no write throttling is a separate read-side diagnosis. If the lagging consumer is a shared fan-out consumer, compute its polling budget: with N shared consumers the per-shard budget is 5/N calls per second, so a fourth consumer joining last week lowers everyone's polling rate, and lag appears without errors.
 Remedies are to move that consumer to EFO, reduce the poll interval waste of other consumers, or raise records per call by letting a batch accumulate, since each call can return up to 10,000 records and 10 MiB.
 Also check for a consumer that processes slowly and holds a lease, and for resharding-induced parent-shard draining delays.
-On Pub/Sub there are no shards to skew, so the failure moves. Key skew only matters if you use ordering keys, where a hot key serializes on one delivery path (UNVERIFIED per-key limit of about 1 MBps), and the read-side polling budget does not exist because StreamingPull is push-like.
+On Pub/Sub there are no shards to skew, so the failure moves. Key skew only matters if you use ordering keys, where a hot key serializes on one delivery path (publisher limit of 1 MBps per ordering key, Google Cloud quotas, as of 2026-11), and the read-side polling budget does not exist because StreamingPull is push-like.
 The trade is lost control: you cannot isolate a hot key or tune partitioning, and you pay per byte and per subscription.
 
 #### Follow-up Interviewer Question
@@ -585,12 +618,12 @@ Migrate a 20 TB, 100 MB/s Kafka workload from MSK on AWS to Managed Kafka on GCP
 Use MirrorMaker 2 (the Kafka Connect source connector, checkpoint connector, and heartbeat connector) to replicate topics and translate consumer group offsets.
 To preserve per-partition ordering with a stable mapping, create destination topics first with the same partition count and the same partitioner assumptions, and use an identity replication policy so topic names do not get a source-cluster prefix.
 Partition-for-partition replication keeps ordering within each partition, since MM2 copies a partition in order to the same partition number, but it does not preserve offsets, which is why the checkpoint connector's offset translation exists.
-Run the mirror until lag is near zero and watch steady-state cost: 100 MB/s is 8.64 TB per day, and at 0.09 USD per GB (UNVERIFIED rate) is about 778 USD per day of cross-cloud transfer plus the 20 TB backfill of roughly 1.8k USD. If the interconnect is dedicated, cost shifts to port fees, see [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_07_Multi_Cloud_and_Hybrid_Architecture_Reality|Multi-Cloud and Hybrid Architecture Reality]].
+Run the mirror until lag is near zero and watch steady-state cost: 100 MB/s is 8.64 TB per day, and at the AWS first-tier internet rate of 0.09 USD per GB (AWS price list, as of 2026-11) is about 778 USD per day of cross-cloud transfer plus the 20 TB backfill of roughly 1.8k USD, with monthly volume tiers lowering the sustained rate to about 560 USD per day. If the interconnect is dedicated, cost shifts to port fees, see [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_07_Multi_Cloud_and_Hybrid_Architecture_Reality|Multi-Cloud and Hybrid Architecture Reality]].
 Cutover order matters. Move consumers first, using translated offsets and accepting a bounded duplicate window, which requires idempotent handlers.
 Then drain: stop producers, wait for mirror lag to reach zero (compare end offsets, not just lag metrics), repoint producers to the destination, and keep the reverse mirror for a rollback window.
 Producers should use idempotent mode with acks=all, and I would cap in-flight requests only if the client version does not guarantee ordering with retries.
 Validation is per-partition record counts and a checksum of keys and payload hashes in a sampled window, not offset comparison.
-Risks include ACL and authentication translation (IAM-based auth on MSK versus Google auth on the destination, UNVERIFIED specifics), quota limits on partitions and throughput per cluster, and different broker version behavior.
+Risks include ACL and authentication translation (IAM-based auth on MSK versus SASL or mTLS on the destination, Google Cloud docs, as of 2026-11), quota limits on partitions and throughput per cluster, and different broker version behavior.
 
 #### Follow-up Interviewer Question
 
@@ -602,7 +635,7 @@ Finance reports that Athena spend tripled after a dashboard launch, and the data
 
 #### Model Answer
 
-A migration is not a cost fix by itself, because both Athena and BigQuery on-demand bill bytes scanned (about 5 USD per TB and 6.25 USD per TiB respectively, UNVERIFIED). A dashboard that scans 3x more bytes costs about 3x more on either.
+A migration is not a cost fix by itself, because both Athena and BigQuery on-demand bill bytes scanned (5 USD per TB and 6.25 USD per TiB respectively, vendor pricing, as of 2026-11). A dashboard that scans 3x more bytes costs about 3x more on either.
 First find the cause. Query history shows bytes scanned per query. The usual causes are SELECT star on wide tables, missing partition filters, row-oriented formats like CSV or JSON, small files that inflate listing but not bytes, and repeated refreshes with no caching.
 BigQuery caches identical query results for free for a limited period, which Athena also supports through query result reuse, so check whether the dashboard defeats caching with a timestamp literal.
 Then compute the pricing-model break-even. For BigQuery, sum total_bytes_billed and total_slot_ms from INFORMATION_SCHEMA.JOBS over a representative week. If the slot-hours times the edition price is below the TiB billed times 6.25, an edition wins. With 100 TiB per day, on-demand is about 625 USD, so Enterprise at 0.06 USD per slot-hour wins below about 10,400 slot-hours per day. For Athena, the equivalent is provisioned capacity measured in DPUs.
@@ -639,7 +672,7 @@ You are standardizing the batch and interactive analytics platform for a company
 #### Model Answer
 
 The decision axes are who owns data layout, who owns the commit protocol, the unit of billing, and how portable the data must be.
-If the data must be readable by multiple engines and clouds, the layout should be an open table format, Iceberg, stored in S3 or GCS, with one catalog authority per table. Engines then become interchangeable readers: Athena or EMR Spark on AWS, BigQuery (through BigLake or managed Iceberg tables, confirm GA status) or Dataproc Spark on GCP.
+If the data must be readable by multiple engines and clouds, the layout should be an open table format, Iceberg, stored in S3 or GCS, with one catalog authority per table. Engines then become interchangeable readers: Athena or EMR Spark on AWS, BigQuery (through BigLake or Apache Iceberg managed tables, no preview label in current docs, as of 2026-11) or Dataproc Spark on GCP.
 That moves the correctness problem into the table commit. Iceberg commits by an atomic pointer swap on a metadata file (via the catalog), so a half-written job is invisible. The directory-rename FileOutputCommitter approach is replaced, which removes the failure where speculative execution or a failed commit leaves partial output on S3 or GCS.
 Two writers to the same table from different clouds is the risky case. Pick one catalog and one commit authority, and make the other cloud a reader, because optimistic concurrency across a high-latency link degrades into retries.
 For compute selection: BigQuery native tables for interactive, high-concurrency SQL with governance; Athena for ad hoc over files with no cluster; Spark (EMR or Dataproc, Serverless variants for bursty work) when you need custom code, ML feature jobs, or heavy shuffle with control of executors.

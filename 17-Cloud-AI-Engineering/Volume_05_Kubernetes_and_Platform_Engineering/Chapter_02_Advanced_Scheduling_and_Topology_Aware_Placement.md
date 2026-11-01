@@ -16,6 +16,35 @@ sources:
   - "https://www.kubernetes.io/blog/2025/12/29/kubernetes-v1-35-introducing-workload-aware-scheduling/"
   - "https://kubernetes.io/blog/2026/08/26/kubernetes-v1-37-release/"
   - "https://www.kubernetes.dev/resources/keps/6132/"
+  - "https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/"
+  - "https://kubernetes.io/docs/concepts/architecture/nodes/"
+  - "https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/"
+  - "https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/"
+  - "https://kubernetes.io/docs/concepts/scheduling-eviction/scheduler-perf-tuning/"
+  - "https://kubernetes.io/docs/concepts/scheduling-eviction/gang-scheduling/"
+  - "https://kubernetes.io/docs/concepts/scheduling-eviction/podgroup-scheduling/"
+  - "https://kubernetes.io/docs/concepts/scheduling-eviction/topology-aware-scheduling/"
+  - "https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/scheduler/schedule_one.go"
+  - "https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/features/kube_features.go"
+  - "https://github.com/kubernetes/kubernetes/blob/master/pkg/scheduler/apis/config/v1/default_plugins.go"
+  - "https://kubernetes.io/blog/2026/09/08/kubernetes-v1-37-advancing-workload-aware-scheduling/"
+  - "https://github.com/kubernetes/website/blob/main/content/en/blog/_posts/2026/workload-aware-scheduling-1-36.md"
+  - "https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.28.md"
+  - "https://github.com/kubernetes/kubernetes/issues/140909"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/ml-workload-placement.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/node-health.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-topology.html"
+  - "https://docs.aws.amazon.com/eks/latest/best-practices/cost-opt-networking.html"
+  - "https://karpenter.sh/docs/concepts/scheduling/"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/node-auto-provisioning"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/cluster-autoscaler"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/tpus"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/dws"
+  - "https://cloud.google.com/vpc/network-pricing"
+  - "https://kueue.sigs.k8s.io/docs/overview/"
+  - "https://kueue.sigs.k8s.io/docs/concepts/topology_aware_scheduling/"
+  - "https://github.com/kubernetes-sigs/scheduler-plugins/blob/master/pkg/coscheduling/README.md"
+  - "https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md"
 ---
 
 # Advanced Scheduling and Topology-Aware Placement
@@ -26,7 +55,7 @@ sources:
 - Taints repel, affinity attracts, and topology spread balances. Spread is evaluated only when a pod is scheduled, so scale-down, node loss, and rolling updates silently re-skew the system unless you add `matchLabelKeys`, `nodeTaintsPolicy`, or a descheduler.
 - `minDomains`, `nodeTaintsPolicy`, and the domain "global minimum" interact so that a zone outage can leave replacement pods Pending while spare capacity exists. The simulator in the worked example reproduces this.
 - At scale the cost is in Filter, not Score. `percentageOfNodesToScore` is non-monotonic in cluster size, and plugins that scan existing pods (inter-pod affinity, spread) dominate cycle time. The queue is driven by `QueueingHint` callbacks, which are an extra correctness surface.
-- For AI workloads, per-pod scheduling is the wrong abstraction. Gang scheduling (alpha in v1.35, beta in v1.37), Permit-based barriers, and network-topology-aware placement decide whether a 256-GPU job starts or burns idle accelerators.
+- For AI workloads, per-pod scheduling is the wrong abstraction. Gang scheduling (alpha in v1.35, beta but off by default in v1.37), Permit-based barriers, and network-topology-aware placement decide whether a 256-GPU job starts or burns idle accelerators.
 
 ## Mental Model
 
@@ -61,12 +90,13 @@ Those controllers do not consult the scheduler's reasoning, so any invariant you
 kube-scheduler is leader-elected, so one instance schedules at any time.
 The framework model is that one pod flows through the scheduling cycle at a time.
 Per the framework KEP, every extension point up to and including Permit finishes before the next scheduling cycle begins ([KEP-624](https://www.kubernetes.dev/resources/keps/624/), as of 2026-10).
-A 2026 research paper describes pending pods being processed by multiple scheduler workers ([arXiv 2608.06987](https://arxiv.org/pdf/2608.06987)).
-I could not confirm whether any parallel-cycle mode is enabled by default in v1.37 (UNVERIFIED), so reason about the serial model unless you have checked your version.
+A 2026 research paper describes the default scheduler as running multiple concurrent workers ([arXiv 2608.06987](https://arxiv.org/pdf/2608.06987)).
+The v1.37 source does not show that: `Run` starts a single `ScheduleOne` loop, and each iteration handles one pod or one PodGroup ([scheduler.go](https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/scheduler/scheduler.go) and [schedule_one.go](https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/scheduler/schedule_one.go), as of 2026-11).
+Reason about the serial model.
 Parallelism exists inside a cycle, where Filter and Score fan out across nodes in goroutines.
 
 The binding cycle runs asynchronously.
-After Reserve and Permit succeed, the scheduler marks the pod as assumed on the node in its cache.
+Once a node is selected, the scheduler marks the pod as assumed on that node in its cache, and then runs Reserve and Permit ([schedule_one.go](https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/scheduler/schedule_one.go), as of 2026-11).
 The next scheduling cycle therefore sees the node's resources and the pod's labels already consumed, before the API server has acknowledged the bind.
 If PreBind or Bind fails, the scheduler forgets the assumed pod, runs Unreserve, and requeues the pod.
 This is optimistic concurrency in the style of Omega (Schwarzkopf et al., EuroSys 2013), collapsed into one scheduler: speculate locally, commit with one write, and roll back local state on conflict.
@@ -78,12 +108,12 @@ Two consequences matter operationally:
 ### Snapshot and node ordering
 
 Each cycle starts by updating a snapshot from the cache.
-The update is incremental, keyed on a per-node generation counter, so cost scales with the number of nodes that changed since the last cycle rather than the cluster size (recalled from the scheduler source, UNVERIFIED this session).
+The update is incremental, keyed on a per-node generation counter, so cost scales with the number of nodes that changed since the last cycle rather than the cluster size ([scheduler cache source](https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/scheduler/backend/cache/cache.go), as of 2026-11).
 Filters see a consistent view for the whole cycle even while informers keep mutating the cache.
 
 The node list given to Filter is not in arbitrary order.
 The scheduler keeps a zone-keyed tree of nodes and lists them round-robin across zones.
-Each cycle also resumes scanning where the previous cycle stopped (recalled from the scheduler source, UNVERIFIED).
+Each cycle also resumes scanning where the previous cycle stopped ([scheduler performance tuning docs](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduler-perf-tuning/), as of 2026-11).
 Together these ensure that when the scheduler stops early because it found "enough" feasible nodes, the sample is spread across zones and rotates across cycles.
 This is the Kubernetes descendant of Borg's "relaxed randomization", where the scheduler examines machines in random order until it has found enough feasible ones to score (Verma et al., EuroSys 2015).
 
@@ -93,13 +123,13 @@ The scheduling queue has more states than "pending":
 
 - **Gated.** PreEnqueue plugins can hold a pod out of the active queue entirely, for example via scheduling gates ([Kubernetes scheduling framework docs](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework), as of 2026-10). The gang-scheduling plugin also uses PreEnqueue as a barrier.
 - **Active.** This is a priority heap ordered by the single enabled QueueSort plugin. Only one QueueSort plugin may be enabled at a time because two orderings would conflict ([Deep dive into the Kubernetes scheduler framework](https://helayoty.org/blog/deep-dive-into-the-kubernetes-scheduler)).
-- **Backoff.** Pods that failed a cycle wait out a per-pod exponential backoff (a config example shows 1 s initial and 10 s maximum, `podInitialBackoffSeconds` and `podMaxBackoffSeconds`).
-- **Unschedulable.** Pods that failed Filter wait for a cluster event that might change the verdict, or for a periodic flush.
+- **Backoff.** Pods that failed a cycle wait out a per-pod exponential backoff (defaults 1 s initial and 10 s maximum, `podInitialBackoffSeconds` and `podMaxBackoffSeconds`, [config defaults source](https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/scheduler/apis/config/v1/defaults.go), as of 2026-11).
+- **Unschedulable.** Pods that failed Filter wait for a cluster event that might change the verdict, or for a periodic flush after 5 minutes by default ([kube-scheduler reference](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-scheduler/), as of 2026-11).
 
 `QueueingHint` is the mechanism that decides which events wake which pods.
 Plugins that implement PreEnqueue, PreFilter, Filter, Reserve, or Permit declare the events they care about through the `EnqueueExtension` interface.
 They may attach a callback that returns Queue or Skip for a specific (pod, event) pair ([Kubernetes scheduling framework docs](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework), as of 2026-10).
-QueueingHint is stable as of v1.34 ([same source](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework), as of 2026-10), and the gate is locked to its default.
+QueueingHint is stable as of v1.34 ([same source](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework), as of 2026-10), its gate was locked to the default at v1.34, and the gate no longer appears in the v1.37 feature list ([kube_features.go](https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/features/kube_features.go), as of 2026-11).
 
 The non-obvious part is the in-flight window.
 A pod being scheduled is not in any queue, and cluster events keep arriving during its cycle.
@@ -107,12 +137,13 @@ If the cycle fails, an event that arrived mid-cycle may already have made the po
 The queue therefore tracks in-flight pods and keeps a list of events received while any pod is in flight.
 When a pod fails, those events are replayed through the rejecting plugins' hints ([analysis of the v1.28 scheduler OOM](https://zouyee.medium.com/exploring-the-root-cause-of-kubernetes-1-28-scheduler-oom-9ab042a3a3ed)).
 That bookkeeping is exactly what made the feature expensive.
-It was enabled by default in v1.28, caused scheduler memory growth, and was turned back off in v1.28.5 ([same analysis](https://zouyee.medium.com/exploring-the-root-cause-of-kubernetes-1-28-scheduler-oom-9ab042a3a3ed)).
+It was enabled by default in v1.28, caused scheduler memory growth, and was turned back off in v1.28.5 ([CHANGELOG-1.28, PR 122291](https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.28.md), as of 2026-11).
 It was re-enabled by default in v1.32 ([Kubernetes blog, 2024-12-12](https://kubernetes.io/blog/2024/12/12/scheduler-queueinghint/)).
 A hint that wrongly returns Skip converts a missed wakeup into a multi-minute stall (see Failure Modes).
 [KEP-6132](https://www.kubernetes.dev/resources/keps/6132/) proposes a `PreQueueingHint` extension point so that a plugin can name the affected pods once per event.
 That would reduce the requeue path from O(N) in unschedulable pods to O(1) for events that touch specific pods.
-A tracking issue describes the extension as beta and on by default, with graduation to GA pending ([kubernetes/kubernetes#140909](https://github.com/kubernetes/kubernetes/issues/140909), as of 2026-10).
+The `SchedulerPreQueueingHints` gate is alpha and off by default in v1.37 ([kube_features.go](https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/features/kube_features.go), as of 2026-11).
+The KEP targets beta and on by default in v1.38, and GA in v1.39 ([KEP-6132](https://www.kubernetes.dev/resources/keps/6132/) and [kubernetes/kubernetes#140909](https://github.com/kubernetes/kubernetes/issues/140909), as of 2026-11), so check your version.
 
 ### Filter, node sampling, and Score
 
@@ -135,8 +166,8 @@ Second, Score only sees the sample, so a "better" node outside the sample is inv
 Weighted Score plugins are therefore nudges, not optimizers.
 
 Each Score plugin emits 0 to 100 per node, NormalizeScore rescales within a plugin, and the framework sums weight times score.
-My recollection of the default weights is TaintToleration 3, NodeAffinity 2, InterPodAffinity 2, PodTopologySpread 2, and NodeResourcesFit, NodeResourcesBalancedAllocation, and ImageLocality 1 each (UNVERIFIED this session; a tuning example confirms only the three weights of 1).
-Ties among top scorers are broken randomly (recalled, UNVERIFIED).
+The default weights are TaintToleration 3, NodeAffinity 2, InterPodAffinity 2, PodTopologySpread 2, DynamicResources 2, and NodeResourcesFit, NodeResourcesBalancedAllocation, and ImageLocality 1 each ([default_plugins.go](https://github.com/kubernetes/kubernetes/blob/master/pkg/scheduler/apis/config/v1/default_plugins.go), as of 2026-11).
+Ties among top scorers are broken randomly through a per-node `Randomizer` value ([framework interface source](https://github.com/kubernetes/kubernetes/blob/release-1.37/staging/src/k8s.io/kube-scheduler/framework/interface.go), as of 2026-11).
 The practical result is that `ScheduleAnyway` spread is a weight-2 preference competing with ImageLocality.
 ImageLocality favors nodes that already hold a pod's images, and for multi-gigabyte inference images it can pull replicas toward one warm node and override the spread preference.
 Use `DoNotSchedule` where spread is an availability requirement, and treat `ScheduleAnyway` as best effort.
@@ -144,7 +175,7 @@ Use `DoNotSchedule` where spread is an availability requirement, and treat `Sche
 ### PodTopologySpread internals
 
 For each constraint, PreFilter computes a map from (topologyKey, value) to the count of matching pods.
-It also keeps the two smallest counts (a "critical paths" pair in the source, recalled and UNVERIFIED), so that Filter can evaluate the global minimum in O(1) per node.
+It also keeps the two smallest counts (a `criticalPaths` pair, [filtering.go](https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/scheduler/framework/plugins/podtopologyspread/filtering.go), as of 2026-11), so that Filter can evaluate the global minimum in O(1) per node.
 During preemption simulation the plugin's AddPod and RemovePod extensions update those counts incrementally.
 The Filter rule, per the documentation, is that placing the pod in a domain must keep `matchNum + 1 - globalMin <= maxSkew` ([Pod Topology Spread Constraints docs](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints), as of 2026-10).
 The documentation's example is zones holding 2, 2, and 1 matching pods, where the global minimum is 1.
@@ -152,17 +183,17 @@ The documentation's example is zones holding 2, 2, and 1 matching pods, where th
 The details that bite:
 
 - **Eligible domains define the minimum.** `nodeAffinityPolicy` defaults to Honor and `nodeTaintsPolicy` defaults to Ignore ([Kubernetes blog, v1.27](https://kubernetes.io/blog/2023/04/17/fine-grained-pod-topology-spread-features-beta/)). With `Ignore`, a zone whose nodes are all tainted still counts as a domain with zero pods and pins the global minimum to 0.
-- **`minDomains` zeroes the minimum.** If the number of eligible domains is below `minDomains`, the global minimum is treated as 0. `minDomains` is valid only with `DoNotSchedule` ([Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints), as of 2026-10). It has been stable since v1.30, because before v1.30 it required a feature gate that was on by default from v1.28 ([same page](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints)). Its purpose is to force a cluster autoscaler to create the missing domains ([Kubernetes blog, v1.27](https://kubernetes.io/blog/2023/04/17/fine-grained-pod-topology-spread-features-beta/)).
+- **`minDomains` zeroes the minimum.** If the number of eligible domains is below `minDomains`, the global minimum is treated as 0. `minDomains` is valid only with `DoNotSchedule` ([Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints), as of 2026-10). It has been stable since v1.30, because before v1.30 it required a feature gate that was on by default from v1.27 per the [gate's stage table](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/#MinDomainsInPodTopologySpread), although the [spread constraints page](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints) says v1.28 (both as of 2026-11). Its purpose is to force a cluster autoscaler to create the missing domains ([Kubernetes blog, v1.27](https://kubernetes.io/blog/2023/04/17/fine-grained-pod-topology-spread-features-beta/)).
 - **One constraint per (topologyKey, whenUnsatisfiable) pair** per pod ([Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints)).
-- **Cluster defaults exist.** When a pod defines none, the scheduler applies `maxSkew: 3` on hostname and `maxSkew: 5` on zone, both `ScheduleAnyway` ([KEP-1258](https://github.com/kubernetes/enhancements/blob/master/keps/sig-scheduling/1258-default-pod-topology-spread/README.md), as of 2026-10). AWS prescriptive guidance notes these values are not useful for deployments with few pods ([AWS Prescriptive Guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/ha-resiliency-amazon-eks-apps/spread-workloads.html), as of 2026-10).
-- **`matchLabelKeys` scopes counting to a revision.** Adding `pod-template-hash` makes a rolling update count only new-revision pods. Old and new pods otherwise compete for the same skew budget ([community guide](https://kubernetes.recipes/recipes/deployments/kubernetes-pod-topology-spread-advanced/)). The docs page I retrieved labelled `matchLabelKeys` beta since v1.27 and the node policies beta since v1.26. They may have graduated since (UNVERIFIED), so check your cluster's feature gates.
-- **No self-healing.** The constraint is evaluated at placement time only. ReplicaSet scale-down chooses victims by its own ranking and does not preserve spread, so you need a descheduler or periodic rebalancing for long-lived skew (recalled from the docs, UNVERIFIED this session).
+- **Cluster defaults exist.** When a pod defines none, the scheduler applies `maxSkew: 3` on hostname and `maxSkew: 5` on zone, both `ScheduleAnyway` ([KEP-1258](https://github.com/kubernetes/enhancements/blob/master/keps/sig-scheduling/1258-default-pod-topology-spread/README.md) and [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints), as of 2026-11). AWS prescriptive guidance notes these values are not useful for deployments with few pods ([AWS Prescriptive Guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/ha-resiliency-amazon-eks-apps/spread-workloads.html), as of 2026-10).
+- **`matchLabelKeys` scopes counting to a revision.** Adding `pod-template-hash` makes a rolling update count only new-revision pods. Old and new pods otherwise compete for the same skew budget ([community guide](https://kubernetes.recipes/recipes/deployments/kubernetes-pod-topology-spread-advanced/)). `matchLabelKeys` is still beta and on by default in v1.37, and `nodeAffinityPolicy` and `nodeTaintsPolicy` have been GA since v1.33 ([kube_features.go](https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/features/kube_features.go) and [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints), as of 2026-11).
+- **No self-healing.** The constraint is evaluated at placement time only. Scale-down does not preserve spread, so you need a descheduler or periodic rebalancing for long-lived skew ([Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints), as of 2026-11).
 
 ### Inter-pod affinity and anti-affinity internals
 
-Inter-pod (anti-)affinity is the most expensive built-in plugin.
+Inter-pod (anti-)affinity is the most expensive built-in plugin, and the docs advise against it in clusters larger than several hundred nodes ([Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/), as of 2026-11).
 PreFilter must scan existing pods to build maps of topology-pair counts for the incoming pod's terms.
-It must also scan existing pods' anti-affinity terms to see whether any of them repels the incoming pod (recalled from the scheduler source, UNVERIFIED).
+It must also check the anti-affinity terms of existing pods, on nodes that hold pods with required anti-affinity, to see whether any of them repels the incoming pod ([filtering.go](https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/scheduler/framework/plugins/interpodaffinity/filtering.go), as of 2026-11).
 Required anti-affinity is symmetric: an existing pod can repel a newcomer even when the newcomer declares nothing.
 Required affinity is not symmetric.
 A pod whose required affinity term matches only itself is admitted when no matching pod exists anywhere, which bootstraps the first replica.
@@ -175,17 +206,19 @@ Taint effects have different owners:
 
 - **NoSchedule and PreferNoSchedule** are enforced by the scheduler's TaintToleration plugin, with the second only affecting Score.
 - **NoExecute** is also enforced after placement by the taint-eviction controller in kube-controller-manager, which deletes running pods that do not tolerate the taint, after `tolerationSeconds` if one is set.
-- The node lifecycle controller applies the condition taints. `node.kubernetes.io/not-ready` (Ready=False) and `node.kubernetes.io/unreachable` (Ready=Unknown) carry both NoSchedule and NoExecute. The memory, disk, PID, network, and unschedulable (cordon) taints use NoSchedule only, and pressure taints never evict because node-pressure eviction is the kubelet's job ([node failure lifecycle write-up](https://sailor.sh/blog/cka-node-failure-lifecycle-node-leases-taint-based-eviction-graceful-non-graceful-shutdown/), as of 2026-10).
-- The `DefaultTolerationSeconds` admission plugin adds NoExecute tolerations for not-ready and unreachable with `tolerationSeconds: 300` to every pod that lacks them (same source). Because those tolerations name only the NoExecute effect, the NoSchedule twin of each taint is not tolerated. That asymmetry is why the `nodeTaintsPolicy: Honor` setting excludes a failed node from spread calculations.
-- DaemonSet pods automatically tolerate the condition taints ([community guide](https://kubernetes.recipes/recipes/configuration/kubernetes-taint-toleration-guide/)).
+- The node lifecycle controller applies the condition taints. `node.kubernetes.io/not-ready` (Ready=False) and `node.kubernetes.io/unreachable` (Ready=Unknown) carry both NoSchedule and NoExecute. The memory, disk, PID, network, and unschedulable (cordon) taints use NoSchedule only, and pressure taints never evict because node-pressure eviction is the kubelet's job ([taint docs](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/), as of 2026-11).
+- The `DefaultTolerationSeconds` admission plugin adds NoExecute tolerations for not-ready and unreachable with `tolerationSeconds: 300` to every pod that lacks them ([admission docs](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/), as of 2026-11). Because those tolerations name only the NoExecute effect, the NoSchedule twin of each taint is not tolerated. That asymmetry is why the `nodeTaintsPolicy: Honor` setting excludes a failed node from spread calculations.
+- DaemonSet pods automatically tolerate the condition taints ([taint docs](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/), as of 2026-11).
 
 A toleration never attracts a pod to a node.
 Dedicated pools need a taint (to repel others) plus a nodeSelector or node affinity (to attract).
-Extended resources such as `nvidia.com/gpu` are commonly paired with an admission plugin that auto-adds the matching toleration (the `ExtendedResourceToleration` plugin, recalled, UNVERIFIED).
+Extended resources such as `nvidia.com/gpu` are commonly paired with an admission plugin that auto-adds the matching toleration (the `ExtendedResourceToleration` plugin, if enabled, [admission docs](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/), as of 2026-11).
 
 Eviction is rate-limited per zone by the controller manager.
-My recollection is that the defaults are 0.1 nodes per second in a healthy zone, falling to 0.01 per second in a zone where at least 55 percent of nodes are unhealthy, with eviction stopped entirely for small clusters (UNVERIFIED this session).
-This protects against evicting a whole zone on a partition, but it also means that "evict and replace" after an AZ failure is deliberately slow.
+The default is 0.1 nodes per second, or one node per 10 seconds.
+In a zone where at least 55 percent of nodes are unhealthy, the rate falls to 0.01 per second, and to zero if the cluster has 50 or fewer nodes ([Kubernetes node docs](https://kubernetes.io/docs/concepts/architecture/nodes/) and [kube-controller-manager reference](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/), as of 2026-11).
+There is a carve-out for total zone loss: if all nodes in a zone are unhealthy, the normal 0.1 rate applies, so workloads can shift to healthy zones, and evictions stop only when every zone in the cluster is completely unhealthy ([same node docs](https://kubernetes.io/docs/concepts/architecture/nodes/), as of 2026-11).
+This protects against mass eviction on a partial failure or a control-plane partition, but it also means that "evict and replace" after an AZ failure is deliberately slow, because a whole zone drains at one node per 10 seconds.
 
 ### Preemption and the nominated-node filter pass
 
@@ -193,7 +226,7 @@ Preemption is the default PostFilter plugin (DefaultPreemption).
 It runs only when Filter finds zero feasible nodes ([scheduler overview](https://scaleops.com/blog/kubernetes-scheduler/), as of 2026-10).
 For each candidate node it simulates evicting lower-priority pods and re-runs Filter on the hypothetical state, which is why PreFilter plugins expose AddPod and RemovePod.
 The preemptor receives a `nominatedNodeName` and goes back to the queue.
-On later cycles the scheduler evaluates Filter twice per node (recalled, UNVERIFIED).
+On later cycles the scheduler evaluates Filter twice for a node that has nominated pods of equal or higher priority ([framework runtime source](https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/scheduler/framework/runtime/framework.go), as of 2026-11).
 The first pass adds nominated pods of equal or higher priority, so other pods cannot steal the freed space.
 The second pass omits them, so pod-affinity rules that depend on them are not satisfied by pods that may never arrive.
 Preemption is therefore a promise of intent, not a reservation.
@@ -205,20 +238,23 @@ The per-pod model breaks for tightly coupled jobs.
 If 56 of 64 workers are placed and 8 wait for capacity, the 56 hold accelerators and make no progress.
 The Permit extension point is the seam for all-or-nothing behavior.
 A plugin returns Wait for the first pod of a group and holds it before any binding is issued, then releases the group when quorum is reached.
-Kueue, Volcano, and the Coscheduling plugin register Permit plugins ([kube-scheduler deep dive](https://blog.kubesimplify.com/kube-scheduler-deep-dive), as of 2026-10).
+The out-of-tree Coscheduling plugin works this way ([scheduler-plugins README](https://github.com/kubernetes-sigs/scheduler-plugins/blob/master/pkg/coscheduling/README.md), as of 2026-11).
+Kueue and Volcano take other routes.
+Kueue does not replace kube-scheduler and decides at the job level when pods may be created ([Kueue overview](https://kueue.sigs.k8s.io/docs/overview/), as of 2026-11).
+Volcano is a batch scheduling system whose scheduler is built on kube-batch ([Volcano README](https://github.com/volcano-sh/volcano), as of 2026-11).
 
 Native support has progressed across three minor releases:
 
-- **v1.35 (2025-12-17).** The alpha Workload API (`scheduling.k8s.io/v1alpha1`) with `minCount` gang policy and a `workloadRef` on pods ([Kubernetes blog](https://www.kubernetes.io/blog/2025/12/29/kubernetes-v1-35-introducing-workload-aware-scheduling/), as of 2026-10). It was implemented with simple barriers at PreEnqueue and Permit. The KEP states this did not address performance at scale, scheduling livelocks, or partial preemption ([KEP-4671](https://www.kubernetes.dev/resources/keps/4671/)). The same release added opportunistic batching to speed scheduling of identical pods ([Kubernetes blog](https://www.kubernetes.io/blog/2025/12/29/kubernetes-v1-35-introducing-workload-aware-scheduling/)).
-- **v1.36.** The API was split into a static Workload template and a runtime PodGroup object ([Security Boulevard summary](https://securityboulevard.com/2026/09/kubernetes-1-37-is-here-pod-rightsizing-dra-and-gang-scheduling/), as of 2026-10).
-- **v1.37 (2026-08-26).** Gang scheduling is Beta. The release adds workload-aware preemption to avoid preemptions that do not let the workload make progress, and PodGroup queueing to coordinate competing workloads ([Kubernetes v1.37 release blog](https://kubernetes.io/blog/2026/08/26/kubernetes-v1-37-release/), as of 2026-10).
+- **v1.35 (2025-12-17).** The alpha Workload API (`scheduling.k8s.io/v1alpha1`) with `minCount` gang policy and a `workloadRef` on pods ([Kubernetes blog](https://www.kubernetes.io/blog/2025/12/29/kubernetes-v1-35-introducing-workload-aware-scheduling/), as of 2026-10). It was implemented with simple barriers at PreEnqueue and Permit. The KEP states this did not address performance at scale, scheduling livelocks, or partial preemption ([KEP-4671](https://www.kubernetes.dev/resources/keps/4671/)). The same release added opportunistic batching, beta and on by default, to speed scheduling of identical pods ([Kubernetes blog](https://www.kubernetes.io/blog/2025/12/29/kubernetes-v1-35-introducing-workload-aware-scheduling/) and [kube_features.go](https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/features/kube_features.go), as of 2026-11).
+- **v1.36 (2026-04-22).** The API, now `v1alpha2`, was split into a static Workload template and a runtime PodGroup object, and `schedulingGroup` replaced `workloadRef` on pods. The release added a PodGroup scheduling cycle and first iterations of topology-aware scheduling and workload-aware preemption ([v1.36 workload-aware scheduling post](https://github.com/kubernetes/website/blob/main/content/en/blog/_posts/2026/workload-aware-scheduling-1-36.md), as of 2026-11).
+- **v1.37 (2026-08-26).** Gang scheduling and the Workload and PodGroup APIs are Beta (`scheduling.k8s.io/v1beta1`), but the `GenericWorkload` gate that controls them defaults to off ([kube_features.go](https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/features/kube_features.go), as of 2026-11). Workload-aware preemption graduates to Beta under the same gate, and the PodGroup, not its member pods, is now what sits in the scheduling queue ([v1.37 workload-aware scheduling post](https://kubernetes.io/blog/2026/09/08/kubernetes-v1-37-advancing-workload-aware-scheduling/) and [v1.37 release blog](https://kubernetes.io/blog/2026/08/26/kubernetes-v1-37-release/), as of 2026-11). Instead of holding each pod at a `WaitOnPermit` gate, the scheduler evaluates the group in one PodGroup scheduling cycle and binds atomically ([PodGroup scheduling docs](https://kubernetes.io/docs/concepts/scheduling-eviction/podgroup-scheduling/), as of 2026-11).
 
 Gang scheduling decides when a group may start.
 Topology-aware placement decides where, so that ranks land inside one network block or one TPU slice (see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_03_High_Performance_AI_Cluster_Architectures|High-Performance AI Cluster Architectures]] and [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI|Interconnect Technologies]]).
-The KEP says the Workload API is intended to grow topology-aware scheduling later ([Cloudsmith summary](https://cloudsmith.com/blog/kubernetes-1-35-what-you-need-to-know)).
-I did not verify any native topology-aware gang placement as GA, so assume you still need a queue manager or provider labels for rack and block locality (UNVERIFIED).
+Native topology-aware workload scheduling exists but is alpha and off by default in v1.37, behind the `TopologyAwareWorkloadScheduling` gate ([topology-aware scheduling docs](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-aware-scheduling/) and [kube_features.go](https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/features/kube_features.go), as of 2026-11).
+For production, assume you still need a queue manager or provider labels for rack and block locality; Kueue's own Topology Aware Scheduling is beta and on by default since Kueue v0.14 ([Kueue docs](https://kueue.sigs.k8s.io/docs/concepts/topology_aware_scheduling/), as of 2026-11).
 Dynamic Resource Allocation moves device selection (GPU models, partitions, links) into the scheduler through ResourceClaims.
-An overview of v1.35 lists DRA as GA ([ScaleOps v1.35 overview](https://scaleops.com/blog/kubernetes-1-35-release-overview/)).
+DRA has been GA since v1.34, and its gate is locked on from v1.35 ([feature gate table](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/#DynamicResourceAllocation), as of 2026-11).
 
 ### Lineage
 
@@ -231,40 +267,41 @@ An overview of v1.35 lists DRA as GA ([ScaleOps v1.35 overview](https://scaleops
 
 | Quantity | Value | Source and date |
 |---|---|---|
-| Extension points in the framework | PreEnqueue, QueueSort, PreFilter, Filter, PostFilter, PreScore, Score, NormalizeScore, Reserve, Permit, PreBind, Bind, PostBind | KEP-624 and Kubernetes docs, as of 2026-10 |
+| Extension points in the framework | PreEnqueue, QueueSort, PreFilter, Filter, PostFilter, PreScore, Score, NormalizeScore, Reserve, Permit, PreBind, Bind, PostBind; v1.37 also lists PlacementGenerate, PlacementScore, and PodGroupPostFilter for PodGroups | KEP-624 and Kubernetes scheduler config docs, as of 2026-11 |
 | Default nodes to find per cycle | `max(100, N * max(5, 50 - N/125) / 100)` | kubernetes/kubernetes#138996, as of 2026-10 |
 | Nodes scored at N = 500 / 1000 / 5000 / 10000 | 230 / 420 / 500 / 500 | computed from the formula above with the simulator, as of 2026-10 |
 | Local maximum and minimum of that function | 781 nodes at N = 3125, 281 nodes at N = 5625 | kubernetes/kubernetes#138996 and simulator, as of 2026-10 |
 | Default spread constraints | maxSkew 3 on hostname, maxSkew 5 on zone, both ScheduleAnyway | KEP-1258 and AWS Prescriptive Guidance, as of 2026-10 |
-| Default NoExecute toleration for not-ready and unreachable | 300 s | community write-ups of DefaultTolerationSeconds, as of 2026-10 |
-| Node-monitor grace period before Ready flips to Unknown | 40 s default | kube-controller-manager reference, recalled, UNVERIFIED |
-| Approximate worst-case replacement start after node loss | 40 s + 300 s + queue and bind time, about 5m40s | derived, depends on the UNVERIFIED 40 s value |
+| Default NoExecute toleration for not-ready and unreachable | 300 s | Kubernetes admission docs, DefaultTolerationSeconds, as of 2026-11 |
+| Node-monitor grace period before Ready flips to Unknown | 50 s default | kube-controller-manager reference, as of 2026-11 |
+| Approximate replacement start after node loss, before eviction rate limits | 50 s + 300 s + queue and bind time, about 5m50s | derived from the two defaults above, as of 2026-11 |
 | `minDomains` status | Stable since v1.30 | Kubernetes docs, as of 2026-10 |
-| QueueingHint status | Stable (GA) since v1.34, gate locked | Kubernetes docs and kubernetes/kubernetes#141354, as of 2026-10 |
-| Reported stall when a QueueingHint wrongly skips an event | about 5 minutes until the unschedulable flush | kubernetes/kubernetes#141354, as of 2026-10 |
-| Gang scheduling | Alpha in v1.35 (2025-12-17), Beta in v1.37 (2026-08-26) | Kubernetes release blogs, as of 2026-10 |
-| Latest minor release at time of writing | v1.37 | Kubernetes blog dated 2026-08-26, as of 2026-10 |
+| QueueingHint status | Stable (GA) since v1.34, gate locked at v1.34 and absent from the v1.37 feature list | Kubernetes docs and release-1.37 kube_features.go, as of 2026-11 |
+| Reported stall when a QueueingHint wrongly skips an event | about 5 minutes until the unschedulable flush | kubernetes/kubernetes#141354, as of 2026-11 |
+| Gang scheduling | Alpha in v1.35 (2025-12-17), Beta but off by default in v1.37 (2026-08-26) | Kubernetes release blogs and release-1.37 kube_features.go, as of 2026-11 |
+| Topology-aware workload scheduling | Alpha and off by default since v1.36 | release-1.37 kube_features.go, as of 2026-11 |
+| Latest minor release at time of writing | v1.37 (patch v1.37.2, 2026-10-28) | kubernetes/kubernetes GitHub releases, as of 2026-11 |
 | Zone-loss headroom for N replicas over Z zones | Z/(Z-1): 1.5x for 3 zones, 1.33x for 4, 1.2x for 6 | derived, exact before node rounding |
-| Eviction rate per zone | 0.1 nodes/s normal, 0.01 nodes/s when 55 percent unhealthy | kube-controller-manager reference, recalled, UNVERIFIED |
+| Eviction rate per zone | 0.1 nodes/s normal, including a fully failed zone; 0.01 nodes/s when at least 55 percent unhealthy; 0 in that case if the cluster has 50 or fewer nodes | kube-controller-manager reference and Kubernetes node docs, as of 2026-11 |
 
-I did not verify any current cloud list prices for this chapter.
+Apart from the Google Cloud inter-zone rate in the parity table, this chapter quotes no current cloud list prices.
 Cost arithmetic below therefore uses named variables instead of price figures.
 
 ## AWS vs GCP Mechanism Parity
 
 Kubernetes scheduling semantics are identical on EKS and GKE.
 The differences are in what feeds the scheduler (labels), what can change it (control-plane access), and what provisions capacity when it says no.
-Items marked UNVERIFIED are from memory of the provider documentation and were not re-checked in this session.
+Provider facts below carry dated attributions, and anything still unconfirmed is flagged inline.
 
 | Concern | EKS on AWS | GKE on Google Cloud | Critical difference |
 |---|---|---|---|
-| Source of `topology.kubernetes.io/zone` | Zone name label set from the cloud provider. Zone names map to different physical AZs per account, while zone IDs are stable. UNVERIFIED | Zone label set from the cloud provider. Zones are names within a region | Cross-account placement on AWS must use zone IDs to guarantee co-location. UNVERIFIED |
-| Scheduler configuration | Managed control plane. Custom KubeSchedulerConfiguration is generally not exposed, so profiles and weights require a second scheduler. UNVERIFIED | Managed control plane with the same constraint. UNVERIFIED | Cluster-wide defaults for spread must be injected by admission or Helm, not by editing the default scheduler |
-| Node provisioning driven by Pending pods | Karpenter, which honors pod constraints when launching nodes. Cluster Autoscaler also supported. UNVERIFIED | Node auto-provisioning, Autopilot, and Cluster Autoscaler. UNVERIFIED | Autoscalers re-run scheduler filters in simulation. A custom plugin the autoscaler does not know about causes wrong scale-up decisions |
-| Network-proximity placement for AI | EC2 cluster placement groups and instance topology information exposed as node labels or APIs. UNVERIFIED | Compact placement policies and TPU slice topology. UNVERIFIED | Both need labels the scheduler can match. Verify which labels your provider populates before writing `topologyKey` |
-| Gang scheduling in the managed offering | Upstream Workload API (Beta in v1.37) when the cluster version supports it, or Kueue or Volcano | Same, plus provider queueing products. UNVERIFIED | The upstream feature is Beta, so gate adoption on provider feature-gate support |
-| Node-loss detection | Kubernetes node lifecycle controller (shared). Provider health events can add taints or cordons through add-ons. UNVERIFIED | Same. GKE node auto-repair may replace nodes. UNVERIFIED | The 300 s default toleration applies equally. Provider repair can race with eviction |
-| Cross-zone data cost of zone spread | Inter-AZ traffic is billed. UNVERIFIED | Inter-zone traffic within a region is billed. UNVERIFIED | Spread buys availability at an east-west cost. Topology-aware routing offsets it. See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization\|Network Egress Economics and Optimization]] |
+| Source of `topology.kubernetes.io/zone` | Zone name label set by the AWS cloud controller manager. Zone names map to different physical AZs per account, while the zone ID in `topology.k8s.aws/zone-id` is stable ([EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/ml-workload-placement.html), as of 2026-11) | Zone label set from the cloud provider. Zones are names within a region | Cross-account placement on AWS must use zone IDs to guarantee co-location ([EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/ml-workload-placement.html), as of 2026-11) |
+| Scheduler configuration | Managed control plane. Custom KubeSchedulerConfiguration is not exposed, so profiles and weights require a second scheduler ([AWS blog](https://aws.amazon.com/cn/blogs/china/deploy-a-custom-scheduler-on-amazon-eks-to-implement-the-binpack-scheduling-policy), 2022-11; UNVERIFIED as current, no newer statement found) | Managed control plane. The `optimize-utilization` autoscaling profile sets `gke.io/optimize-utilization-scheduler` on pods ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/cluster-autoscaler), as of 2026-11). UNVERIFIED: no GKE doc found on custom KubeSchedulerConfiguration | Cluster-wide defaults for spread must be injected by admission or Helm, not by editing the default scheduler |
+| Node provisioning driven by Pending pods | Karpenter, which honors pod constraints when launching nodes but supports only the zone, hostname, and capacity-type topology keys ([Karpenter docs](https://karpenter.sh/docs/concepts/scheduling/), as of 2026-11). Cluster Autoscaler is also supported ([EKS docs](https://docs.aws.amazon.com/eks/latest/best-practices/karpenter.html), as of 2026-11) | Node pool auto-creation (enabled cluster-wide as node auto-provisioning), Autopilot, and Cluster Autoscaler ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/node-auto-provisioning), as of 2026-11) | Cluster Autoscaler simulates kube-scheduler with a simplified model ([CA FAQ](https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md), as of 2026-11), and Karpenter does its own constraint modeling. A custom plugin the autoscaler does not know about causes wrong scale-up decisions |
+| Network-proximity placement for AI | EC2 cluster placement groups, EC2 topology APIs ([EC2 docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-topology.html)), and `topology.k8s.aws/network-node-layer-*` labels on supported accelerated and HPC instance types only ([EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/ml-workload-placement.html), as of 2026-11) | Compact placement policies ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/compact-placement)), `cloud.google.com/gce-topology-*` block, subblock, and host labels ([node topology docs](https://docs.cloud.google.com/ai-hypercomputer/docs/manage/node-topology)), and TPU slice topology, where a multi-host slice is one atomic unit ([GKE TPU docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/tpus), as of 2026-11) | Both need labels the scheduler can match. Verify which labels your provider populates before writing `topologyKey` |
+| Gang scheduling in the managed offering | Upstream Workload API (Beta in v1.37) when the cluster version supports it, or Kueue or Volcano | Same, plus flex-start provisioning powered by Dynamic Workload Scheduler, requested through custom compute classes or Kueue ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/dws), as of 2026-11) | The upstream feature is Beta and its `GenericWorkload` gate defaults to off, so gate adoption on provider feature-gate support |
+| Node-loss detection | Kubernetes node lifecycle controller (shared). The EKS node monitoring agent adds node conditions, and automatic node repair can replace or reboot nodes ([EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/node-health.html), as of 2026-11) | Same. GKE node auto-repair is on by default for new Standard node pools and always on in Autopilot ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/node-auto-repair), as of 2026-11) | The 300 s default toleration applies equally. Provider repair can race with eviction |
+| Cross-zone data cost of zone spread | Inter-AZ traffic is billed ([EKS best practices](https://docs.aws.amazon.com/eks/latest/best-practices/cost-opt-networking.html), as of 2026-11) | Inter-zone VM traffic within a region is billed at 0.01 USD per GiB ([Google Cloud network pricing](https://cloud.google.com/vpc/network-pricing), as of 2026-11) | Spread buys availability at an east-west cost. Topology-aware routing offsets it. See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization\|Network Egress Economics and Optimization]] |
 
 ## Worked Example: Zone Spread, Zone Loss, and Capacity Sizing
 
@@ -478,7 +515,7 @@ simulate_zone_loss; restore
 ```
 
 Read the FailedScheduling events to see which plugin rejected each node.
-In production, watch `scheduler_pending_pods` by queue, `scheduler_framework_extension_point_duration_seconds`, and `scheduler_plugin_execution_duration_seconds` to see where cycle time goes (metric names recalled from the scheduler metrics reference, UNVERIFIED this session).
+In production, watch `scheduler_pending_pods` by queue, `scheduler_framework_extension_point_duration_seconds`, and `scheduler_plugin_execution_duration_seconds` to see where cycle time goes ([Kubernetes metrics reference](https://kubernetes.io/docs/reference/instrumentation/metrics/), as of 2026-11).
 
 Teardown:
 
@@ -498,13 +535,13 @@ Set `nodeTaintsPolicy: Honor`, and set `minDomains` only when your provisioner c
 
 ### QueueingHint regressions
 
-The v1.28 default-on rollout caused scheduler memory growth and was reverted in v1.28.5 ([analysis](https://zouyee.medium.com/exploring-the-root-cause-of-kubernetes-1-28-scheduler-oom-9ab042a3a3ed)).
+The v1.28 default-on rollout caused scheduler memory growth and was reverted in v1.28.5 ([CHANGELOG-1.28](https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.28.md) and [analysis](https://zouyee.medium.com/exploring-the-root-cause-of-kubernetes-1-28-scheduler-oom-9ab042a3a3ed)).
 The cause was in-flight event bookkeeping, covered under Internals.
 A more recent report shows the opposite failure.
 A replacement pod blocked only by required pod affinity stayed Pending for about 5 minutes after the peer pod was deleted, because the InterPodAffinity hint treated pod-deletion events as irrelevant.
 With hints disabled on v1.33.7 the same pod scheduled in the same second.
 The reporter notes a node drain stretching from about 1 minute to 5 or 6 minutes per workload wave, and that the gate cannot be disabled once locked in v1.34 ([kubernetes/kubernetes#141354](https://github.com/kubernetes/kubernetes/issues/141354)).
-I did not verify whether this was fixed in v1.37 (UNVERIFIED).
+The issue and its proposed fix, [PR 142103](https://github.com/kubernetes/kubernetes/pull/142103), are both still open (as of 2026-11), so assume v1.37 is unfixed until you test it.
 The lesson is general: QueueingHint turned "retry when anything changes" into "retry when a plugin's predicate says so", and a plugin bug becomes a latency floor equal to the unschedulable-queue flush interval.
 Test drain and rollout latency for any workload that uses required pod affinity.
 
@@ -546,21 +583,21 @@ Use `DoNotSchedule` for availability-critical constraints.
 
 ### Slow eviction after node loss
 
-The default tolerations mean a stateless pod on a dead node keeps serving traffic through the Service until endpoints are removed, then waits about 5m40s before replacement (see Numbers to Know).
+The default tolerations mean a stateless pod on a dead node keeps serving traffic through the Service until endpoints are removed, then waits about 5m50s before replacement (see Numbers to Know).
 Lowering `tolerationSeconds` on latency-sensitive pods speeds this up, but raises the churn caused by transient NotReady flaps.
 Stateful pods with exclusive volumes add detach time on top.
 
 ### Public incident references
 
-Public analyses relevant to this chapter are the GitHub issues cited above (v1.28 OOM, #141354) and the Reddit "Pi Day" 2023 post-incident write-up, where a Kubernetes upgrade changed node labels that other components selected on (UNVERIFIED: recalled, not re-fetched).
+Public analyses relevant to this chapter are the GitHub issues cited above (v1.28 OOM, #141354) and the Reddit "Pi Day" 2023-03-14 post-incident write-up, where a Kubernetes 1.23 to 1.24 upgrade removed the `master` node label that Calico route reflectors were selected on, causing a 314-minute outage ([RedditEng postmortem](https://www.reddit.com/r/RedditEng/comments/11xx5o0/you_broke_reddit_the_piday_outage/), read through a mirror, as of 2026-11).
 For the control-plane side of mass-pod events, see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
 ## Security and Cost Angles
 
 ### Placement is not a security boundary by default
 
-- **Taints are advisory to the pod author.** Anyone who can create a pod can add a toleration. Enforce dedicated pools with an admission policy (ValidatingAdmissionPolicy, Kyverno, Gatekeeper, or the PodTolerationRestriction admission plugin, recalled UNVERIFIED) that validates tolerations per namespace.
-- **Node labels can be forged by compromised kubelets** unless the NodeRestriction admission plugin protects the label prefix. Labels under the `node-restriction.kubernetes.io/` prefix cannot be self-set by a kubelet, so use that prefix for tenancy or sensitivity labels (recalled, UNVERIFIED).
+- **Taints are advisory to the pod author.** Anyone who can create a pod can add a toleration. Enforce dedicated pools with an admission policy (ValidatingAdmissionPolicy, Kyverno, Gatekeeper, or the PodTolerationRestriction admission plugin, which the docs still mark alpha, [admission docs](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/), as of 2026-11) that validates tolerations per namespace.
+- **Node labels can be forged by compromised kubelets** unless the NodeRestriction admission plugin protects the label prefix. Labels under the `node-restriction.kubernetes.io/` prefix cannot be self-set by a kubelet, so use that prefix for tenancy or sensitivity labels ([admission docs](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/), as of 2026-11).
 - **`spec.nodeName` and the `pods/binding` subresource bypass the scheduler.** A principal with `create` on pods can skip scheduler Filter plugins by naming a node directly. The kubelet re-checks only a subset of constraints. RBAC on `pods/binding` and admission rules on `nodeName` are part of the isolation story. For stronger isolation use separate node pools or clusters. See [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_05_Multi_Tenancy_Isolation_and_Resource_Quotas|Multi-Tenancy, Isolation, and Resource Quotas]].
 - **Scheduler identity.** A custom scheduler's service account needs read on Pods, Nodes, and volumes plus `create` on `pods/binding`. Give it nothing broader, because it can place any pod anywhere.
 
@@ -609,7 +646,7 @@ They answer different questions.
 A nodeSelector or required node affinity attracts: the pod can only run on matching nodes, but nothing stops other pods from landing there.
 A taint repels: nodes refuse pods that lack a toleration, but a toleration does not attract the pod, so a tolerating pod can still land on a non-GPU node.
 Dedicated pools need both: taint the pool with NoSchedule, and give the inference pods a matching toleration and a node affinity (or selector) for the pool's label.
-With extended resources like `nvidia.com/gpu`, an admission plugin can add the toleration automatically (recalled, UNVERIFIED), but I would not rely on that for exclusivity.
+With extended resources like `nvidia.com/gpu`, the `ExtendedResourceToleration` admission plugin, if enabled, can add the toleration automatically ([admission docs](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/), as of 2026-11), but I would not rely on that for exclusivity.
 I would use NoSchedule, not NoExecute, for the steady-state taint, so that a mistake does not evict running workloads.
 I would also enforce the taint-and-label contract with admission policy.
 Taints are not security boundaries: any pod author can add a toleration, and `spec.nodeName` bypasses the scheduler.
@@ -686,14 +723,15 @@ Deadlock between jobs: two 32-node jobs each hold 20 nodes and neither can finis
 Poor locality: ranks scatter across network blocks, which can make collective communication the bottleneck (see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI|Interconnect Technologies]]).
 
 For the first two I need all-or-nothing admission.
-Upstream gang scheduling (Beta in v1.37) holds pods at PreEnqueue and Permit until the group can be placed, and adds workload-aware preemption and PodGroup queueing ([Kubernetes v1.37 release blog](https://kubernetes.io/blog/2026/08/26/kubernetes-v1-37-release/)).
-The alpha design explicitly did not solve scale performance, livelock, or partial preemption ([KEP-4671](https://www.kubernetes.dev/resources/keps/4671/)), so I would not depend on it for a production fleet without testing those cases.
+Upstream gang scheduling (Beta in v1.37, `GenericWorkload` gate off by default) holds pods at PreEnqueue until quorum, decides the group in one PodGroup scheduling cycle, and adds workload-aware preemption and PodGroup queueing ([gang scheduling docs](https://kubernetes.io/docs/concepts/scheduling-eviction/gang-scheduling/) and [Kubernetes v1.37 release blog](https://kubernetes.io/blog/2026/08/26/kubernetes-v1-37-release/), as of 2026-11).
+The alpha design explicitly did not solve scale performance, livelock, or partial preemption ([KEP-4671](https://www.kubernetes.dev/resources/keps/4671/)), and although the v1.37 release blog says Beta addresses livelock, I would not depend on it for a production fleet without testing those cases.
 Until then, or alongside it, I would use Kueue or Volcano.
-They admit a job only when quota and capacity exist, so pods are not even created for a job that cannot start.
+Kueue admits a job only when quota and capacity exist, so pods are not even created for a job that cannot start.
+Volcano instead runs its own batch scheduler with gang semantics.
 
 For locality I need a topology key the scheduler can match.
 That means provider node labels for network block or rack, or TPU slice topology, applied through required affinity or a topology-aware queue manager.
-I have not verified native topology-aware gang placement as GA, so I would assume the queue manager does it (UNVERIFIED).
+Native topology-aware workload scheduling is alpha and off by default in v1.37 ([topology-aware scheduling docs](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-aware-scheduling/), as of 2026-11), so I would use the queue manager, such as Kueue Topology Aware Scheduling, which is beta ([Kueue docs](https://kueue.sigs.k8s.io/docs/concepts/topology_aware_scheduling/), as of 2026-11).
 
 For coexistence I would:
 
@@ -718,10 +756,10 @@ That points at the requeue path, not at Filter.
 I would confirm three things.
 First, compare the pod's events: one FailedScheduling event at creation, then silence, then a Scheduled event about 5 minutes later.
 Second, check the scheduler metrics for the unschedulable queue size and for queue wakeups by event type.
-Third, correlate with the version: QueueingHint became stable in v1.34 with the gate locked.
+Third, correlate with the version: QueueingHint became stable in v1.34 with the gate locked, and the gate is gone from the v1.37 feature list.
 There is a public report of exactly this behavior, in which the InterPodAffinity hint skipped pod-deletion events that made required self-affinity satisfiable, and the pod waited for the periodic flush ([kubernetes/kubernetes#141354](https://github.com/kubernetes/kubernetes/issues/141354)).
 I would not claim that is our cause until reproduced.
-Mitigations, in order: avoid required pod affinity on pods replaced during drains (use node or zone affinity or topology spread instead); lower the unschedulable-pod flush interval if your version still exposes the flag; stage upgrades behind a drain-latency canary.
+Mitigations, in order: avoid required pod affinity on pods replaced during drains (use node or zone affinity or topology spread instead); lower the unschedulable-pod flush interval through `--pod-max-in-unschedulable-pods-duration`, which is deprecated but still present in v1.37 with a 5m default ([kube-scheduler reference](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-scheduler/), as of 2026-11), if you control the scheduler flags; stage upgrades behind a drain-latency canary.
 Because the hint gate is locked, we cannot revert to the old behavior in-cluster, so I would pin the control-plane version if the provider allows it.
 
 #### Follow-up Interviewer Question
@@ -736,7 +774,7 @@ You own the platform for 200 services across two clouds. Leadership wants a guar
 
 The guarantee has four components, and a constraint in a manifest is only one of them.
 
-1. **Enforce intent at admission, not at review.** The cluster-wide default (maxSkew 3 on hostname and 5 on zone, `ScheduleAnyway`) is too weak for small replica counts ([AWS Prescriptive Guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/ha-resiliency-amazon-eks-apps/spread-workloads.html)). Managed control planes may not let you change scheduler defaults (UNVERIFIED), so inject constraints with a mutating policy keyed on a `tier: 1` label. Reject tier-1 workloads with fewer than 3 replicas or with `Ignore` taint policy. Include `matchLabelKeys: [pod-template-hash]`, `nodeTaintsPolicy: Honor`, and no `minDomains` outside bootstrap.
+1. **Enforce intent at admission, not at review.** The cluster-wide default (maxSkew 3 on hostname and 5 on zone, `ScheduleAnyway`) is too weak for small replica counts ([AWS Prescriptive Guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/ha-resiliency-amazon-eks-apps/spread-workloads.html)). Managed control planes may not let you change scheduler defaults (UNVERIFIED: AWS said so for EKS in 2022, no GKE doc found), so inject constraints with a mutating policy keyed on a `tier: 1` label. Reject tier-1 workloads with fewer than 3 replicas or with `Ignore` taint policy. Include `matchLabelKeys: [pod-template-hash]`, `nodeTaintsPolicy: Honor`, and no `minDomains` outside bootstrap.
 2. **Capacity.** A constraint is a promise the scheduler can only keep if capacity exists. Compute Z/(Z-1) headroom per tier-1 pool and provision it statically, because relying on the autoscaler during an AZ event adds the provider capacity pool and the control plane to the failure path (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]]). The cost is explicit and goes to the service owner's budget.
 3. **Verification.** Run zone-loss game days. Taint one zone's nodes and delete its pods, as in the lab, and require that replacements schedule within the SLO. This catches the stranded-pod cases (`Ignore` policy, `minDomains`) that no static review will, and it feeds [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_05_Chaos_Engineering_and_Game_Days|Chaos Engineering and Game Days]]. Add continuous drift detection: alert when per-zone pod counts deviate from the intended balance.
 4. **Downstream dependencies.** Spread across zones is useless if the service depends on a single-zone database or a zonal load balancer target. The guarantee must be assessed end to end.
@@ -758,13 +796,13 @@ The decision turns on four properties: consistency, autoscaler parity, operation
 
 **Consistency.** One scheduler has one cache and one assume protocol, so it cannot double-book. Two schedulers on shared nodes have separate caches and resolve conflicts at the kubelet, which shows up as failed pods, not as pending pods. So multiple schedulers are acceptable only on disjoint node partitions, or with distinct profiles inside one process.
 
-**Autoscaler parity.** Cluster Autoscaler and Karpenter model scheduling to decide what to launch. Custom in-tree plugins that the autoscaler does not run cause wrong scale-up (UNVERIFIED in detail for each product). Plugins that stay within upstream concepts (labels, taints, spread, gang via PodGroup) keep parity.
+**Autoscaler parity.** Cluster Autoscaler and Karpenter model scheduling to decide what to launch. Cluster Autoscaler simulates kube-scheduler in simplified form and configures only in-tree PreFilter and Filter plugins ([CA FAQ](https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md), as of 2026-11), and Karpenter does not know the decisions of a scheduler extension ([Karpenter docs](https://karpenter.sh/docs/concepts/scheduling/), as of 2026-11), so custom plugins that the autoscaler does not run cause wrong scale-up. Plugins that stay within upstream concepts (labels, taints, spread, gang via PodGroup) keep parity.
 
-**Ownership.** On managed control planes the default scheduler's configuration is generally not editable (UNVERIFIED), so plugin extension means running your own scheduler binary. That is an on-call surface: leader election, version skew against the API server, upgrades, and metrics.
+**Ownership.** On managed control planes the default scheduler's configuration is generally not editable (UNVERIFIED: AWS said so for EKS in 2022, no GKE doc found), so plugin extension means running your own scheduler binary. That is an on-call surface: leader election, version skew against the API server, upgrades, and metrics.
 
 **Blast radius.** A bug in a scheduler affects every pod it owns. Scope custom code to the workload class that needs it.
 
-My choice is: keep the default scheduler for services, with policy expressed through constraints and admission. For training and batch, adopt a queue manager (Kueue or Volcano class) that does admission, fair-share, and gang semantics outside the per-pod loop. Use upstream gang scheduling as it matures, because it is the only option that the autoscaler simulation and every provider will converge on. At Beta in v1.37 it is not yet the sole option ([Kubernetes v1.37 release blog](https://kubernetes.io/blog/2026/08/26/kubernetes-v1-37-release/)).
+My choice is: keep the default scheduler for services, with policy expressed through constraints and admission. For training and batch, adopt a queue manager (Kueue or Volcano class) that does admission, fair-share, and gang semantics outside the per-pod loop. Use upstream gang scheduling as it matures, because it is the only option that the autoscaler simulation and every provider will converge on. At Beta and off by default in v1.37 it is not yet the sole option ([Kubernetes v1.37 release blog](https://kubernetes.io/blog/2026/08/26/kubernetes-v1-37-release/) and [kube_features.go](https://github.com/kubernetes/kubernetes/blob/release-1.37/pkg/features/kube_features.go), as of 2026-11).
 Put training on a dedicated node partition with its own taints and, if needed, its own scheduler profile for bin packing.
 I would write custom plugins only for a constraint the platform cannot express with labels and queues, and only after confirming the autoscaler can simulate it.
 

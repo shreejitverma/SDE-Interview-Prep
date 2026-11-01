@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/en_us/organizations/latest/userguide/orgs_reference_limits.html"
@@ -10,7 +10,7 @@ sources:
   - "https://aws.amazon.com/about-aws/whats-new/2026/05/aws-organizations-increased-scp-quotas/"
   - "https://aws.amazon.com/blogs/security/unlock-new-possibilities-aws-organizations-service-control-policy-now-supports-full-iam-language"
   - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html"
-  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative_policies.html"
   - "https://aws.amazon.com/blogs/mt/achieving-operational-excellence-with-design-considerations-for-aws-organizations-scps"
   - "https://aws.amazon.com/about-aws/whats-new/2025/11/aws-organizations-direct-account-transfers/"
   - "https://aws.amazon.com/blogs/mt/transfer-aws-accounts-between-aws-organizations-while-preserving-aws-lake-formation-permissions/"
@@ -20,6 +20,31 @@ sources:
   - "https://aws.amazon.com/config/pricing/"
   - "https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/abstract-and-introduction.html"
   - "https://aws.amazon.com/premiumsupport/technology/pes/"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps_evaluation.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps_syntax.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ec2.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_s3.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/pricing.html"
+  - "https://docs.aws.amazon.com/organizations/latest/APIReference/API_CreatePolicy.html"
+  - "https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/global-services.html"
+  - "https://docs.aws.amazon.com/ram/latest/userguide/what-is.html"
+  - "https://docs.aws.amazon.com/ram/latest/APIReference/API_CreateResourceShare.html"
+  - "https://docs.aws.amazon.com/global-infrastructure/latest/regions/az-ids.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/troubleshoot_general.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_root-user-privileged-task.html"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSConfig/current/us-east-1/index.json"
+  - "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/useconsolidatedbilling-effective.html"
+  - "https://aws.amazon.com/message/12721/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/09/aws-organizations-iam-language-service-control-policies"
+  - "https://www.amazon.science/publications/semantic-based-automated-reasoning-for-aws-access-policies-using-smt"
+  - "https://www.amazon.science/publications/stratified-abstraction-of-access-control-policies"
+  - "https://docs.cloud.google.com/resource-manager/docs/creating-managing-folders"
+  - "https://docs.cloud.google.com/iam/docs/deny-overview"
+  - "https://docs.cloud.google.com/organization-policy/reference/org-policy-constraints"
+  - "https://github.com/aws-samples/service-control-policy-examples/blob/main/Region-controls/Deny-access-to-AWS-based-on-the-requested-AWS-region.json"
 ---
 
 # AWS Organizations and Account Governance
@@ -74,8 +99,8 @@ Each has its own blast radius, latency, and cost curve.
 
 ### The tree as a failure-domain hierarchy
 
-An organization has exactly one root, up to 2,000 OUs, and accounts as leaves ([AWS Organizations quotas](https://docs.aws.amazon.com/en_us/organizations/latest/userguide/orgs_reference_limits.html), as of 2026-10).
-OUs nest at most five levels under the root ([AWS Cloud Operations blog on SCP design](https://aws.amazon.com/blogs/mt/achieving-operational-excellence-with-design-considerations-for-aws-organizations-scps), as of 2026-10).
+An organization has exactly one root, up to 2,000 OUs, and accounts as leaves ([AWS Organizations quotas](https://docs.aws.amazon.com/en_us/organizations/latest/userguide/orgs_reference_limits.html), as of 2026-11).
+OUs nest at most five levels under the root ([AWS Organizations quotas](https://docs.aws.amazon.com/en_us/organizations/latest/userguide/orgs_reference_limits.html), as of 2026-11).
 The account is the hard isolation primitive.
 IAM namespaces, service quotas, resource policies, and most API rate limits are scoped per account.
 An OU has no runtime presence.
@@ -93,23 +118,23 @@ The Organizations API is a global control plane.
 Operations such as creating accounts, moving accounts, attaching policies, and enabling trusted access are low-rate administrative mutations.
 SCP and RCP evaluation happens in the IAM authorization data plane, in every Region, on every request.
 AWS does not publish how the effective policy set is replicated from Organizations into regional authorization.
-Treat it the same way as IAM changes in general: eventually consistent, and not something to rely on as a sub-second lever during an incident (mechanism detail UNVERIFIED).
+Treat it the same way as IAM changes in general: eventually consistent, and not something to rely on as a sub-second lever during an incident ([IAM docs on eventual consistency](https://docs.aws.amazon.com/IAM/latest/UserGuide/troubleshoot_general.html#troubleshoot_general_eventual-consistency), as of 2026-11).
 Following [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|control plane vs data plane separation]], the design consequence is static stability:
 - workloads must not need Organizations API calls at runtime, for example to resolve OU membership;
 - incident runbooks must not rely on attaching an SCP as the primary containment step.
 Break-glass access should be pre-provisioned and exempt from the guardrails it may need to bypass.
-The [AWS Fault Isolation Boundaries whitepaper](https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/abstract-and-introduction.html) groups Organizations with other global services whose control plane is concentrated in us-east-1 (UNVERIFIED this session).
+The [AWS Fault Isolation Boundaries whitepaper](https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/global-services.html) lists Organizations as a partitional, control-plane-only service whose control plane is in us-east-1 in the `aws` partition (as of 2026-11).
 
 ### SCP evaluation algebra (the mechanism the getting-started guide skips)
 
-SCP attachment caps rose from 5 to 10 per node, and maximum SCP size from 5,120 to 10,240 characters ([AWS What's New, 2026-05](https://aws.amazon.com/about-aws/whats-new/2026/05/aws-organizations-increased-scp-quotas/), as of 2026-10).
+SCP attachment caps rose from 5 to 10 per node, and maximum SCP size from 5,120 to 10,240 characters ([AWS What's New, 2026-05](https://aws.amazon.com/about-aws/whats-new/2026/05/aws-organizations-increased-scp-quotas/), as of 2026-11).
 The evaluation is a two-axis boolean algebra.
 Most outage-causing SCP changes come from mixing up the two axes.
 
 - **Within one node** (root, an OU, or the account itself), the SCPs attached directly to that node are **unioned** for Allow.
   The node passes a request if any attached SCP allows it and none denies it.
 - **Across nodes** on the path from root to account, the per-node verdicts are **intersected**.
-  AWS's own explanation is that SCPs filter permissions at each node by intersecting directly attached and inherited SCPs ([AWS re:Post knowledge center](https://repost.aws/knowledge-center/organization-scp-size), as of 2026-10).
+  AWS requires an explicit Allow at every level from the root through each OU to the account, and its scenario 7 shows two Allow SCPs at one node yielding the union of their services ([AWS SCP evaluation docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps_evaluation.html), as of 2026-11).
 - **Deny anywhere** on the path is final, as in identity-policy evaluation ([[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]]).
 
 Formally, for path P = (root, OU1, ..., OUk, account):
@@ -129,9 +154,9 @@ Three consequences follow, and they are rarely spelled out.
 2. `FullAWSAccess` is not decoration.
    Detaching it from any single node turns that node into an allow-list.
    That node then implicitly denies every service its remaining SCPs do not name, including services AWS launches next year.
-3. On a path of root + 5 OUs + account, at most 7 x 10 = 70 SCPs and up to 716,800 characters of policy can bear on a single request (derived from the quotas above, as of 2026-10).
+3. On a path of root + 5 OUs + account, at most 7 x 10 = 70 SCPs and up to 716,800 characters of policy can bear on a single request (derived from the quotas above, as of 2026-11).
    No human reviews that by hand.
-   Organizations offers no effective-policy view for SCPs or RCPs ([AWS docs, managing policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies.html), as of 2026-10), so you must build the path evaluation yourself (see the Worked Example).
+   Organizations offers no effective-policy view for SCPs or RCPs ([AWS docs, managing policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies.html), as of 2026-11), so you must build the path evaluation yourself (see the Worked Example).
 
 Since 2025-09, SCPs support the full IAM policy language:
 - conditions in Allow statements;
@@ -140,45 +165,47 @@ Since 2025-09, SCPs support the full IAM policy language:
 - `NotResource`;
 - leading and mid-string wildcards in actions.
 
-([AWS What's New, 2025-09](https://aws.amazon.com/about-aws/whats-new/2025/09/aws-organizations-iam-language-service-control-policies), as of 2026-10.)
+([AWS What's New, 2025-09](https://aws.amazon.com/about-aws/whats-new/2025/09/aws-organizations-iam-language-service-control-policies), as of 2026-11.)
 That makes conditional allow-lists possible, and it also makes possible SCPs that are correct but unreadable.
 Treat the extra expressiveness as a risk to manage, not only as a feature.
 
 Character counting differs by write path.
-The console strips whitespace between JSON elements before counting; SDK and CLI saves count what you send ([AWS Organizations quotas](https://docs.aws.amazon.com/en_us/organizations/latest/userguide/orgs_reference_limits.html), as of 2026-10).
-For RCPs, all characters count ([AWS RCP docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html), as of 2026-10).
+The console strips whitespace between JSON elements before counting; SDK and CLI saves count what you send ([AWS Organizations quotas](https://docs.aws.amazon.com/en_us/organizations/latest/userguide/orgs_reference_limits.html), as of 2026-11).
+The same rule covers RCPs: the whitespace note sits in the size row that lists them, and the RCP docs state that all characters in an RCP count ([AWS RCP docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html), as of 2026-11).
 A policy that saves in the console can therefore fail in a pipeline.
 Always minify in CI; Terraform's `jsonencode` does this for you.
 
 ### Who SCPs and RCPs do not touch
 
-SCPs and RCPs do not affect the management account ([AWS docs, managing policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies.html), as of 2026-10).
-Delegated administrator accounts are ordinary member accounts and are fully subject to RCPs ([AWS RCP docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html), as of 2026-10).
-SCPs do restrict member-account root users.
-Service-linked roles (SLRs) are outside SCP and RCP scope.
+SCPs and RCPs do not affect the management account ([AWS docs, managing policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies.html), as of 2026-11).
+Delegated administrator accounts are ordinary member accounts and are fully subject to RCPs ([AWS RCP docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html), as of 2026-11).
+SCPs do restrict member-account root users ([AWS SCP docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html), as of 2026-11).
+Service-linked roles (SLRs) are outside SCP and RCP scope (AWS SCP and RCP docs, as of 2026-11).
 That is a deliberate design choice: AWS services must be able to act on your behalf even when customer guardrails are broken.
 
 This creates a second, ungoverned control channel, and AWS Config conformance packs are its clearest example.
 `PutConformancePack` runs through the `AWSServiceRoleForConfigConforms` SLR.
-It can create Config rules and remediation configurations even when the caller's IAM policies explicitly deny `config:PutConfigRule` ([AWS Config API reference](https://docs.aws.amazon.com/config/latest/APIReference/API_PutConformancePack.html), as of 2026-10).
+It can create Config rules and remediation configurations even when the caller's IAM policies explicitly deny `config:PutConfigRule` ([AWS Config API reference](https://docs.aws.amazon.com/config/latest/APIReference/API_PutConformancePack.html), as of 2026-11).
 The practical rule is that the *trigger* action must be governed, even though the downstream SLR actions cannot be:
 - deny `config:PutConformancePack` and `config:PutOrganizationConformancePack` to everyone except the platform role;
 - otherwise any principal with that one permission can install remediation automation that runs with whatever automation role it names.
 
 ### RCPs: the resource-side ceiling
 
-RCPs launched in November 2024.
-They cap the maximum permissions *on resources* in member accounts, whoever the caller is, including principals outside the organization ([AWS RCP docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html), as of 2026-10).
+RCPs launched on 2024-11-13 ([AWS What's New](https://aws.amazon.com/about-aws/whats-new/2024/11/resource-control-policies-restrict-access-aws-resources/)).
+They cap the maximum permissions *on resources* in member accounts, whoever the caller is, including principals outside the organization ([AWS RCP docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html), as of 2026-11).
 
-Supported services, verified from AWS announcements (as of 2026-10):
+Supported services, verified from AWS announcements (as of 2026-11):
 - **launch:** S3, STS, KMS, SQS, Secrets Manager;
 - **[2025-06](https://aws.amazon.com/about-aws/whats-new/2025/06/aws-resource-control-policies-additional-services):** ECR and OpenSearch Serverless;
-- **[2026-01](https://aws.amazon.com/about-aws/whats-new/2026/01/aws-expands-resource-control-policies):** Cognito and CloudWatch Logs.
+- **[2026-01](https://aws.amazon.com/about-aws/whats-new/2026/01/aws-expands-resource-control-policies):** Cognito and CloudWatch Logs;
+- **current list:** 62 service prefixes, including DynamoDB, Data Firehose, CloudFront, EventBridge, CodeBuild, and WAF ([AWS RCP docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html), as of 2026-11).
 
-Other services may have been added since; check the RCP documentation before you rely on coverage.
+The list is still a subset of AWS services and it changes often, so check the RCP documentation before you rely on coverage.
 
-RCP limits are still 5 per node and 5,120 characters; the 2026-05 quota increase did not apply to RCPs ([AWS docs, managing policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies.html), as of 2026-10).
-Customer RCPs are deny-only, and the AWS-managed `RCPFullAWSAccess` is the only Allow ([native.security summary of AWS docs](https://www.native.security/cloud-docs/aws-rcp), as of 2026-08).
+RCP limits are still 5 per node and 5,120 characters; the 2026-05 quota increase did not apply to RCPs ([AWS docs, managing policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies.html), as of 2026-11).
+`RCPFullAWSAccess` cannot be detached and counts toward the 5, so each node has room for 4 customer RCPs ([AWS Organizations quotas](https://docs.aws.amazon.com/en_us/organizations/latest/userguide/orgs_reference_limits.html), as of 2026-11).
+Customer RCPs are deny-only, and the AWS-managed `RCPFullAWSAccess` is the only Allow ([AWS RCP syntax docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps_syntax.html), as of 2026-11).
 
 The design pairing is:
 - **SCPs** answer "what may *my* principals do anywhere";
@@ -188,16 +215,21 @@ A data perimeter needs both, plus network-path controls ([[17-Cloud-AI-Engineeri
 
 ### Declarative policies: enforcement at the control plane
 
-Declarative policies, now documented as EC2 policies with policy type `DECLARATIVE_POLICY_EC2`, are enforced in the service's control plane, not in IAM authorization ([AWS declarative policy docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative.html), as of 2026-10).
-AWS states that once one is attached, the configuration is kept even when the service adds new features or APIs ([AWS EC2 policies docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ec2.html), as of 2026-10).
+Declarative policies are now AWS's umbrella category for every non-authorization policy type, and they are enforced in the service's control plane, not in IAM authorization ([AWS declarative policy docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative_policies.html), as of 2026-11).
+This section focuses on EC2 policies, the type the [CreatePolicy API](https://docs.aws.amazon.com/organizations/latest/APIReference/API_CreatePolicy.html) names `DECLARATIVE_POLICY_EC2`.
+AWS states that once one is attached, the configuration is kept even when the service adds new features or APIs ([AWS EC2 policies docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ec2.html), as of 2026-11).
+Unlike SCPs and RCPs, declarative policies do govern service-linked roles (AWS declarative policy docs, as of 2026-11).
 
-Supported attributes (as of 2026-10):
+Supported EC2 policy attributes (as of 2026-11):
 - VPC Block Public Access;
+- VPC Encryption Controls;
 - Serial Console Access;
 - Image Block Public Access;
 - Allowed Images Settings;
 - Instance Metadata Defaults;
 - EBS Snapshot Block Public Access.
+
+[Amazon S3 policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_s3.html) apply the same centralized pattern to S3 Block Public Access, overriding account-level settings (as of 2026-11).
 
 Why this matters:
 - An SCP that tries to prevent "public AMIs" has to enumerate every API that can make an AMI public, such as `ModifyImageAttribute`.
@@ -205,26 +237,34 @@ Why this matters:
 - A declarative policy pins the *state* ("block new sharing"), so the service refuses any mutation that would violate it, whichever API carries it.
   This is the same idea as GCP Organization Policy constraints, and it is why GCP's governance model has historically resisted new-API drift better.
 
-Declarative policies also offer an account status report to assess readiness, and custom error messages that can point users to an internal wiki ([AWS declarative policy docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative.html), as of 2026-10).
+Declarative policies also offer an account status report to assess readiness, and custom error messages that can point users to an internal wiki ([AWS declarative policy docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative_policies.html), as of 2026-11).
 
 ### Other organization policy types
 
-Organizations also manages these policy types (as of 2026-10):
+Organizations also manages these policy types (as of 2026-11):
 - backup policies;
 - tag policies;
 - chat applications policies;
 - AI services opt-out policies;
-- Security Hub policies.
+- Security Hub policies;
+- Amazon Inspector policies;
+- Amazon Bedrock policies;
+- upgrade rollout policies;
+- Amazon S3 policies;
+- AWS Shield Network Security Director policies;
+- Amazon GuardDuty policies.
 
-Each has its own per-organization count quota and size limit ([AWS Organizations quotas](https://docs.aws.amazon.com/en_us/organizations/latest/userguide/orgs_reference_limits.html), as of 2026-10).
-These "management policies" are merged with `@@assign`-style inheritance operators rather than intersected, and some of them support effective-policy views.
+Each type has its own attachment and size limits ([AWS docs, managing policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies.html), as of 2026-11), and the quotas page gives per-organization counts for the older types ([AWS Organizations quotas](https://docs.aws.amazon.com/en_us/organizations/latest/userguide/orgs_reference_limits.html), as of 2026-11).
+AWS now files these under the declarative category.
+They are merged with `@@assign`-style inheritance operators rather than intersected, and AWS's policy-type table marks every declarative type it lists as supporting effective-policy views ([AWS docs, managing policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies.html), as of 2026-11).
 Their merge semantics are not the SCP algebra.
 Do not reason about them as if they were.
 
 ### RAM: sharing as a capability grant
 
 RAM is a Regional service.
-Principals can reach a share only in the Region where the resource was created ([AWS RAM docs](https://docs.aws.amazon.com/ram/latest/userguide/getting-started-sharing.html), as of 2026-10).
+Principals can reach a share only in the Region where the resource was created ([AWS RAM docs](https://docs.aws.amazon.com/ram/latest/userguide/getting-started-sharing.html), as of 2026-11).
+Supported global resources are the exception: they are reachable from any Region the owning service supports, and their shares are managed only in the home Region, us-east-1 (AWS RAM docs, as of 2026-11).
 A share bundles three things:
 - resources;
 - a managed permission per resource type (AWS managed, or customer managed where supported);
@@ -233,9 +273,10 @@ A share bundles three things:
 Once sharing with Organizations is enabled:
 - RAM creates the `AWSServiceRoleForResourceAccessManager` SLR;
 - in-org shares skip the invitation handshake;
-- by default, in-org sharing restricts consumers to the same organization ([AWS RAM docs](https://docs.aws.amazon.com/ram/latest/userguide/getting-started-sharing.html), as of 2026-10).
+- by default, in-org sharing restricts consumers to the same organization, and a consumer account that leaves loses access ([AWS RAM docs](https://docs.aws.amazon.com/ram/latest/userguide/getting-started-sharing.html), as of 2026-11);
+- that default does not block external principals on the share itself: `allowExternalPrincipals` defaults to `true` in the [CreateResourceShare API](https://docs.aws.amazon.com/ram/latest/APIReference/API_CreateResourceShare.html) and the console preselects "Allow sharing with anyone", so set it to `false` explicitly (types such as VPC subnets can be shared only inside the organization either way; AWS RAM docs, as of 2026-11).
 
-Sharing a resource does not change the owner-side permissions or quotas that apply to it ([AWS RAM docs](https://docs.aws.amazon.com/ram/latest/userguide/getting-started-sharing.html), as of 2026-10).
+Sharing a resource does not change the owner-side permissions or quotas that apply to it ([AWS RAM docs](https://docs.aws.amazon.com/ram/latest/userguide/getting-started-sharing.html), as of 2026-11).
 For a shared subnet, this means IP space, route tables, and quota pressure stay with the owning network account.
 Participants consume the space but cannot manage it.
 That is a centralization trade-off:
@@ -243,9 +284,10 @@ That is a centralization trade-off:
 - **cost:** a single owner account whose quotas and mistakes affect every participant.
 
 Shared-subnet placement has a subtle cross-account trap: AZ names.
-Historically, AZ names such as `us-east-1a` were mapped to physical zones independently per account.
-Only AZ IDs such as `use1-az1` are stable across accounts.
-Capacity reservations, zonal failover drills, and "same-AZ" latency assumptions must therefore be expressed in AZ IDs (whether newer Regions randomize the mapping is UNVERIFIED).
+AWS originally mapped AZ names such as `us-east-1a` to physical zones independently per account.
+That still applies in us-east-1, us-west-1, us-west-2, ap-southeast-1, ap-southeast-2, ap-northeast-1, eu-west-1, sa-east-1, and us-gov-west-1 for accounts created before November 2025; accounts created since then get the same mapping, and all other Regions use a uniform mapping ([AWS AZ IDs docs](https://docs.aws.amazon.com/global-infrastructure/latest/regions/az-ids.html), as of 2026-11).
+Only AZ IDs such as `use1-az1` are stable across every account, and most fleets mix older and newer accounts.
+Capacity reservations, zonal failover drills, and "same-AZ" latency assumptions must therefore be expressed in AZ IDs.
 
 ### AWS Config and conformance packs
 
@@ -254,12 +296,12 @@ AWS Config has three main parts:
 - **rules**, which evaluate CIs either on change or on a schedule;
 - **aggregators**, which pull compliance and CIs across accounts.
 
-A conformance pack is a template containing only `AWS::Config::ConfigRule` and `AWS::Config::RemediationConfiguration` resources plus parameters ([hidekazu-konishi.com guide](https://hidekazu-konishi.com/entry/aws_config_rules_conformance_packs_and_remediation_guide.html), as of 2026-09).
+A conformance pack is a template containing only `AWS::Config::ConfigRule` and `AWS::Config::RemediationConfiguration` resources plus parameters ([AWS Config API reference](https://docs.aws.amazon.com/config/latest/APIReference/API_PutConformancePack.html), as of 2026-11).
 Organization conformance packs are deployed from the management account or a delegated administrator.
-They are created in each member account by the conformance-pack SLR ([AWS Config API reference](https://docs.aws.amazon.com/config/latest/APIReference/API_PutOrganizationConformancePack.html), as of 2026-10).
+They are created in each member account by the conformance-pack SLR ([AWS Config API reference](https://docs.aws.amazon.com/config/latest/APIReference/API_PutOrganizationConformancePack.html), as of 2026-11).
 
 The quota that actually binds is that rules inside packs count toward the 1,000 rules per Region per account limit, which is not adjustable.
-Organization-level deployments count against each child account ([AWS Config service limits](https://docs.aws.amazon.com/config/latest/developerguide/configlimits.html), as of 2026-10).
+Organization-level deployments count against each child account ([AWS Config service limits](https://docs.aws.amazon.com/config/latest/developerguide/configlimits.html), as of 2026-11).
 At 130 rules per pack, 50 packs per account is unreachable.
 The real ceiling is about seven full packs, before Control Tower detective controls and service-managed rules take their share.
 
@@ -277,39 +319,39 @@ Two primary sources sit behind every SCP and RCP linting tool you should use.
 
 | Item | Value | Source |
 | --- | --- | --- |
-| Roots per organization | 1 | (AWS Organizations quotas, as of 2026-10) |
-| OUs per organization | 2,000 | (AWS Organizations quotas, as of 2026-10) |
-| OU nesting depth under root | 5 levels | (AWS Cloud Operations blog, as of 2026-10) |
-| SCPs attached per root, OU, or account | 10 (was 5 before 2026-05) | (AWS What's New 2026-05, as of 2026-10) |
-| Max SCP size | 10,240 characters (was 5,120) | (AWS What's New 2026-05, as of 2026-10) |
-| RCPs attached per node / max RCP size | 5 / 5,120 characters | (AWS Organizations docs, as of 2026-10) |
-| SCPs definable per org / RCPs per org | 10,000 / 1,000 | (AWS Organizations quotas, as of 2026-10) |
-| Declarative, tag, backup policy max size | 10,000 characters | (AWS Organizations quotas, as of 2026-10) |
-| AI services opt-out policy max size | 2,500 characters | (AWS Organizations quotas, as of 2026-10) |
-| Worst-case SCP text on one request path | 7 nodes x 10 x 10,240 = 716,800 chars | (derived from above, as of 2026-10) |
-| Minimum age of a created account before removal | 7 days | (AWS Organizations quotas, as of 2026-10) |
-| Config rules per Region per account | 1,000, not adjustable, packs included | (AWS Config limits, as of 2026-10) |
-| Conformance packs per account / per org | 50 / 50, not adjustable | (AWS Config limits, as of 2026-10) |
-| Rules per conformance pack | 130, not adjustable | (AWS Config limits, as of 2026-10) |
-| Input parameters per conformance pack | 60 | (risk-sentinel repo citing AWS API reference, as of 2026-09) |
-| Config aggregators / accounts per aggregator | 50 adjustable / 10,000 | (AWS Config limits, as of 2026-10) |
-| Accounts added or removed per week across aggregators | 1,000, adjustable | (AWS Config limits, as of 2026-10) |
-| Config CI price, continuous / periodic | $0.003 / $0.012 per CI | (AWS Config pricing, as of 2026-10) |
-| Config rule evaluation, first 100,000 per Region per month | $0.001 | (AWS Config pricing, as of 2026-10) |
-| Conformance pack evaluation tiers | $0.001 first 100k, $0.0008 next 400k, $0.0005 beyond | (CloudZero summary of AWS pricing, as of 2026-07) |
-| Periodic vs continuous break-even | 4 changes per resource per day ($0.012 / $0.003) | (derived from AWS Config pricing, as of 2026-10) |
-| Direct org-to-org account transfer | GA in commercial and GovCloud (US) since 2025-11 | (AWS What's New 2025-11, as of 2026-10) |
-| SCP full IAM language | GA since 2025-09 | (AWS What's New 2025-09, as of 2026-10) |
+| Roots per organization | 1 | (AWS Organizations quotas, as of 2026-11) |
+| OUs per organization | 2,000 | (AWS Organizations quotas, as of 2026-11) |
+| OU nesting depth under root | 5 levels | (AWS Organizations quotas, as of 2026-11) |
+| SCPs attached per root, OU, or account | 10 (was 5 before 2026-05) | (AWS What's New 2026-05, as of 2026-11) |
+| Max SCP size | 10,240 characters (was 5,120) | (AWS What's New 2026-05, as of 2026-11) |
+| RCPs attached per node / max RCP size | 5 / 5,120 characters | (AWS Organizations docs, as of 2026-11) |
+| SCPs definable per org / RCPs per org | 10,000 / 2,000 | (AWS Organizations quotas, as of 2026-11) |
+| Declarative, tag, backup policy max size | 10,000 characters | (AWS Organizations quotas, as of 2026-11) |
+| AI services opt-out policy max size | 2,500 characters | (AWS Organizations quotas, as of 2026-11) |
+| Worst-case SCP text on one request path | 7 nodes x 10 x 10,240 = 716,800 chars | (derived from above, as of 2026-11) |
+| Minimum age of a created account before removal | 4 days | (AWS Organizations quotas, as of 2026-11) |
+| Config rules per Region per account | 1,000, not adjustable, packs included | (AWS Config limits, as of 2026-11) |
+| Conformance packs per account / per org | 50 / 50, not adjustable | (AWS Config limits, as of 2026-11) |
+| Rules per conformance pack | 130, not adjustable | (AWS Config limits, as of 2026-11) |
+| Input parameters per conformance pack | 60 | (AWS Config API reference, as of 2026-11) |
+| Config aggregators / accounts per aggregator | 50 adjustable / 10,000 | (AWS Config limits, as of 2026-11) |
+| Accounts added or removed per week across aggregators | 1,000, adjustable | (AWS Config limits, as of 2026-11) |
+| Config CI price, continuous / periodic | $0.003 / $0.012 per CI | (AWS Config pricing, as of 2026-11) |
+| Config rule evaluation, first 100,000 per Region per month | $0.001 | (AWS Config pricing and AWS Price List API, us-east-1, as of 2026-11) |
+| Conformance pack evaluation tiers | $0.001 first 100k, $0.0008 next 400k, $0.0005 beyond | (AWS Price List API, us-east-1, as of 2026-11) |
+| Periodic vs continuous break-even | 4 changes per resource per day ($0.012 / $0.003) | (derived from AWS Config pricing, as of 2026-11) |
+| Direct org-to-org account transfer | GA in commercial and GovCloud (US) since 2025-11 | (AWS What's New 2025-11, as of 2026-11) |
+| SCP full IAM language | GA since 2025-09 | (AWS What's New 2025-09, as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Concern | AWS mechanism | Google Cloud mechanism | Critical difference |
 | --- | --- | --- | --- |
-| Hierarchy | Root, OUs (5 levels), accounts | Organization, folders, projects | GCP folder depth limit not verified this session (UNVERIFIED); in both clouds, the account or project is the isolation unit |
+| Hierarchy | Root, OUs (5 levels), accounts | Organization, folders, projects | GCP folders nest up to 10 levels, with at most 300 direct child folders per parent ([Google Cloud folder docs](https://docs.cloud.google.com/resource-manager/docs/creating-managing-folders), as of 2026-11); in both clouds, the account or project is the isolation unit |
 | Billing coupling | Consolidated billing tied to the organization | Cloud Billing accounts are separate from the resource hierarchy | On AWS, moving an account changes the payer; in GCP, billing linkage is re-pointed independently |
-| Principal guardrail | SCP: max-permission ceiling, union within node, intersection across nodes | IAM deny policies attached at org, folder, or project | SCP exempts the management account and SLRs; GCP deny policies target named principals and permissions with no exempt "management project" (exemption semantics UNVERIFIED) |
-| Resource guardrail | RCP on a limited service list | VPC Service Controls perimeters plus org policy `iam.allowedPolicyMemberDomains` | VPC SC gates API access by perimeter and context; RCP is a policy ceiling with no network context unless conditions add it; see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters\|VPC Service Controls]] |
-| Configuration guardrail | Declarative (EC2) policies in the EC2, VPC, and EBS control planes | Organization Policy constraints: boolean, list, and custom CEL | GCP covers far more services; AWS declarative coverage is EC2-family only (as of 2026-10) |
+| Principal guardrail | SCP: max-permission ceiling, union within node, intersection across nodes | IAM deny policies attached at org, folder, or project | SCP exempts the management account and SLRs; GCP deny policies target named principals and permissions, and the deny overview documents no automatic exemption: exempt principals are listed in `exceptionPrincipals` ([Google Cloud deny policy docs](https://docs.cloud.google.com/iam/docs/deny-overview), as of 2026-11) |
+| Resource guardrail | RCP on a subset of services (62 prefixes, as of 2026-11) | VPC Service Controls perimeters plus org policy `iam.allowedPolicyMemberDomains` | VPC SC gates API access by perimeter and context; RCP is a policy ceiling with no network context unless conditions add it; see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters\|VPC Service Controls]] |
+| Configuration guardrail | Declarative (EC2) policies in the EC2, VPC, and EBS control planes | Organization Policy constraints: boolean, list, and custom CEL | GCP managed constraints span at least 23 services ([Google Cloud constraints reference](https://docs.cloud.google.com/organization-policy/reference/org-policy-constraints), as of 2026-11); AWS state-pinning coverage is narrower: EC2, VPC, and EBS through EC2 policies, S3 Block Public Access through S3 policies, plus service-settings types such as Bedrock, Security Hub, and GuardDuty (as of 2026-11) |
 | New-API drift | SCP denies enumerate actions and go stale; declarative policies do not | Constraints pin state at resource create or update | Prefer state-pinning controls in both clouds when they exist |
 | Cross-account sharing | RAM: Regional shares, managed permissions, org/OU principals | IAM bindings across projects; Shared VPC host and service projects | GCP has no general RAM analog because IAM is natively hierarchical and cross-project |
 | Detective compliance | Config recorder, rules, conformance packs, aggregators | Cloud Asset Inventory, Security Command Center posture | Config bills per CI and per evaluation; the cost model differs fundamentally |
@@ -617,11 +659,11 @@ CloudTrail in that account records the denial.
 
 ### Step 4: Lab cost estimate
 
-- Organizations, OUs, SCPs, RAM shares, and an empty VPC and subnet: no direct charge (Organizations and RAM pricing UNVERIFIED this session; no NAT gateway or endpoints are created).
+- Organizations, OUs, SCPs, RAM shares, and an empty VPC and subnet: no direct charge ([Organizations](https://docs.aws.amazon.com/organizations/latest/userguide/pricing.html) and [RAM](https://docs.aws.amazon.com/ram/latest/userguide/what-is.html#what-is-pricing) carry no additional charge, as of 2026-11; no NAT gateway or endpoints are created).
 - Config, assuming two member accounts in one Region with recorders on, about 300 CIs and about 600 conformance-pack evaluations in the month:
   - 300 x $0.003 = $0.90;
   - 600 x $0.001 = $0.60;
-  - total about $1.50 per month (AWS Config pricing, as of 2026-10).
+  - total about $1.50 per month (AWS Config pricing, as of 2026-11).
 - Tear down the same day and the cost is cents.
 - The $10 budget alarm fires at $8 actual spend.
 
@@ -645,29 +687,31 @@ Assume 400 accounts x 4 active Regions = 1,600 account-Regions.
    Assume 320 ordinary accounts at about 1,500 CIs per Region per month, and 80 ML accounts with spot nodes and ephemeral ENIs at about 20,000.
    - Ordinary: 320 x 4 x 1,500 = 1.92M CIs.
    - ML: 80 x 4 x 20,000 = 6.4M CIs.
-   - Total 8.32M x $0.003 = **$24,960 per month**, of which 77% comes from 20% of accounts (AWS Config pricing, as of 2026-10).
+   - Total 8.32M x $0.003 = **$24,960 per month**, of which 77% comes from 20% of accounts (AWS Config pricing, as of 2026-11).
 2. **Periodic recording does not automatically save money.**
    A resource that changes k times a day costs 0.003k continuous versus 0.012 periodic, so periodic only wins when k > 4.
    Ephemeral ENIs are new resources with k of about 1, so the better lever is excluding those resource types from recording in ML accounts.
    Keep their governance through SCPs and declarative policies instead.
 3. **Conformance-pack evaluations.**
    An org pack of 40 rules averaging 250 evaluations per rule per account-Region per month gives 10,000 evaluations per account-Region.
-   That stays in the $0.001 tier (assuming tiers apply per account per Region; UNVERIFIED).
-   1,600 x $10 = **$16,000 per month**.
-   Doubling rules or Regions doubles this linearly.
+   At the flat first-tier rate, the ceiling is 1,600 x $10 = **$16,000 per month**.
+   AWS billing docs say [consolidated billing combines usage from all accounts](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/useconsolidatedbilling-effective.html) to pick volume tiers, and the [Price List API](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSConfig/current/us-east-1/index.json) prices Config by Region (as of 2026-11).
+   Applied to 4M evaluations per Region: $100 + $320 + $1,750 = $2,170, x 4 Regions = **$8,680 per month**.
+   Config's own pricing page does not spell out how its tiers pool, so treat $8,680 as the derived estimate and $16,000 as the ceiling, then confirm against your Cost and Usage Report.
+   Doubling Regions doubles both figures; doubling rules doubles the ceiling but takes the tiered estimate only to $16,680.
 4. **Rule quota headroom.**
-   Suppose Control Tower and baseline detective controls use about 150 rules per account-Region (UNVERIFIED estimate), plus the 40-rule org pack.
-   That leaves 810 of 1,000 for teams (AWS Config limits, as of 2026-10).
+   Suppose Control Tower and baseline detective controls use about 150 rules per account-Region (an assumption for this sizing, not a published figure), plus the 40-rule org pack.
+   That leaves 810 of 1,000 for teams (AWS Config limits, as of 2026-11).
    Adding one 130-rule framework pack leaves 680.
 5. **SCP character budget.**
    The region guard is 307 characters minified with 7 exemptions.
-   AWS's fuller global-service exemption list (about 40 entries) stays well under 10,240.
+   AWS's fuller global-service exemption list ([aws-samples region-deny SCP](https://github.com/aws-samples/service-control-policy-examples/blob/main/Region-controls/Deny-access-to-AWS-based-on-the-requested-AWS-region.json): 42 entries, 970 characters minified, measured 2026-11) stays well under 10,240.
    The real constraint is human review of the up to 70 SCPs on a path, not bytes.
 
 ## Failure Modes and Pitfalls
 
 1. **Region-deny without global-service exemptions.**
-   Global services such as IAM, Organizations, Route 53, CloudFront, and Support resolve `aws:RequestedRegion` to us-east-1.
+   Global services with a single endpoint, such as IAM, always resolve `aws:RequestedRegion` to us-east-1 ([IAM condition key docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html#condition-keys-requestedregion), as of 2026-11), and AWS's sample region-deny SCP also exempts Organizations, Route 53, CloudFront, and Support.
    A naive region deny that excludes us-east-1 breaks IAM role creation, console sign-in flows, and billing tools in every account under that node.
    This failure is fleet-wide and instant, and it also breaks the pipeline you would use to revert it, unless the platform role is exempt.
 2. **Detaching `FullAWSAccess` at an intermediate OU.**
@@ -677,35 +721,36 @@ Assume 400 accounts x 4 active Regions = 1,600 account-Regions.
    Because of the union-within-node, intersection-across-nodes algebra, the same SCP can behave differently at the account than at an OU that already has other attached Allows.
    Canary by moving test accounts into a canary child OU that mirrors the target path, as in the Worked Example.
 4. **Pipeline-only size failures.**
-   Pretty-printed JSON passes in the console, which strips whitespace, and fails through SDK or CLI, which counts it (AWS Organizations quotas, as of 2026-10).
-   RCPs count every character.
+   Pretty-printed JSON passes in the console, which strips whitespace, and fails through SDK or CLI, which counts it (AWS Organizations quotas, as of 2026-11).
+   RCPs follow the same rule, and their docs state that every character counts (AWS RCP docs, as of 2026-11).
 5. **Workloads in the management account.**
    SCPs and RCPs do not apply there.
    Any workload or long-lived credential in that account sits outside every preventive control you have built.
    Keep it empty, delegate administration, and protect it with identity-level controls.
 6. **The SLR side channel.**
    SCPs cannot stop service-linked roles.
-   `PutConformancePack` creates rules and remediations through an SLR even when the caller's IAM explicitly denies those actions (AWS Config API reference, as of 2026-10).
+   `PutConformancePack` creates rules and remediations through an SLR even when the caller's IAM explicitly denies those actions (AWS Config API reference, as of 2026-11).
    Gate the trigger APIs.
 7. **Org-ID coupled policies during account moves.**
    Resource policies conditioned on `aws:PrincipalOrgID` or `aws:PrincipalOrgPaths` start denying the moment an account changes organization or OU.
-   In-org RAM shares restrict access to consumers in the same organization by default (AWS RAM docs, as of 2026-10).
-   Direct transfers (2025-11) remove the standalone phase, but the new organization's SCPs and RCPs apply on arrival ([AWS re:Post](https://repost.aws/knowledge-center/organizations-move-accounts), as of 2026-10).
-   AWS's recommended pattern uses RAM resource share retention with temporary bridge shares ([AWS Cloud Operations blog](https://aws.amazon.com/blogs/mt/transfer-aws-accounts-between-aws-organizations-while-preserving-aws-lake-formation-permissions/), as of 2026-10).
+   In-org RAM shares restrict access to consumers in the same organization by default, so an account that leaves loses access (AWS RAM docs, as of 2026-11).
+   Direct transfers (2025-11) remove the standalone phase, but the new organization's SCPs and RCPs apply on arrival ([AWS re:Post](https://repost.aws/knowledge-center/organizations-move-accounts), as of 2026-10; returned 403 on recheck in 2026-11).
+   AWS's recommended pattern uses RAM resource share retention with temporary bridge shares ([AWS Cloud Operations blog](https://aws.amazon.com/blogs/mt/transfer-aws-accounts-between-aws-organizations-while-preserving-aws-lake-formation-permissions/), as of 2026-11).
+   Retention (`RetainSharingOnAccountLeaveOrganization`) requires `allowExternalPrincipals` true, does not apply to OU or organization sharing, and cannot carry organization-only resource types, so a VPC subnet share cannot be bridged this way (AWS RAM docs, as of 2026-11).
 8. **Config quota exhaustion during a compliance push.**
-   A second 130-rule framework pack can fail in a subset of accounts that already carry team rules, because packs count against the 1,000-rule limit (AWS Config limits, as of 2026-10).
+   A second 130-rule framework pack can fail in a subset of accounts that already carry team rules, because packs count against the 1,000-rule limit (AWS Config limits, as of 2026-11).
    Organization pack status is per account, so "deployed" in the delegated admin console can hide partial failure.
    Alert on detailed status, not on the API call returning success.
 9. **Config cost explosion in ML accounts.**
    Spot-heavy GPU fleets, EKS node churn, and per-pod ENIs generate CIs in proportion to scheduling activity, not to the value of the governance.
    The bill scales with training-job churn.
 10. **Control-plane concentration.**
-    Organizations is a global service with a us-east-1-anchored control plane (UNVERIFIED this session).
+    Organizations is a global service physically hosted in us-east-1, with its control plane there and no separate data plane (AWS Organizations quotas and Fault Isolation Boundaries whitepaper, as of 2026-11).
     During regional events affecting us-east-1, account vending and policy changes may be unavailable even while workloads elsewhere run.
-    See AWS's [Post-Event Summaries](https://aws.amazon.com/premiumsupport/technology/pes/), including the December 2021 and October 2025 us-east-1 summaries.
-    Their specific impact on Organizations APIs is UNVERIFIED here; read them for the static-stability lesson in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
+    See AWS's [Post-Event Summaries](https://aws.amazon.com/premiumsupport/technology/pes/), including the [December 2021](https://aws.amazon.com/message/12721/) and [October 2025](https://aws.amazon.com/message/101925/) us-east-1 summaries.
+    Neither names AWS Organizations; they describe STS and console sign-in impact, plus IAM sign-in failures in October 2025, so read them for the static-stability lesson in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 11. **AZ-name assumptions in shared VPCs.**
-    Participant teams that pin "us-east-1a" in their IaC may land in a different physical AZ than the network team assumed.
+    In Regions with independently mapped AZs, participant accounts created before November 2025 that pin "us-east-1a" in their IaC may land in a different physical AZ than the network team assumed (AWS AZ IDs docs, as of 2026-11).
     Use AZ IDs end to end.
 
 ## Security and Cost Angles
@@ -716,7 +761,7 @@ Assume 400 accounts x 4 active Regions = 1,600 account-Regions.
 - Delegate Config, Security Hub, GuardDuty, and IAM Access Analyzer administration to a security account so humans rarely touch the management account.
 - Every guardrail SCP should exempt a small, named set of platform roles by `aws:PrincipalARN`, never by tag, because tags can be edited by principals with tagging permissions.
 - Deny `organizations:LeaveOrganization`, and deny tampering with CloudTrail, Config, and guardrail roles, at the root.
-- Centralized root access management for member accounts (sts:AssumeRoot) removes long-lived root credentials from member accounts (feature details UNVERIFIED this session).
+- Centralized root access management lets the management account or a delegated IAM administrator remove member-account root credentials and run short-term, task-scoped sessions through `sts:AssumeRoot` ([AWS IAM docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_root-user-privileged-task.html), as of 2026-11).
 
 ### Data perimeter
 
@@ -736,7 +781,7 @@ Assume 400 accounts x 4 active Regions = 1,600 account-Regions.
 ### Prefer state-pinning controls
 
 - Where a declarative policy exists, use it instead of an SCP deny, for example for AMI and snapshot public sharing, IMDS defaults, and VPC Block Public Access.
-- It cannot go stale when EC2 adds APIs (AWS EC2 policies docs, as of 2026-10).
+- It cannot go stale when EC2 adds APIs (AWS EC2 policies docs, as of 2026-11).
 
 ### Unit economics levers
 
@@ -831,7 +876,7 @@ Exceptions are where perimeters fail, so design them explicitly:
 Rollout follows the canary pattern.
 Attach to test accounts and a canary OU first, mine CloudTrail for AccessDenied events attributed to RCPs, then widen.
 AWS explicitly warns against attaching RCPs to the root without that progression.
-I would also note the quota asymmetry: RCPs are still 5 per node and 5,120 characters, so exception lists must be compact.
+I would also note the quota asymmetry: RCPs are still 5 per node, including the undetachable `RCPFullAWSAccess`, and 5,120 characters, so exception lists must be compact.
 Ideally the exceptions key on org IDs or org paths rather than account lists.
 
 #### Follow-up Interviewer Question
@@ -881,7 +926,7 @@ Diagnose and fix it without losing compliance evidence.
 
 #### Model Answer
 
-Config cost is CIs x $0.003 plus evaluations x about $0.001 per account-Region (AWS Config pricing, as of 2026-10).
+Config cost is CIs x $0.003 plus evaluations x at most $0.001, falling with volume tiers (AWS Config pricing and AWS Price List API, as of 2026-11).
 Spot churn and per-pod networking create a stream of new EC2 instances, ENIs, and volumes.
 Each one emits CIs, and each CI triggers change-based evaluations for every in-scope rule in every pack.
 So the cost grows with scheduling churn multiplied by the number of rules.
@@ -991,7 +1036,7 @@ How do you prioritize, and what is your argument to AWS for the next declarative
 - [SCP quota increase, 2026-05](https://aws.amazon.com/about-aws/whats-new/2026/05/aws-organizations-increased-scp-quotas/) - the current 10-per-node and 10,240-character limits.
 - [SCP full IAM language deep dive](https://aws.amazon.com/blogs/security/unlock-new-possibilities-aws-organizations-service-control-policy-now-supports-full-iam-language) - patterns that conditional Allows and NotResource now make possible.
 - [Resource control policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html) - the resource-side ceiling, supported services, and AWS's rollout warning.
-- [Declarative policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative.html) - control-plane enforcement and the account status report, the key to drift-resistant guardrails.
+- [Declarative policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative_policies.html) - control-plane enforcement and the account status report, the key to drift-resistant guardrails.
 - [SCP design considerations for operational excellence](https://aws.amazon.com/blogs/mt/achieving-operational-excellence-with-design-considerations-for-aws-organizations-scps) - inheritance arithmetic and OU structuring against quotas.
 - [Direct account transfers, 2025-11](https://aws.amazon.com/about-aws/whats-new/2025/11/aws-organizations-direct-account-transfers/) - how org-to-org moves work without a standalone phase.
 - [Account transfers preserving Lake Formation permissions](https://aws.amazon.com/blogs/mt/transfer-aws-accounts-between-aws-organizations-while-preserving-aws-lake-formation-permissions/) - the bridge-share and RAM-retention migration pattern.

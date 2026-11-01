@@ -67,8 +67,13 @@ A curated list of primary sources (whitepapers, deep-dive conference talks, offi
 
 Cloud platform capabilities and limits evolve continuously.
 Every service name, API parameter, quota threshold, instance family, and accelerator specification must be verified against current official documentation.
-Volatile figures must be date-stamped with the current month: `(as of 2026-10)`.
+Volatile figures must be date-stamped with the month they were checked: `(as of YYYY-MM)`.
 Clearly differentiate between Generally Available (GA), Preview, and Deprecated features; never depict preview features as GA.
 Never invent APIs, flags, performance benchmarks, or citations.
-If a claim cannot be verified against official primary sources, it must be omitted or marked `UNVERIFIED` and listed in the batch report.
+A confirmed claim carries a dated attribution, and a wrong claim is corrected and attributed.
+A claim that cannot be confirmed must be omitted, or marked `UNVERIFIED` with the reason and listed in the batch report.
+A weaker source, such as a third-party price or a mirror of a blocked page, may back a claim only when the text attributes it as such.
+A chapter with any `UNVERIFIED` marker stays `status: draft`; `level` and `last_reviewed` stay blank until a human sets them.
+A lab that needs a cloud account and was not run must say so.
+The frontmatter `sources` list holds at most 40 entries, so further sources may appear only inline.
 Prioritize primary sources in order: academic peer-reviewed papers, official architecture blogs and deep dives (AWS Builders' Library, Google Cloud Architecture Center), followed by official API references.

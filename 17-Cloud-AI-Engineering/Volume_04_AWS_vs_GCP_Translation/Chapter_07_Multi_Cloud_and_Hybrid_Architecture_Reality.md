@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://aws.amazon.com/about-aws/whats-new/2026/04/aws-announces-ga-AWS-interconnect-multicloud/"
@@ -20,6 +20,31 @@ sources:
   - "https://blog.cloudflare.com/cloudflare-service-outage-june-12-2025/"
   - "https://aws.amazon.com/message/12721/"
   - "https://sre.google/sre-book/table-of-contents/"
+  - "https://docs.aws.amazon.com/interconnect/latest/userguide/region-availability.html"
+  - "https://docs.aws.amazon.com/interconnect/latest/userguide/interconnect-pricing.html"
+  - "https://docs.aws.amazon.com/interconnect/latest/userguide/quotas_for_aws_interconnect.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/07/aws-announces-AWS-interconnect-multicloud-OCI-GA/"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/08/aws-announces-AWS-interconnect-multicloud-microsoft-azure-preview/"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSInterconnect/current/us-east-1/index.json"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSDataTransfer/current/us-east-1/index.json"
+  - "https://cloud.google.com/network-connectivity/docs/interconnect/pricing"
+  - "https://cloud.google.com/network-connectivity/docs/vpn/pricing"
+  - "https://cloud.google.com/vpc/network-pricing"
+  - "https://aws.amazon.com/directconnect/pricing/"
+  - "https://docs.aws.amazon.com/vpn/latest/s2svpn/vpn-limits.html"
+  - "https://docs.cloud.google.com/network-connectivity/docs/vpn/quotas"
+  - "https://docs.cloud.google.com/network-connectivity/docs/vpn/concepts/mtu-considerations"
+  - "https://docs.cloud.google.com/vpc/docs/mtu"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/network_mtu.html"
+  - "https://docs.aws.amazon.com/directconnect/latest/UserGuide/limits.html"
+  - "https://aws.amazon.com/directconnect/sla/"
+  - "https://docs.cloud.google.com/network-connectivity/docs/interconnect/tutorials/production-level-overview"
+  - "https://docs.cloud.google.com/network-connectivity/docs/router/quotas"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://aws.amazon.com/blogs/aws/free-data-transfer-out-to-internet-when-moving-out-of-aws/"
+  - "https://digital-strategy.ec.europa.eu/en/factpages/data-act-explained"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/eks-outposts.html"
 ---
 
 # Multi-Cloud and Hybrid Architecture Reality
@@ -28,7 +53,7 @@ sources:
 
 - A synchronous quorum that must survive the loss of a whole provider puts at least one cross-provider acknowledgment in the commit path of every write. The cross-cloud RTT is a floor on write latency, not a tunable.
 - Two 99.9% clouds do not compose to 99.9999%. Shared-cause outages (identity, DNS, certificate authorities, your own control plane, a shared colo) dominate. With 10% shared-cause outage minutes, the pair is about 99.99%, and the failover mechanism itself subtracts more.
-- Private interconnect is a fixed-fee pipe. Internet egress is metered per GB at the sender. At 10 Gbps the managed pair breaks even against tiered AWS internet egress at roughly 381 TB per month per direction (model below, secondary-source Google prices).
+- Private interconnect is a fixed-fee pipe. Internet egress is metered per GB at the sender. At 10 Gbps the managed pair breaks even against tiered AWS internet egress at roughly 381 TB per month per direction (model below, AWS and Google list prices, as of 2026-11).
 - The failures that hurt are mechanical, not architectural: MTU black holes, overlapping RFC1918 ranges, bulk replication filling a provider edge buffer and starving consensus heartbeats, and failover automation that lives in the cloud that is failing.
 - Multi-cloud is justified by a specific, named risk or capability (regulatory exit, capacity, a unique service, M&A). It is not justified by "avoiding lock-in" in the abstract. Whole-job placement and async replication are cheap. Cross-cloud synchronous state and cross-cloud collective communication are expensive.
 
@@ -60,26 +85,26 @@ The diagram shows the only layout in which no single provider holds a quorum (2 
 
 ### The physical and logical shape of a cloud-to-cloud link
 
-A dedicated cross-cloud link is a cross-connect in a facility where both providers have presence, carrying an 802.1Q VLAN, an eBPG session over a link-local /30, and BFD or timers for failure detection.
+A dedicated cross-cloud link is a cross-connect in a facility where both providers have presence, carrying an 802.1Q VLAN, an eBGP session over a link-local /30, and BFD or timers for failure detection.
 Historically you built this yourself: Google documents that with Cross-Cloud Interconnect 
 
 you pay for ports and attachments in both clouds and data transfer out for traffic leaving Google Cloud
 
-, with supported speeds of 10, 100, and 400 Gbps (Google Cloud docs, as of 2026-10).
+, with supported speeds of 10, 100, and 400 Gbps for AWS and OCI, and 10 and 100 Gbps for Azure and Alibaba Cloud (Google Cloud docs, as of 2026-11).
 The managed model changes who operates the colo.
 
 
-AWS Interconnect - multicloud reached general availability on 2026-04-14 with Google Cloud as launch partner, and Azure and OCI planned later in 2026
+AWS Interconnect - multicloud reached general availability on 2026-04-14 with Google Cloud as launch partner, OCI followed at GA on 2026-07-29 in us-east-1 only, and Azure entered public preview on 2026-08-31
 
- (AWS What's New, as of 2026-10).
+ (AWS What's New, as of 2026-11).
 The AWS docs state that 
 
 traffic is transported on the AWS global backbone until it is handed off to the other cloud provider directly
 
- (AWS docs, as of 2026-10).
+ (AWS docs, as of 2026-11).
 That sentence has a cost implication that getting-started guides skip: pricing is by bandwidth and by geographic scope, so a hand-off far from your source region is billed in a higher tier.
-The last-mile sibling product publishes a worked example in which the same 10 Gbps port costs $12.33 per hour at Tier 1 and $51.78 per hour at Tier 4, which is $37,799.40 per month (AWS Interconnect last-mile pricing page, as of 2026-10).
-Use that only as an indication of tier spread. The multicloud tier table is a separate page and you must read it for your region pair.
+The multicloud pricing page publishes a worked example in which the same 10 Gbps interconnect costs $12.33 per hour at Tier 1 and $51.78 per hour at Tier 4, which is $37,799.40 per month, and the last-mile page uses the same two rates (AWS Interconnect pricing pages, as of 2026-11).
+There are five tiers, and each interconnect is billed at the highest-tier path it uses, so use that spread only as an indication and read your own path's tier from the AWS pricing tool.
 
 ### Mechanism 1: the cross-provider ack invariant
 
@@ -94,7 +119,7 @@ The leader's provider therefore holds fewer replicas than the quorum size, so a 
 Consequences you can compute:
 
 - 3 replicas, 2 in A and 1 in B, q = 2: writes are fast (the second ack is a local AZ) but the loss of A loses the quorum. B is a cosmetic replica, not a survival mechanism.
-- 3 replicas, 1 per provider, q = 2: survives the loss of any provider, and commit latency is the second-smallest RTT of the three paths. This needs three providers or two providers plus a third site that is not a cloud region you also depend on.
+- 3 replicas, 1 per provider, q = 2: survives the loss of any provider, and commit latency is the smaller of the leader's two follower RTTs. This needs three providers or two providers plus a third site that is not a cloud region you also depend on.
 - 5 replicas, 2/2/1, q = 3: survives the loss of any one provider, and the leader pays the nearest cross-provider RTT on every write.
 
 This is the same quorum-intersection argument as Paxos (Lamport, "Paxos Made Simple") and Raft (Ongaro and Ousterhout, USENIX ATC 2014), applied with provider as the failure domain.
@@ -119,28 +144,29 @@ The result is leader flapping, which looks like a partition but is actually self
 The mitigations are mechanical:
 
 - Pace the bulk flow at the sender (fq with a pacing rate, or BBR) to a fixed fraction of the link, for example 70%.
-- Put consensus and control traffic on a separate attachment or VLAN where the provider gives you one, instead of assuming DSCP is honored across the provider hand-off (UNVERIFIED: whether either provider honors DSCP across the cross-cloud hand-off).
+- Put consensus and control traffic on a separate attachment or VLAN where the provider gives you one, instead of assuming DSCP is honored across the provider hand-off. Google documents DSCP-based application awareness only for outbound traffic on self-managed Cross-Cloud Interconnect, the AWS Interconnect user guide and the Google partner Cross-Cloud Interconnect for AWS overview do not mention DSCP or QoS at all, and the Direct Connect FAQ says, in its SiteLink entry, that the service provides no managed QoS and preserves DSCP markings (provider docs, as of 2026-11). Treat DSCP treatment on the managed hand-off as undocumented and test it.
 - Set election timeouts from the measured p99.9 RTT under load, not the idle median.
 - Run hedged or tied requests for read paths, as described in Dean and Barroso, "The Tail at Scale" (CACM 2013), but never for non-idempotent writes.
 
 ### Mechanism 3: MTU, MSS, and the path MTU discovery black hole
 
-The two clouds default to different MTUs inside their virtual networks (AWS up to 9001 inside a VPC, Google VPC default 1460; both UNVERIFIED this session, see the table).
+The two clouds default to different MTUs inside their virtual networks (AWS up to 9001 inside a VPC, Google VPC default 1460; AWS EC2 and Google VPC docs, as of 2026-11, see the table).
 A TCP sender chooses its MSS from the local interface MTU and the peer's advertised MSS.
 If the path MTU is smaller than the sender's idea of it, the sender relies on ICMP "fragmentation needed" (type 3, code 4) to learn the smaller value.
 Security groups, firewall rules, and appliances that drop ICMP create a black hole: the three-way handshake and small requests succeed, then the first full-size segment is silently dropped and the connection hangs.
 It looks like an application bug because TLS handshakes with small records can work while large responses stall.
 Fixes, in order of preference: set one MTU for the whole cross-cloud domain and verify it end to end with `ping -M do -s <size>`, allow ICMP type 3 code 4 on every hop you control, and as a last resort clamp MSS on the edge.
 Never rely on an overlay such as a VPN or a Kubernetes CNI to be MTU-neutral. Each encapsulation subtracts its overhead from the path MTU.
+AWS Site-to-Site VPN supports at most a 1446-byte MTU (MSS 1406), supports no jumbo frames, and does not support Path MTU Discovery, while Cloud VPN has a 1460-byte gateway MTU and a 1406-byte payload MTU for AEAD ciphers on IPv4 tunnels without NAT-T (AWS and Google VPN docs, as of 2026-11).
 
 ### Mechanism 4: routing and addressing
 
 The cross-cloud link is an eBGP adjacency between your virtual routers (Transit Gateway, Cloud WAN, or Cloud Router). Each side advertises prefixes it should be reachable on.
 Three production traps:
 
-- Overlapping RFC1918. Google auto-mode VPC networks use 10.128.0.0/9 and AWS default VPCs use 172.31.0.0/16 (both UNVERIFIED this session), and teams habitually pick 10.0.0.0/16 for AWS. Overlap cannot be fixed with routing, only with renumbering or NAT, so IPAM must be a single source of truth before the first link is ordered.
+- Overlapping RFC1918. Google auto-mode VPC networks use 10.128.0.0/9 and AWS default VPCs use 172.31.0.0/16 (Google VPC and Amazon VPC docs, as of 2026-11), and teams habitually pick 10.0.0.0/16 for AWS. Overlap cannot be fixed with routing, only with renumbering or NAT, so IPAM must be a single source of truth before the first link is ordered.
 - Asymmetric return paths. If a VPN backup and an interconnect both advertise the same prefix, a stateful firewall or NAT sees the SYN on one path and the SYN-ACK on another, and drops the flow. Make local preference, MED, and AS-path prepending agree on both sides.
-- Prefix and route limits. Both sides cap advertised and learned routes per BGP session, and exceeding the cap typically drops the session rather than truncating the table (UNVERIFIED: exact limits per product). Summarize aggressively.
+- Prefix and route limits. Both sides cap routes, but they fail differently. Direct Connect accepts 100 prefixes per BGP session on a private or transit VIF by default (up to 1,000 with prefix controls), and exceeding the allocation puts the session into idle and reports it DOWN (AWS Direct Connect quotas, as of 2026-11). Site-to-Site VPN accepts 100 dynamic routes from the customer gateway on a virtual private gateway and 1,000 on a transit gateway (AWS VPN quotas, as of 2026-11). Cloud Router instead enforces per-region, per-VPC quotas on unique learned prefixes and keeps a deterministic subset, dropping the rest without resetting the session, and only a single peer advertising more than 5,000 prefixes resets it (Cloud Router docs, as of 2026-11). Summarize aggressively.
 
 ### Mechanism 5: where the meter runs
 
@@ -149,10 +175,10 @@ Traffic to the internet from AWS is tiered:
 
 up to 10 TB at $0.09/GB, then $0.085, $0.07, and $0.05 per GB above 150 TB
 
- (secondary summary of AWS pricing, as of 2026-10).
-Traffic through a managed multicloud interconnect is instead billed as an hourly port-like fee with no per-GB charge on either side (secondary sources, as of 2026-10).
-If your cross-cloud traffic goes over the internet path it can also pass through a NAT gateway with its own per-GB processing fee (UNVERIFIED this session), so the true marginal cost is above the headline egress rate.
-Inside one provider, cross-AZ traffic is also metered (AWS charges per GB in each direction, UNVERIFIED this session), which is why a chatty service that is "just in the same region" can still be expensive. See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]].
+ (AWS price list, us-east-1, as of 2026-11).
+Traffic through a managed multicloud interconnect is instead billed as an hourly port-like fee with no per-GB charge on either side (AWS Interconnect and Google Cloud Interconnect pricing, as of 2026-11).
+If your cross-cloud traffic goes over the internet path it can also pass through a NAT gateway with its own per-GB processing fee (Amazon VPC pricing, as of 2026-11), so the true marginal cost is above the headline egress rate.
+Inside one provider, cross-AZ traffic is also metered (AWS charges $0.01 per GB in and out, AWS price list, as of 2026-11), which is why a chatty service that is "just in the same region" can still be expensive. See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]].
 
 ### Mechanism 6: correlated failure
 
@@ -160,7 +186,7 @@ Let u be each cloud's unavailability for the dependency set you actually use, an
 Then P(both down) = c * u + (1 - c) * u^2.
 With u = 10^-3 and c = 0.10 the pair is about 99.99%, not the 99.9999% that independence predicts.
 Shared causes are not exotic.
-They include your identity provider, your DNS host, the public certificate authority, a CI/CD system that deploys to both, a shared observability vendor, a shared colo or metro (us-east-1 and the Google N. Virginia region are paired in the same metro per the AWS docs region table, as of 2026-10), and the control-plane automation that performs the failover.
+They include your identity provider, your DNS host, the public certificate authority, a CI/CD system that deploys to both, a shared observability vendor, a shared colo or metro (us-east-1 is paired with the Google N. Virginia region us-east4 in the AWS docs region table, as of 2026-11), and the control-plane automation that performs the failover.
 Add the failover mechanism's own unavailability and the number drops again.
 See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]] and [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]] for why failover must be a data-plane action that works with the control plane down.
 
@@ -168,64 +194,70 @@ See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02
 
 Hybrid (on-premises or colo to cloud) uses the same primitives as cloud-to-cloud: a dedicated port (AWS Direct Connect, Google Dedicated Interconnect), a partner-provided virtual circuit (Direct Connect hosted connections, Partner Interconnect), or IPsec over the internet (AWS Site-to-Site VPN, Google HA VPN) as a lower-bandwidth backup.
 The design rule is the same too: two physically diverse paths, BGP with BFD, a tested failover, and no assumption that the backup VPN can carry the primary's load.
-AWS now also lists an Interconnect - last mile product, which was found on a pricing page this session but whose details were not verified (UNVERIFIED).
-For in-cloud hybrid compute (AWS Outposts, Google Distributed Cloud, EKS Anywhere, GKE Enterprise) the relevant fact is that the control plane stays in the cloud region and the data plane runs on your hardware, so the same static-stability rule applies: the local rack must keep serving when the WAN to the region is cut.
+AWS now also lists an Interconnect - last mile product, which reached general availability on 2026-04-13 with Lumen as the initial partner in us-east-1 through the New York City metro, with AT&T and Megaport still in preview (AWS What's New and Interconnect docs, as of 2026-11), and whose pricing follows the same hourly tier model with no per-GB charge (AWS Interconnect last-mile pricing page, as of 2026-11).
+For in-cloud hybrid compute the location of the control plane depends on the deployment, so check it rather than assume it.
+EKS on Outposts has extended clusters with the control plane in the AWS Region and local clusters with the control plane on the Outpost ([Amazon EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/eks-outposts.html), as of 2026-11).
+EKS Anywhere is user-managed on your own infrastructure and can run with no connection to AWS ([EKS Anywhere docs](https://anywhere.eks.amazonaws.com/docs/overview/), as of 2026-11).
+Google Distributed Cloud connected runs a local control plane on your hardware, and on loss of connectivity it enters survivability mode, where workloads keep running for up to a week but remote management through the Google Cloud CLI, kubectl, and the Edge Container API is cut off unless you generate offline credentials ([Google Distributed Cloud docs](https://docs.cloud.google.com/distributed-cloud/edge/latest/docs/survivability), as of 2026-11).
+The same static-stability rule applies in every case: the local rack must keep serving when the WAN to the region is cut.
 For Kubernetes-level federation see [[04-System-Design/07-Infrastructure-and-Orchestration/Kubernetes-Architecture|Kubernetes Architecture]].
 
 ## Numbers to Know
 
-### Verified this session
+### Verified figures
 
 | Item | Value | Source |
 |---|---|---|
-| AWS Interconnect - multicloud status | GA since 2026-04-14, Google Cloud first launch partner, Azure and OCI planned later in 2026, five AWS Regions | AWS What's New, as of 2026-10 |
-| Pricing model of AWS Interconnect - multicloud | Single fee by selected bandwidth and geographic scope, no per-GB charge | AWS What's New and secondary summaries, as of 2026-10 |
-| Free tier | One free local 500 Mbps interconnect per Region starting May 2026 | AWS What's New, as of 2026-10 |
-| Bandwidth range at GA | 1 Gbps to 100 Gbps, modifiable without recreating the connection | AWS docs and secondary summary, as of 2026-10 |
-| Tier 1 AWS-side rate, 1 Gbps / 10 Gbps | $1.37 / $12.33 per hour (about $1,000 / $9,000 per month) | AWS pricing page example and secondary summaries, as of 2026-10 |
-| Tier 1 vs Tier 4 spread (last-mile product, 10 Gbps) | $12.33 vs $51.78 per hour, $37,799.40 per month at Tier 4 | AWS Interconnect last-mile pricing page, as of 2026-10 |
-| Region pairs documented in preview | us-east-1 with Google N. Virginia (us-east4); us-west-1 with Google Los Angeles (us-west2) | AWS docs, as of 2026-10 |
-| Billing granularity | Starts at creation, stops at deletion, rounded up to the hour | Third-party hands-on report, as of 2026-10 |
-| Google Partner Cross-Cloud Interconnect for AWS, North America | 1 Gbps $3.50 per hour, 10 Gbps $19.00 per hour, no data transfer fee | Secondary summary (classmethod), UNVERIFIED against Google pricing page, as of 2026-10 |
-| Google Cross-Cloud Interconnect (self-managed) | 10 Gbps port $5.60 per hour, VLAN attachment $0.10 per hour, $0.02 per GiB egress via CCI | Secondary summary, UNVERIFIED against Google pricing page, as of 2026-10 |
-| Cross-Cloud Interconnect speeds | 10, 100, 400 Gbps | Google Cloud docs, as of 2026-10 |
-| AWS internet egress tiers | $0.09 (to 10 TB), $0.085 (next 40 TB), $0.07 (next 100 TB), $0.05 (over 150 TB) per GB | Secondary summary of AWS pricing, as of 2026-10 |
-| Google Cloud Storage internet egress, Premium Tier | $0.12 per GiB to 1 TiB, $0.11 per GiB to 10 TiB | Secondary summary, as of 2026-10 |
+| AWS Interconnect - multicloud status | Google Cloud GA since 2026-04-14 in five AWS Regions at launch; OCI GA since 2026-07-29 in us-east-1; Azure in public preview since 2026-08-31 | AWS What's New, as of 2026-11 |
+| Pricing model of AWS Interconnect - multicloud | Single fee by selected bandwidth and geographic scope, no per-GB charge | AWS Interconnect docs and pricing page, as of 2026-11 |
+| Free tier | One free local (Tier 1) 500 Mbps interconnect per AWS Region per GA cloud provider, starting May 2026; AWS side only, and it cannot be converted to paid | AWS What's New and Interconnect docs, as of 2026-11 |
+| Bandwidth options, Google Cloud path from us-east-1 | 500 Mbps (free tier), 1, 2, 5, 10, 20, 50, 100 Gbps, resizable without reprovisioning; speeds vary by provider and Region | AWS price list and Interconnect docs, as of 2026-11 |
+| Tier 1 AWS-side rate, Google Cloud path, 1 / 2 / 5 / 10 / 100 Gbps | $1.37 / $2.60 / $6.51 / $12.33 / $116.44 per hour (about $1,000 / $1,898 / $4,752 / $9,001 / $85,001 per month at 730 hours) | AWS price list, us-east-1, as of 2026-11 |
+| Tier 1 vs Tier 4 spread (10 Gbps worked example, same on the multicloud and last-mile pages) | $12.33 vs $51.78 per hour, $37,799.40 per month at Tier 4; five tiers in total | AWS Interconnect pricing pages, as of 2026-11 |
+| Region pairs documented for Google Cloud | Nine: us-east-1/us-east4, us-west-1/us-west2, us-west-2/us-west1, eu-west-2/europe-west2, eu-central-1/europe-west3, eu-north-1/europe-north2, ap-northeast-1/asia-northeast1, ap-southeast-1/asia-southeast1, ap-southeast-2/australia-southeast1 | AWS Interconnect docs, as of 2026-11 |
+| AWS Interconnect account quotas | 10 connections per account, 4 outstanding requested connections, 2 multicloud connections per provider per account | AWS Interconnect docs, as of 2026-11 |
+| Billing granularity | Starts at creation, stops at deletion, rounded up to the hour | AWS Interconnect pricing page, as of 2026-11 |
+| Google Partner Cross-Cloud Interconnect for AWS, us-east4 | 1 Gbps $3.50, 5 Gbps $17.30, 10 Gbps $19.00, 100 Gbps $146.60 per hour, no data transfer fee; unlisted speeds are a linear multiple of the preceding tier | Google Cloud Interconnect pricing, as of 2026-11 |
+| Google Cross-Cloud Interconnect (self-managed) | 10 / 100 / 400 Gbps port $5.60 / $30.00 / $110.00 per hour, 10 Gbps VLAN attachment $0.10 per hour, $0.02 per GiB egress via CCI in the US and Canada | Google Cloud Interconnect pricing, as of 2026-11 |
+| Cross-Cloud Interconnect speeds | 10, 100, 400 Gbps to AWS and OCI; 10, 100 Gbps to Azure and Alibaba Cloud | Google Cloud docs, as of 2026-11 |
+| AWS internet egress tiers, us-east-1 | $0.09 (to 10 TB), $0.085 (next 40 TB), $0.07 (next 100 TB), $0.05 (over 150 TB) per GB, tier edges at 10,240 / 51,200 / 153,600 GB, after 100 GB per month free | AWS price list and EC2 pricing page, as of 2026-11 |
+| Google Cloud internet egress to North America, Premium Tier | First GiB free, then $0.12 per GiB to 1 TiB, $0.11 per GiB to 10 TiB, $0.08 per GiB above, on the page's default North America source table; rates vary by source region and destination | Google VPC network pricing, as of 2026-11 |
 | Raft timing guidance | Election timeout 150 to 300 ms; broadcast time much less than election timeout | Raft paper, USENIX ATC 2014 |
 | Spanner TrueTime uncertainty | About 1 to 7 ms; leader leases 10 s by default | Spanner paper, OSDI 2012 |
 
-### Recalled, not re-verified this session (treat as UNVERIFIED until checked)
+### Further figures verified against primary sources
 
 | Item | Value | Status |
 |---|---|---|
-| AWS cross-AZ data transfer | $0.01 per GB in each direction | UNVERIFIED |
-| AWS Direct Connect data transfer out | Roughly $0.02 per GB in US regions, plus port-hours | UNVERIFIED |
-| AWS NAT Gateway processing | About $0.045 per GB plus hourly | UNVERIFIED |
-| MTU inside AWS VPC / Google VPC default / Google VPC max | 9001 / 1460 / 8896 | UNVERIFIED |
-| Direct Connect private VIF / transit VIF jumbo MTU | 9001 / 8500 | UNVERIFIED |
-| AWS Site-to-Site VPN per-tunnel throughput | About 1.25 Gbps | UNVERIFIED |
-| Google HA VPN per-tunnel throughput | About 3 Gbps | UNVERIFIED |
-| AWS Site-to-Site VPN price | $0.05 per connection-hour | UNVERIFIED |
-| Google HA VPN price | About $0.075 per tunnel-hour | UNVERIFIED |
-| Interconnect SLAs | 99.99% for diverse multi-metro topologies on both Direct Connect and Dedicated Interconnect | UNVERIFIED |
+| AWS cross-AZ data transfer | $0.01 per GB in and out | AWS price list, us-east-1, as of 2026-11 |
+| AWS Direct Connect data transfer out | $0.02 per GB from contiguous US Regions to the US, plus port-hours (dedicated 1 / 10 / 100 / 400 Gbps at $0.30 / $2.25 / $22.50 / $85.00 per hour) | AWS Direct Connect pricing, as of 2026-11 |
+| AWS NAT Gateway | $0.045 per GB processed plus $0.045 per hour, in the page's US East (Ohio) example | Amazon VPC pricing, as of 2026-11 |
+| MTU inside AWS VPC / Google VPC default / Google VPC max | 9001 / 1460 / 8896 | AWS EC2 docs and Google VPC docs, as of 2026-11 |
+| Direct Connect private VIF / transit VIF jumbo MTU | 9001 / 8500 | AWS Direct Connect docs, as of 2026-11 |
+| AWS Site-to-Site VPN max MTU | 1446 bytes, MSS 1406, no jumbo frames, no Path MTU Discovery | AWS VPN quotas, as of 2026-11 |
+| AWS Site-to-Site VPN per-tunnel throughput | Up to 1.25 Gbps standard (140,000 pps), up to 5 Gbps on large bandwidth tunnels (400,000 pps) | AWS VPN quotas, as of 2026-11 |
+| Google HA VPN per-tunnel throughput | 250,000 packets per second combined ingress and egress, estimated at about 1 to 3 Gbps depending on packet size | Google Cloud VPN quotas, as of 2026-11 |
+| AWS Site-to-Site VPN price | $0.05 per connection-hour, plus $0.005 per hour per public IPv4 address | AWS price list and Amazon VPC pricing, as of 2026-11 |
+| Google HA VPN price | $0.055 per tunnel-hour in us-east4; $0.05 in us-central1 and $0.075 in asia-northeast1 | Google Cloud VPN pricing, as of 2026-11 |
+| Interconnect SLAs | 99.99% on Direct Connect needs at least four connections across two locations, Enterprise Support, and a Well-Architected Review; 99.99% on Dedicated or Partner Interconnect needs four connections across two regions in different metros, and Dedicated Interconnect can also use the single-region topology GA since 2026-06-02 | AWS Direct Connect SLA and Google Cloud Interconnect SLA, docs, and release notes, as of 2026-11 |
 
 ## AWS vs GCP Mechanism Parity
 
 | Concern | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
-| Cloud-to-cloud private link, managed | AWS Interconnect - multicloud (GA 2026-04) | Partner Cross-Cloud Interconnect for AWS (Google blog and docs) | Single fee by bandwidth and geographic scope on the AWS side; Google side has its own hourly fee (secondary sources) |
+| Cloud-to-cloud private link, managed | AWS Interconnect - multicloud (GA 2026-04) | Partner Cross-Cloud Interconnect for AWS (Google blog and docs) | Single fee by bandwidth and geographic scope on the AWS side; Google side has its own hourly fee and no per-GB charge (provider pricing pages, as of 2026-11) |
 | Cloud-to-cloud private link, self-managed | Direct Connect ports at a shared colo, cross-connect to the other provider | Cross-Cloud Interconnect (10/100/400 Gbps) | You pay ports and attachments in both clouds and per-GB egress on the Google side |
 | Cloud to on-prem dedicated | Direct Connect dedicated port | Dedicated Interconnect | Same shape: LAG, VLANs, eBGP |
 | Cloud to on-prem via partner | Direct Connect hosted connection | Partner Interconnect | Capacity is carved from the partner's port |
 | IPsec over internet | Site-to-Site VPN (2 tunnels per connection) | HA VPN (2 interfaces, 4 tunnels to AWS for the documented design) | Per-tunnel throughput caps; use ECMP or multiple tunnels |
 | Dynamic routing | VGW, Transit Gateway, Cloud WAN with BGP | Cloud Router with BGP, Network Connectivity Center | Different route limits and propagation rules; summarize |
-| Private service access across clouds | PrivateLink | Private Service Connect | Both are same-provider constructs; cross-cloud reach is routed IP, not endpoint-native |
+| Private service access across clouds | PrivateLink | Private Service Connect | Both are same-provider constructs; cross-cloud reach is routed IP, not endpoint-native, although partner Cross-Cloud Interconnect for AWS can carry Private Service Connect with `--psc-routing-enabled` on the transport (Google docs, as of 2026-11) |
 | Workload identity across clouds | IAM roles via OIDC/SAML federation, IAM Roles Anywhere | Workload Identity Federation | Both can trust the other's tokens; see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation\|Workload Identity Federation]] |
 | Strongly consistent multi-region SQL | Aurora DSQL | Cloud Spanner | Both are single-provider quorums with witness or tie-break replicas; neither spans providers |
 | Globally consistent time | Time Sync Service on Nitro | TrueTime inside Google, NTP for customers | No cross-provider uncertainty bound |
-| In-cloud hybrid compute | Outposts, EKS Anywhere | Google Distributed Cloud, GKE Enterprise | Control plane stays in region; data plane must tolerate WAN loss |
+| In-cloud hybrid compute | Outposts, EKS Anywhere | Google Distributed Cloud | Control plane location varies: in the Region for EKS extended clusters, local for EKS local clusters, EKS Anywhere, and Distributed Cloud connected; the data plane must tolerate WAN loss in every case |
 | Egress billing locus | Sender pays per GB, tiered | Sender pays per GB, by tier and destination | Interconnect paths replace per-GB with hourly fee |
-| Exit-fee posture | Fee waivers for customers leaving, offered since 2024 | Same | UNVERIFIED this session; check current programs and EU Data Act timelines |
+| Exit-fee posture | Internet DTO waived for customers leaving, via AWS Support, since 2024-03-05; non-EU customers have 180 days under the 2026-10-08 update (AWS blog, as of 2026-11) | Free data transfer for customers migrating all workloads and data off the relevant service, via an Exit Notice ([Google Cloud exit page](https://cloud.google.com/exit-cloud), as of 2026-11) | Both need a request and approval; the EU Data Act applies since 2025-09-12 and removes switching charges, including egress, from 2027-01-12 (European Commission, as of 2026-11) |
 
 ## Worked Example: Quorum tax, link breakeven, and an HA VPN probe lab
 
@@ -233,7 +265,8 @@ For Kubernetes-level federation see [[04-System-Design/07-Infrastructure-and-Orc
 
 The script below uses Python standard library only.
 Every RTT is an assumption (inter-AZ 0.8 ms, same-metro cross-cloud 2.0 ms, third site 14 ms) and must be replaced with measured p50 and p99 from your own paths.
-The Google side of the link fee is a secondary-source price and must be confirmed.
+Both link fees are list prices for the us-east-1 and us-east4 pair (AWS price list and Google Cloud Interconnect pricing, as of 2026-11), so re-read them for your own path before relying on the result.
+AWS bills the egress tiers in binary terabytes (edges at 10,240, 51,200, and 153,600 GB) and gives 100 GB per month free, while the script uses round decimal edges, which moves the breakeven by under 1% (about 380 TB instead of 381 TB).
 
 ```python
 #!/usr/bin/env python3
@@ -347,12 +380,12 @@ How to read it, step by step:
 
 This lab builds the self-serve baseline: 2 AWS VPN connections (4 tunnels) to a Google HA VPN gateway, with BGP on a Cloud Router.
 It is the cheapest way to observe real cross-cloud RTT, MTU behavior, and BGP convergence before ordering a dedicated link.
-The Terraform was written against the documented resource schemas but was not applied in the authoring environment (UNVERIFIED), so run `terraform validate` and review the plan before applying.
+The VPN and Cloud Router resource arguments were checked against the provider documentation (as of 2026-11), but the configuration has not been applied or run through `terraform validate`, so run `terraform validate` and review the plan before applying.
 Tunnel pre-shared keys are generated by AWS and passed to Google, so they land in Terraform state; use an encrypted remote backend.
 
-Cost estimate (rates UNVERIFIED, confirm on both pricing pages): 2 AWS VPN connections at about $0.05 per hour is $0.10 per hour, and 4 Google HA VPN tunnels at about $0.075 per hour is $0.30 per hour, so roughly $0.40 per hour plus data.
-A 4-hour lab is about $1.60 plus under a dollar of data transfer.
-The budget below caps the exposure at $25 per month.
+Cost estimate (AWS price list, Amazon VPC pricing, and Google Cloud VPN pricing for us-east4, as of 2026-11): 2 AWS VPN connections at $0.05 per hour is $0.10 per hour, 4 AWS tunnel public IPv4 addresses at $0.005 per hour is $0.02 per hour, and 4 Google HA VPN tunnels at $0.055 per hour is $0.22 per hour, so roughly $0.34 per hour plus data.
+A 4-hour lab is about $1.36 plus under a dollar of data transfer.
+The budget below alerts on a $25 per month limit but does not cap the exposure, so run the teardown promptly.
 
 ```hcl
 terraform {
@@ -537,6 +570,8 @@ ping -M do -s 1432 PEER_IP
 tracepath PEER_IP
 ```
 
+Expect that first probe to fail and keep stepping down: with AEAD ciphers on IPv4 and no NAT-T, the documented limits are a 1446-byte MTU on the AWS side and a 1406-byte payload MTU on the Google side, which is `ping -M do -s 1378`, and other ciphers go lower (AWS and Google VPN docs, as of 2026-11).
+
 Exact teardown (removes all billable resources, in dependency order, in one command):
 
 ```bash
@@ -545,7 +580,7 @@ terraform destroy -auto-approve -var gcp_project=YOUR_PROJECT -var alert_email=y
 
 Afterwards confirm that `aws ec2 describe-vpn-connections --query 'VpnConnections[?State!=`deleted`]'` and `gcloud compute vpn-tunnels list` return nothing, and delete the Google budget in the console or with `gcloud billing budgets delete`.
 
-For a dedicated cross-cloud link, the managed product is ordered through the console and API on both sides. This chapter does not give a CLI or Terraform for it because the resource names were not verified (UNVERIFIED).
+For a dedicated cross-cloud link, the managed product is ordered through the console and API on both sides: one side creates the interconnect and generates an activation key, and the other side accepts it. The AWS CloudFormation resource is `AWS::Interconnect::Connection` and the Google object is a transport resource (AWS and Google docs, as of 2026-11), and this chapter's lab stops at HA VPN.
 Before ordering, measure the VPN RTT and tail from this lab, size the link to at most 50% of expected peak utilization, and price it against the model above.
 
 ## Failure Modes and Pitfalls
@@ -574,11 +609,11 @@ The only fixes are renumbering, NAT, or an intermediate translation layer, and e
 
 ### Hidden dependencies that defeat independence
 
-Publicly documented incidents show the pattern, and you should read them in full (links in Further Reading; details recalled from memory and not re-verified this session, UNVERIFIED):
+Publicly documented incidents show the pattern, and you should read them in full (links in Further Reading; details checked against each provider's published report, as of 2026-11):
 
-- The Google Cloud outage of 2025-06-12 began with a bad policy data change that crashed a global API-management component. Cloudflare's published report said parts of its own services were affected because a storage dependency was hosted on Google Cloud. A product marketed as independent of any one cloud had a hard dependency on one.
-- The AWS us-east-1 DynamoDB event in October 2025 was traced in AWS's summary to a race in DNS management automation that left an empty record for the regional endpoint, which then cascaded through EC2 launch workflows and load balancer health checks. Teams whose failover automation depended on the same endpoints could not execute it.
-- The AWS us-east-1 event of 2021-12-07 impaired the internal network, the monitoring pipeline, and the console. Runbooks that required the console were unusable.
+- The Google Cloud outage of 2025-06-12 began with a bad policy data change, with blank fields, that crashed Service Control, Google's API policy-check system, in every region ([Google incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)). Cloudflare's published report said its outage that day came from Workers KV storage infrastructure partly backed by a third-party cloud provider that had its own outage the same day; the report does not name the provider. A service many customers treat as independent of any one cloud had a hard dependency on one.
+- The AWS us-east-1 DynamoDB event of 2025-10-19 and 2025-10-20 was traced in [AWS's summary](https://aws.amazon.com/message/101925/) to a race in DNS management automation that left an empty record for the regional endpoint, which then cascaded through EC2 launch workflows and Network Load Balancer health checks. Failover automation that depends on the same endpoints would not be able to execute.
+- The AWS us-east-1 event of 2021-12-07 impaired the internal network, real-time monitoring, CloudWatch data, and console logins in the Region. Runbooks that required the console were exposed to that failure.
 
 The general failure path is: the failing provider degrades your control plane, your failover is a control-plane operation, and so the failover does not fire.
 Static stability, meaning the standby is already running at capacity and the traffic shift is a data-plane change (anycast withdrawal, health-checked DNS with long enough TTL, client-side failover), is the defense.
@@ -596,15 +631,15 @@ See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_o
 
 ### Quota and capacity pitfalls
 
-Managed interconnects have per-account and per-region limits on connections and attachments that differ from the dedicated-port products (UNVERIFIED: exact limits).
-Region pairs are limited: at GA the AWS side was available in five Regions (AWS What's New, as of 2026-10), so a design that assumes any region pair fails at order time.
-Azure support was still in preview in a third-party report, restricted to 1 Gbps and local regions (as of 2026-10; verify before relying on it).
+Managed interconnects have limits on connections and attachments that differ from the dedicated-port products: AWS Interconnect defaults to 10 connections per account, 4 outstanding requests, and 2 multicloud connections per provider per account, and the Google side defaults to a single transport resource per project per region (AWS and Google docs, as of 2026-11).
+Region pairs are limited: at GA the AWS side was available in five Regions (AWS What's New), and the docs now list nine Google Cloud pairs and one OCI pair (AWS Interconnect docs, as of 2026-11), so a design that assumes any region pair fails at order time.
+Azure support is in public preview in four AWS Regions, limited to 1 Gbps and one interconnect per customer per supported Region, and preview connections are removed from your account as AWS approaches GA with that provider (AWS What's New and Interconnect docs, as of 2026-11).
 
 ## Security and Cost Angles
 
 ### Security
 
-- Private link is not a trust boundary. Traffic on the interconnect is isolated from the internet, but it is not encrypted end to end by default unless you add encryption (IPsec over the link, MACsec on dedicated ports where offered, or TLS everywhere, which you should do regardless). Treat the other cloud as an untrusted peer network and authenticate every call with workload identity.
+- Private link is not a trust boundary. Traffic on the interconnect is isolated from the internet, but it is not encrypted end to end by default unless you add encryption (IPsec over the link, MACsec on dedicated ports where offered, or TLS everywhere, which you should do regardless). AWS Interconnect encrypts the links between AWS and partner devices with MACsec by default, which protects that hop only (AWS Interconnect docs, as of 2026-11). Treat the other cloud as an untrusted peer network and authenticate every call with workload identity.
 - Data perimeter. Each provider's perimeter controls (SCPs and VPC endpoint policies on AWS, VPC Service Controls on Google) stop at the provider boundary. A routed path to the other cloud is outside every perimeter, so egress rules and firewall policy must be defined at the interconnect attachment. See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
 - Key hierarchy. Do not share a root key across providers. Use envelope encryption with a KMS in each cloud, and if a dataset must be readable in both, wrap the data key under both KEKs so that loss of one provider's KMS does not lose data and a provider's key compromise has bounded scope. See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 - BGP hygiene. Filter inbound prefixes to the exact set you expect and set max-prefix. A misconfigured advertisement from the other side can attract traffic you did not intend to carry.
@@ -616,8 +651,8 @@ Azure support was still in preview in a third-party report, restricted to 1 Gbps
 - Choose the lowest geographic tier that still meets the latency need. The tier spread on a comparable AWS product was more than 4x.
 - Reduce bytes before the link: compress (zstd on Kafka mirroring is workload-dependent), filter topics and columns, replicate deltas not snapshots, and use one hop rather than fan-out.
 - Replicate to one remote copy and fan out inside the remote cloud, where traffic is inexpensive.
-- Free and small tiers exist for local connectivity (500 Mbps free per Region on AWS since May 2026), which is enough for control traffic and probes.
-- Exit economics. Regulation and provider programs have reduced or waived switching egress in some cases (EU Data Act applicability and provider waivers recalled, UNVERIFIED). Check the current terms in your contract, and keep them in the lock-in analysis instead of assuming a one-way door.
+- Free and small tiers exist for local connectivity (500 Mbps free per AWS Region per GA provider since May 2026, on the AWS side only, as of 2026-11), which is enough for control traffic and probes. The other provider charges for its side independently, and the speed can be subject to its quota.
+- Exit economics. Regulation and provider programs have reduced or waived switching egress: AWS and Google Cloud both offer free data transfer on request when you exit, and the EU Data Act removes switching charges entirely from 2027-01-12 (AWS blog, Google Cloud exit page, and European Commission, as of 2026-11). Check the current terms in your contract, and keep them in the lock-in analysis instead of assuming a one-way door.
 - Staffing is the largest line. A second cloud means a second IAM model, network model, quota system, on-call rotation, and upgrade cadence. Price it in headcount, not just in dollars per GB.
 
 ## Interview Questions and Model Answers
@@ -631,9 +666,11 @@ Your team mirrors a Kafka cluster from AWS to Google Cloud at a sustained 100 MB
 First compute volume.
 100 MB/s over a 730-hour month is 100e6 * 2.628e6 s = 262.8 TB sent from the AWS side, one direction, with one remote copy.
 On the internet path with AWS tiered egress (0.09 to 10 TB, 0.085 to 50 TB, 0.07 to 150 TB, 0.05 above) that is about 900 + 3,400 + 7,000 + 5,640 = about $16.9k per month, before NAT processing if the mirror sits behind a NAT gateway.
-A managed 10 Gbps interconnect pair is about $22.9k per month in the model, so on pure dollars the internet path wins at this volume; breakeven is around 381 TB per month.
-But 100 MB/s is 800 Mbps, so a 1 Gbps link would run at 80% and I would not put it there: queueing delay and heartbeat risk matter more than the price difference, and I want at most 50% peak utilization.
-The practical answer is a 2 to 5 Gbps managed connection (price from the tier table) or two 1 Gbps, plus compression on the mirror, which for typical JSON or Avro with zstd is a large multiplier but workload-dependent, so I would measure on a sample before committing.
+A managed 10 Gbps interconnect pair is about $22.9k per month in the model, so against that size the internet path wins at this volume; breakeven is around 381 TB per month.
+But the flat fee scales with link size, and 100 MB/s is 800 Mbps, so a 1 Gbps link would run at 80% and I would not put it there: queueing delay and heartbeat risk matter more than the price difference, and I want at most 50% peak utilization.
+The practical answer is a 2 Gbps managed connection at 40% utilization: $2.60 per hour on the AWS side at Tier 1, and $7.00 per hour on the Google side if the unlisted 2 Gbps speed is twice the 1 Gbps rate as Google's pricing note implies, which is about $7.0k per month and less than half the internet path (AWS and Google list prices, as of 2026-11).
+A 5 Gbps pair at $6.51 plus $17.30 per hour is about $17.4k per month, roughly level with the internet path, and two 1 Gbps pairs are about $7.1k per month but need more than Google's default of one transport per project per region.
+I would add compression on the mirror, which for typical JSON or Avro with zstd is a large multiplier but workload-dependent, so I would measure on a sample before committing.
 I would also confirm the mirror topology is single-hop and filter topics that the remote side does not need, because bytes avoided are cheaper than any link.
 I would not use the internet path for production data without encryption and a NAT cost review.
 
@@ -665,7 +702,7 @@ Design a metadata store used by both an AWS and a Google Cloud deployment that m
 #### Model Answer
 
 Start with the invariant: surviving the loss of any provider needs n - n_P >= q, which forces every commit to include at least one cross-provider ack.
-With two providers alone that is impossible with an odd quorum, because one provider always holds at least half, so I need a third failure domain: a third provider, or a small witness site that is not on either provider's infrastructure.
+With two providers alone that is impossible with any majority quorum, because one provider always holds at least half of the replicas, so I need a third failure domain: a third provider, or a small witness site that is not on either provider's infrastructure.
 The layout is 5 replicas, 2 in each cloud and 1 witness, q = 3, leader in the cloud with most traffic.
 Commit latency is the leader's second-nearest follower after the local AZ, so with a same-metro interconnect at about 2 ms RTT I expect p50 near 1.75 ms and p99 near 3 ms in the model, and this rises to the witness RTT if the witness is the only cross-provider replica that is closer than the other cloud.
 The witness holds a log, not necessarily a full state machine, and it must be in a different failure domain from both clouds, including identity and network.
@@ -686,7 +723,7 @@ You must pick the connectivity between AWS and Google Cloud for a latency-sensit
 
 Frame it with four properties: capacity, latency stability, failure behavior, and cost shape.
 HA VPN is cheapest to start and the right first step: it is self-serve, gives me a real RTT distribution and a BGP convergence test, but it rides the public internet, has per-tunnel throughput caps, and its tail is the least predictable.
-A self-managed colo cross-connect (Cross-Cloud Interconnect with ports on both sides) gives dedicated capacity up to 10, 100, or 400 Gbps on the Google side and full control of routing, at the cost of ordering lead time, two sets of port and attachment fees, and per-GB egress on the Google side (Google docs, as of 2026-10).
+A self-managed colo cross-connect (Cross-Cloud Interconnect with ports on both sides) gives dedicated capacity up to 10, 100, or 400 Gbps on the Google side and full control of routing, at the cost of ordering lead time, two sets of port and attachment fees, and per-GB egress on the Google side (Google docs, as of 2026-11).
 The managed multicloud interconnect (GA 2026-04-14) turns this into an API call with a single AWS-side fee by bandwidth and geographic scope and no per-GB charge, with the traffic carried on the AWS backbone until direct hand-off to the other provider. In exchange, I accept availability only in the supported region pairs, the provider's hand-off locations, and less control of the physical diversity.
 Cost shape: fixed fee, so it wins above a volume breakeven (about 11.6% utilization of a 10 Gbps pair in my model) and loses on low-volume links.
 Failure behavior is where I would not trust the product page: "built-in resiliency" describes the link, not my path, so I would test by failing a VLAN attachment or BGP session, measure BFD or hold-timer detection, and check that traffic converges to the backup without asymmetric routing or a stateful device dropping flows.
@@ -723,7 +760,7 @@ The CEO asks for a multi-cloud strategy "to avoid lock-in". You are asked to pro
 
 I reject the premise as stated and replace it with a risk and option-value analysis.
 Lock-in is the cost of exit times the probability you need to exit, so I estimate both.
-Exit cost has three components: data egress (a one-time number I can compute, and which is partly waived by provider and regulatory programs, UNVERIFIED current terms), re-platforming engineering cost (the dominant term, driven by use of proprietary services and semantics), and operational re-learning.
+Exit cost has three components: data egress (a one-time number I can compute, and which is waived on request by AWS and Google Cloud exit programs and removed by the EU Data Act from 2027-01-12, as of 2026-11), re-platforming engineering cost (the dominant term, driven by use of proprietary services and semantics), and operational re-learning.
 Probability of needing exit is driven by named events: price change, regulatory requirement, provider product failure, M&A, or a capability gap.
 Then I list what multi-cloud costs continuously: a second IAM, network, quota, and incident process, cross-cloud egress, loss of volume commitments, and the abstraction tax, usually well above the expected exit cost for a single-product company.
 The recommended structure is a tiered posture instead of a binary one.
@@ -769,7 +806,7 @@ I start by treating the claim as a hypothesis and building the real dependency g
 For each user-visible operation, enumerate every dependency at request time and at recovery time: identity (workforce and workload), DNS (authoritative and recursive), certificate issuance and OCSP, container registries and package mirrors, secret stores, feature flag and config services, telemetry and paging vendors, the deploy pipeline, the failover trigger, and any managed service in either cloud that is in the hot path.
 Mark each one with its provider and region.
 Anything that appears in both "clouds" is a shared cause and contributes to c.
-The Cloudflare report of 2025-06-12 is the instructive pattern: a service marketed as independent had a hard storage dependency on one provider (recalled, UNVERIFIED).
+The Cloudflare report of 2025-06-12 is the instructive pattern: a service many customers treat as independent had a hard storage dependency, Workers KV's central store, partly backed by one third-party cloud provider (Cloudflare report, as of 2026-11).
 Then classify failure behavior: fail-open, fail-closed, or hang. Hangs without timeouts and retries without jitter turn a partial degradation into an outage through retry amplification.
 The program has four parts.
 One: a dependency inventory that is generated from traces and egress logs, not hand-maintained, with an owner and a failure policy per edge.
@@ -797,6 +834,7 @@ Your workforce identity provider is a single SaaS and cannot be duplicated. What
 - [Physalia (NSDI 2020)](https://www.usenix.org/conference/nsdi20/presentation/brooker) - Placement of consensus groups to minimize blast radius, directly relevant to quorum placement.
 - [AWS Builders' Library: Static stability using Availability Zones](https://aws.amazon.com/builders-library/static-stability-using-availability-zones/) - The design rule behind failover that does not depend on the control plane.
 - [Cloudflare incident report, 2025-06-12](https://blog.cloudflare.com/cloudflare-service-outage-june-12-2025/) - A concrete case of a hidden single-provider dependency.
+- [AWS summary of the 2025-10-19 and 2025-10-20 us-east-1 event](https://aws.amazon.com/message/101925/) - The DynamoDB DNS race and how it cascaded through EC2 and Network Load Balancer.
 - [AWS summary of the 2021-12-07 us-east-1 event](https://aws.amazon.com/message/12721/) - Shows how internal network congestion degraded monitoring and consoles.
 - [Google SRE Book](https://sre.google/sre-book/table-of-contents/) - Error budgets, cascading failures, and addressing them through load shedding.
 - [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]] - Detailed egress and interconnect cost structure in this curriculum.

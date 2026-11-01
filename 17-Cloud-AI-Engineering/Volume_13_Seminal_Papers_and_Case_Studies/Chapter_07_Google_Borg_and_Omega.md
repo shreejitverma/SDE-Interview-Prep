@@ -14,6 +14,28 @@ sources:
   - "https://cloud.google.com/blog/products/containers-kubernetes/how-we-built-a-130000-node-gke-cluster"
   - "https://docs.cloud.google.com/kubernetes-engine/quotas"
   - "https://www.usenix.org/conference/nsdi11/mesos-platform-fine-grained-resource-sharing-data-center"
+  - "https://research.google/pubs/autopilot-workload-autoscaling-at-google-scale/"
+  - "https://kubernetes.io/docs/concepts/scheduling-eviction/scheduler-perf-tuning/"
+  - "https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/"
+  - "https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/"
+  - "https://kubernetes.io/docs/setup/best-practices/cluster-large/"
+  - "https://docs.cloud.google.com/compute/docs/instances/spot"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html"
+  - "https://aws.amazon.com/eks/pricing/"
+  - "https://aws.amazon.com/vpc/pricing/"
+  - "https://docs.cloud.google.com/free/docs/free-cloud-features"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/dataplane-v2"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/planning-large-clusters"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/dws"
+  - "https://cloud.google.com/blog/products/containers-kubernetes/gke-65k-nodes-and-counting"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/07/amazon-eks-100000-worker-nodes-per-cluster/"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-operate-console-ui-governance-setup-task-governance.html"
+  - "https://www.allthingsdistributed.com/2015/07/under-the-hood-of-the-amazon-ec2-container-service.html"
+  - "https://cloud.google.com/blog/topics/inside-google-cloud/an-update-on-sundays-service-disruption"
+  - "https://status.cloud.google.com/incident/cloud-networking/19009"
+  - "https://status.openai.com/incidents/ctrsv3lwd797/write-up"
+  - "https://www.datadoghq.com/blog/2023-03-08-multiregion-infrastructure-connectivity-issue/"
+  - "https://docs.aws.amazon.com/eks/latest/eksctl/vpc-configuration.html"
 ---
 
 # Google Borg (2015 EuroSys) and Omega (2013 EuroSys)
@@ -67,7 +89,8 @@ Read the Borg paper (Verma et al., EuroSys 2015) for the workload model, the iso
 
 A Borg job is a named set of identical tasks. It carries hard or soft constraints such as processor architecture, OS version, or an external IP.
 An alloc is a reserved set of resources on one machine that one or more tasks can share. An alloc set is the job-level version.
-Allocs became Kubernetes pods. The Borg paper lists Borglet -> kubelet, alloc -> pod, and Borg containers -> Docker-style containers.
+Allocs became Kubernetes pods: the Borg paper says "the Kubernetes equivalent of an alloc is the pod".
+The Borglet -> kubelet mapping used in this chapter is an analogy; neither the Borg paper nor the ACM Queue retrospective uses the word kubelet.
 Every job has a priority, and Borg groups priorities into non-overlapping bands: monitoring, production, batch, and best effort (also called testing or free) (Borg paper 2015).
 Higher priority can preempt lower priority, with one deliberate exception. Within the production band, Borg does not allow preemption, which prevents preemption cascades where task A evicts B, B evicts C, and so on down the chain.
 Quota is admission control, not scheduling. It is a vector of resources (CPU, RAM, disk) at a given priority for a period of time, usually months.
@@ -137,7 +160,8 @@ Borg extended the kernel's CFS scheduler in three ways:
 - letting LS tasks preempt batch tasks;
 - shortening the scheduling quantum when several LS tasks are runnable on the same CPU.
 Some LS tasks reserve whole physical cores.
-Kubernetes inherited this split. CPU limits are enforced by CFS throttling, and memory limits are enforced by the OOM killer. QoS classes (Guaranteed, Burstable, BestEffort) decide eviction order when a node is under pressure.
+Kubernetes inherited this split. CPU limits are enforced by CFS throttling, and memory limits are enforced by the OOM killer.
+QoS classes (Guaranteed, Burstable, BestEffort) only help estimate eviction order under node pressure: the kubelet ranks pods by whether usage exceeds requests, then by priority, then by usage relative to requests (Kubernetes node-pressure eviction docs, as of 2026-11).
 For accelerators, the key fact is that GPU HBM is non-compressible and is not managed by cgroups at all. Two tenants sharing a GPU without MIG or another hardware partition have no Borg-style memory isolation. This is why GPU fleets mostly allocate whole devices.
 Performance interference that cgroups cannot see is a separate problem: last-level cache, memory bandwidth, and hyperthread siblings. Google addressed it with CPI2 (Zhang et al., EuroSys 2013), which detects victims through cycles-per-instruction outliers and throttles the antagonist.
 Heracles (Lo et al., ISCA 2015) is a feedback controller that co-locates batch work with latency-critical services while protecting their SLOs.
@@ -149,10 +173,11 @@ Each task has a limit, which is what it asked for, and a reservation, which is B
 The Borgmaster recomputes reservations every few seconds from fine-grained usage measured by the Borglet. A new task starts with reservation equal to its limit. After about 300 s, the reservation decays toward actual usage plus a safety margin.
 Prod tasks are scheduled against limits, so they are never starved by reclaimed capacity. Non-prod tasks are scheduled against reservations, which lets them run in the gap between limits and actual usage.
 In the median cell, about 20% of the workload runs in reclaimed resources (Borg paper 2015).
-When Borg tested more aggressive reclamation settings, out-of-memory events increased. That is the direct price of overcommitting a non-compressible resource.
+When Borg tested more aggressive reclamation settings on one production cell, the rate of out-of-memory events increased slightly. That is the direct price of overcommitting a non-compressible resource.
+Google judged the net gain worth it and deployed the medium setting, not the aggressive one, to other cells (Borg paper 2015).
 Borg measured utilization policies with cell compaction: remove machines until the workload no longer fits.
 By that measure, segregating prod and non-prod into separate pools would need 20-30% more machines in the median cell. Splitting cells into smaller ones also costs machines. Rounding requests up to coarse buckets would need 30-50% more resources in the median case.
-The 2019 trace follow-up (Tirmazi et al., EuroSys 2020) covers 8 Borg cells for May 2019 and compares them with the single-cell 2011 trace (CMU PDF of the paper, as of 2026-10).
+The 2019 trace follow-up (Tirmazi et al., EuroSys 2020) covers 8 Borg cells for May 2019 and compares them with the single-cell 2011 trace (CMU PDF of the paper, as of 2026-11).
 It reports that alloc sets are used for resource-heavy workloads and that automatic vertical scaling is widely deployed. The vertical scaler is described in Autopilot (Rzadca et al., EuroSys 2020).
 
 ### The mechanism the getting-started guides skip: where conflict detection actually lives in Kubernetes
@@ -165,17 +190,18 @@ The conflict check moves to the data plane. The kubelet runs admission against i
 In Omega terms, Kubernetes has commit-time detection only for "already bound" and delegates resource conflicts to the Borglet-equivalent, after the commit.
 The operational consequence is that running two schedulers over the same nodes produces bursts of Failed pods. A controller then recreates those pods, and the system thrashes under contention.
 The safe patterns are to give each scheduler a disjoint node set using taints and node selectors, or to run one scheduler with several profiles.
-A second inherited mechanism is the `percentageOfNodesToScore` setting. It is Borg's relaxed randomization: the scheduler stops filtering once it has found enough feasible nodes.
-The adaptive default starts at 50%, decreases as the cluster grows, and has a floor of 5% (Kubernetes scheduler performance-tuning docs, UNVERIFIED as of 2026-10).
+A second inherited mechanism is the `percentageOfNodesToScore` setting. It is the analogue of Borg's relaxed randomization: the scheduler stops filtering once it has found enough feasible nodes, although it walks its node list in order rather than sampling at random.
+The adaptive default follows a linear formula that gives 50% at 100 nodes and 10% at 5,000 nodes, with a floor of 5% (Kubernetes scheduler performance-tuning docs, as of 2026-11).
 A third mechanism is that Kubernetes priority has no production-band rule. Any higher PriorityClass value can preempt any lower one, so the cascade protection Borg had is gone unless you add it. Two ways to add it:
-- give production-tier classes `preemptionPolicy: Never`;
+- give the whole production tier one PriorityClass value, because a pod can preempt only strictly lower priority, so equal-priority pods never evict each other (Kubernetes pod priority docs, as of 2026-11); `preemptionPolicy: Never` is a blunter tool, because it stops a class preempting anything, including batch, and it does not protect that class from being preempted;
 - use ResourceQuota with a `PriorityClass` scope selector, which recreates Borg's quota-at-priority by capping how much of each band a namespace may request.
 
 ### Consensus and store placement on today's managed control planes
 
 Borg's Paxos store held a whole cell of about 10k machines, and the managed Kubernetes providers have hit the same limit at higher node counts.
 For its 100,000-node ultra-scale clusters, Amazon EKS re-engineered the etcd layer. AWS describes offloading consensus and using an in-memory store, and says well-assigned static partitions were enough at that scale (AWS Containers blog, 2025-07).
-On the GKE side, Google's 130,000-node experimental cluster offloaded cluster state to Spanner, which shards API objects horizontally (InfoQ, 2025-12; Google Cloud blog, 2025-11).
+On the GKE side, Google's 130,000-node experimental cluster relied on a proprietary key-value store based on Spanner (Google Cloud blog, 2025-11).
+Google announced the move from etcd to that store, behind an etcd-compatible API, along with 65,000-node support (Google Cloud blog, 2024-11); neither post describes how API objects are partitioned inside it.
 These are the Omega and Borg paths again: keep the API semantics, and replace the single consensus log underneath with something that partitions.
 For the consensus background, see [[08-Distinguished-Engineering/02-Distributed-Systems-Internals/Raft-Consensus|Raft Consensus]] and [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_06_Google_Spanner|Google Spanner]].
 
@@ -188,40 +214,40 @@ For the consensus background, see [[08-Distinguished-Engineering/02-Distributed-
 | Borgmaster failover | About 10 s typical, up to about 1 min in a big cell | Borg paper (EuroSys 2015) |
 | Borgmaster availability | About 99.99% in practice | Borg paper (EuroSys 2015) |
 | Task arrival rate | Several cells above 10,000 tasks per minute (~167/s) | Borg paper (EuroSys 2015) |
-| Busy Borgmaster footprint | 10-14 CPU cores, up to about 50 GiB RAM | Borg paper (EuroSys 2015), UNVERIFIED exact figures |
+| Busy Borgmaster footprint | 10-14 CPU cores, up to about 50 GiB RAM | Borg paper (EuroSys 2015) |
 | Full-cell reschedule | A few hundred seconds with optimizations, more than 3 days without | Borg paper (EuroSys 2015) |
 | Online scheduling pass | Under 0.5 s per pass over the pending queue | Borg paper (EuroSys 2015) |
-| Median task startup | About 25 s, of which package installation is about 80% | Borg paper (EuroSys 2015), UNVERIFIED exact split |
+| Median task startup | About 25 s, of which package installation is about 80% | Borg paper (EuroSys 2015) |
 | Workload in reclaimed resources | About 20% in the median cell | Borg paper (EuroSys 2015) |
 | Cost of prod/non-prod segregation | 20-30% more machines in the median cell | Borg paper (EuroSys 2015) |
-| Cost of coarse request bucketing | 30-50% more resources in the median case | Borg paper (EuroSys 2015), UNVERIFIED exact range |
+| Cost of coarse request bucketing | 30-50% more resources in the median case | Borg paper (EuroSys 2015) |
 | Reservation decay start | About 300 s after task start | Borg paper (EuroSys 2015) |
-| Omega simulator baselines | t_job about 0.1 s, t_task about 5 ms | Omega paper (EuroSys 2013), UNVERIFIED exact values |
+| Omega simulator baselines | t_job about 0.1 s, t_task about 5 ms | Omega paper (EuroSys 2013) |
 | 2019 Borg trace | 8 cells, May 2019 | Tirmazi et al. (EuroSys 2020) |
-| GKE Standard nodes per cluster | 65,000 (beyond 5,000 needs extra requirements and may need Customer Care) | (Google Cloud docs, as of 2026-10) |
-| GKE Autopilot nodes per cluster | 5,000 | (Google Cloud docs, as of 2026-10) |
-| GKE nodes per node pool | 1,000 per zone, 2,000 TPU nodes per zone on recent versions | (Google Cloud docs, as of 2026-10) |
-| GKE large-cluster mode | Clusters of more than 15,000 nodes, up to 65,000, need Dataplane V2 scale-optimized mode, which disables network policy enforcement | (Google Cloud docs, as of 2026-10) |
+| GKE Standard nodes per cluster | 65,000 (beyond 5,000 needs extra requirements and may need Customer Care) | (Google Cloud docs, as of 2026-11) |
+| GKE Autopilot nodes per cluster | 5,000 | (Google Cloud docs, as of 2026-11) |
+| GKE nodes per node pool | 1,000 per zone, 2,000 TPU nodes per zone on recent versions | (Google Cloud docs, as of 2026-11) |
+| GKE large-cluster mode | Clusters of more than 15,000 nodes, up to 65,000, need Dataplane V2 scale-optimized mode, which disables network policy enforcement | (Google Cloud docs, as of 2026-11) |
 | GKE experimental scale | 130,000-node cluster run in experimental mode | (Google Cloud blog, 2025-11) |
 | EKS nodes per cluster | Up to 100,000 with ultra-scale clusters | (AWS What's New, 2025-07) |
 | EKS scheduler throughput at 100k nodes | About 500 pods/s with tuned scheduler plugins | (AWS Containers blog, 2025-07) |
-| Upstream Kubernetes tested limits | 5,000 nodes, 110 pods per node, 150,000 pods | (Kubernetes docs, UNVERIFIED as of 2026-10) |
-| PriorityClass user range | Up to 1,000,000,000; system classes at 2,000,000,000 and 2,000,001,000 | (Kubernetes docs, UNVERIFIED as of 2026-10) |
-| Spot reclaim notice | EC2 Spot 2 min; Compute Engine Spot VMs about 30 s | (AWS and Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Managed control plane fee | EKS standard support and GKE cluster fee, both about USD 0.10 per cluster-hour | (AWS and Google Cloud pricing, UNVERIFIED as of 2026-10) |
+| Upstream Kubernetes tested limits | 5,000 nodes, 110 pods per node, 150,000 pods | (Kubernetes docs, as of 2026-11) |
+| PriorityClass user range | Up to 1,000,000,000; system classes at 2,000,000,000 and 2,000,001,000 | (Kubernetes docs, as of 2026-11) |
+| Spot reclaim notice | EC2 Spot 2 min; Compute Engine Spot VMs have a configurable notice of 0 s (default) or 120 s, followed by a best-effort shutdown of up to 30 s | (AWS and Google Cloud docs, as of 2026-11) |
+| Managed control plane fee | EKS USD 0.10 per cluster-hour on standard support, USD 0.60 on extended support; GKE cluster fee about USD 0.10 per cluster-hour | (AWS EKS pricing, as of 2026-11; GKE figure UNVERIFIED: pricing page returned no readable content) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Mechanism | Borg / Omega (Google internal) | AWS | Google Cloud | Critical difference |
 | --- | --- | --- | --- | --- |
 | Unit of failure and scheduling | Cell, about 10k machines, one Borgmaster | EKS cluster (regional control plane), up to 100k nodes in ultra-scale mode | GKE cluster (zonal or regional), up to 65k nodes | Customers pick their own cell size, and a huge cluster is a huge blast radius, see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding\|Cell-Based Architecture]] |
-| Control-plane store | Paxos store inside Borgmaster; Omega: passive Paxos store with OCC | etcd (Raft); ultra-scale clusters offload consensus and run in memory (AWS blog 2025-07) | etcd; experimental 130k cluster used Spanner-backed state (InfoQ 2025-12) | Both clouds hit the single-Raft-log limit and moved to partitioned stores |
-| Optimistic concurrency | Omega transactions, fine or coarse detection | Kubernetes resourceVersion compare-and-swap; ECS scheduler described as shared-state OCC (Vogels 2015, UNVERIFIED) | Kubernetes resourceVersion compare-and-swap | Kubernetes Binding has no resource-level conflict check, so kubelet admission does it |
+| Control-plane store | Paxos store inside Borgmaster; Omega: passive Paxos store with OCC | etcd (Raft); ultra-scale clusters offload consensus and run in memory (AWS blog 2025-07) | Spanner-based key-value store behind an etcd-compatible API, announced with 65k support (Google Cloud blog 2024-11) and used by the experimental 130k cluster (Google Cloud blog 2025-11) | Both clouds moved past a single etcd Raft log: EKS to an internal journal plus static partitions, GKE to a Spanner-based store |
+| Optimistic concurrency | Omega transactions, fine or coarse detection | Kubernetes resourceVersion compare-and-swap; ECS described as shared cluster state stored with optimistic concurrency in a Paxos-based journal (Vogels 2015-07) | Kubernetes resourceVersion compare-and-swap | Kubernetes Binding has no resource-level conflict check, so kubelet admission does it |
 | Placement scheduler | Borg scheduler with feasibility, scoring, relaxed randomization | kube-scheduler; Karpenter provisions nodes | kube-scheduler; Cluster Autoscaler and node auto-provisioning; Autopilot | Node provisioning is a second control loop Borg never had, because Borg machines were fixed |
 | Priority and preemption | Bands; no preemption inside the production band | PriorityClass; EC2 Spot as cloud-level reclaimable tier | PriorityClass; Spot VMs as reclaimable tier | Kubernetes has no band rule, so you must add cascade protection yourself |
-| Quota at priority | Quota vector per priority, oversold at low priority | ResourceQuota with PriorityClass scope; Kueue; SageMaker HyperPod task governance (UNVERIFIED) | ResourceQuota with PriorityClass scope; Kueue; Dynamic Workload Scheduler (UNVERIFIED GA scope) | Kueue admits whole workloads before pods exist, which removes gang conflicts |
+| Quota at priority | Quota vector per priority, oversold at low priority | ResourceQuota with PriorityClass scope; Kueue; SageMaker HyperPod task governance, whose add-on installs Kueue (AWS docs, as of 2026-11) | ResourceQuota with PriorityClass scope; Kueue; Dynamic Workload Scheduler, where flex-start with queued provisioning is GA and plain flex-start is Preview (GKE docs, as of 2026-11) | Kueue admits whole workloads before pods exist, which removes gang conflicts |
 | Gang scheduling | Omega all-or-nothing transactions | Kueue, Volcano, or Slurm on HyperPod | Kueue, JobSet, TPU slices placed as a unit | Gang placement needs reservation first, otherwise it livelocks under contention |
-| Resource reclamation | Reservation decays toward usage plus a margin; non-prod uses the gap | Requests vs limits, QoS eviction, Karpenter consolidation | Requests vs limits, QoS eviction, Autopilot right-sizing, VPA | Kubernetes requests do not decay; reclamation needs VPA or Autopilot-style tooling |
+| Resource reclamation | Reservation decays toward usage plus a margin; non-prod uses the gap | Requests vs limits, kubelet node-pressure eviction, Karpenter consolidation | Requests vs limits, kubelet node-pressure eviction, Autopilot right-sizing, VPA | Kubernetes requests do not decay; reclamation needs VPA or Autopilot-style tooling |
 | Isolation boundary | cgroups for first-party code; VMs and sandboxes for third-party | Nitro VMs; Firecracker microVMs for Fargate and Lambda | Compute Engine VMs; GKE Sandbox (gVisor) | Hostile multi-tenancy requires a VM or user-space-kernel boundary, see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_04_Firecracker_MicroVM\|Firecracker]] |
 | Naming | BNS records in Chubby | CoreDNS, Cloud Map | CoreDNS or kube-dns, Cloud DNS | IP-per-pod replaced IP:port naming |
 | What-if simulation | Fauxmaster runs real master code on a checkpoint | No managed equivalent; open-source KWOK and scheduler simulators | No managed equivalent; same open-source tools | Most teams skip capacity what-ifs, and Borg made them routine |
@@ -365,7 +391,7 @@ for d in fine coarse; do for x in incremental gang; do python3 omega_sim.py --sv
 python3 omega_sim.py --svc-tjob 10 --policy bestfit
 ```
 
-Measured output on 200 machines over a two-hour simulated horizon, seed 7, at about 75-85% cell utilization (this lab run, 2026-10):
+Measured output on 200 machines over a two-hour simulated horizon, seed 7, ending at about 74-85% cell utilization except the coarse-gang livelock, which ended at 58% (this lab run, 2026-10; re-run with identical results, 2026-11):
 
 | Configuration (service t_job) | Service conflict fraction | Service scheduler busy | Service tasks retried | Outcome |
 | --- | --- | --- | --- | --- |
@@ -393,7 +419,7 @@ A gang of k tasks commits cleanly with probability (1 - p)^k ~ exp(-k x p).
 Plug in Borg-scale numbers: r = 10,000 tasks/min ~ 167/s, D = 5 s, M = 10,000. Then about 833 machines are touched and p_c ~ 0.083.
 A 20-task service job with coarse detection commits cleanly with probability 0.917^20 ~ 0.18, so 82% of its transactions conflict.
 With fine detection and q = 0.1, p_f ~ 0.0083. The clean-commit probability becomes 0.85, and an incremental commit retries only about 0.17 tasks on average.
-Now take a 2,000-node GPU training gang under the same fine-grained regime. It commits cleanly with probability exp(-2000 x 0.0083) ~ 5.6e-8, which is effectively never.
+Now take a 2,000-node GPU training gang under the same fine-grained regime. It commits cleanly with probability exp(-2000 x 0.0083) ~ 6.2e-8, which is effectively never.
 The rule: for gangs, take capacity out of the contended pool first (quota admission, a reserved node pool, or a capacity reservation), then place inside it with no competitors.
 Binding throughput is a separate constraint. At the roughly 500 pods/s AWS reported for 100k-node EKS (AWS blog, 2025-07), binding 16,000 pods takes about 32 s and 65,000 pods about 130 s. Any partial gang holds accelerators idle during that window.
 Preemption cost is the third constraint. With 30-minute checkpoints, a preempted 1,024-GPU job loses about 15 minutes of work on average, or 1,024 x 0.25 = 256 GPU-hours per preemption, plus restart time. See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_06_High_Throughput_Checkpointing_to_Object_Storage|High-Throughput Checkpointing]].
@@ -401,7 +427,8 @@ Segregation cost is the fourth. Applying Borg's 20-30% prod/non-prod segregation
 
 ### Part C - GKE lab: priority bands, preemption, PDB violation, quota-at-priority
 
-Estimated cost: two `e2-standard-2` nodes plus the zonal cluster fee for about one hour. That should be well under USD 1, and the GKE free tier credit may cover the cluster fee (Google Cloud pricing, UNVERIFIED as of 2026-10).
+Estimated cost: two `e2-standard-2` nodes plus the zonal cluster fee for about one hour. That should be well under USD 1 (UNVERIFIED: GKE and e2 rates not readable from the pricing pages).
+The GKE Free Tier covers the cluster charge of one Autopilot or zonal Standard cluster per month, but not compute or networking (Google Cloud Free Tier docs, as of 2026-11).
 
 ```bash
 set -euo pipefail
@@ -542,7 +569,8 @@ gcloud billing budgets delete "$BUDGET_ID" --billing-account="$BILLING_ACCOUNT" 
 
 ### Part D - EKS parity run
 
-Estimated cost: EKS control plane plus two `t3.medium` nodes, plus the single NAT gateway that `eksctl` creates by default, for about one hour. That is roughly USD 0.30-0.50 (AWS pricing, UNVERIFIED as of 2026-10).
+Estimated cost: EKS control plane plus two `t3.medium` nodes, plus the single NAT gateway that `eksctl` creates by default, for about one hour. `Single` is the eksctl NAT default (eksctl docs, as of 2026-11).
+That is roughly USD 0.30-0.50, using USD 0.10 per cluster-hour for EKS and a NAT gateway rate of USD 0.045 per hour listed for US East (Ohio) (AWS pricing, as of 2026-11; UNVERIFIED total: us-east-1 NAT and t3.medium rates not readable from the pricing pages).
 
 ```bash
 set -euo pipefail
@@ -569,16 +597,17 @@ The semantics are identical on both clouds because they come from upstream kube-
 
 ### Cluster manager evicts its own dependencies
 
-In the 2019-06-02 Google Cloud network incident, Google's account says a configuration change intended for a small number of servers in one region was applied across several neighboring regions. Cluster management automation then stopped network control-plane jobs during what it treated as a maintenance event, and the affected regions lost more than half of their network capacity (Google Cloud blog "An update on Sunday's service disruption", 2019-06, UNVERIFIED mechanism detail).
+In the 2019-06-02 Google Cloud network incident, Google's account says a configuration change intended for a small number of servers in one region was applied across several neighboring regions, and those regions stopped using more than half of their network capacity (Google Cloud blog "An update on Sunday's service disruption", 2019-06).
+The incident report supplies the mechanism: network control-plane jobs were configured to be stopped during a maintenance event, and a software bug let the maintenance automation deschedule multiple independent clusters at once, across physical locations (Google Cloud incident report 19009, 2019-06).
 The general pattern: when the scheduler hosts the control plane of something the scheduler itself depends on, a maintenance or eviction policy can delete the system's own recovery path.
 Mitigations:
-- Pin critical control planes to non-preemptible bands with `preemptionPolicy: Never` or a dedicated node pool.
+- Pin critical control planes to the top priority band or a dedicated node pool; `preemptionPolicy: Never` does not do this, because such pods can still be preempted by higher-priority pods (Kubernetes pod priority docs, as of 2026-11).
 - Put a scope limit on maintenance automation, the equivalent of a per-job disruption limit.
 - Rehearse with a Fauxmaster-style dry run.
 
 ### Control-plane overload propagating to the data plane
 
-OpenAI's 2024-12-11 incident started with a new telemetry service whose per-node API calls overwhelmed Kubernetes API servers in large clusters. Kubernetes-based DNS service discovery then failed, and the data plane went down with the control plane (OpenAI status postmortem, 2024-12, UNVERIFIED details).
+OpenAI's 2024-12-11 incident started with a new telemetry service whose per-node API calls overwhelmed Kubernetes API servers in large clusters. Kubernetes-based DNS service discovery then failed, and the data plane went down with the control plane (OpenAI status postmortem, 2024-12).
 Borg's answer is structural. Link shards rate-limit and diff all node traffic, the master polls rather than being pushed, and Borglets keep running with no master.
 In Kubernetes, the equivalents are:
 - API Priority and Fairness;
@@ -589,13 +618,13 @@ See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04
 
 ### Fleet-wide correlated software failure defeats failure-domain spreading
 
-Datadog's 2023-03-08 outage followed an automatic OS security update. It restarted a networking component on a large fraction of Kubernetes nodes at once, and the restart removed routes the CNI depended on (Datadog postmortem, 2023-03, UNVERIFIED details).
+Datadog's 2023-03-08 outage followed an automatic systemd security update. It restarted `systemd-networkd` on tens of thousands of nodes within about an hour, and the restart deleted routes managed by the CNI plugin (Datadog postmortem, 2023-03).
 Borg spreads tasks across machines, racks, and power domains, but spreading does nothing when the correlated failure is a software version installed everywhere.
 The mitigation is to treat node OS updates as deployments: canary them by cell and by zone, and rate-limit them the way Borg rate-limits task disruptions.
 
 ### Label and selector drift during upgrades
 
-Reddit's 2023 Pi Day outage followed a Kubernetes upgrade that dropped a deprecated control-plane node label. Networking components selected nodes by that label, and cluster networking failed as a result (Reddit engineering postmortem, 2023-03, UNVERIFIED details).
+Reddit's 2023 Pi Day outage followed a Kubernetes upgrade that dropped a deprecated control-plane node label. Networking components selected nodes by that label, and cluster networking failed as a result (Reddit engineering postmortem, 2023-03, UNVERIFIED first-hand: reddit.com not reachable here, mechanism matches a secondary write-up quoting it).
 Borg's lesson that jobs should not be the only grouping mechanism is why labels exist. The cost is that labels are a loosely typed API, and any selector is a hidden dependency.
 
 ### Preemption cascades and priority inversion
@@ -611,7 +640,7 @@ Give each scheduler disjoint nodes, or run one scheduler binary with several pro
 
 ### Overcommit of non-compressible resources
 
-Borg saw more OOM kills when it reclaimed resources more aggressively. On Kubernetes, the same thing happens when memory limits sit well above requests on dense nodes.
+Borg saw a slightly higher OOM rate when it reclaimed resources more aggressively. On Kubernetes, the same thing happens when memory limits sit well above requests on dense nodes.
 For GPUs it is worse. HBM is not cgroup-managed, so co-locating two inference servers on one device without MIG means one tenant's growing KV cache causes allocation failures in the other.
 
 ### Quota without preemption order, and preemption without quota
@@ -640,7 +669,7 @@ Keep the control-plane endpoint private, using private endpoints or Private Serv
 
 Co-location beats segregation. Borg's 20-30% segregation penalty is the size of the prize for running batch and evaluation work in the slack around serving fleets, with batch preemptible.
 Reclamation needs a feedback loop. Kubernetes requests do not decay, so without VPA, Autopilot right-sizing, or a recommender, the gap between limit and usage is simply paid for.
-The Autopilot paper reports that autoscaled jobs ran with much less slack than manually configured ones, roughly halving it (Rzadca et al., EuroSys 2020, UNVERIFIED exact percentages).
+The Autopilot paper reports that autoscaled jobs ran with much less slack than manually configured ones, halving it from 46% to 23% (Rzadca et al., EuroSys 2020).
 Spot is the cloud's version of the best-effort band. Put preemption-tolerant, checkpointed work on EC2 Spot or Compute Engine Spot VMs, and size checkpoint intervals so that expected lost work per interruption is below the discount. See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_03_Spot_Economics_and_Interruption_Handling|Spot Economics and Interruption Handling]].
 Cell size is a cost and risk dial. Larger cells pack better, as Borg measured, but every extra node in one cluster enlarges the blast radius of a single control-plane failure. Pick the size from the cost of an outage, not from the packing gain alone.
 
@@ -679,7 +708,8 @@ In that gap, three things can steal the node:
 - a node-level event, such as a DaemonSet pod arriving;
 - an autoscaler adding a different node that makes another placement score better.
 PDBs are best-effort. If no PDB-respecting victim set exists, the scheduler violates the PDB.
-The Borg contrast is useful. Borg never preempts within the production band, specifically to avoid cascades. Kubernetes has no band notion, so you emulate it with `preemptionPolicy: Never` on production classes and with non-overlapping value ranges.
+The Borg contrast is useful. Borg never preempts within the production band, specifically to avoid cascades. Kubernetes has no band notion, so you emulate it with non-overlapping value ranges and a single value for the whole production tier, because a pod preempts only strictly lower priority.
+`preemptionPolicy: Never` is not the same thing: it stops a class preempting anything, including batch, and does not protect that class from being preempted (Kubernetes docs, as of 2026-11).
 To make preemption fast for inference, keep batch `terminationGracePeriodSeconds` short and checkpoint asynchronously, because the grace period is added directly to the time the inference pod waits to schedule.
 
 #### Follow-up Interviewer Question
@@ -721,7 +751,7 @@ Design the priority and quota scheme for a shared accelerator fleet on EKS or GK
 
 Start from Borg's structure: non-overlapping bands, quota tied to a band, no preemption inside the top band, and oversold quota at the bottom.
 Use four PriorityClasses with wide value gaps.
-- Production inference sits at the top with `preemptionPolicy: Never` against its own band, so inference replicas never evict each other.
+- Production inference sits at the top with one shared value, so inference replicas never evict each other, because Kubernetes preempts only strictly lower priority; `preemptionPolicy: Never` would also stop inference reclaiming capacity from the lower bands.
 - Scheduled training sits below it, protected by checkpoint-aware PDBs.
 - Interactive research sits next.
 - Evaluation batch sits at the bottom, preemptible and ideally on Spot capacity.
@@ -749,9 +779,9 @@ Kubernetes collapses this into requests and limits that the system never re-esti
 Getting the gain back takes three pieces:
 - right-size requests continuously with VPA recommendations, or GKE Autopilot-style automation, so the request tracks real p95-plus-margin usage;
 - run low-priority, BestEffort or Burstable batch work into the remaining node headroom;
-- rely on QoS eviction ordering, so batch dies first under pressure.
+- rely on kubelet eviction ranking (usage above requests, then priority), so low-priority batch dies first under pressure.
 For CPU this is safe because CPU is compressible: CFS throttles batch and latency-sensitive pods keep their share.
-For host memory it is moderately risky. Borg saw more OOM events with aggressive settings, so give the safety margin an SLO and an automatic rollback.
+For host memory it is moderately risky. Borg saw a slightly higher OOM rate with aggressive settings, so give the safety margin an SLO and an automatic rollback.
 For GPU HBM the model breaks. HBM is not cgroup-managed, a serving engine typically pre-allocates most of device memory for its KV cache, and there is no kernel-level eviction.
 Overcommitting a GPU therefore means either hardware partitioning (MIG profiles), engine-level cooperation (capping the serving engine's memory fraction), or time-slicing, which offers no memory isolation at all.
 The practical GPU reclamation lever is temporal, not spatial. Scale inference replicas down at off-peak through the autoscaler, and backfill the freed whole devices with preemptible evaluation or fine-tuning jobs that checkpoint often.
@@ -771,7 +801,7 @@ The packing argument is real. Borg's cell-compaction experiments showed that spl
 For one gang that needs most of the fleet, such as a frontier training run, a single cluster is often mandatory, because the training framework cannot span clusters.
 The counter-argument is blast radius and control-plane physics.
 Borg kept cells around 10k machines with a single master each, and Google ran many cells rather than one.
-Both clouds' 65k-to-100k-node work required replacing the single etcd consensus log with partitioned or offloaded stores. GKE's large-cluster mode also disables network policy enforcement in Dataplane V2 scale-optimized mode (Google Cloud docs, as of 2026-10).
+Both clouds' 65k-to-100k-node work required replacing the single etcd consensus log with partitioned or offloaded stores. GKE's large-cluster mode also disables network policy enforcement in Dataplane V2 scale-optimized mode (Google Cloud docs, as of 2026-11).
 That second point is a security trade, not just a scaling trade.
 Every control-plane incident class grows with cluster size: API overload from a DaemonSet (the OpenAI pattern), upgrade-time label drift (Reddit), and fleet-wide OS changes (Datadog). In one giant cluster, each of them takes out the entire organization at once.
 My recommendation:
@@ -792,7 +822,7 @@ You must schedule a 16,384-accelerator training job with strict topology require
 #### Model Answer
 
 Naive shared-state scheduling fails on probability.
-A gang of k pods commits cleanly with probability of about exp(-k x p). For k in the thousands, even p ~ 0.001 gives near-zero success, and every failed attempt either holds partial capacity idle or retries forever. Part B and the simulator's coarse-gang livelock both show it.
+A gang of k pods commits cleanly with probability of about exp(-k x p). At k = 16,384, even p ~ 0.001 gives about 8e-8 (at k = 2,000 it is still about 0.14), and every failed attempt either holds partial capacity idle or retries forever. Part B and the simulator's coarse-gang livelock both show it.
 Topology constraints make it worse, because they shrink the candidate set M and so raise p.
 The design separates three phases.
 1. Capacity acquisition, which is pessimistic and outside the contended pool. Reserve the topology unit through a cloud capacity reservation or a dedicated node pool aligned to the spine or slice. On GKE TPUs, the slice itself is the topology unit and is provisioned as a whole.

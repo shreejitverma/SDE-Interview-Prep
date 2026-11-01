@@ -2,9 +2,35 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
+  - "https://sre.google/sre-book/introduction/"
+  - "https://sre.google/resources/practices-and-processes/incident-metrics-in-sre/"
+  - "https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s11-bronson.pdf"
+  - "https://usenix.org/system/files/osdi22-huang-lexiang.pdf"
+  - "https://www.microsoft.com/en-us/research/publication/gray-failure-achilles-heel-cloud-scale-systems/"
+  - "https://static.usenix.org/events/usits03/tech/oppenheimer.html"
+  - "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/how-cloudtrail-works.html"
+  - "https://docs.aws.amazon.com/awscloudtrail/latest/APIReference/API_LookupEvents.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_PutMetricAlarm.html"
+  - "https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-enter-exit-standby.html"
+  - "https://docs.aws.amazon.com/incident-manager/latest/userguide/incident-manager-availability-change.html"
+  - "https://aws.amazon.com/message/12721/"
+  - "https://aws.amazon.com/blogs/mt/why-you-should-develop-a-correction-of-error-coe/"
+  - "https://aws.amazon.com/cloudwatch/pricing/"
+  - "https://aws.amazon.com/dynamodb/pricing/on-demand/"
+  - "https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/"
+  - "https://docs.cloud.google.com/logging/quotas"
+  - "https://docs.cloud.google.com/logging/docs/routing/overview"
+  - "https://docs.cloud.google.com/logging/docs/audit"
+  - "https://docs.cloud.google.com/asset-inventory/docs/overview"
+  - "https://cloud.google.com/products/observability/pricing"
+  - "https://docs.cloud.google.com/iam/docs/pam-overview"
+  - "https://docs.cloud.google.com/iam/docs/release-notes"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/compute/instance-groups/managed/abandon-instances"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
   - "https://sre.google/sre-book/managing-incidents/"
   - "https://sre.google/sre-book/postmortem-culture/"
   - "https://sre.google/sre-book/emergency-response/"
@@ -23,7 +49,7 @@ sources:
 ## TL;DR
 
 1. An incident is a control loop (detect, declare, mitigate, resolve, learn), and the response process is a distributed system with its own failure domains. Its chat, paging, dashboards, VPN, and identity provider must not share fate with the workload they are used to repair.
-2. Mitigate before you diagnose. Roll back, shed load, or fail over first, and preserve evidence as part of the mitigation. About 70% of outages follow a change to a live system (Google SRE book, Introduction; UNVERIFIED as of 2026-10), so "revert the last change" is the highest-prior action.
+2. Mitigate before you diagnose. Roll back, shed load, or fail over first, and preserve evidence as part of the mitigation. Roughly 70% of outages are due to changes in a live system ([Google SRE book, Introduction](https://sre.google/sre-book/introduction/), as of 2026-11), so "revert the last change" is the highest-prior action.
 3. Command roles are separated so that one human holds the whole picture while others hold the keyboards. The Incident Commander (IC) decides and does not debug. The Operations Lead acts. The Communications Lead talks to the outside. The Planning/Scribe role records.
 4. Blameless means the analysis assumes each actor's decisions were locally reasonable given what they could see. Accountability is moved from "who erred" to "who owns closing which contributing factor by when". "Root cause" is a hypothesis about one causal chain. A postmortem should enumerate contributing factors and the conditions that let each one matter.
 5. Measure learning with leading indicators (action-item age, detection coverage, recurrence by contributing-factor fingerprint), not quarterly MTTR. Incident durations are heavy-tailed, so a mean over 30 incidents has a 95% half-width of about 100% (derived in this chapter).
@@ -105,8 +131,8 @@ A restart clears the heap you wanted to inspect.
 Evidence-preserving mitigations:
 
 - **Take suspect nodes out of service without destroying them.**
-  On AWS, `aws autoscaling enter-standby --auto-scaling-group-name <asg> --instance-ids <id> --should-decrement-desired-capacity` removes an instance from load balancing and from health-replacement while keeping it running.
-  On Google Cloud, `gcloud compute instance-groups managed abandon-instances` removes an instance from a managed instance group without deleting it.
+  On AWS, `aws autoscaling enter-standby --auto-scaling-group-name <asg> --instance-ids <id> --should-decrement-desired-capacity` removes an instance from load balancing and from health-replacement while keeping it running ([AWS docs](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-enter-exit-standby.html), as of 2026-11).
+  On Google Cloud, `gcloud compute instance-groups managed abandon-instances` removes an instance from a managed instance group without deleting it ([gcloud reference](https://docs.cloud.google.com/sdk/gcloud/reference/compute/instance-groups/managed/abandon-instances), as of 2026-11).
   In Kubernetes, `kubectl cordon` plus label changes that remove the pod from Service selectors does the same without deleting the pod.
 - **Capture before you change.**
   Export the live config and feature-flag state, and take a volume snapshot of one affected node.
@@ -119,7 +145,7 @@ Evidence-preserving mitigations:
 
 Some incidents persist after the triggering change is reverted.
 Bronson et al. ("Metastable Failures in Distributed Systems", HotOS 2021) describe systems that enter a stable bad state sustained by a feedback loop, such as retry amplification, cold caches, or queue backlogs, even after the trigger is gone.
-Huang et al. ("Metastable Failures in the Wild", OSDI 2022) analyze real incidents and find that retry policy is a common sustaining effect (see the [OSDI 2022 paper page](https://www.usenix.org/conference/osdi22/presentation/huang-lexiang)).
+Huang et al. ("Metastable Failures in the Wild", OSDI 2022) study 22 real incidents from 11 organizations and find that retry policy is by far the most common sustaining effect, affecting more than 50% of them (see the [OSDI 2022 paper page](https://www.usenix.org/conference/osdi22/presentation/huang-lexiang)).
 The IC consequence is concrete.
 If error rate does not fall after a rollback and offered load is above recovery capacity, the next action is to reduce load below the recovery threshold and ramp up gradually.
 That means shedding, disabling retries, or draining traffic to one cell at a time (see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control|Load Shedding, Backpressure, and Admission Control]] and [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Resilient Communication]]).
@@ -143,7 +169,7 @@ Rules for a defensible timeline:
 
 1. **Normalize to UTC at ingestion** and never convert in prose. Mixed local time zones are a recurrent source of off-by-N-hours errors in postmortems.
 2. **Attach a skew bound to each source** and refuse to assert order between events from different sources closer than the sum of their bounds. The lab script flags these pairs as `ORDER UNCERTAIN`.
-3. **Track visibility lag separately.** CloudTrail delivers events with a lag on the order of minutes (AWS docs; UNVERIFIED as of 2026-10), so the record of the change that caused the incident may not be queryable until well after responders needed it. This is why the change channel rule above matters: chat is the only source with near-zero lag.
+3. **Track visibility lag separately.** CloudTrail typically delivers logs within an average of about 5 minutes of an API call, and that time is not guaranteed ([AWS docs](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/how-cloudtrail-works.html), as of 2026-11), so the record of the change that caused the incident may not be queryable until well after responders needed it. This is why the change channel rule above matters: chat is the only source with near-zero lag.
 4. **Estimate impact onset from the SLI series, not from alerts.** Alerts are delayed by evaluation windows (a 3-of-3 one-minute alarm cannot fire earlier than three minutes after onset). A changepoint method such as CUSUM on per-minute error counts gives an onset estimate with an explicit baseline. The lab script implements this.
 5. **Define phase boundaries by observable state:**
    - onset = SLI changepoint;
@@ -157,7 +183,8 @@ Rules for a defensible timeline:
 ### Statistics of incident metrics
 
 Incident durations are heavy-tailed.
-Google's SRE team has published a critical analysis of MTTR and related metrics ("Incident Metrics in SRE", Davidovic and Beyer; UNVERIFIED as to exact wording and findings as of 2026-10) arguing that the distribution shape makes means unreliable.
+Stepan Davidovic's Google report [Incident Metrics in SRE](https://sre.google/resources/practices-and-processes/incident-metrics-in-sre/) (O'Reilly, 2021) uses Monte Carlo simulation to show that MTTR and similar statistics are poorly suited for decision making or trend analysis.
+It finds positively skewed durations with huge variance that roughly approach a lognormal or gamma distribution, without claiming a formal fit.
 The following calculation is derived here rather than quoted.
 
 - Model durations as lognormal with median 45 minutes and sigma 1.5 (illustrative).
@@ -168,7 +195,7 @@ The following calculation is derived here rather than quoted.
 - Comparing medians on a log scale is cheaper: `ln(1/0.7) = 0.357`, so `n = 2 * 7.84 * 1.5^2 / 0.357^2 = about 277` per arm. This is still beyond most organizations' incident count in a year.
 
 The practical conclusion is to report percentiles with bootstrap confidence intervals, and to manage using leading indicators that have far larger sample sizes: alert coverage in game days, fraction of Sev1/Sev2 incidents detected by alarm rather than by customers, runbook usage, and action-item aging.
-The SRE book reports a roughly 3x improvement in MTTR for teams with playbooks versus without ([Emergency Response](https://sre.google/sre-book/emergency-response/), as excerpted; the effect is large enough to be visible despite the noise).
+The SRE book reports that recording best practices in a playbook produces roughly a 3x improvement in MTTR compared with "winging it" ([Introduction, Emergency Response section](https://sre.google/sre-book/introduction/), as of 2026-11; the passage states no sample size, so treat it as practitioner experience rather than a controlled result).
 
 ### Cognitive bias and the structure of a blameless analysis
 
@@ -188,8 +215,9 @@ Biases that distort incident analysis, and the structural counter to each:
 | Narrative fallacy | A tidy single root cause that fits a story. | List contributing factors and, for each, the condition that made it matter. Show the analysis to someone who was not in the incident. |
 | Availability | Last incident's cause is assumed again. | Compare against the fingerprint database of past contributing factors rather than memory. |
 
-Oppenheimer, Ganapathi, and Patterson ("Why Do Internet Services Fail, and What Can Be Done About It?", USITS 2003) found operator error to be a leading cause of failures in the large services they studied.
-The lesson from the paper's framing is that operator error is a symptom of interface and process design, and it points to forcing functions as the remedy.
+Oppenheimer, Ganapathi, and Patterson ("Why Do Internet Services Fail, and What Can Be Done About It?", USITS 2003) found [operator error to be the largest single cause of failures in two of the three services they studied](https://static.usenix.org/events/usits03/tech/oppenheimer.html), with configuration errors the largest category of operator error.
+The paper's own remedies are more extensive online testing, better fault detection, and better maintenance tools.
+This chapter reads that as evidence that operator error is a symptom of interface and process design, which points to forcing functions as the remedy.
 
 ### Action-item tracking as a queueing system
 
@@ -211,41 +239,41 @@ Mechanisms that keep the queue honest:
 
 ## Numbers to Know
 
-Research tooling was unavailable during authoring, so every volatile figure below is marked UNVERIFIED and must be re-checked against current official docs before this note reaches `status: solid`.
+Volatile figures below were checked against the primary source named in each row, as of 2026-11; derived rows show their arithmetic.
 
 | Quantity | Value | Source |
 | --- | --- | --- |
-| CloudTrail event delivery latency | Typically on the order of 5 minutes after the API call | AWS CloudTrail docs; UNVERIFIED as of 2026-10 |
-| CloudTrail LookupEvents quota | About 2 requests per second per account per Region; up to 50 events per page; 90-day history of management events | AWS CloudTrail docs; UNVERIFIED as of 2026-10 |
+| CloudTrail event delivery latency | Average of about 5 minutes after the API call; not guaranteed | [AWS CloudTrail docs](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/how-cloudtrail-works.html), as of 2026-11 |
+| CloudTrail LookupEvents quota | 2 requests per second per account per Region; up to 50 events per page; 90-day history of management events | [AWS CloudTrail API reference](https://docs.aws.amazon.com/awscloudtrail/latest/APIReference/API_LookupEvents.html), as of 2026-11 |
 | LookupEvents drain time, 100,000 events | `100,000 / (2 * 50) = 1,000 s`, about 17 minutes at the quota ceiling | Derived from the row above |
-| CloudWatch alarm evaluation period | 60 s standard; 10 s or 30 s for high-resolution metrics | AWS CloudWatch docs; UNVERIFIED as of 2026-10 |
-| CloudWatch alarm history retention | About 30 days | AWS CloudWatch docs; UNVERIFIED as of 2026-10 |
-| Cloud Logging default retention | `_Default` bucket 30 days; `_Required` bucket (admin activity audit logs) 400 days | Google Cloud docs; UNVERIFIED as of 2026-10 |
-| Cloud Audit Logs defaults | Admin Activity always on; Data Access off by default for most services | Google Cloud docs; UNVERIFIED as of 2026-10 |
-| Cloud Asset Inventory change history | About 5 weeks | Google Cloud docs; UNVERIFIED as of 2026-10 |
-| Share of outages following a live-system change | About 70% | Google SRE book, Introduction; UNVERIFIED as of 2026-10 |
-| Playbook effect on MTTR | About 3x lower with playbooks | Google SRE book, Emergency Response (stable text, as excerpted in a secondary source) |
+| CloudWatch alarm period | 10, 20, or 30 s (high-resolution metrics and a higher-priced high-resolution alarm), or any multiple of 60 s | [PutMetricAlarm API reference](https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_PutMetricAlarm.html), as of 2026-11 |
+| CloudWatch alarm history retention | 30 days | [AWS CloudWatch docs](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html), as of 2026-11 |
+| Cloud Logging default retention | `_Default` bucket 30 days (project buckets configurable, 1 to 3,650 days); `_Required` bucket (Admin Activity, System Event, and Access Transparency audit logs) 400 days, not configurable | Google Cloud docs ([quotas](https://docs.cloud.google.com/logging/quotas), [routing](https://docs.cloud.google.com/logging/docs/routing/overview)), as of 2026-11 |
+| Cloud Audit Logs defaults | Admin Activity always on; Data Access off by default except for BigQuery | [Google Cloud docs](https://docs.cloud.google.com/logging/docs/audit), as of 2026-11 |
+| Cloud Asset Inventory change history | Up to 35 days | [Google Cloud docs](https://docs.cloud.google.com/asset-inventory/docs/overview), as of 2026-11 |
+| Share of outages due to live-system changes | Roughly 70% | [Google SRE book, Introduction](https://sre.google/sre-book/introduction/), as of 2026-11 |
+| Playbook effect on MTTR | Roughly 3x improvement versus "winging it" | [Google SRE book, Introduction, Emergency Response section](https://sre.google/sre-book/introduction/), as of 2026-11 |
 | Lognormal MTTR coefficient of variation | 2.91 at sigma = 1.5 | Derived in this chapter |
 | Sample mean 95% half-width, n = 30 | About +/-104% | Derived in this chapter |
 | Incidents per arm to detect a 30% mean change | About 1,480 (mean) or about 277 (log-median) | Derived in this chapter |
-| CloudWatch Logs standard ingestion | About 0.50 USD per GB in us-east-1 | AWS pricing page; UNVERIFIED as of 2026-10 |
-| Cloud Logging ingestion | About 0.50 USD per GiB after 50 GiB per project per month free | Google Cloud pricing page; UNVERIFIED as of 2026-10 |
-| DynamoDB on-demand writes | About 0.625 USD per million write request units in us-east-1 | AWS pricing page; UNVERIFIED as of 2026-10 |
-| AWS Systems Manager Incident Manager | Reported to be closed to new customers from late 2025 | AWS announcement; UNVERIFIED as of 2026-10 |
+| CloudWatch Logs standard ingestion | 0.50 USD per GB in us-east-1 for custom logs; vended logs tier down (0.50 first 10 TB, 0.25 next 20 TB, 0.10 next 20 TB, 0.05 over 50 TB) | [AWS pricing page](https://aws.amazon.com/cloudwatch/pricing/) and its price-list data, as of 2026-11 |
+| Cloud Logging ingestion | 0.50 USD per GiB after 50 GiB per project per month free, including up to 30 days of storage (vended network logs 0.25 USD per GiB) | [Google Cloud pricing page](https://cloud.google.com/products/observability/pricing), as of 2026-11 |
+| DynamoDB on-demand writes | 0.625 USD per million write request units in us-east-1, Standard table class | [AWS pricing page](https://aws.amazon.com/dynamodb/pricing/on-demand/), as of 2026-11 |
+| AWS Systems Manager Incident Manager | Closed to new customers since November 7, 2025; no new features; existing customers continue as normal | [AWS docs](https://docs.aws.amazon.com/incident-manager/latest/userguide/incident-manager-availability-change.html), as of 2026-11 |
 
 ## AWS vs GCP Mechanism Parity
 
 | Concern | AWS | Google Cloud | Critical difference |
 | --- | --- | --- | --- |
 | Alert source | CloudWatch alarms (metric and composite), EventBridge rules | Cloud Monitoring alerting policies, which open "incidents" in Monitoring | Alarm state history is the timestamp source for onset-to-detect. CloudWatch alarm state updates align to evaluation periods, so skew is up to the period. |
-| Paging and on-call | Third-party (PagerDuty and similar) via SNS or EventBridge; Incident Manager had response plans and escalation (availability changed, UNVERIFIED) | Third-party via notification channels; no first-party on-call product I can verify | Plan for a third-party paging dependency and its own failure domain. |
-| Change audit trail | CloudTrail management events (90-day lookup), org trail to S3 for long retention | Cloud Audit Logs: Admin Activity always on, Data Access opt-in; log buckets with retention | Google requires explicit enablement of Data Access logs before the incident. AWS data events (S3 object level, Lambda invoke) are also opt-in and billed. |
+| Paging and on-call | Third-party (PagerDuty and similar) via SNS or EventBridge; Incident Manager has response plans and escalation but has been closed to new customers since November 7, 2025 (AWS docs, as of 2026-11) | Third-party via notification channels; no first-party on-call product found in Google Cloud docs (as of 2026-11) | Plan for a third-party paging dependency and its own failure domain. |
+| Change audit trail | CloudTrail management events (90-day lookup), org trail to S3 for long retention | Cloud Audit Logs: Admin Activity always on, Data Access opt-in except BigQuery; log buckets with retention | Google requires explicit enablement of Data Access logs (other than BigQuery's) before the incident. AWS data events (S3 object level, Lambda invoke) are also opt-in and billed. |
 | Resource configuration history | AWS Config configuration items and timeline | Cloud Asset Inventory history | Needed to answer "what did this resource look like at 00:38 UTC". Both require prior enablement or retention. |
 | Provider health to customers | AWS Health Dashboard, Health API and EventBridge events | Google Cloud Service Health and Personalized Service Health | Per-account, per-project views differ from the public status page. Subscribe machine-readable feeds into the incident channel. |
 | Public postmortem artifact | Post-event summaries | Incident reports on the Google Cloud status site | Both are written for customers and omit internal timeline detail. Do not use them as your own timeline. |
-| Internal learning process | Correction of Error (COE) documents, publicly described in Well-Architected guidance and conference talks | SRE postmortem culture, publicly documented in the SRE books | COE puts weight on a structured causal analysis and owned corrective actions. The SRE postmortem puts weight on blameless narrative and review. Mechanisms converge on owned, dated action items. |
+| Internal learning process | Correction of Error (COE) documents, publicly described on the [AWS Cloud Operations blog](https://aws.amazon.com/blogs/mt/why-you-should-develop-a-correction-of-error-coe/) (February 2022) | SRE postmortem culture, publicly documented in the SRE books | COE puts weight on a structured causal analysis and owned corrective actions. The SRE postmortem puts weight on blameless narrative and review. Mechanisms converge on owned, dated action items. |
 | Immutable evidence | CloudTrail log file validation, S3 Object Lock in a separate log-archive account | Log bucket retention locks, aggregated sinks to a locked bucket in a separate project | A compromised or failing workload account must not be able to modify its own audit trail. |
-| Break-glass access | IAM Identity Center permission sets, role session tags, time-bounded sessions | IAM Conditions with expiry, Privileged Access Manager (UNVERIFIED GA status as of 2026-10) | Test the path under realistic network controls. VPC Service Controls and VPC endpoint policies can block responders. |
+| Break-glass access | IAM Identity Center permission sets, role session tags, time-bounded sessions | IAM Conditions with expiry, Privileged Access Manager (GA since September 16, 2024, with add-ons such as multi-party approvals and grant scheduling still Preview; Google Cloud docs, as of 2026-11) | Test the path under realistic network controls. VPC Service Controls and VPC endpoint policies can block responders. |
 | Operational ceilings during an incident | Control-plane API throttles apply per account per Region, including LookupEvents | Per-project API quotas for Logging and Monitoring reads | Responders and automation all hit the same quotas at once. Budget for it. |
 
 Mechanism cross-references: static stability of the incident tooling is covered in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]], and control-plane versus data-plane failure behavior in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
@@ -524,9 +552,9 @@ At thousands of writes per second you would shard the key (`1#00` to `1#0f`) bec
 | --- | --- | --- |
 | CloudTrail pull for a 60-minute window with 100,000 management events | `100,000 / (2 req/s * 50 per page)` | About 1,000 s; build the timeline from an org trail in S3 plus Athena when the window is large |
 | Visibility gap | 15-minute planning lag vs a 20-minute incident | 75% of the incident is blind to CloudTrail; the deploy channel is mandatory |
-| Ledger writes | 100 items, 2 updates each, base table plus GSI (UNVERIFIED rate: 0.625 USD per million writes) | About 600 writes, under 0.001 USD |
+| Ledger writes | 100 items, 2 updates each, base table plus GSI (0.625 USD per million writes; AWS pricing page, as of 2026-11) | About 600 writes, under 0.001 USD |
 | Ledger storage and PITR | Under 1 MB | Effectively 0 USD |
-| Budget | First two budgets per account are free (UNVERIFIED as of 2026-10) | 0 USD |
+| Budget | Budget monitoring and notifications are free; the fee applies only past the first two action-enabled budgets, and this one has no actions ([AWS pricing page](https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/), as of 2026-11) | 0 USD |
 | Lab total | Sum | Well under 0.10 USD for a day |
 
 Teardown (exact):
@@ -545,8 +573,12 @@ The action-item program must therefore produce changes whose expected avoided lo
 
 ### The incident plane shares fate with the failing system
 
-- Facebook, October 4, 2021: a configuration change withdrew the BGP routes to its DNS servers, and internal tools and physical access systems that depended on the same network were also affected, so recovery required in-person access. See [Facebook engineering, "More details about the October 4 outage"](https://engineering.fb.com/2021/10/05/networking-traffic/outage-details/).
-- AWS, December 7, 2021 (us-east-1): an internal networking event impaired monitoring and operations tooling, and the Service Health Dashboard itself was slow to update because it depended on services in the impacted Region (see [AWS message 12721](https://aws.amazon.com/message/12721/); details as recalled, UNVERIFIED as of 2026-10).
+- Facebook, October 4, 2021: a command issued during routine maintenance to assess backbone capacity took down backbone connections, and a bug in the audit tool failed to stop it.
+  The DNS servers then disabled their own BGP advertisements because they could not reach the data centers.
+  The total loss of DNS broke many internal tools, and primary and out-of-band network access were both down, so recovery required engineers on site, where security hardening added delay.
+  See [Facebook engineering, "More details about the October 4 outage"](https://engineering.fb.com/2021/10/05/networking-traffic/outage-details/).
+- AWS, December 7, 2021 (us-east-1): an automated capacity-scaling activity congested the devices between the internal and main AWS networks, which removed real-time monitoring data from the operations teams and slowed internal deployment systems.
+  The congestion also impaired the Service Health Dashboard tooling from failing over, and updates did not resume until 8:22 AM PST, 52 minutes after the 7:30 AM PST start (see [AWS message 12721](https://aws.amazon.com/message/12721/)).
 - Counter: keep chat, paging, runbooks, the status page, and an out-of-band access path in a different failure domain, and rehearse using them with the primary region declared dark in a game day. A second communication channel (a phone bridge or SMS tree) is cheap.
 
 ### A single operator action with an unbounded blast radius
@@ -557,12 +589,18 @@ The action-item program must therefore produce changes whose expected avoided lo
 
 ### Global configuration propagation without staged rollout
 
-- Google Cloud, June 12, 2025: a policy-metadata change in Service Control, which had no feature-flag protection, contained blank fields that triggered a null-pointer crash path. The data replicated globally within seconds, and recovery in the largest region was slower because of a herd effect on a backing datastore. The public report is on the [Google Cloud status site](https://status.cloud.google.com/). Details are recalled and UNVERIFIED as of 2026-10.
+- Google Cloud, June 12, 2025: a Service Control code path added on May 29 without a feature flag or proper error handling held a latent null pointer, and a policy change with unintended blank fields triggered it.
+  The data replicated globally within seconds, causing a global crash loop.
+  Recovery in us-central1 took up to about 2 hours 40 minutes because restarting tasks overloaded the backing Spanner table in a herd effect, with no randomized exponential backoff.
+  See the [Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW).
 - Contributing factors visible in such a report are: no staged propagation of data-plane-affecting config, missing error handling for malformed input, and a restart stampede. A root-cause sentence alone would capture only the first.
 
 ### Recovery that re-triggers the failure
 
-- AWS, October 19-20, 2025 (us-east-1): a race condition in DynamoDB's DNS management automation left an empty record for the regional endpoint. Downstream services (EC2 instance launch workflows, network load balancer health checks) then went through their own backlog-driven recovery phases that outlasted the DNS repair. See [AWS message 101925](https://aws.amazon.com/message/101925/). Timeline details are recalled and UNVERIFIED as of 2026-10.
+- AWS, October 19-20, 2025 (us-east-1): a race condition in DynamoDB's DNS management automation left an empty record for the regional endpoint.
+  Downstream services (EC2 instance launch workflows, network load balancer health checks) then went through their own backlog-driven recovery phases that outlasted the DNS repair.
+  DNS information was restored at 2:25 AM PDT on October 20, but the EC2 lease manager entered congestive collapse as it recovered, and EC2 APIs and launches did not return to normal until 1:50 PM PDT.
+  See [AWS message 101925](https://aws.amazon.com/message/101925/).
 - This is the metastable pattern: the trigger was fixed before the incident was over. A runbook that ends at "trigger reverted" is incomplete.
 
 ### Control-plane throttling during the incident
@@ -580,7 +618,7 @@ Counter: pre-compute the data you will need (org-wide trail in S3, log sinks to 
 - **Passive-voice blame**: "the wrong command was run" is blame with the name removed. Counter: describe the interface, defaults, and checks that existed at that moment.
 - **Mixed time zones and missing UTC**: produces fictitious causality. Counter: UTC only, enforced by the template and the script.
 - **Insufficient retention**: CloudTrail lookup is 90 days and CloudWatch alarm history is much shorter, so a postmortem written after a long holiday cannot be reconstructed. Counter: org trail to S3 and log sinks with retention that exceeds the review lag by a wide margin.
-- **Blind spots from opt-in logs**: Data Access audit logs and data events are not on by default (see Numbers to Know). Counter: enable them for the services and data stores on critical paths before you need them.
+- **Blind spots from opt-in logs**: Data Access audit logs (other than BigQuery's) and data events are not on by default (see Numbers to Know). Counter: enable them for the services and data stores on critical paths before you need them.
 
 ## Security and Cost Angles
 
@@ -608,7 +646,8 @@ Counter: pre-compute the data you will need (org-wide trail in S3, log sinks to 
 ### Cost levers
 
 - **Observability retention is the main recurring cost.**
-  At about 0.50 USD per GB ingested (UNVERIFIED), a 20 TB/month log estate costs about 10,000 USD per month to ingest before storage and query.
+  At 0.50 USD per GB ingested (CloudWatch Logs custom logs and Cloud Logging list price, as of 2026-11), a 20 TB/month log estate costs about 10,000 USD per month to ingest before storage and query.
+  CloudWatch vended logs tier down, to about 7,500 USD for the same volume.
   Sample debug logs, keep audit and change logs at full fidelity (they are small), and route high-volume logs to cheaper storage such as S3 with Athena or BigQuery.
 - **Paging cost is human cost.**
   Every false page has a measurable sleep-and-attention cost.
@@ -632,7 +671,7 @@ You are the on-call engineer. Five minutes after a config deploy, the 5xx rate o
 The first decision is whether this is an incident, and the answer is yes: 6% against a typical availability objective is a fast burn, and the deploy gives a strong candidate cause.
 I declare a Sev2 immediately, which costs little if I am wrong, and I open the incident channel and name myself IC for now because I have not yet found anyone else.
 I do not start with root cause.
-The prior that a change caused the outage is high (about 70% of outages follow a change in the SRE book's experience), so the first mitigation is to halt the rollout and roll back to the last known-good artifact.
+The prior that a change caused the outage is high (roughly 70% of outages are due to changes in a live system, per the SRE book), so the first mitigation is to halt the rollout and roll back to the last known-good artifact.
 Before I roll back, I spend one minute preserving evidence: export the new config and flag state, and capture a profile or heap dump from one affected node, because the rollback will overwrite both.
 If the fleet is behind an autoscaling group with health replacement, I put one bad instance in Standby so it is not terminated.
 I announce each action in the channel with a timestamp, so that the timeline is reconstructable.
@@ -804,7 +843,7 @@ Two executives disagree: one wants postmortems published company-wide by default
 
 - [Google SRE book, Managing Incidents](https://sre.google/sre-book/managing-incidents/) - the canonical statement of command, operations, communications, and planning roles and of handoff discipline.
 - [Google SRE book, Postmortem Culture: Learning from Failure](https://sre.google/sre-book/postmortem-culture/) - the blameless-review practice and the criteria for when to write one.
-- [Google SRE book, Emergency Response](https://sre.google/sre-book/emergency-response/) - the grounding for playbook effects and the human factors of on-call response.
+- [Google SRE book, Emergency Response](https://sre.google/sre-book/emergency-response/) - narratives of real emergencies and how on-call engineers responded; the playbook MTTR figure is in the [Introduction](https://sre.google/sre-book/introduction/), not this chapter.
 - [Google SRE Workbook, Incident Response and Postmortem Culture](https://sre.google/workbook/incident-response/) - worked examples and operational detail beyond the first book.
 - [How Complex Systems Fail (Richard Cook)](https://how.complexsystems.fail/) - eighteen short observations that underpin the "no single root cause" stance.
 - [Blameless PostMortems and a Just Culture (John Allspaw)](https://www.etsy.com/codeascraft/blameless-postmortems/) - the practice-oriented origin of blameless reviews in software operations.
@@ -813,7 +852,7 @@ Two executives disagree: one wants postmortems published company-wide by default
 - Richards J. Heuer Jr., *Psychology of Intelligence Analysis* - Analysis of Competing Hypotheses as a counter to anchoring and confirmation bias.
 - Bronson et al., "Metastable Failures in Distributed Systems" (HotOS 2021), and [Huang et al., "Metastable Failures in the Wild" (OSDI 2022)](https://www.usenix.org/conference/osdi22/presentation/huang-lexiang) - the mechanism and empirical evidence for incidents that outlive their trigger.
 - Huang et al., "Gray Failure: The Achilles' Heel of Cloud-Scale Systems" (HotOS 2017) - differential observability as the root of slow detection.
-- Oppenheimer, Ganapathi, Patterson, "Why Do Internet Services Fail, and What Can Be Done About It?" (USITS 2003) - the early empirical study on operator error and service failure.
+- [Oppenheimer, Ganapathi, Patterson, "Why Do Internet Services Fail, and What Can Be Done About It?" (USITS 2003)](https://static.usenix.org/events/usits03/tech/oppenheimer.html) - the early empirical study on operator error and service failure.
 - [AWS message 41926, S3 service disruption, February 2017](https://aws.amazon.com/message/41926/) - a model public post-event summary showing tool guardrail remediation.
 - [AWS message 101925, us-east-1 event, October 2025](https://aws.amazon.com/message/101925/) - a recent public analysis of DNS automation failure and backlog-driven recovery.
 - [Facebook engineering, outage details, October 2021](https://engineering.fb.com/2021/10/05/networking-traffic/outage-details/) - a public account of out-of-band access and shared-fate tooling.

@@ -4,7 +4,36 @@ track: [cloud-ai, ai-eng, sde, distinguished]
 level:
 status: draft
 last_reviewed:
-sources: []
+sources: 
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/directory-bucket-high-performance.html"
+  - "https://repost.aws/articles/AROs3zfLYxT56d3MAKp28Tqg/choosing-an-s3-connector-for-ml-training-with-s3-express-one-zone"
+  - "https://aws.amazon.com/premiumsupport/technology/pes/"
+  - "https://status.cloud.google.com/summary"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html"
+  - "https://docs.cloud.google.com/compute/docs/instances/preemptible"
+  - "https://docs.cloud.google.com/tpu/docs/v6e"
+  - "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html"
+  - "https://docs.cloud.google.com/billing/docs/how-to/budgets"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateSession.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_HowItWorks.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/what-is-aurora-dsql.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-concurrency-control.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_testing-policies.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_oidc_secure-by-default.html"
+  - "https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines"
+  - "https://docs.cloud.google.com/policy-intelligence/docs/troubleshoot-access"
+  - "https://docs.aws.amazon.com/global-infrastructure/latest/regions/aws-availability-zones.html"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/lambda-managed-instances.html"
+  - "https://docs.cloud.google.com/run/docs/about-concurrency"
+  - "https://docs.aws.amazon.com/fis/latest/userguide/fis-actions-reference.html"
+  - "https://raw.githubusercontent.com/meta-llama/llama-models/main/models/sku_list.py"
+  - "https://raw.githubusercontent.com/firecracker-microvm/firecracker/main/docs/snapshotting/random-for-clones.md"
+  - "https://www.usenix.org/system/files/conference/nsdi16/nsdi16-paper-eisenbud.pdf"
+  - "https://www.usenix.org/system/files/conference/osdi12/osdi12-final-16.pdf"
+  - "https://arxiv.org/abs/1910.02054"
+  - "https://arxiv.org/abs/2304.01433"
+  - "https://sre.google/workbook/alerting-on-slos/"
 ---
 
 # Appendix E: 16-Week Mastery Study Plan for Senior Engineers
@@ -32,7 +61,9 @@ Every billable lab therefore starts with the price-query and estimate guard in s
 
 Rule 1: one project or account per lab family, so teardown is a single deletion.
 Rule 2: every lab gets a budget alert before the first resource is created.
-Rule 3: budgets are alerts, not caps; spend data lags real usage, so an alert fires after the money is gone (exact refresh cadence UNVERIFIED).
+Rule 3: the budgets below are alerts, not caps; spend data lags real usage, so an alert fires after the money is gone.
+AWS Budgets data updates up to three times a day, typically 8-12 hours apart, and cost can exceed the threshold before the notification arrives ([AWS docs](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html), as of 2026-11).
+On Google Cloud an alerts-only budget does not cap spend, usage reaches Cloud Billing with a lag, and the first notification may take several hours ([Google Cloud docs](https://docs.cloud.google.com/billing/docs/how-to/budgets), as of 2026-11).
 Rule 4: run the estimate guard below, and abort if the estimate exceeds the lab budget.
 Rule 5: tag or label every resource with `caie-lab`, and audit for leftovers after teardown.
 Rule 6: GPU quotas often default low or zero on new accounts, so request them in week 1 and do not make weeks 1 to 12 depend on GPUs (check with `aws service-quotas list-service-quotas --service-code ec2` and `gcloud compute regions describe REGION`).
@@ -134,10 +165,11 @@ Budget: 10 USD alert, a few instance-hours; run the estimate by hand from the cu
 Teardown: `gcloud projects delete "$LAB_PROJECT" --quiet`.
 
 Mechanism not in getting-started guides: snapshot restore clones guest memory, so the kernel entropy pool and any in-memory TLS or session state are duplicated across clones.
-Two clones can emit identical "random" output until the kernel reseeds, which is a real hazard for key generation and request IDs in snapshot-based serverless.
-Whether your guest kernel and VMM version reseed on restore (via a VM generation identifier) is something you must test, not assume.
+Clones resume from identical RNG state, and the timer and hardware RNG noise mixed in afterward makes their output diverge, but Firecracker's documentation calls it unclear whether that is enough to treat the states as distinct for security purposes, which is a real hazard for key generation and request IDs in snapshot-based serverless ([Firecracker docs](https://raw.githubusercontent.com/firecracker-microvm/firecracker/main/docs/snapshotting/random-for-clones.md), as of 2026-11).
+So differing bytes in your milestone do not prove safety.
+Firecracker implements the VM generation identifier, and Linux reseeds its CSPRNG on that notification from 5.18 on ACPI systems and 6.10 on DeviceTree systems, but a race window remains between vCPU resume and the reseed, so older kernels need a manual reseed and newer ones still need testing, not assumption (same source).
 Second mechanism: ECMP hashes the 5-tuple, so one long-lived flow pins to one path, and a few elephant flows collide on a link while the fabric looks underloaded.
-This is the root reason AI fabrics use packet spraying (AWS SRD) or optical circuit scheduling (TPU ICI) rather than plain ECMP, covered in Week 13.
+This is the root reason AI fabrics use packet spraying (AWS SRD) or optical circuit switching (TPU ICI; [TPU v4 paper](https://arxiv.org/abs/2304.01433), ISCA 2023) rather than plain ECMP, covered in Week 13.
 
 Drill: D1 cold, then re-draw the Firecracker device model from memory.
 Exit criterion: you can explain why a microVM has a smaller attack surface than a container sharing a host kernel, and name one cost of that choice.
@@ -205,14 +237,15 @@ Skim (Tier B):
 
 Lab: build a cross-account role with an SCP, a permission boundary, and a session policy, then predict allow or deny for 10 requests before testing.
 Milestone: compare `aws iam simulate-principal-policy` output with the real result of each call, and list every case where the simulator and reality differed and why.
-GCP equivalent: add a deny policy and run `gcloud policy-troubleshoot iam` for the same 10 requests.
+GCP equivalent: add a deny policy and run `gcloud policy-troubleshoot iam` for the same 10 requests; the GA form covers allow and deny policies, and `gcloud beta` adds Principal Access Boundary policies ([Google Cloud docs](https://docs.cloud.google.com/policy-intelligence/docs/troubleshoot-access), as of 2026-11).
 Cost: negligible; Organizations features are free of direct charge, but alerts stay on.
 Teardown: `tofu -chdir=labs/w04 destroy -auto-approve`.
 
 Mechanism not in getting-started guides: guardrails never grant.
 An SCP, permission boundary, or session policy only narrows the maximum; an allow must still come from an identity or resource policy.
 Within one account an allow in either the identity policy or the resource policy suffices, while cross-account access needs an allow on both sides.
-The simulator evaluates the policies you hand it, so it cannot see an SCP, resource policy, or session policy you forgot to include, which is the usual source of simulator-versus-reality gaps.
+The simulator evaluates the principal's or supplied identity policies, one permissions boundary, in-scope SCPs, and a resource policy only if you supply it (outside the console).
+It does not support resource control policies, session policies are not among its documented inputs, and AWS warns that results can differ from live behavior for VPC endpoint policies, role chaining, and multiple resource policies on one resource, which are the likely sources of simulator-versus-reality gaps ([AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_testing-policies.html), as of 2026-11).
 GCP differs structurally: deny policies are evaluated before allow bindings and cannot be overridden by a grant lower in the hierarchy.
 
 Drill: mock loop 1 with D2, then D7 (read the model answer only after attempting it).
@@ -233,12 +266,12 @@ Skim (Tier B):
 
 Lab: benchmark small-object GET latency, p50 and p99 over 100,000 requests, from one EC2 instance in the same AZ against S3 Standard and an S3 Express One Zone directory bucket.
 Milestone: report the p99 to p50 ratio for each, and the effect of connection reuse versus new connections.
-Facts to anchor: S3 Express One Zone is a single-zone storage class designed for consistent single-digit millisecond access, with up to 10x faster access and request costs 80 percent lower than S3 Standard (AWS docs, as of 2026-10, [S3 directory buckets](https://docs.aws.amazon.com/AmazonS3/latest/userguide/directory-bucket-high-performance.html)).
-Every connector or client using directory buckets needs `s3express:CreateSession` in its IAM policy (AWS re:Post, as of 2026-10, [connector guidance](https://repost.aws/articles/AROs3zfLYxT56d3MAKp28Tqg/choosing-an-s3-connector-for-ml-training-with-s3-express-one-zone)).
+Facts to anchor: S3 Express One Zone is a single-zone storage class designed for consistent single-digit millisecond access, with up to 10x faster access and request costs 80 percent lower than S3 Standard (AWS docs, as of 2026-11, [S3 directory buckets](https://docs.aws.amazon.com/AmazonS3/latest/userguide/directory-bucket-high-performance.html)).
+Every connector or client using directory buckets needs `s3express:CreateSession` in its IAM policy (AWS docs, as of 2026-11, [CreateSession](https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateSession.html); AWS re:Post, [connector guidance](https://repost.aws/articles/AROs3zfLYxT56d3MAKp28Tqg/choosing-an-s3-connector-for-ml-training-with-s3-express-one-zone)).
 Budget: 15 USD alert; guard with a small instance type, 2 hours, 1 instance.
 Teardown: `tofu -chdir=labs/w05 destroy -auto-approve`, after emptying buckets with `aws s3 rm s3://BUCKET --recursive`.
 
-Mechanism not in getting-started guides: directory buckets use a session-based authorization model in which `CreateSession` returns short-lived credentials that the SDK reuses, so the per-request authorization cost is amortized rather than paid on every call (design rationale from AWS material, not re-verified, see UNVERIFIED).
+Mechanism not in getting-started guides: directory buckets use a session-based authorization model in which `CreateSession` returns bucket-scoped temporary credentials that expire after 5 minutes and that supported SDKs refresh automatically, so per-request authorization is amortized rather than paid on every call, and AWS describes the mechanism as optimized for lowest latency ([AWS docs](https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateSession.html), as of 2026-11).
 A single-AZ class also moves durability from "three or more AZs" to "one AZ", so the failure domain of your training data becomes the AZ, and the cost of a zonal event is a re-ingest.
 Lambda mechanism: SnapStart-style restore trades init time for the Week 1 uniqueness hazard, so test any code that caches randomness, tokens, or connections during init.
 
@@ -266,10 +299,11 @@ Milestone: fix it with write sharding (key suffix 0..N-1), prove the fix with th
 Budget: 10 USD alert; use a small provisioned capacity and a 30-minute window.
 Teardown: `aws dynamodb delete-table --table-name caie-w06`.
 
-Mechanism not in getting-started guides: DynamoDB enforces throughput per partition, not per table, so a table provisioned for 10,000 WCU can still reject writes to one hot key at roughly the per-partition write ceiling (commonly cited as 1,000 WCU, 3,000 RCU, and 10 GB per partition; primary-source confirmation UNVERIFIED, see below).
+Mechanism not in getting-started guides: DynamoDB enforces throughput per partition, not per table, so a table provisioned for 10,000 WCU can still reject writes to one hot key at the per-partition write ceiling of 1,000 write units per second, alongside 3,000 read units per second ([AWS docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html), as of 2026-11).
+The often-quoted 10 GB per partition is not stated there (UNVERIFIED: not in the current partition docs).
 Aurora's quorum arithmetic: 6 copies across 3 AZs, write quorum 4, read quorum 3, so Vr + Vw = 7 > 6 and Vw = 4 > 6/2 (Aurora paper, SIGMOD 2017).
 Losing an AZ leaves 4 copies, so writes continue; losing an AZ plus one more node leaves 3 copies, so reads continue but writes block until repair, which the paper bounds by segmenting storage into small protection groups for fast re-replication.
-Spanner commit wait: a transaction picks a commit timestamp no earlier than TrueTime's latest bound and then waits until that timestamp is definitely in the past, so average commit latency carries roughly twice the clock-uncertainty bound (Spanner paper, OSDI 2012, which reports uncertainty sawtooth in the low single-digit milliseconds).
+Spanner commit wait: a transaction picks a commit timestamp no earlier than TrueTime's latest bound and then waits until that timestamp is definitely in the past, so the expected wait is at least twice the average clock-uncertainty bound (Spanner paper, OSDI 2012, which reports an uncertainty sawtooth of about 1 to 7 ms over each poll interval, 4 ms most of the time).
 The consequence is that external consistency is bought with wall-clock waiting, and the price falls as clocks improve, not as you add nodes.
 
 Drill: D3.
@@ -297,7 +331,8 @@ Budget: 15 USD alert.
 Teardown: delete the perimeter first with `gcloud access-context-manager perimeters delete PERIMETER --policy=POLICY_ID`, then `gcloud projects delete "$LAB_PROJECT" --quiet`.
 
 Mechanism not in getting-started guides: Maglev's lookup table is a prime-sized array filled by having each backend walk its own permutation (offset and skip derived from two hashes) and claim the next free slot in round-robin order.
-That produces near-equal share per backend and bounded disruption when a backend leaves, without per-connection state in the common case; connection tracking is only a fallback for table changes (Maglev paper, NSDI 2016).
+That produces near-equal share per backend and bounded disruption when a backend leaves.
+Each packet is still looked up first in a local connection tracking table, which the paper calls the primary protection against backend changes; the hash is what picks the backend on a miss and keeps a flow's backend consistent when the router sends it to a different Maglev that has no shared connection state (Maglev paper, NSDI 2016).
 VPC SC acts at the Google API layer, not the packet layer, so a perimeter does not stop data leaving through a VM's public internet egress, only through in-scope Google APIs.
 
 Drill: D7.
@@ -321,13 +356,13 @@ Skim (Tier B):
 - [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_16_Observability_Cloud_Monitoring_Logging_and_Trace|GCP Observability]]
 
 Lab: deploy one stateless HTTP container to Lambda (container image) and to Cloud Run, then run the same open-loop load profile against both.
-Milestone: produce a table of cold-start p50 and p99, and cost per million requests computed from current price pages, and explain the difference in terms of the concurrency model (one in-flight request per Lambda execution environment versus multiple per Cloud Run instance).
+Milestone: produce a table of cold-start p50 and p99, and cost per million requests computed from current price pages, and explain the difference in terms of the concurrency model (one in-flight invocation per execution environment on the default Lambda compute type, versus multiple per Cloud Run instance, up to 1,000, with a CLI or Terraform default of 80 x vCPUs on new services and 80 from the console; [Lambda Managed Instances](https://docs.aws.amazon.com/lambda/latest/dg/lambda-managed-instances.html) is the multi-concurrent exception, and the Cloud Run figures are from the [Cloud Run docs](https://docs.cloud.google.com/run/docs/about-concurrency), as of 2026-11).
 Budget: 10 USD alert on each cloud.
 Teardown: `tofu -chdir=labs/w08 destroy -auto-approve` and `gcloud run services delete caie-w08 --region=us-central1 --quiet`.
 
-Mechanism not in getting-started guides: AWS Availability Zone names are mapped per account, so `us-east-1a` in your account may be a different physical zone than in another account.
+Mechanism not in getting-started guides: in the oldest AWS Regions, Availability Zone codes are mapped independently per account for accounts created before November 2025, so `us-east-1a` in your account may be a different physical zone than in another account, while accounts created from November 2025 get the same mapping ([AWS docs](https://docs.aws.amazon.com/global-infrastructure/latest/regions/aws-availability-zones.html), as of 2026-11).
 Use AZ IDs (for example `use1-az1`) whenever two accounts must co-locate, such as a producer and consumer sharing a PrivateLink service or a cross-account data path where inter-AZ transfer cost matters.
-GCP zone names are consistent across projects, which removes this class of bug but means the translation table must record the asymmetry.
+GCP zone names are treated here as consistent across projects, which would remove this class of bug but means the translation table must record the asymmetry (UNVERIFIED: Google Cloud docs call zones logical abstractions and do not state cross-project mapping).
 The structural difference to internalize is regional VPC plus Transit Gateway on AWS versus a global VPC on GCP, because it changes the blast radius of one bad route or firewall change.
 
 Drill: mock loop 2 with D3, then D8.
@@ -379,7 +414,7 @@ Teardown: `tofu -chdir=labs/w10 destroy -auto-approve`.
 
 Mechanism not in getting-started guides: retries multiply across layers.
 With three stacked layers that each make up to 3 attempts, one failing leaf call can see 3 x 3 x 3 = 27 attempts, and the load arrives exactly when the leaf is slowest.
-Burn-rate alerting is an identity, not a rule of thumb: for a 30-day (720 hour) SLO, burning at 14.4x for 1 hour consumes 14.4/720 = 2 percent of budget, 6x for 6 hours consumes 5 percent, and 1x for 3 days consumes 10 percent (Google SRE Workbook alert windows).
+Burn-rate alerting is an identity, not a rule of thumb: for a 30-day (720 hour) SLO, burning at 14.4x for 1 hour consumes 14.4/720 = 2 percent of budget, 6x for 6 hours consumes 5 percent, and 1x for 3 days consumes 10 percent ([Google SRE Workbook](https://sre.google/workbook/alerting-on-slos/), Table 5-8).
 Pair a long window with a short one (for example 1 hour and 5 minutes) so the alert both detects sustained burn and resets quickly after recovery.
 
 Drill: D4.
@@ -411,7 +446,8 @@ Outage reading list (primary post-incident documents; read the timeline, then th
 - Specific incident details you cite in an interview must be re-checked against the primary document, because secondary summaries drift.
 
 Lab: federate a CI system to AWS and GCP through OIDC, with no static keys, and then break your own trust policy on purpose.
-Milestone 1: write the trust condition on the OIDC subject claim, then demonstrate that removing the subject condition lets an unrelated repository in the same identity provider assume the role.
+Milestone 1: write the trust condition on the OIDC subject claim, then demonstrate that widening it to a wildcard (for example `repo:ORG/*`) lets a different repository in the same organization assume the role.
+AWS IAM rejects creating or updating a trust policy for recognized shared issuers such as GitHub Actions when the required claim is missing (`MalformedPolicyDocument`), though existing roles are not re-evaluated until modified and private issuers are exempt ([AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_oidc_secure-by-default.html), as of 2026-11), so test full removal only against a private issuer.
 Milestone 2: encrypt an object with a KMS data key, bind an encryption context, and show that decryption fails with a different context.
 Milestone 3: add an organization-ID condition to a bucket policy plus a VPC endpoint policy, and show a principal from another organization denied.
 Cost: near zero; KMS keys cannot be deleted instantly.
@@ -419,7 +455,8 @@ Teardown: `tofu -chdir=labs/w11 destroy -auto-approve`, then `aws kms schedule-k
 
 Mechanism not in getting-started guides: the encryption context is authenticated additional data bound into the ciphertext and recorded in audit logs, so it is both an integrity control and a forensic field.
 Envelope encryption means KMS sees only small data keys, so KMS request quotas bound your key-generation rate, not your byte throughput, and caching data keys with a bounded use count is the lever when a hot path hits the quota.
-The common federation flaw is a trust policy that checks the issuer and audience but not the subject, which turns "any workflow on that platform" into "my role".
+The common federation flaw is a trust policy that checks the issuer and audience but not the subject, or only a broad subject wildcard, which turns "any workflow on that platform" or "any repository in that organization" into "my role".
+Google Cloud likewise says you must use an attribute condition restricting tokens to your organization or group for GitHub, GitLab SaaS, and HCP Terraform, because they share one issuer URL ([Google Cloud docs](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines), as of 2026-11).
 
 Drill: mock loop 3 uses D8; drill D7 as the security component.
 Exit criterion: you can write the exact condition keys that make a federated role usable by one repository and one branch.
@@ -439,10 +476,10 @@ Skim (Tier B):
 - [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_15_Google_TPU_Architecture_Evolution|TPU Architecture Evolution]]
 
 Lab: write a Spot interruption handler and test it with a real injected interruption.
-Milestone: use AWS Fault Injection Service (`aws:ec2:send-spot-instance-interruptions`) against a small Spot instance, measure how long your handler takes to flush state, and compare against the notice window.
-Notice windows to design against: AWS Spot gives a two-minute interruption notice (AWS docs, as of 2026-10, [Spot interruption notices](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html)).
-Compute Engine gives a best-effort shutdown period of up to 30 seconds after an ACPI G2 soft-off signal (Google Cloud docs, as of 2026-10, [preemptible and Spot VMs](https://docs.cloud.google.com/compute/docs/instances/preemptible)).
-Accelerator anchor: TPU v6e (Trillium) per chip is 918 TFLOPs bf16, 32 GB HBM, 1638 GBps HBM bandwidth, 800 GBps bidirectional ICI, 8 chips per host, 256-chip pod in a 2D torus (Google Cloud docs, as of 2026-10, [TPU v6e](https://docs.cloud.google.com/tpu/docs/v6e)).
+Milestone: use AWS Fault Injection Service ([`aws:ec2:send-spot-instance-interruptions`](https://docs.aws.amazon.com/fis/latest/userguide/fis-actions-reference.html)) against a small Spot instance, measure how long your handler takes to flush state, and compare against the notice window.
+Notice windows to design against: AWS Spot gives a two-minute interruption notice (AWS docs, as of 2026-11, [Spot interruption notices](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html)).
+Compute Engine gives a best-effort shutdown period of up to 30 seconds after an ACPI G2 soft-off signal (Google Cloud docs, as of 2026-11, [preemptible and Spot VMs](https://docs.cloud.google.com/compute/docs/instances/preemptible)).
+Accelerator anchor: TPU v6e (Trillium) per chip is 918 TFLOPs bf16, 32 GB HBM, 1638 GBps HBM bandwidth, 800 GBps bidirectional ICI, 8 chips per host, 256-chip pod in a 2D torus (Google Cloud docs, as of 2026-11, [TPU v6e](https://docs.cloud.google.com/tpu/docs/v6e)).
 Budget: 10 USD alert; guard with a small Spot instance type, 2 hours, 1 instance.
 Teardown: `aws ec2 terminate-instances --instance-ids $(aws ec2 describe-instances --filters Name=tag-key,Values=caie-lab Name=instance-state-name,Values=running --query 'Reservations[].Instances[].InstanceId' --output text)`.
 
@@ -503,7 +540,7 @@ Gate with `lab_guard.sh INSTANCE_TYPE 3 1 40`.
 Teardown: `aws ec2 terminate-instances --instance-ids INSTANCE_ID`.
 
 Mechanism not in getting-started guides: each decode step reads all weights once plus every active sequence's KV cache, so step time is about (weight bytes + sum of KV bytes) / HBM bandwidth.
-Worked example on one v6e host (8 chips, 256 GB HBM, 13.1 TB/s aggregate; figures from the TPU v6e docs above) serving a 70B-parameter bf16 model with grouped-query attention (80 layers, 8 KV heads, head dimension 128; model-card values, see UNVERIFIED):
+Worked example on one v6e host (8 chips, 256 GB HBM, 13.1 TB/s aggregate; figures from the TPU v6e docs above) serving a 70B-parameter bf16 model with grouped-query attention (80 layers, 8 KV heads, head dimension 128 from dim 8192 / 64 heads; Llama 3 70B values from Meta's [llama-models SKU list](https://raw.githubusercontent.com/meta-llama/llama-models/main/models/sku_list.py), as of 2026-11):
 - KV per token = 2 x 80 x 8 x 128 x 2 bytes = 327,680 bytes (320 KiB).
 - KV per 8,192-token sequence = 2.68 GB.
 - Weights = 140 GB, leaving 90.4 GB after reserving 10 percent of HBM, which holds 33 full-length sequences.
@@ -589,7 +626,7 @@ Reproduce the arithmetic with the calculator in section 7.
 ### D1 (L5): "Writes to our DynamoDB table are throttled, but the table is at 10 percent of provisioned capacity. Why, and what do you do?"
 
 Model answer:
-- Throughput is enforced per partition, so provisioned capacity is the sum of per-partition ceilings, and traffic skewed onto one key saturates one partition while the table-level metric looks idle (per-partition ceilings commonly cited as 1,000 WCU and 3,000 RCU; confirm in current docs).
+- Throughput is enforced per partition, so provisioned capacity is the sum of per-partition ceilings, and traffic skewed onto one key saturates one partition while the table-level metric looks idle (per-partition ceilings are 1,000 write units and 3,000 read units per second, [AWS docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html), as of 2026-11).
 - I would first confirm with Contributor Insights and the per-key throttle signal rather than guess, because a hot key and a hot partition from a bad key schema look different.
 - Adaptive capacity and partition splitting help for sustained skew across keys, but a single hot item cannot be split, so the fix must be in the data model.
 - For a hot key I would shard the key with a suffix of 0..N-1 and write to a random or hashed suffix, accepting that reads become an N-way scatter-gather.
@@ -623,8 +660,10 @@ Model answer:
 - Light speed in fiber is about 5 microseconds per km, so a 6,000 km path is at least 30 ms one-way and 60 ms round trip, and any synchronous cross-continent commit pays at least one such round trip to reach a majority; this floor does not depend on vendor.
 - Spanner provides external consistency by Paxos-replicated splits, two-phase commit across splits, and commit wait against TrueTime uncertainty, so the write latency is the quorum round trip plus commit wait, and reads at a stale timestamp can be served from the nearest replica.
 - Aurora is a single-writer design with 4-of-6 quorum across AZs in one region; cross-region replication is asynchronous, so a regional failover has a nonzero recovery point, which fails the stated zero-RPO requirement for a cross-continent active design.
-- Aurora DSQL is positioned for multi-region active-active with strong consistency using optimistic concurrency (detail UNVERIFIED), so contention shows up as commit-time aborts that the client must retry, and I would check hot-row behavior before choosing it for a ledger with hot accounts.
-- DynamoDB global tables are multi-writer with last-writer-wins reconciliation across regions, which can lose a concurrent update, so it fits idempotent or CRDT-like data and does not fit double-entry bookkeeping without an additional protocol.
+- Aurora DSQL offers active-active multi-Region clusters with strong consistency and snapshot isolation using optimistic concurrency, so contention shows up as commit-time aborts (SQLSTATE 40001) that the client must retry, which makes hot accounts a concern ([concurrency docs](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-concurrency-control.html), as of 2026-11).
+- More decisively, DSQL multi-Region clusters must stay within one Region set and it does not currently support cross-continent clusters, so it fails this requirement today ([AWS docs](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/what-is-aurora-dsql.html), as of 2026-11).
+- DynamoDB global tables default to multi-Region eventual consistency: multi-writer with last-writer-wins reconciliation across regions, which can lose a concurrent update, so that mode fits idempotent or CRDT-like data and does not fit double-entry bookkeeping without an additional protocol.
+- The multi-Region strong consistency mode supports zero RPO and three Regions that may span continents, but it rejects transaction operations and fails conflicting writes with `ReplicatedWriteConflictException`, so multi-item debit-and-credit commits still need an additional protocol ([AWS docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_HowItWorks.html), as of 2026-11).
 - My recommendation is a Spanner-class system if the ledger must be active in both continents, with a single home region per account to keep most commits in one region and cross-region commits rare.
 - I would call out operating costs: commit latency in the tens of milliseconds for cross-region accounts, hot-account contention, and lock-in to a vendor-specific consistency mechanism.
 
@@ -682,7 +721,7 @@ Model answer:
 - AWS network layer: VPC endpoints with endpoint policies that restrict principals to the organization and resources to ours, so a stolen credential used inside our VPC cannot copy to an outside bucket.
 - GCP: organization policy constraints plus VPC Service Controls perimeters with explicit ingress and egress rules, tested in dry-run first, which blocks API-level exfiltration even for valid credentials.
 - Known gaps I would state: VPC SC does not constrain non-Google-API egress from a VM, and an endpoint policy does not cover traffic that leaves via a NAT gateway to the public service endpoint, so I add egress controls and detection.
-- Federation: no static keys, and trust policies conditioned on issuer, audience, and subject, because a missing subject condition lets any workflow on that platform assume the role.
+- Federation: no static keys, and trust policies conditioned on issuer, audience, and subject, because a missing or over-broad subject condition lets other workflows on that platform assume the role; AWS now rejects new or updated trust policies that omit the required claim for recognized shared issuers, but unmodified older roles are not re-evaluated ([AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_oidc_secure-by-default.html), as of 2026-11).
 - Keys: customer-managed keys with encryption context and a key policy that denies decrypt outside the organization, so data stolen as ciphertext is not readable and key use is auditable.
 - Operating cost: a perimeter breaks legitimate integrations, so I would ship it as audit-only first, measure violations for two weeks, create exceptions with owners and expiry, then enforce.
 - Break-glass: a perimeter without a tested emergency path becomes an outage, so I would design and rehearse the exception path, with its own alerting.
