@@ -209,12 +209,8 @@ expect_pipefail() {
   '
   [ "$status" -eq 0 ]
   case $(lab_shell_family) in
-    zsh)
-      # Native zsh executes the last stage in the current shell
-      [ "$output" = "v=stage2" ]
-      ;;
-    ksh93)
-      # ksh93 executes the last stage in the current process
+    zsh | ksh93)
+      # Native zsh and ksh93 execute the last stage in the current shell
       [ "$output" = "v=stage2" ]
       ;;
     bash | zsh-sh | dash | busybox | posh | mksh | yash)
@@ -483,7 +479,7 @@ printf "result a=%s b=%s\n" "$a" "$b"'
 # --- C Helper: Pipe Capacity and Write Atomicity ---
 
 @test "pipe capacity measures 16 pages on Linux and 65536 bytes on macOS" {
-  "${CC:-cc}" -O2 -Wall -Wextra -Werror -D_FORTIFY_SOURCE=2 "$CAP_SRC" -o "$CAP_BIN"
+  "${CC:-cc}" -O2 -Wall -Wextra -Werror "$CAP_SRC" -o "$CAP_BIN"
   run "$CAP_BIN"
   [ "$status" -eq 0 ]
   os=$(uname -s)

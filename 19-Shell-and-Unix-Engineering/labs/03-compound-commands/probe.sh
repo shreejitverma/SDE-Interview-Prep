@@ -89,20 +89,25 @@ probe_case_fallthrough() {
 
 probe_loop_status() {
   set +e
+  false
   # shellcheck disable=SC2034 # loop variable unused by design in empty iteration test
   for x in; do printf 'unreached\n'; done
   st_for=$?
 
+  false
   while false; do printf 'unreached\n'; done
   st_while_empty=$?
 
+  false
   until true; do printf 'unreached\n'; done
   st_until_empty=$?
 
+  false
   if false; then printf 'unreached\n'; fi
   st_if_empty=$?
 
   val="nomatch"
+  false
   case "$val" in
     match) printf 'unreached\n' ;;
     *) ;;

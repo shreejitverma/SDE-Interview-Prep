@@ -56,24 +56,9 @@ process_batch() {
   return 0
 }
 
-# Safe command execution: separate assignment to prevent masking exit status
-safe_eval_task() {
-  _st_cmd="$1"
-  _st_out=""
-  _st_code=0
-  if _st_out=$(eval "${_st_cmd}"); then
-    _st_code=0
-  else
-    _st_code=$?
-  fi
-  printf "TASK_CODE=%d\n" "${_st_code}"
-  printf "TASK_OUTPUT=%s\n" "${_st_out}"
-  return "${_st_code}"
-}
-
 main() {
   if [ "$#" -lt 1 ]; then
-    printf "Usage: %s <run|sandbox|depth|batch|safe> [args...]\n" "$0" >&2
+    printf "Usage: %s <run|sandbox|depth> [args...]\n" "$0" >&2
     exit 1
   fi
 
@@ -109,12 +94,6 @@ main() {
       _target_depth="${1:-3}"
       walk_depth "${_target_depth}" 0
       printf "TOTAL_CALLS=%d\n" "${RUNNER_CALL_COUNT}"
-      ;;
-    batch)
-      process_batch "$@"
-      ;;
-    safe)
-      safe_eval_task "$1"
       ;;
     *)
       printf "Unknown command: %s\n" "${_action}" >&2

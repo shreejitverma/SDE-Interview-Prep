@@ -66,6 +66,13 @@ output_lacks() {
   esac
 }
 
+@test "task_runner depth counts one call per level from 0 through the target" {
+  run_lab "${TASK_RUNNER}" depth 3
+  [ "${status}" -eq 0 ]
+  [ "${lines[0]}" = "RECURSION_TARGET_REACHED=3" ]
+  [ "${lines[1]}" = "TOTAL_CALLS=4" ]
+}
+
 @test "positional parameters are isolated and restored across function call boundaries" {
   # shellcheck disable=SC2016 # expressions tested under target shell
   run_lab_c '

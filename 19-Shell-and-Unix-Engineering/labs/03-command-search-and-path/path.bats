@@ -444,18 +444,7 @@ measured_nul_status() {
 @test "command -p uses default system PATH to find standard utilities" {
   # shellcheck disable=SC2016 # expressions run inside shell under test
   case $(lab_shell_family) in
-    bash | zsh | zsh-sh | yash | busybox | posh | mksh | dash)
-      run_lab_c '
-        st_poison=0
-        (PATH="/nonexistent" ls /dev/null 2>/dev/null) || st_poison=$?
-        st_recov=0
-        (PATH="/nonexistent" command -p ls /dev/null >/dev/null 2>&1) || st_recov=$?
-        printf "%s|%s" "${st_poison}" "${st_recov}"
-      '
-      [ "${status}" -eq 0 ]
-      [ "${output}" = "127|0" ]
-      ;;
-    ksh93)
+    bash | zsh | zsh-sh | yash | busybox | posh | mksh | dash | ksh93)
       run_lab_c '
         st_poison=0
         (PATH="/nonexistent" ls /dev/null 2>/dev/null) || st_poison=$?

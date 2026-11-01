@@ -460,7 +460,7 @@ ok 25 60 pipeline stages run under ulimit -n 32 except in zsh
 > Fix: avoid upstream generators with early-exiting filters (`grep -q pattern large_file` instead of `cat | grep -q`), or temporarily disable `pipefail` around the command: `{ set +o pipefail; seq 1000000 | head -n 1; set -o pipefail; }`.
 
 > [!warning] Vanishing pipeline variable mutations
-> Trigger: mutating shell variables inside a loop that is fed by a pipeline: `cat names.txt | while read -r name; do count=$((count + 1)); done; echo "$count"`.
+> Trigger: mutating shell variables inside a loop that is fed by a pipeline: `count=0; cat names.txt | while read -r name; do count=$((count + 1)); done; echo "$count"`.
 > Symptom: `$count` prints 0 because the `while` loop executed in a forked subshell environment whose variables were discarded upon termination.
 > Fix: redirect input into the loop instead of piping (`while read -r name; do ...; done < names.txt`), use a command substitution or here-document, or enable `shopt -s lastpipe` in bash with job control disabled; ShellCheck warns of this bug via SC2030 and SC2031.
 
