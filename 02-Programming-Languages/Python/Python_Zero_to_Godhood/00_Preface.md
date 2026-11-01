@@ -19,7 +19,7 @@ sources: []
 Shreejit Verma is a systems architect, quantitative software engineer, and high-performance computing practitioner. This guide represents a masterclass in CPython internals, language syntax evolution, runtime mechanics, and hardware-sympathetic programming.
 
 ### Book Purpose & Scope
-This book provides a transition pathway from standard Python development to **low-level CPython mastery and high-performance computing**. It spans the entire chronological architecture of the languagefrom Python 1.0 to Python 3.14revealing how bytecode interpreters, memory systems, GIL execution models, and compiler optimizations interact.
+This book provides a transition pathway from standard Python development to **low-level CPython mastery and high-performance computing**. It spans the entire chronological architecture of the language - from Python 1.0 to Python 3.14 - revealing how bytecode interpreters, memory systems, GIL execution models, and compiler optimizations interact.
 
 ---
 

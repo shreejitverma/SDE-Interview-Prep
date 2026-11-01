@@ -11,7 +11,7 @@ sources: []
 
 
 ### 23.1 CPython's Memory Allocation Engine (PyMalloc)
-For large allocations (greater than 512 bytes), CPython forwards the request directly to the system's standard C library `malloc()`. However, for small objects ($\le 512$ bytes)which represent the vast majority of Python allocationsstandard operating system allocators introduce high fragmentation and locking overhead. 
+For large allocations (greater than 512 bytes), CPython forwards the request directly to the system's standard C library `malloc()`. However, for small objects ($\le 512$ bytes) - which represent the vast majority of Python allocations - standard operating system allocators introduce high fragmentation and locking overhead. 
 To resolve this, CPython implements a custom small-object allocator called **PyMalloc**.
 
 #### 1. PyMalloc Memory Hierarchy

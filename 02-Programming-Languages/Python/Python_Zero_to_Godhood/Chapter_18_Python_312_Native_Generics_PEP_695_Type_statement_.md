@@ -57,7 +57,7 @@ PEP 695 resolves this by introducing **Annotation Scopes** and lazy evaluation.
 #### 1. Annotation Scopes
 When the compiler encounters type parameters or the `type` statement, it wraps their evaluation code inside a new lexical scope called an **Annotation Scope**:
 *   An annotation scope is a nested compiler-generated scope (similar to a hidden function block).
-*   Variables and bounds defined inside this scope are evaluated **lazily**only when they are explicitly queried at runtime.
+*   Variables and bounds defined inside this scope are evaluated **lazily** - only when they are explicitly queried at runtime.
 
 #### 2. Bytecode Disassembly of the `type` Statement
 Let's analyze how CPython compiles a modern type alias:

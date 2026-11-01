@@ -2073,7 +2073,7 @@ When your program starts, the Operating System divides Mem-City into several "Zo
 
 **Student**: "Okay, the location is easier. But what if the librarian moves the book?"
 
-**The Architect**: "That's exactly why Pointers are dangerous! If the book moves but you still have the old address, you're looking at an empty shelfor worse, a different book entirely. That's a **Dangling Pointer**."
+**The Architect**: "That's exactly why Pointers are dangerous! If the book moves but you still have the old address, you're looking at an empty shelf - or worse, a different book entirely. That's a **Dangling Pointer**."
 
 ***
 
@@ -2107,7 +2107,7 @@ int main() {
 
 ### Deep Dive: Pointer Arithmetic (Walking the Streets)
 
-Pointers are just numbers (addresses), so you can add or subtract from them. But C++ is smartit knows the "size" of the houses.
+Pointers are just numbers (addresses), so you can add or subtract from them. But C++ is smart - it knows the "size" of the houses.
 
 * If you have an `int* p` pointing at address `100`, and you do `p++`, it doesn't go to `101`.
 * It jumps to `104` (because an `int` is 4 bytes).

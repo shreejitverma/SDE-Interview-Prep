@@ -126,7 +126,7 @@ Python uses "duck typing," but it is more accurately described as a **Protocol-b
 
 ### 32.3 The Mapping to C Slots
 
-Every Python class is an instance of `PyTypeObject`. This C struct contains a vast array of "slots"function pointers that the VM calls when executing operations.
+Every Python class is an instance of `PyTypeObject`. This C struct contains a vast array of "slots" - function pointers that the VM calls when executing operations.
 
 | Python Method | C Slot | Description |
 | :--- | :--- | :--- |
@@ -223,7 +223,7 @@ Python is not a purely functional language, but it provides powerful tools for f
 
 ### 34.1 `itertools`: Infinite and Combinatoric Iterators
 
-The `itertools` module provides functions that create iterators for efficient looping. They are "lazy"they produce values only when requested, consuming minimal memory.
+The `itertools` module provides functions that create iterators for efficient looping. They are "lazy" - they produce values only when requested, consuming minimal memory.
 
 #### 1. Infinite Iterators
 *   `count(start, step)`: An infinite sequence of numbers.

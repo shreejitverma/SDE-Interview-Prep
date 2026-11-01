@@ -28,7 +28,7 @@ Python uses "duck typing," but it is more accurately described as a **Protocol-b
 
 ### 32.3 The Mapping to C Slots
 
-Every Python class is an instance of `PyTypeObject`. This C struct contains a vast array of "slots"function pointers that the VM calls when executing operations.
+Every Python class is an instance of `PyTypeObject`. This C struct contains a vast array of "slots" - function pointers that the VM calls when executing operations.
 
 | Python Method | C Slot | Description |
 | :--- | :--- | :--- |
