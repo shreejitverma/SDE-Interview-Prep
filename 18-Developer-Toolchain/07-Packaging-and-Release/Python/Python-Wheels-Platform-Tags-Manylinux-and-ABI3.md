@@ -23,6 +23,7 @@ sources:
   - "cibuildwheel maintainers, cibuildwheel 4.3.4 options reference, Python Packaging Authority, 2026, https://cibuildwheel.pypa.io/en/stable/options/"
   - "maturin contributors, maturin 1.15 user guide: Distribution, PyO3 project, 2026, https://www.maturin.rs/distribution.html"
   - "PyO3 contributors, PyO3 user guide: Supporting Free-Threaded CPython, PyO3 project, 2026, https://pyo3.rs/main/free-threading.html"
+  - "PyO3 contributors, PyO3 0.29.3 changelog and Cargo features, GitHub PyO3/pyo3, 2026, https://github.com/PyO3/pyo3/blob/v0.29.3/CHANGELOG.md"
   - "Kitware, FindPython module documentation, CMake, 2026, https://cmake.org/cmake/help/latest/module/FindPython.html"
   - "scikit-build-core contributors, scikit-build-core configuration reference, scikit-build project, 2026, https://scikit-build-core.readthedocs.io/en/latest/configuration/index.html"
   - "Homebrew maintainers, python@3.15 formula, Homebrew homebrew-core, 2026, https://github.com/Homebrew/homebrew-core/blob/main/Formula/p/python@3.15.rb"
@@ -43,7 +44,7 @@ sources:
 ```mermaid
 flowchart TD
     subgraph Inputs["Build inputs"]
-        SYS["Interpreter sysconfig<br/>MACOSX_DEPLOYMENT_TARGET=27 (Homebrew 3.14.9, 3.15.1)<br/>11.0 (python-build-standalone 3.14.6)<br/>10.13 (python.org 3.13)"]
+        SYS["Interpreter sysconfig<br/>MACOSX_DEPLOYMENT_TARGET=27 (Homebrew 3.14.10, 3.15.2)<br/>11.0 (python-build-standalone 3.14.6)<br/>10.13 (python.org 3.13)"]
         ENV["Environment<br/>MACOSX_DEPLOYMENT_TARGET"]
         TC["Toolchain default<br/>rustc aarch64-apple-darwin: 11.0"]
         HDR["Python.h with Py_LIMITED_API=0x03080000"]
@@ -118,7 +119,7 @@ Any of the three fields can be a sorted, `.`-separated set, such as `manylinux_2
 An installer never inspects the binary.
 It computes `packaging.tags.sys_tags()` for the running interpreter and keeps only wheels whose tag appears in that list.
 pip and uv first choose the project version, then prefer the wheel whose tag appears earliest in the list.
-On the lab host (CPython 3.15.1, macOS 27.2 arm64, packaging 26.3, as of 2026-10), `sys_tags()` yields 1569 tags in this order:
+On the lab host (CPython 3.15.2, macOS 27.2 arm64, packaging 26.3, as of 2026-11), `sys_tags()` yields 1569 tags in this order:
 1. `cp315-cp315-` with each of 47 platform tags, from `macosx_27_0_arm64` and `macosx_27_0_universal2` down through `macosx_11_0_*`, then `macosx_10_16_universal2` down to `macosx_10_4_universal2`.
 2. `cp315-abi3-` and then `cp315-none-` with the same 47 platforms.
 3. `cp314-abi3-` down to `cp32-abi3-`, each with all 47 platforms, so `cp38-abi3-macosx_27_0_arm64` is entry 424 and `cp38-abi3-macosx_11_0_arm64` is entry 456, counting from 1.
@@ -143,19 +144,19 @@ The backends differ in where they read it:
 - scikit-build-core 1.1.1 used `MACOSX_DEPLOYMENT_TARGET` for both tag and `minos` when set, and the `sysconfig` value when unset.
 - maturin uses `MACOSX_DEPLOYMENT_TARGET` or `macos-deployment-target`, falling back to rustc's default, which `rustc --print deployment-target` reports as 11.0 for `aarch64-apple-darwin` and 10.12 for `x86_64-apple-darwin`.
 
-The CPython builds on the lab host carry their targets differently (as of 2026-10):
-- Homebrew's formula configures CPython with `MACOSX_DEPLOYMENT_TARGET=#{MacOS.version}`, so Homebrew's 3.14.9 and 3.15.1 on macOS 27 report a `sysconfig` target of `27` and platform `macosx-27.0-arm64`.
+The CPython builds on the lab host carry their targets differently (as of 2026-11):
+- Homebrew's formula configures CPython with `MACOSX_DEPLOYMENT_TARGET=#{MacOS.version}`, so Homebrew's 3.14.10 and 3.15.2 on macOS 27 report a `sysconfig` target of `27` and platform `macosx-27.0-arm64`.
 - Their `CFLAGS` and `LDFLAGS` contain no `-mmacosx-version-min`, and `LDSHARED` is `clang -bundle -undefined dynamic_lookup`, so the injected environment variable is the only thing that tells clang the target.
 - uv's managed python-build-standalone 3.14.6 reports `11.0` and bakes `-arch arm64 -mmacosx-version-min=11.0` into `CFLAGS`, `LDFLAGS`, and `LDSHARED`.
 
 In the lab, the managed 3.14.6 therefore compiled and linked for 11.0, wrote `minos 11.0`, and produced `cp38-abi3-macosx_11_0_arm64`.
-Homebrew 3.14.9 compiled the same source with a target of 27, the linker wrote `minos 27.0`, and the wheel came out `cp38-abi3-macosx_27_0_arm64`; Homebrew 3.15.1 gave the same tag and `minos`.
+Homebrew 3.14.10 compiled the same source with a target of 27, the linker wrote `minos 27.0`, and the wheel came out `cp38-abi3-macosx_27_0_arm64`; Homebrew 3.15.2 gave the same tag and `minos`.
 That tag is honest about the binary, but it targets only one OS release.
 On any macOS older than 27, `sys_tags()` has no `macosx_27_0` entry, so pip and uv skip the wheel and fall back to the sdist or fail.
 A renamed copy would reach `dlopen`, where dyld compares `minos` with the running OS; the exact refusal text on older releases is UNVERIFIED here.
-maturin ignores `sysconfig`, logged `Using MACOSX_DEPLOYMENT_TARGET=11.0 for aarch64-apple-darwin by default`, and produced `cp38-abi3-macosx_11_0_arm64` with `minos 11.0` from Homebrew 3.15.1.
+maturin ignores `sysconfig`, logged `Using MACOSX_DEPLOYMENT_TARGET=11.0 for aarch64-apple-darwin by default`, and produced `cp38-abi3-macosx_11_0_arm64` with `minos 11.0` from Homebrew 3.15.2.
 
-The lab's third build, Homebrew 3.14.9 plus `MACOSX_DEPLOYMENT_TARGET=11.0` in a fresh copy of the project, splits the tag from the binary.
+The lab's third build, Homebrew 3.14.10 plus `MACOSX_DEPLOYMENT_TARGET=11.0` in a fresh copy of the project, splits the tag from the binary.
 setuptools passes the variable to clang, so the binary gets `minos 11.0`, but it keeps the tag at the `sysconfig` floor, `macosx_27_0_arm64`, and prints the warning above.
 That wheel is correct but under-advertised: it would load on macOS 11, yet no installer on macOS 11 through 26 will select it.
 `delocate-wheel --require-target-macos-version 11.0` accepts it and writes `cp38-abi3-macosx_11_0_arm64`, because delocate 0.13.0 retags a wheel to its binaries' real `minos`.
@@ -196,18 +197,18 @@ Linking follows the platform's rules, not the abi3 tag:
 - On Windows, abi3 modules link `python3.lib`, the import library for `python3.dll`, and keep the plain `.pyd` suffix.
 
 The `abi3` tag promises a range of interpreters, but the importer looks for a filename suffix.
-`importlib.machinery.EXTENSION_SUFFIXES` on the lab host (as of 2026-10, macOS):
-- Homebrew CPython 3.15.1: `['.cpython-315-darwin.so', '.abi3-darwin.so', '.abi3.so', '.abi3t-darwin.so', '.abi3t.so', '.so']`.
-- Homebrew CPython 3.14.9 and uv-managed CPython 3.14.6: `['.cpython-314-darwin.so', '.abi3.so', '.so']`, and python.org 3.13.7 lists the 3.13 equivalent.
+`importlib.machinery.EXTENSION_SUFFIXES` on the lab host (as of 2026-11, macOS):
+- Homebrew CPython 3.15.2: `['.cpython-315-darwin.so', '.abi3-darwin.so', '.abi3.so', '.abi3t-darwin.so', '.abi3t.so', '.so']`.
+- Homebrew CPython 3.14.10 and uv-managed CPython 3.14.6: `['.cpython-314-darwin.so', '.abi3.so', '.so']`, and python.org 3.13.7 lists the 3.13 equivalent.
 - uv-managed CPython 3.15.0b3: `['.cpython-315-darwin.so', '.abi3.so', '.abi3t.so', '.so']`.
 
 The platform-tagged stable-ABI suffix is CPython gh-122931, first released in 3.15.0rc1, whose changelog says it allows "importing stable ABI C extensions that include a multiarch tuple in their filename".
-The 3.15 backport, GH-154772, merged on 2026-07-29; it puts `.abi3-{platform}.so` before `.abi3.so` and stores the platform in a new `SOABI_PLATFORM` config variable (`darwin` on Homebrew 3.15.1, absent on 3.15.0b3, 3.14.9, and 3.14.6).
-setuptools 84.2.0 and later build the abi3 suffix from `sysconfig` as `.abi3-{SOABI_PLATFORM}.so` when that variable is set; 84.1.0 took the first `.abi3` entry in `EXTENSION_SUFFIXES`, which gives the same answer on 3.15.1.
-CMake's `Python_SOSABI` also named the scikit-build-core module `*.abi3-darwin.so` on 3.15.1.
-The 3.14 importer only tries the three suffixes it lists, so it never looks for `c_abi3_example.abi3-darwin.so`, and the `cp38-abi3` wheel built on Homebrew 3.15.1 installs on 3.14 and fails with `ModuleNotFoundError: No module named 'c_abi3_example'`.
-On both 3.14 builds, managed 3.14.6 and Homebrew 3.14.9, setuptools named the module `c_abi3_example.abi3.so`, which imported on both 3.14 and 3.15.
-maturin named its module `rust_abi3_example.abi3.so` on Homebrew 3.15.1, which also imported on both.
+The 3.15 backport, GH-154772, merged on 2026-07-29; it puts `.abi3-{platform}.so` before `.abi3.so` and stores the platform in a new `SOABI_PLATFORM` config variable (`darwin` on Homebrew 3.15.2, absent on 3.15.0b3, 3.14.10, and 3.14.6).
+setuptools 84.2.0 and later build the abi3 suffix from `sysconfig` as `.abi3-{SOABI_PLATFORM}.so` when that variable is set; 84.1.0 took the first `.abi3` entry in `EXTENSION_SUFFIXES`, which gives the same answer on 3.15.2.
+CMake's `Python_SOSABI` also named the scikit-build-core module `*.abi3-darwin.so` on 3.15.2.
+The 3.14 importer only tries the three suffixes it lists, so it never looks for `c_abi3_example.abi3-darwin.so`, and the `cp38-abi3` wheel built on Homebrew 3.15.2 installs on 3.14 and fails with `ModuleNotFoundError: No module named 'c_abi3_example'`.
+On both 3.14 builds, managed 3.14.6 and Homebrew 3.14.10, setuptools named the module `c_abi3_example.abi3.so`, which imported on both 3.14 and 3.15.
+maturin named its module `rust_abi3_example.abi3.so` on Homebrew 3.15.2, which also imported on both.
 
 ### Free-threaded CPython and abi3t (PEP 703, PEP 779, PEP 803)
 
@@ -249,8 +250,8 @@ auditwheel cannot see libraries loaded with `dlopen`, `ctypes`, or `cffi`.
 |---|---|---|---|
 | `Py_LIMITED_API` | `0x03080000` for 3.8 (as of 2026-10) | Both | `PY_VERSION_HEX` of the oldest supported CPython. |
 | `Py_TARGET_ABI3T` | at least `0x030f0000` (as of 2026-10) | Both | Selects `abi3t` on 3.15 and later, per PEP 803. |
-| Limited API refcount | `Py_INCREF` calls `_Py_IncRef` when target is 3.12 or newer (as of 2026-10) | Both | Visible in `refcount.h` of CPython 3.15.1. |
-| `sys_tags()` on lab host | 1569 tags, 47 macOS platform tags, abi3 back to `cp32` (as of 2026-10) | macOS | CPython 3.15.1, macOS 27.2 arm64, packaging 26.3. |
+| Limited API refcount | `Py_INCREF` calls `_Py_IncRef` when target is 3.12 or newer (as of 2026-11) | Both | Visible in `refcount.h` of CPython 3.15.2. |
+| `sys_tags()` on lab host | 1569 tags, 47 macOS platform tags, abi3 back to `cp32` (as of 2026-11) | macOS | CPython 3.15.2, macOS 27.2 arm64, packaging 26.3. |
 | Homebrew `MACOSX_DEPLOYMENT_TARGET` | host macOS major, `27` on this host (as of 2026-10) | macOS | The formula passes `MACOSX_DEPLOYMENT_TARGET=#{MacOS.version}` to configure. |
 | python.org 3.13.7 target | `10.13`, platform `macosx-10.13-universal2` (as of 2026-10) | macOS | Read from `sysconfig` on this host. |
 | uv-managed CPython target | `11.0` on arm64 for 3.12.13, 3.14.6, 3.14.6t, and 3.15.0b3 (as of 2026-10) | macOS | Read from `sysconfig` on this host; 3.14.6 and 3.15.0b3 also have `-mmacosx-version-min=11.0` in `CFLAGS` and `LDFLAGS`. |
@@ -259,7 +260,7 @@ auditwheel cannot see libraries loaded with `dlopen`, `ctypes`, or `cffi`.
 | setuptools macOS tag | larger of `sysconfig` target and highest binary `minos` (as of 2026-10) | macOS | setuptools 84.2.1 ignores a lower `MACOSX_DEPLOYMENT_TARGET` for the tag. |
 | `vtool -show-build mod.so` | prints `minos` and `sdk` (as of 2026-10) | macOS | The ground truth the macOS tag should match. |
 | `delocate-wheel --require-target-macos-version 11.0 -w out/ x.whl` | fails if any binary needs a newer macOS (as of 2026-10) | macOS | delocate 0.13.0 also retags the wheel to the real `minos`. |
-| abi3 extension suffix | `.abi3-darwin.so` first on 3.15.0rc1 and later, `.abi3.so` on 3.14 and earlier (as of 2026-10) | macOS | CPython gh-122931; `EXTENSION_SUFFIXES` and `SOABI_PLATFORM` on this host. |
+| abi3 extension suffix | `.abi3-darwin.so` first on 3.15.0rc1 and later, `.abi3.so` on 3.14 and earlier (as of 2026-11) | macOS | CPython gh-122931; `EXTENSION_SUFFIXES` and `SOABI_PLATFORM` on this host. |
 | setuptools stale build | `build_ext` skips an extension whose output is newer than its sources (as of 2026-10) | Both | setuptools 84.2.1; the `build/` subdirectory is keyed on `sysconfig.get_platform()`, not the env var. |
 | cibuildwheel Linux images | `manylinux_2_28` and `musllinux_1_2` (as of 2026-10) | Linux | cibuildwheel 4.3.4 `defaults.toml`. |
 | cibuildwheel audit step | `abi3audit --strict --report {abi3_wheel}` (as of 2026-10) | Both | Runs only for abi3 wheels. |
@@ -277,13 +278,13 @@ auditwheel cannot see libraries loaded with `dlopen`, `ctypes`, or `cffi`.
 | Requesting abi3 | `[tool.scikit-build] wheel.py-api = "cp38"` | `py_limited_api=True` plus `bdist_wheel` option `py_limited_api = "cp38"` | PyO3 feature `abi3-py38` in `Cargo.toml` |
 | Who defines `Py_LIMITED_API` | CMake `Python_add_library(... USE_SABI 3.8)` defines it | You do, in `define_macros` or the source | PyO3's build configuration, no C headers involved |
 | Python tag and ABI tag | `cp38-abi3` | `cp38-abi3` | `cp38-abi3` |
-| Module filename on CPython 3.15.1 macOS | `*.abi3-darwin.so` via `Python_SOSABI` (observed) | `*.abi3-darwin.so` via `SOABI_PLATFORM`, setuptools 84.2.1 (observed) | `*.abi3.so` (observed) |
+| Module filename on CPython 3.15.2 macOS | `*.abi3-darwin.so` via `Python_SOSABI` (observed) | `*.abi3-darwin.so` via `SOABI_PLATFORM`, setuptools 84.2.1 (observed) | `*.abi3.so` (observed) |
 | macOS tag source | env variable, else `sysconfig` | `sysconfig`, raised by env or binary `minos` | env variable, else rustc default |
-| Lab macOS tag | `macosx_27_0_arm64` unset, `macosx_11_0_arm64` with 11.0 (reviewer run, Homebrew 3.15.1) | `macosx_27_0_arm64` on Homebrew 3.14.9 and 3.15.1, also with 11.0 on 3.14.9; `macosx_11_0_arm64` on managed 3.14.6 | `macosx_11_0_arm64` on Homebrew 3.15.1 |
+| Lab macOS tag | `macosx_27_0_arm64` unset, `macosx_11_0_arm64` with 11.0 (reviewer run, Homebrew 3.15.2) | `macosx_27_0_arm64` on Homebrew 3.14.10 and 3.15.2, also with 11.0 on 3.14.10; `macosx_11_0_arm64` on managed 3.14.6 | `macosx_11_0_arm64` on Homebrew 3.15.2 |
 | Linking on Linux and macOS | No libpython; macOS uses `-undefined dynamic_lookup` | No libpython; macOS uses `-undefined dynamic_lookup` | No libpython; Python symbols left undefined |
 | Linking on Windows | `python3.lib` via `Python::SABIModule` | `python3.lib` | `python3.lib` |
 | Linux platform tag | `auditwheel repair` in a manylinux image | `auditwheel repair` in a manylinux image | maturin's built-in audit, or `--zig` for a chosen glibc |
-| Free-threaded | `wheel.py-api = "cp315t"` gives `cp315-abi3t`; `"cp315.cp315t"` gives `cp315-abi3.abi3t` | Limited API is a compile error on 3.13t and 3.14t; 3.15t backend tagging UNVERIFIED | PyO3 ignores `abi3` features on free-threaded builds, so each release needs a `cp3XYt` wheel |
+| Free-threaded | `wheel.py-api = "cp315t"` gives `cp315-abi3t`; `"cp315.cp315t"` gives `cp315-abi3.abi3t` | Limited API is a compile error on 3.13t and 3.14t; 3.15t backend tagging UNVERIFIED | PyO3 0.29 ignores `abi3` features on free-threaded builds, so each release before 3.15 needs a `cp3XYt` wheel; `abi3t` and `abi3t-py315` target 3.15 and later |
 | Typical defect | C++ runtime symbols above the policy cap, such as a too-new `GLIBCXX` | One translation unit compiled without `Py_LIMITED_API` | Vendored C library such as OpenSSL needing its own repair |
 
 ## Worked Lab Example
@@ -291,34 +292,35 @@ auditwheel cannot see libraries loaded with `dlopen`, `ctypes`, or `cffi`.
 The lab lives at `code/07-Packaging-and-Release/wheel_tags/`; `run.sh` is tagged `# requires: macos, network`, because it reads Mach-O load commands with `otool` and downloads build dependencies, delocate, and possibly a managed Python.
 It contains two `cp38-abi3` projects:
 1. `c_extension/` is a setuptools C-API module with `py_limited_api=True` and `Py_LIMITED_API=0x03080000` in both `define_macros` and the source.
-2. `rust_extension/` is a PyO3 0.22 module built by maturin with the `abi3-py38` and `extension-module` features.
+2. `rust_extension/` is a PyO3 0.29 module built by maturin with the `abi3-py38` and `extension-module` features.
 
-The build requirements are pinned to the versions that produced the recording: `setuptools==84.2.1` and `wheel==0.48.0` for the C project, and `maturin==1.15.0` with `pyo3 = "=0.22.6"` for the Rust project.
+The build requirements are pinned to the versions that produced the recording: `setuptools==84.2.1` and `wheel==0.48.0` for the C project, and `maturin==1.15.0` with `pyo3 = "=0.29.3"` for the Rust project.
+The PyO3 pin stays on the 0.29 line on purpose: 0.29.0 is the first release outside the advisories that affect older PyO3, and 0.30 drops CPython 3.8 and the `abi3-py38` feature, which would stop the Rust wheel sharing the C wheels' `cp38-abi3` tag.
 
 `run.sh` does the following:
-1. It selects three final-release CPython builds through uv: the managed python-build-standalone `cpython-3.14.6-macos-aarch64-none`, pinned exactly and looked up with a `+gil` suffix so uv cannot return an installed free-threaded 3.14.6 (installed with `--no-bin` if missing), and the non-managed system 3.14 and 3.15 (`--no-managed-python`, Homebrew 3.14.9 and 3.15.1 on the lab host).
+1. It selects three final-release CPython builds through uv: the managed python-build-standalone `cpython-3.14.6-macos-aarch64-none`, pinned exactly and looked up with a `+gil` suffix so uv cannot return an installed free-threaded 3.14.6 (installed with `--no-bin` if missing), and the non-managed system 3.14 and 3.15 (`--no-managed-python`, Homebrew 3.14.10 and 3.15.2 on the lab host).
 2. It prints each interpreter's full version and `sysconfig` `MACOSX_DEPLOYMENT_TARGET`.
 3. It runs `uv build --wheel` five times, so that each build differs from an earlier one in exactly one variable:
    - `c_managed`: the C project on the managed 3.14.6.
-   - `c_system`: the C project on Homebrew 3.14.9, which differs from `c_managed` in interpreter provenance (and in patch release, 3.14.9 versus 3.14.6).
+   - `c_system`: the C project on Homebrew 3.14.10, which differs from `c_managed` in interpreter provenance (and in patch release, 3.14.10 versus 3.14.6).
    - `c_system_target11`: `c_system` plus `MACOSX_DEPLOYMENT_TARGET=11.0`.
-   - `c_system315`: the C project on Homebrew 3.15.1, which differs from `c_system` in interpreter version.
-   - `rust_system315`: the Rust project on Homebrew 3.15.1, which differs from `c_system315` in build backend (maturin instead of setuptools).
+   - `c_system315`: the C project on Homebrew 3.15.2, which differs from `c_system` in interpreter version.
+   - `rust_system315`: the Rust project on Homebrew 3.15.2, which differs from `c_system315` in build backend (maturin instead of setuptools).
 4. Every build runs in its own fresh copy of the project, because setuptools would otherwise reuse the previous build's `build/` directory and skip the compiler.
-5. For each wheel, `inspect_wheel.py` (run with `packaging==25.0` on Homebrew 3.15.1) prints the sorted filename tags, the sorted `Tag:` lines from `.dist-info/WHEEL`, the extension module filename, and whether any tag is in that interpreter's `packaging.tags.sys_tags()`.
+5. For each wheel, `inspect_wheel.py` (run with `packaging==25.0` on Homebrew 3.15.2) prints the sorted filename tags, the sorted `Tag:` lines from `.dist-info/WHEEL`, the extension module filename, and whether any tag is in that interpreter's `packaging.tags.sys_tags()`.
 6. It prints the extension's `LC_BUILD_VERSION` `minos` from `otool -l`.
 7. It runs `delocate-wheel --require-target-macos-version 11.0` from delocate 0.13.0 and prints `accepted` with the filename of the wheel delocate wrote, or `rejected` only when delocate's log contains `has a minimum target of`; any other delocate failure stops the lab with the log.
-8. It installs the wheel into fresh uv virtual environments on Homebrew 3.15.1 and 3.14.9 and prints `ok` or the last line of the import error, with quoted names replaced by `'...'`.
+8. It installs the wheel into fresh uv virtual environments on Homebrew 3.15.2 and 3.14.10 and prints `ok` or the last line of the import error, with quoted names replaced by `'...'`.
    A failure to create the venv or install the wheel stops the lab with the log, so an import error always comes from an installed wheel.
 
 ### Verified output
 
-Recorded by `make record` on darwin-arm64 on 2026-10-26 and re-checked by `make verify`; the file is `code/07-Packaging-and-Release/wheel_tags/expected/darwin-arm64.txt`.
+Recorded by `make record` on darwin-arm64 on 2026-11-01 and re-checked by `make verify`; the file is `code/07-Packaging-and-Release/wheel_tags/expected/darwin-arm64.txt`.
 
 ```text
 managed (python-build-standalone) CPython: 3.14.6, sysconfig MACOSX_DEPLOYMENT_TARGET=11.0
-system (non-managed) CPython:              3.14.9, sysconfig MACOSX_DEPLOYMENT_TARGET=27
-system (non-managed) CPython:              3.15.1, sysconfig MACOSX_DEPLOYMENT_TARGET=27
+system (non-managed) CPython:              3.14.10, sysconfig MACOSX_DEPLOYMENT_TARGET=27
+system (non-managed) CPython:              3.15.2, sysconfig MACOSX_DEPLOYMENT_TARGET=27
 
 === c_managed ===
 Filename tags: cp38-abi3-macosx_11_0_arm64
@@ -377,12 +379,12 @@ Import on 3.14: ok
 Read the five builds as four controlled pairs, each changing one variable.
 
 Provenance decides the tag and `minos`.
-`c_managed` and `c_system` build the same C source on 3.14, from python-build-standalone 3.14.6 (target 11.0) and Homebrew 3.14.9 (target 27).
+`c_managed` and `c_system` build the same C source on 3.14, from python-build-standalone 3.14.6 (target 11.0) and Homebrew 3.14.10 (target 27).
 The managed wheel is `macosx_11_0_arm64` with `minos 11.0` and delocate accepts it; the Homebrew wheel is `macosx_27_0_arm64` with `minos 27.0` and delocate rejects it against an 11.0 floor.
 Both named the module `c_abi3_example.abi3.so`, and both import on 3.15 and 3.14.
 
 The interpreter version decides the abi3 suffix and the 3.14 import.
-`c_system315` differs from `c_system` only in using Homebrew 3.15.1 instead of 3.14.9: the tag stays `macosx_27_0_arm64` and `minos` stays 27.0.
+`c_system315` differs from `c_system` only in using Homebrew 3.15.2 instead of 3.14.10: the tag stays `macosx_27_0_arm64` and `minos` stays 27.0.
 The module is now `c_abi3_example.abi3-darwin.so`, which 3.15 imports and 3.14 cannot find, so the `cp38-abi3` promise fails on the next-older Python.
 
 The environment variable reaches `minos` but not the tag.
@@ -390,14 +392,14 @@ The environment variable reaches `minos` but not the tag.
 delocate now accepts the binary and writes a `macosx_11_0_arm64` wheel, while the suffix and both imports are unchanged.
 
 The build backend decides both the tag and `minos`.
-`rust_system315` keeps Homebrew 3.15.1 and swaps setuptools for maturin, which used rustc's default of 11.0: the tag is `macosx_11_0_arm64`, `minos` is 11.0, and delocate accepts it.
+`rust_system315` keeps Homebrew 3.15.2 and swaps setuptools for maturin, which used rustc's default of 11.0: the tag is `macosx_11_0_arm64`, `minos` is 11.0, and delocate accepts it.
 maturin also named the module with the plain `.abi3.so` suffix, so the Rust wheel imports on 3.14 from the same interpreter whose setuptools wheel does not.
 
 `Accepted by this interpreter's sys_tags(): yes` on every row only shows that the build host accepts its own wheels; delocate and the 3.14 import are the checks that separate them.
 
 ### Extending the lab by hand
 
-The reviewer ran these commands on the same host on 2026-10-25 and 2026-10-26; they are not part of the golden file:
+The reviewer ran these commands on the same host on 2026-10-25 and 2026-10-26 and re-ran them on 2026-11-01 against Homebrew 3.15.2 and 3.14.10; they are not part of the golden file:
 
 ```sh
 /opt/homebrew/bin/python3.15 -c "import sysconfig; print(sysconfig.get_config_var('CFLAGS'), sysconfig.get_config_var('LDFLAGS'), sysconfig.get_config_var('MACOSX_DEPLOYMENT_TARGET'))"
@@ -415,7 +417,7 @@ uv build --python /usr/local/bin/python3.13 --wheel -o dorg c3/   # python.org: 
 
 The rejection of the stale `e11` wheel said `has a minimum target of 27.0` and suggested `MACOSX_DEPLOYMENT_TARGET=27.0`.
 The python.org 3.13.7 build produced a universal2 `c_abi3_example.abi3.so` with `minos 11.0` on the arm64 slice and `version 10.13` on the x86_64 slice.
-It imported on Homebrew 3.15.1 and 3.14.9, and delocate with an 11.0 floor accepted it and retagged it `macosx_11_0_universal2`.
+It imported on Homebrew 3.15.2 and 3.14.10, and delocate with an 11.0 floor accepted it and retagged it `macosx_11_0_universal2`.
 `abi3audit --strict` 0.0.26 passed the setuptools and maturin wheels, which shows that symbol audits catch neither a wrong macOS target nor a wrong module suffix.
 
 ## Pitfalls
@@ -433,7 +435,7 @@ It imported on Homebrew 3.15.1 and 3.14.9, and delocate with an 11.0 floor accep
 
 > [!warning] Pitfall 3: An abi3 wheel built on the newest Python may not import on older ones
 > setuptools 84.2 on CPython 3.15.0rc1 or later names the module `*.abi3-darwin.so` from `sysconfig` `SOABI_PLATFORM`, a suffix that CPython 3.14 and earlier do not search.
-> The `cp38-abi3` wheel installs on 3.14 and then raises `ModuleNotFoundError`, while the same source built on Homebrew 3.14.9 is named `*.abi3.so` and imports on both, as the lab's `c_system315` and `c_system` show.
+> The `cp38-abi3` wheel installs on 3.14 and then raises `ModuleNotFoundError`, while the same source built on Homebrew 3.14.10 is named `*.abi3.so` and imports on both, as the lab's `c_system315` and `c_system` show.
 > Build abi3 wheels on the oldest Python the tag claims, as cibuildwheel 4.3.4 does by building the abi3 wheel on the first, oldest selected CPython and reusing it for the rest, and import-test on that Python.
 
 > [!warning] Pitfall 4: The abi3 tag does not police the code

@@ -1,6 +1,6 @@
 # Vault Audit
 
-Generated 2026-10-26 by `python3 tools/audit_vault.py` over git-tracked files.
+Generated 2026-11-01 by `python3 tools/audit_vault.py` over git-tracked files.
 Re-run the script after every structural change; this file is its output and should not be hand-edited.
 0 files in private locations (`tools/private_paths.py`) are excluded; `tools/audit_pii.py` inventories them into a private path.
 
@@ -21,7 +21,7 @@ Re-run the script after every structural change; this file is its output and sho
 | Note folders without README (depth <= 3) | 0 |
 | Notes with emojis / total emojis | 0 / 0 |
 | Notes with em dashes / total em dashes | 0 / 0 |
-| Identical-content groups / redundant MB | 305 / 41.9 |
+| Identical-content groups / redundant MB | 306 / 41.9 |
 | Vendored or imported repos | 10 |
 | Tracked build junk | 0 |
 | Files >= 5 MB / total MB | 1 / 5.1 |
@@ -30,12 +30,12 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Folder | Files | Notes | Code | Papers | Other | MB | Last touched |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-10-26 |
+| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-11-01 |
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-10-25 |
 | `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-21 |
 | `00-Start-Here` | 6 | 5 | 0 | 0 | 1 | 0.0 | 2026-10-25 |
 | `01-CS-Foundations` | 507 | 262 | 141 | 0 | 104 | 4.7 | 2026-10-25 |
-| `02-Programming-Languages` | 5828 | 818 | 2860 | 466 | 1684 | 112.2 | 2026-10-25 |
+| `02-Programming-Languages` | 5828 | 818 | 2860 | 466 | 1684 | 112.2 | 2026-11-01 |
 | `03-Data-Structures-Algorithms` | 8293 | 185 | 7988 | 0 | 120 | 17.3 | 2026-10-25 |
 | `04-System-Design` | 991 | 177 | 657 | 0 | 157 | 9.8 | 2026-10-25 |
 | `05-Quantitative-Finance` | 9 | 2 | 7 | 0 | 0 | 0.0 | 2026-10-07 |
@@ -51,8 +51,8 @@ Re-run the script after every structural change; this file is its output and sho
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-10-25 |
 | `16-Interview-Command-Center` | 51 | 51 | 0 | 0 | 0 | 0.1 | 2026-10-25 |
 | `17-Cloud-AI-Engineering` | 162 | 162 | 0 | 0 | 0 | 8.9 | 2026-10-25 |
-| `18-Developer-Toolchain` | 365 | 343 | 12 | 0 | 10 | 0.8 | 2026-10-26 |
-| `19-Shell-and-Unix-Engineering` | 500 | 406 | 55 | 0 | 39 | 2.3 | 2026-10-26 |
+| `18-Developer-Toolchain` | 365 | 343 | 12 | 0 | 10 | 0.8 | 2026-11-01 |
+| `19-Shell-and-Unix-Engineering` | 500 | 406 | 55 | 0 | 39 | 2.3 | 2026-10-27 |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
 | `tools` | 26 | 1 | 23 | 0 | 2 | 0.2 | 2026-10-26 |
 
@@ -196,7 +196,7 @@ Folders carrying their own LICENSE, `.gitignore`, `package.json`, or similar; ou
 | Folder | Files | Last touched |
 | :--- | ---: | ---: |
 | `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode` | 6459 | 2026-10-25 |
-| `02-Programming-Languages/Python/python in depth` | 2030 | 2026-10-25 |
+| `02-Programming-Languages/Python/python in depth` | 2030 | 2026-11-01 |
 | `04-System-Design/design-patterns-java` | 177 | 2026-09-21 |
 | `04-System-Design/design-questions` | 172 | 2026-09-21 |
 | `04-System-Design/design-patterns-cpp/python-patterns` | 106 | 2026-10-07 |
