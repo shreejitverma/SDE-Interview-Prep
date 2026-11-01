@@ -971,7 +971,7 @@ types of exceptions that the function is allowed to propagate.
 void risky() throw(std::runtime_error);
 // this function can't propagate any exceptions
 void safe() throw();
-Dynamic exception specications are deprecated as of C++11.
+Dynamic exception specifications are deprecated as of C++11.
 Note that the first two uses of throw listed above constitute expressions rather than statements. (The type of a
 throw expression is void.) This makes it possible to nest them within expressions, like so:
 unsigned int predecessor(unsigned int x) {
@@ -1090,7 +1090,7 @@ bool f(int arg) {
 }
 Section 15.11: Jump statements : break, continue, goto, exit
 The break instruction:
-Using break we can leave a loop even if the condition for its end is not fullled. It can be used to end an infinite
+Using break we can leave a loop even if the condition for its end is not fulfilled. It can be used to end an infinite
 loop, or to force it to end before its natural end
 The syntax is
 break;
