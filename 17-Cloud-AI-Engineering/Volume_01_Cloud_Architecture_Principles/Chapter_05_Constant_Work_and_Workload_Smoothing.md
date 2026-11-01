@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://aws.amazon.com/builders-library/reliability-and-constant-work/"
@@ -18,6 +18,33 @@ sources:
   - "https://aws.amazon.com/message/5467D2/"
   - "https://aws.amazon.com/message/11201/"
   - "https://aws.amazon.com/message/101925/"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/scaling-behavior.html"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html"
+  - "https://aws.amazon.com/lambda/pricing/"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3/current/us-east-1/index.json"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/burst-adaptive-capacity.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/on-demand-capacity-mode.html"
+  - "https://docs.aws.amazon.com/scheduler/latest/APIReference/API_FlexibleTimeWindow.html"
+  - "https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html"
+  - "https://aws.amazon.com/blogs/developer/announcing-updated-retry-behavior-for-aws-sdks-and-tools/"
+  - "https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/circuit_breaker.proto"
+  - "https://github.com/grpc/proposal/blob/master/A6-client-retries.md"
+  - "https://docs.cloud.google.com/storage/docs/request-rate"
+  - "https://www.usenix.org/system/files/conference/nsdi13/nsdi13-final170_update.pdf"
+  - "https://www.usenix.org/system/files/osdi22-huang-lexiang.pdf"
+  - "https://www.vldb.org/pvldb/vol8/p886-vattani.pdf"
+  - "https://www.usenix.org/system/files/atc22-elhemali.pdf"
+  - "https://www.icir.org/floyd/papers/sync_94.pdf"
+  - "https://github.com/kubernetes-sigs/controller-runtime/blob/main/pkg/cache/cache.go"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html"
+  - "https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-endpoints-s3.html"
+  - "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/RequestAndResponseBehaviorCustomOrigin.html"
+  - "https://docs.cloud.google.com/cdn/docs/caching"
+  - "https://docs.aws.amazon.com/appconfig/latest/userguide/appconfig-agent.html"
+  - "https://docs.aws.amazon.com/lambda/latest/api/API_ScalingConfig.html"
+  - "https://docs.cloud.google.com/scheduler/docs/reference/rest/v1/projects.locations.jobs"
 ---
 
 # Constant Work and Workload Smoothing
@@ -27,7 +54,7 @@ sources:
 1. A system that does more work when things go wrong has a hidden positive feedback loop. Failure triggers more work (retries, resyncs, re-replication, cache misses, state-change fan-out), which causes more failure. Constant work removes the loop by making the work done per cycle independent of the state of the world.
 2. "Constant" has to hold at every stage: bytes on the wire after compression, CPU to parse, CPU to apply, and fan-in at the receiver. Delta-encoding, "skip if unchanged" fast paths, and transport compression each quietly reintroduce load-proportional work.
 3. Synchronization is the dual problem. Clients that share a clock, a restart event, a deploy, or a slow dependency phase-lock, and a uniform load of 10k rps becomes a 100k rps spike. The fix is randomized phase (jitter), absolute-deadline scheduling, retry budgets, and deadline-aware shedding. Jitter alone is not enough once the server wastes capacity on abandoned requests.
-4. Cache stampedes and cold-start herds are solved by bounding concurrent recomputation (single flight, leases) and by refreshing probabilistically before expiry (XFetch). Early refresh fires roughly `delta * beta * ln(rate * delta)` seconds before expiry, so it trades hit-rate freshness for tail latency.
+4. Cache stampedes and cold-start herds are solved by bounding concurrent recomputation (single flight, leases) and by refreshing probabilistically before expiry (XFetch). Early refresh fires roughly `delta * beta * ln(rate * delta * beta)` seconds before expiry, so it trades hit-rate freshness for tail latency.
 5. Pre-allocated pools (buffers, connections, KV-cache blocks, warm capacity) convert unbounded memory and latency behavior into a hard concurrency limit that you can shed against. The cost is that you pay for peak all the time, and you must size the pool from Little's law and not from average load.
 
 ## Mental Model
@@ -70,7 +97,7 @@ Almost every real system lands between the extremes, and the staff-level skill i
 ### Metastable failure: the feedback loop constant work removes
 
 The metastable failure literature (Bronson et al., "Metastable Failures in Distributed Systems", HotOS 2021, and Huang et al., "Metastable Failures in the Wild", OSDI 2022) separates a **trigger** (a deploy, a cache flush, a load spike, a brief dependency brownout) from a **sustaining effect** (a feedback loop that keeps the system in a degraded state after the trigger is gone).
-The OSDI 2022 incident study found that retry policy was the most common sustaining mechanism, with load-dependent work such as cache-miss amplification and rebalancing also frequent (exact fractions UNVERIFIED this session).
+The OSDI 2022 incident study found that retry policy was by far the most common sustaining effect, affecting more than 50 percent of the studied incidents, with expensive error handling, lock contention, and leader-election churn among the other mechanisms ([Huang et al., OSDI 2022](https://www.usenix.org/system/files/osdi22-huang-lexiang.pdf)).
 The defining property is that removing the trigger does not restore service, because goodput has collapsed below offered load and the amount of wasted work is itself proportional to the backlog.
 
 Three structural properties create the sustaining loop:
@@ -98,7 +125,7 @@ The crossover is near 0.2 percent of servers changing per tick, and the point of
 **Level-triggered reconciliation.**
 Kubernetes controllers are the in-house example: a reconcile function receives a key, reads the whole desired and observed state for that object, and converges, so a missed watch event is repaired by the next list or resync.
 Informer relists and the periodic resync are constant work with respect to correctness, even though the common event path is edge-triggered for efficiency.
-Controller-runtime's default cache resync period is on the order of ten hours with jitter (UNVERIFIED this session), which is a deliberate choice of a very low constant rate.
+Controller-runtime's default cache `SyncPeriod` is 10 hours with 10 percent jitter between controllers ([controller-runtime cache.go](https://github.com/kubernetes-sigs/controller-runtime/blob/main/pkg/cache/cache.go), as of 2026-11), which is a deliberate choice of a very low constant rate.
 See [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_01_Kubernetes_Control_Loop_Internals|Kubernetes Control Loop Internals]] and [[04-System-Design/07-Infrastructure-and-Orchestration/Kubernetes-Architecture|Kubernetes Architecture]].
 
 **Fixed-rate sweepers.**
@@ -106,7 +133,7 @@ Lifecycle scanners, garbage collectors, and anti-entropy repair processes that r
 Cassandra and Dynamo-style anti-entropy are the common examples, see [[04-System-Design/05-Data-Stores/Apache-Cassandra|Apache Cassandra]].
 
 **Token-bucket-bounded admission.**
-The DynamoDB paper (Elhemali et al., USENIX ATC 2022) describes admission control built from token buckets at the partition level and a global admission control layer at the request routers.
+The DynamoDB paper (Elhemali et al., USENIX ATC 2022) describes admission control built from token buckets at the partition and storage-node levels and a global admission control layer at the request routers.
 Work admitted into a storage node is bounded by tokens regardless of how many clients send requests, and unspent capacity is retained as burst tokens for a limited window.
 Admission control is constant work enforced at the boundary: the storage node's work function is capped even if the offered load is not.
 See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_10_Amazon_DynamoDB_Architecture_and_Partitioning|Amazon DynamoDB: Architecture and Partitioning]].
@@ -134,7 +161,7 @@ Constant-work designs fail in practice because "constant" is only true at one la
    Put a relay or cache tier between them so the origin sees `R / T` where `R` is the number of relays, which is fixed by topology and not by fleet size.
 5. **Bounded snapshot growth.**
    If snapshot size is `O(n)` in the number of entities and every one of `n` consumers fetches it, fleet-wide bandwidth is `O(n^2)`.
-   The 2020 Kinesis front-end event had the same shape: per-server state and thread count grew with fleet size, so adding capacity pushed every server past an OS thread limit ([AWS post-event summary, Kinesis, November 2020](https://aws.amazon.com/message/11201/); details UNVERIFIED this session).
+   The 2020 Kinesis front-end event had the same shape: per-server state and thread count grew with fleet size, so adding capacity pushed every server past an OS thread limit ([AWS post-event summary, Kinesis, November 2020](https://aws.amazon.com/message/11201/), as of 2026-11).
 6. **Constant work still has a cost.**
    You pay the peak cost every second of every day.
    It is worth it only when the cost of the tail (an outage, an overprovisioned burst reserve, a recovery protocol) exceeds the steady premium.
@@ -155,7 +182,7 @@ The coupling in cloud systems is easy to create:
   In the lab, 100,000 pollers restarted together produce a per-second peak equal to the entire fleet (10x the mean at a 10 second period), and uniform random phase brings the peak to 1.02x the mean.
 - **Human-chosen times.**
   Cron jobs at `:00`, midnight UTC, and "every 5 minutes" produce spikes at round clock times across every tenant.
-  The Google SRE book chapter on distributed cron ([Distributed Periodic Scheduling with Cron](https://sre.google/sre-book/distributed-periodic-scheduling/)) describes this load pattern and the practice of hashing unspecified fields so jobs spread out (details UNVERIFIED this session).
+  The Google SRE book chapter on distributed cron ([Distributed Periodic Scheduling with Cron](https://sre.google/sre-book/distributed-periodic-scheduling/)) describes this load pattern and the practice of hashing unspecified fields so jobs spread out (the book's `?` crontab field, whose value is chosen by hashing the job configuration).
 - **Identical PRNG seeds.**
   A fleet of identical images with a hard-coded or time-seconds-resolution seed generates identical "random" delays.
   Seed from OS entropy or hash the instance ID.
@@ -165,8 +192,9 @@ The coupling in cloud systems is easy to create:
 If each layer in a call chain of depth `d` makes up to `a` attempts, a failing leaf can see up to `a^d` calls per user request: three layers with three attempts each is 27x, five layers is 243x.
 The Builders' Library article [Timeouts, retries, and backoff with jitter](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/) and Marc Brooker's [Exponential Backoff And Jitter](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/) set out the mechanics: full jitter (`sleep = uniform(0, min(cap, base * 2^attempt))`) outperforms equal and decorrelated jitter on total work in his contention simulation, and retries should be limited to one layer where possible.
 Backoff reduces the retry rate of one client.
-A budget caps the retry rate of the process: a token bucket that is debited per retry and credited per success, so that during a broad failure the retry ratio falls to a few percent of traffic.
-Brooker's [Fixing retries with token buckets and circuit breakers](https://brooker.co.za/blog/2022/02/28/retries.html) covers the trade-off: a local budget stops amplification but means that during a partial brownout some requests that a retry would have saved are failed.
+A budget caps the retry rate of the process: a token bucket that is debited per retry and credited per success, so that during a broad failure the retry rate falls to roughly the per-success deposit rate (0.1 tokens per success in Brooker's example).
+Brooker's [Fixing retries with token buckets and circuit breakers](https://brooker.co.za/blog/2022/02/28/retries.html) covers the trade-off: the bucket still adds a tunable amount of load at high failure rates, and clients too small to drain their buckets converge toward plain N-retry behavior.
+A further consequence, which that post does not model, is that during a partial brownout a local budget fails some requests that a retry would have saved.
 Chapter coverage of the full mechanism is in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Resilient Communication: Retries, Jitter, and Circuit Breakers]]; the server half is in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control|Load Shedding, Backpressure, and Admission Control]].
 
 The interaction with the server matters more than the client policy.
@@ -186,7 +214,7 @@ Three mechanisms bound it:
    CDNs implement it as request collapsing at the edge or shield layer.
    It bounds backend load to 1, but every request during the window still blocks, so tail latency is `delta`.
 2. **Leases.**
-   Nishtala et al. ("Scaling Memcache at Facebook", NSDI 2013) describe a lease token returned on a miss, which grants one client permission to refill and is rate-limited per key (on the order of one token per 10 seconds per key, UNVERIFIED this session), while other clients wait briefly or use stale data.
+   Nishtala et al. ("Scaling Memcache at Facebook", NSDI 2013) describe a lease token returned on a miss, which grants one client permission to refill and is rate-limited per key (by default one token per key every 10 seconds, [Nishtala et al.](https://www.usenix.org/system/files/conference/nsdi13/nsdi13-final170_update.pdf)), while other clients wait briefly or use stale data.
    Leases also prevent stale sets from overwriting newer values.
    See [[04-System-Design/05-Data-Stores/Memcached-Architecture|Memcached Architecture]].
 3. **Probabilistic early expiration (XFetch).**
@@ -215,8 +243,8 @@ Why this is a constant-work technique and not just a micro-optimization:
 
 - General-purpose allocators fragment under mixed sizes, and `malloc` and `mmap` take locks (including the process-wide `mmap_lock` in Linux) that serialize across threads when traffic surges.
 - First touch of fresh memory takes a page fault that the kernel must satisfy, which under memory pressure triggers reclaim or compaction, so allocation latency becomes load-dependent.
-  Pre-touching memory at startup moves that cost out of the request path (for example `-XX:+AlwaysPreTouch` on the JVM, or `MAP_POPULATE` and `mlock` for native services, with huge pages reserved up front so that THP compaction cannot stall the data path; kernel and JVM docs, UNVERIFIED this session).
-- High-throughput I/O paths register buffers once so the kernel or NIC does not pin and unpin pages per operation (io_uring registered buffers, DPDK `rte_mempool`; UNVERIFIED this session).
+  Pre-touching memory at startup moves that cost out of the request path (for example `-XX:+AlwaysPreTouch` on the JVM, or `MAP_POPULATE` and `mlock` for native services, with huge pages reserved up front so that THP compaction cannot stall the data path; Oracle `java` docs, `mmap(2)`, and the Linux transparent hugepage admin guide, as of 2026-11).
+- High-throughput I/O paths register or preallocate buffers once so the kernel or NIC does not pin and unpin pages per operation (`IORING_REGISTER_BUFFERS` locks buffers in memory up front per `io_uring_register(2)`, and DPDK `rte_mempool` is a fixed-size object allocator per the DPDK guide, as of 2026-11).
 - Garbage-collected runtimes pay pause time that grows with live heap and allocation rate, both of which spike under load; reusing objects flattens the allocation rate.
 
 The sizing rule uses Little's law: `pool_size = lambda_max * W_max * safety`, where `lambda_max` is the admitted peak arrival rate and `W_max` is the worst-case time a buffer is held (not the mean).
@@ -228,8 +256,8 @@ Where this shows up in AI infrastructure:
   vLLM profiles peak activation memory at startup and then allocates the rest of the GPU memory budget (governed by `gpu_memory_utilization`) as a fixed pool of KV blocks, so per-request memory is a block-table lookup and exhaustion becomes a scheduling decision (queue, preempt) and not a CUDA OOM.
   See [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_03_KV_Cache_Management_and_PagedAttention|KV-Cache Management and PagedAttention]].
 - **Static-shape execution.**
-  XLA-compiled programs on TPU (and CUDA graphs on GPU) are compiled per input shape, so serving stacks pad requests into a small set of bucketed shapes.
-  That is constant work per step by construction, at the price of wasted FLOPs on padding, and it avoids recompilation storms when shapes vary (general XLA behavior; UNVERIFIED this session).
+  XLA-compiled programs on TPU are compiled per input shape, and vLLM captures CUDA graphs keyed by padded token length with an eager fallback when no key matches, so serving stacks pad requests into a small set of bucketed shapes.
+  That is constant work per step by construction, at the price of wasted FLOPs on padding, and it avoids recompilation storms when shapes vary ([XLA tf2xla docs](https://openxla.org/xla/tf2xla) and [vLLM CUDA graphs design](https://docs.vllm.ai/en/latest/design/cuda_graphs/), as of 2026-11).
 - **Connection pools.**
   PostgreSQL forks a process per connection (see [[04-System-Design/05-Data-Stores/PostgreSQL-Architecture|PostgreSQL Architecture]]), so a reconnect storm after failover is memory-bound on the server.
   A fixed pool size in the client or a proxy (RDS Proxy, PgBouncer) bounds server-side connections and turns the storm into queueing at the pool.
@@ -247,42 +275,42 @@ Cell boundaries from [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Prin
 
 ## Numbers to Know
 
-Web search quota was exhausted during authoring, so every cloud-doc number below is recalled and flagged `UNVERIFIED`.
-Re-verify against the cited doc page before using in a design review or an interview.
+Every cloud-doc number below was checked against the cited primary source on 2026-11-01.
+Limits and prices change, so re-verify against the cited doc page before using one in a design review.
 Rows marked "lab" were produced by the script in the Worked Example.
 
 | Item | Value | Source |
 |---|---|---|
-| Lambda scale-up rate per function | 1,000 additional concurrent execution environments every 10 seconds | (AWS Lambda docs, as of 2026-10) UNVERIFIED |
-| Lambda default account concurrency | 1,000 across a Region, soft limit; new accounts may start lower | (AWS Lambda docs, as of 2026-10) UNVERIFIED |
-| S3 request rate per partitioned prefix | 3,500 PUT/COPY/POST/DELETE and 5,500 GET/HEAD per second | (Amazon S3 docs, as of 2026-10) UNVERIFIED |
-| DynamoDB per-partition throughput ceiling | 3,000 RCU and 1,000 WCU | (DynamoDB docs and ATC 2022 paper, as of 2026-10) UNVERIFIED |
-| DynamoDB burst capacity | Unused capacity retained up to about 300 seconds | (DynamoDB docs, as of 2026-10) UNVERIFIED |
-| DynamoDB on-demand scaling | Instantly accommodates up to 2x the previous peak; new tables start at 4,000 WCU and 12,000 RCU | (DynamoDB docs, as of 2026-10) UNVERIFIED |
-| EventBridge Scheduler flexible time window | 1 to 1,440 minutes, or OFF | (EventBridge Scheduler docs, as of 2026-10) UNVERIFIED |
-| AWS SDK standard retry mode (typical) | 3 total attempts, max backoff about 20 s, retry token bucket of 500, retry cost 5 (10 on timeout), 1 token back per success; varies by SDK and version | (AWS SDK reference guide, as of 2026-10) UNVERIFIED |
-| Envoy retry budget defaults | 20 percent of active requests, minimum 3 concurrent retries | (Envoy docs, as of 2026-10) UNVERIFIED |
-| gRPC retry throttling | Per-server token bucket, `maxTokens` and `tokenRatio` (for example 0.1) | (gRPC retry design, as of 2026-10) UNVERIFIED |
-| Cloud Storage bucket request-rate ramp | About 1,000 object writes/s and 5,000 reads/s initially, scaling by doubling over roughly 20 minute intervals | (Google Cloud Storage docs, as of 2026-10) UNVERIFIED |
-| Memcache lease issuance | About one token per key per 10 seconds | (Nishtala et al., NSDI 2013) UNVERIFIED |
+| Lambda scale-up rate per function | 1,000 additional concurrent execution environments every 10 seconds, per function per Region | (AWS Lambda docs, as of 2026-11) |
+| Lambda default account concurrency | 1,000 across a Region, soft limit; new accounts start with reduced quotas that AWS raises with usage | (AWS Lambda docs, as of 2026-11) |
+| S3 request rate per partitioned prefix | At least 3,500 PUT/COPY/POST/DELETE or 5,500 GET/HEAD per second; scaling is gradual and may return 503 Slow Down | (Amazon S3 docs, as of 2026-11) |
+| DynamoDB per-partition throughput ceiling | 3,000 RCU and 1,000 WCU | (DynamoDB docs, as of 2026-11) |
+| DynamoDB burst capacity | Unused capacity retained up to 300 seconds | (DynamoDB docs, as of 2026-11) |
+| DynamoDB on-demand scaling | Instantly accommodates up to 2x the previous peak, and exceeding 2x within 30 minutes can throttle; new tables sustain up to 4,000 writes/s and 12,000 reads/s | (DynamoDB docs, as of 2026-11) |
+| EventBridge Scheduler flexible time window | 1 to 1,440 minutes, or OFF | (EventBridge Scheduler API reference, as of 2026-11) |
+| AWS SDK standard retry mode | 3 total attempts, full-jitter backoff capped at 20 s, retry quota of 500 tokens, 1 token back per first-try success. Updated 2026 behavior (opt-in with `AWS_NEW_RETRIES_2026=true`, announced to become default in November 2026): 14 tokens per transient retry, 5 per throttling retry, base delay 50 ms transient and 1,000 ms throttling. Before it: 5 tokens per retry, 10 on timeout in SDKs such as Go v2 | (AWS SDK reference guide, AWS Developer Blog 2026-05-20, and aws-sdk-go-v2 source, as of 2026-11) |
+| Envoy retry budget defaults | 20 percent of active requests, minimum 3 concurrent retries | (Envoy docs, as of 2026-11) |
+| gRPC retry throttling | Per-server-name `token_count`, starts at `maxTokens` (spec example 10), -1 per failed RPC, +`tokenRatio` per success (spec example 0.1); retries stop at or below `maxTokens / 2` | (gRPC proposal A6, as of 2026-11) |
+| Cloud Storage bucket request-rate ramp | About 1,000 object writes/s and 5,000 reads/s initially, ramping no faster than doubling over 20 minutes | (Google Cloud Storage docs, as of 2026-11) |
+| Memcache lease issuance | One token per key every 10 seconds, by default | (Nishtala et al., NSDI 2013) |
 | XFetch first-trigger time | `delta * beta * ln(lambda * delta * beta)`; 15.2 s predicted, 15.3 s measured at 1,000 rps, delta 2 s | (derived, lab, as of 2026-10) |
 | Synchronized poller peak | 10.0x mean unjittered vs 1.02x mean with uniform random phase, 100k clients, 10 s period | (lab, as of 2026-10) |
 | Retry amplification | `attempts^depth`: 3 attempts, 3 layers = 27x; 5 layers = 243x | (arithmetic) |
-| Lambda list price, us-east-1 x86 | $0.20 per 1M requests, $0.0000166667 per GB-second | (AWS Lambda pricing, as of 2026-10) UNVERIFIED |
-| S3 Standard list price, us-east-1 | $0.023 per GB-month, $0.005 per 1,000 PUT, $0.0004 per 1,000 GET | (Amazon S3 pricing, as of 2026-10) UNVERIFIED |
+| Lambda list price, us-east-1 x86 | $0.20 per 1M requests, $0.0000166667 per GB-second | (AWS Lambda pricing, as of 2026-11) |
+| S3 Standard list price, us-east-1 | $0.023 per GB-month, $0.005 per 1,000 PUT, $0.0004 per 1,000 GET | (AWS price list for Amazon S3, published 2026-10-15, as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Concern | AWS mechanism | Google Cloud mechanism | Critical difference |
 |---|---|---|---|
-| Scheduled job jitter | EventBridge Scheduler flexible time window spreads invocations across a window of up to 24 hours (UNVERIFIED) | Cloud Scheduler cron jobs and Cloud Tasks `scheduleTime`; no native window parameter that I could verify (UNVERIFIED) | On GCP derive a per-tenant minute offset from a hash of the tenant ID and bake it into the cron expression, or add in-handler sleep jitter |
-| Client retry defaults | SDK retry modes with a retry-token bucket in standard mode (UNVERIFIED) | Client libraries use truncated exponential backoff with jitter, with per-API idempotency rules (UNVERIFIED) | AWS SDKs have a process-level budget; on GCP rely on gRPC retry throttling or the mesh proxy for budgets |
+| Scheduled job jitter | EventBridge Scheduler flexible time window spreads invocations across a window of up to 24 hours (API reference, as of 2026-11) | Cloud Scheduler cron jobs and Cloud Tasks `scheduleTime`; the Cloud Scheduler `Job` resource has no jitter or window field (REST reference, as of 2026-11) | On GCP derive a per-tenant minute offset from a hash of the tenant ID and bake it into the cron expression, or add in-handler sleep jitter |
+| Client retry defaults | SDK retry modes with a retry-token bucket in standard mode (AWS SDK reference guide, as of 2026-11) | Cloud Storage client libraries use exponential backoff with idempotency-based retry rules, with jitter documented for Go and recommended for REST callers, and the C++ library retries all operations by default (Cloud Storage retry docs, as of 2026-11) | AWS SDKs have a per-client retry quota, typically scoped to one SDK client instance and not shared across processes; on GCP rely on gRPC retry throttling or the mesh proxy for budgets |
 | Burst absorption at storage | DynamoDB partition token buckets, burst capacity, adaptive capacity, on-demand 2x-previous-peak rule | Spanner and Bigtable scale by splits and node count, with autoscaler lag; Cloud Storage ramps request rate by doubling | Both hide a scale-up delay that a synchronized herd outruns; pre-warm or pre-split before a known event |
 | Object-store polling limits | Per-prefix request rates, 503 Slow Down, autopartition lag | Per-bucket request-rate ramp, 429 and 503 with backoff guidance | Constant-work polling at fleet scale needs a relay tier or CDN on both clouds |
-| Request collapsing at the edge | CloudFront request collapsing and Origin Shield (UNVERIFIED) | Cloud CDN request coalescing and mid-tier caching (UNVERIFIED) | Both reduce herd on origin for identical cache keys; neither helps for uncacheable per-user keys |
-| Config distribution | AWS AppConfig with an agent that polls and caches locally, plus gradual deployment strategies (UNVERIFIED) | GCS object polled with generation-conditional reads, plus Pub/Sub notifications on object change | AppConfig is a managed constant-poll design; on GCP you assemble it yourself |
+| Request collapsing at the edge | CloudFront request collapsing and Origin Shield (CloudFront docs, as of 2026-11) | Cloud CDN request collapsing per edge node, on by default; the Cloud CDN overview documents independent edge caches and no mid-tier shield (Cloud CDN docs, as of 2026-11) | Both reduce herd on origin for identical cache keys; neither helps for uncacheable per-user keys |
+| Config distribution | AWS AppConfig with an agent that polls and caches locally, plus gradual deployment strategies (AWS AppConfig docs, as of 2026-11) | GCS object polled with generation-conditional reads, plus Pub/Sub notifications on object change | AppConfig is a managed constant-poll design; on GCP you assemble it yourself |
 | Warm capacity | Lambda provisioned concurrency, SnapStart; EC2 Auto Scaling warm pools; Karpenter with low-priority placeholder pods | Cloud Run minimum instances; GKE with low-priority placeholder (balloon) pods | Same principle everywhere: pay for idle capacity to remove a scale-out dependency from the failure path |
-| Queue consumer concurrency caps | SQS event source mapping `ScalingConfig.MaximumConcurrency` (UNVERIFIED) | Pub/Sub subscriber flow control, push endpoint concurrency | Caps convert a backlog drain into a bounded rate, which protects the downstream |
+| Queue consumer concurrency caps | SQS event source mapping `ScalingConfig.MaximumConcurrency`, range 2 to 1,000 (Lambda API reference, as of 2026-11) | Pub/Sub subscriber flow control, push endpoint concurrency | Caps convert a backlog drain into a bounded rate, which protects the downstream |
 | Admission control at managed APIs | Throttling with `ThrottlingException` and `Retry-After`-style hints per service, plus Service Quotas | Quota enforcement via Service Control and per-API quotas, 429 responses | June 2025 Google outage shows the quota layer is itself a dependency with its own herd behavior (see Failure Modes) |
 
 ## Worked Example: Constant-Work Snapshot Distribution with Jitter
@@ -474,8 +502,8 @@ How to read it:
 - Section 3: without server-side shedding, no client policy completes the job within 300 simulated seconds (the `last_success_s` values for the three stale-serving rows are only the last time a client succeeded; `completed` shows 2,200, 14,200 and 19,219 of 20,000).
   The `immediate` row collapses to 2,200 successes because after the first second every request the server dequeues is already stale.
   With shedding, immediate retry looks fine on completion time (9.9 s) but sends 5.4 requests per client, which is pure amplification on the network and the ingress tier, and which in a real system is not free because rejecting a request still costs a parse, a TLS record, and a log line.
-  Exponential backoff without jitter finishes in 168.9 s because retries come in synchronized waves at 1.5 s, 2.5 s, 4.5 s, and so on, so most waves find an empty server and a few find a swamped one.
-  Full jitter finishes in 23.4 s with 61,028 requests, roughly 2.4x the ideal 20,000.
+  Exponential backoff without jitter finishes in 168.9 s because retries come in synchronized waves at 2 s, 5 s, 10 s, 19 s, 36 s, 69 s, and then every 33 s once the backoff caps at 32 s, so most waves find an empty server and a few find a swamped one.
+  Full jitter finishes in 23.4 s with 61,028 requests, roughly 3.05x the ideal 20,000.
 - Section 4: single flight alone bounds backend recomputes (10 in 600 s) but blocks every request in each 2 second window.
   XFetch removes those misses except for the first cold fill and refreshes about 15 seconds early.
 
@@ -671,7 +699,7 @@ if __name__ == "__main__":
     run()
 ```
 
-Cost estimate for Part B, at us-east-1 list prices (UNVERIFIED this session, see Numbers to Know):
+Cost estimate for Part B, at us-east-1 list prices (as of 2026-11, see Numbers to Know), before the free tier:
 
 - Invocations: 4 per hour x 24 x 30 = 2,880 per month.
 - Lambda compute: 2,880 x 0.128 GB x 0.3 s (generous) = about 111 GB-s, which is about $0.002, plus about $0.0006 for requests.
@@ -688,8 +716,8 @@ terraform destroy -auto-approve -var alert_email=you@example.com
 
 ### Part C: GCP equivalent
 
-Cloud Scheduler has no flexible window that I could verify, so derive a stable offset per publisher shard from a hash.
-Costs are cents per month for a bucket and a few scheduler jobs, but verify the free-tier job allowance in current Cloud Scheduler pricing (UNVERIFIED).
+The Cloud Scheduler `Job` resource has no flexible-window or jitter field (REST reference, as of 2026-11), so derive a stable offset per publisher shard from a hash.
+Costs are cents per month for a bucket, and the three scheduler jobs fit the free allowance of 3 jobs per month per billing account, with further jobs at $0.10 per job per month ([Cloud Scheduler pricing](https://cloud.google.com/scheduler/pricing), as of 2026-11).
 
 ```bash
 PROJECT=my-lab-project
@@ -721,18 +749,18 @@ The AWS and GCP labs have a publisher and a few readers.
 Production is different: size it with the following arithmetic.
 
 1. Fleet: 100,000 consumers, each polling every 10 s gives 10,000 GET/s at the origin.
-2. Prefix limit: 10,000 exceeds 5,500 GET/s per prefix (UNVERIFIED), so a single key throttles with 503 Slow Down, which triggers retries, which is the loop we are trying to avoid.
+2. Prefix limit: 10,000 exceeds 5,500 GET/s per prefix (Amazon S3 docs, as of 2026-11), so a single key throttles with 503 Slow Down, which triggers retries, which is the loop we are trying to avoid.
 3. Direct S3 request cost: 10,000/s x 2,592,000 s/month = 25.9 billion GETs x $0.0004 / 1,000 = about $10,368 per month, for a 12.5 KB object.
    Conditional GETs (`If-None-Match`) reduce bytes but are still billed and still count against the request rate, and they make the work depend on the change rate, which defeats the point unless the 304 path is as cheap as the 200 path.
 4. Relay tier: 100 relays each poll S3 every 10 s, so the origin sees 10 GET/s and about 25.9 million GETs per month, or about $10.37.
 5. Relay-to-consumer fan-out: each relay serves 1,000 consumers every 10 s, which is 100 rps per relay, trivially served from memory.
-6. Peak behavior: with uniform random phase the per-second arrival count at a relay is approximately Poisson with mean 100 and standard deviation 10, so the peak is about 1.1x the mean per second, which a relay sized at 2x handles without queueing.
+6. Peak behavior: with uniform random phase the per-second arrival count at a relay is approximately Poisson with mean 100 and standard deviation 10, so one standard deviation is 1.1x the mean and a rare 4-sigma second is about 1.4x, which a relay sized at 2x handles without queueing.
 7. Staleness bound: relay poll interval + consumer poll interval = 20 s worst case, which is the number to put in the SLO for state freshness.
 8. Pool sizing at a relay: with peak 150 rps and a worst-case hold time of 50 ms per connection buffer, Little's law gives 150 x 0.05 = 7.5, so a pool of 64 buffers has 8x headroom and rejects fast beyond that.
 
 ## Failure Modes and Pitfalls
 
-Incident references below are from memory and are listed in the UNVERIFIED section for re-checking against the primary post-event summaries before reuse.
+Incident references below were checked against the primary post-event summaries (as of 2026-11).
 
 ### Documented incidents
 
@@ -743,14 +771,14 @@ Incident references below are from memory and are listed in the UNVERIFIED secti
 - **Amazon Kinesis, US-East-1, November 2020** ([AWS post-event summary](https://aws.amazon.com/message/11201/)).
   A capacity addition to the front-end fleet pushed per-server thread counts, which scale with fleet size, past an OS limit.
   Constant-work lesson: work and resource consumption per server must not be a function of fleet size.
-- **Google Cloud, 12 June 2025, Service Control.**
+- **Google Cloud, 12 June 2025, Service Control** ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
   A policy change containing blank fields replicated globally within seconds and exercised a code path with a null-pointer bug, putting Service Control tasks into crash loops across regions.
   Per the incident report, the us-central1 recovery was prolonged because restarting tasks overloaded the regional Spanner database they depend on, and the service lacked randomized exponential backoff on that path.
   Lessons: a globally replicated config push is an unstaged synchronized event, and the recovery path (task restart, reload from the database) was load-proportional with no jitter and no admission control.
   Link the pattern to staged rollout in [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_06_Progressive_Delivery_and_Deployment_Pipelines|Progressive Delivery and Deployment Pipelines]].
 - **AWS us-east-1, 19-20 October 2025** ([AWS post-event summary](https://aws.amazon.com/message/101925/)).
   A DNS automation race left the DynamoDB regional endpoint with an empty record.
-  After DNS was repaired, a lease-management subsystem for EC2 hosts had to re-establish work for a very large number of hosts at once and entered a congestive-collapse state that AWS recovered from by throttling incoming work and restarting hosts of the subsystem; EC2 launches were then deliberately rate-limited while the backlog drained.
+  After DNS was repaired, the EC2 lease-management subsystem (DWFM) had to re-establish leases with a very large number of hosts at once and entered a congestive-collapse state that AWS recovered from by throttling incoming work and restarting DWFM hosts; request throttles on EC2 then stayed in place, relaxed from 11:23 AM PDT and fully removed by the time launches were normal at 1:50 PM PDT.
   Lesson: recovery work was proportional to the number of hosts that had lost state, which is the largest it can ever be, and the fix was manual throttling that a constant-work design would have built in.
 
 ### Production anti-patterns
@@ -779,7 +807,7 @@ Incident references below are from memory and are listed in the UNVERIFIED secti
   A connection pool that blocks callers indefinitely turns exhaustion into a thread pile-up and then a timeout storm.
   Bound the wait time to a small fraction of the caller's deadline.
 - **Warm pool sized from average load.**
-  Placeholder pods, minimum instances, and provisioned concurrency sized for the average leave you exposed to the 10-second-per-1,000-environment Lambda scale-up rate (UNVERIFIED) or autoscaler lag when the herd arrives.
+  Placeholder pods, minimum instances, and provisioned concurrency sized for the average leave you exposed to the 10-second-per-1,000-environment Lambda scale-up rate (AWS Lambda docs, as of 2026-11) or autoscaler lag when the herd arrives.
 - **AI-specific herds.**
   Thousands of ranks start writing a checkpoint at the same step boundary, so the object store sees one synchronized burst per interval; hundreds of inference replicas pull the same multi-hundred-gigabyte weights at the same autoscaling event; every dataloader worker opens shard files at epoch start.
   See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_06_High_Throughput_Checkpointing_to_Object_Storage|High-Throughput Checkpointing to Object Storage]], [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_07_High_Throughput_Data_Loaders_and_Storage_IO|High-Throughput Data Loaders and Storage I/O]], and [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_08_Cloud_GPU_Autoscaling_and_Cold_Start_Mitigation|Cloud GPU Autoscaling and Cold-Start Mitigation]].
@@ -802,13 +830,13 @@ Incident references below are from memory and are listed in the UNVERIFIED secti
   Sign with an asymmetric KMS key (`kms:Sign` for the publisher, public key distributed to consumers), and verify before swap.
   Verification is itself constant work: a fixed-size signature check on a fixed-size body.
 - **Encryption and request amplification.**
-  SSE-KMS makes each uncached GET incur a KMS decrypt call, so a polling fleet can hit KMS request quotas.
-  S3 Bucket Keys reduce KMS requests substantially (the documented figure is up to 99 percent; UNVERIFIED), and a relay tier cuts the count by the fan-out ratio.
+  Without a Bucket Key, SSE-KMS makes S3 call KMS on every request against an encrypted object, so a polling fleet can hit KMS request quotas.
+  S3 Bucket Keys reduce KMS requests substantially (the documented figure is up to 99 percent of KMS request costs, with savings depending on the number of requesters; Amazon S3 docs, as of 2026-11), and a relay tier cuts the count by the fan-out ratio.
   See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 - **Rate limits as a security control.**
   Admission control and retry budgets also bound the damage from a compromised or buggy client, which is a form of denial-of-wallet protection for pay-per-request services.
 - **Gateway endpoints.**
-  An S3 gateway VPC endpoint has no hourly or per-GB charge, so route polling through it, not through NAT (UNVERIFIED pricing detail, verify before relying).
+  An S3 gateway VPC endpoint has no additional charge, so route polling through it, not through NAT (AWS PrivateLink docs, as of 2026-11).
 
 ### Cost
 
@@ -892,8 +920,8 @@ It is also load-proportional in exactly the wrong way, since a config change tou
 
 Sizing.
 Let the consumer period be 10 s with uniform random phase, relay period 10 s, so worst-case staleness is about 20 s plus apply time, inside the 30 s target.
-Direct polling is 20,000 GET/s at the origin, which is more than a single S3 prefix supports (5,500 GET/s, UNVERIFIED), and at $0.0004 per 1,000 GETs costs about $20,700 per month.
-With a relay tier of 60 relays (20 per AZ), the origin sees 6 GET/s and each relay serves 3,333 hosts every 10 s, which is about 333 rps with a Poisson peak of about 1.1x.
+Direct polling is 20,000 GET/s at the origin, which is more than a single S3 prefix is documented to support (5,500 GET/s, Amazon S3 docs, as of 2026-11), and at $0.0004 per 1,000 GETs costs about $20,700 per month.
+With a relay tier of 60 relays (20 per AZ), the origin sees 6 GET/s and each relay serves 3,333 hosts every 10 s, which is about 333 rps with a Poisson 4-sigma peak of about 1.2x.
 Relays are stateless and hold the last good snapshot in memory, so a relay restart repopulates in one poll.
 Static stability: each AZ's relays serve only that AZ's hosts and continue serving the last good snapshot if the origin is unreachable.
 
@@ -980,7 +1008,7 @@ Design the fix and state the trade-offs.
 #### Model Answer
 
 Diagnose it as synchronization, not capacity.
-Object stores scale per prefix and per bucket by partitioning, and that scale-up takes time, so a burst of 4,096 ranks hitting a few prefixes at the same step boundary exceeds the instantaneous per-prefix limit (S3: 3,500 writes/s per prefix, UNVERIFIED), even though the aggregate bytes would be easy to absorb if spread over a minute.
+Object stores scale per prefix and per bucket by partitioning, and that scale-up takes time, so a burst of 4,096 ranks hitting a few prefixes at the same step boundary exceeds the instantaneous per-prefix limit (S3: 3,500 writes/s per prefix, Amazon S3 docs, as of 2026-11), even though the aggregate bytes would be easy to absorb if spread over a minute.
 
 Checkpoints:
 
@@ -1059,7 +1087,7 @@ Where does that help, where does it hurt, and what do you recommend?
 Autoscaling reacts to load after it is observed, so it has a delay of metric aggregation, a decision, and instance launch plus warmup.
 A herd arrives in seconds.
 Faster scaling shrinks the gap but cannot close it, and it adds two hazards: new instances start cold and increase load on shared dependencies (caches, databases, auth) exactly when those are stressed, and in a failure event many services scale simultaneously and compete for the same launch API and capacity, which turns into correlated throttling.
-Lambda's documented per-function scale-up of 1,000 environments per 10 seconds (UNVERIFIED) is a concrete example of a bound on how fast reactive capacity can arrive.
+Lambda's documented per-function scale-up of 1,000 environments per 10 seconds (AWS Lambda docs, as of 2026-11) is a concrete example of a bound on how fast reactive capacity can arrive.
 
 What helps: smoothing the arrival (jitter, queues with bounded depth, relay or cache tier), pre-allocated headroom for the known peak (provisioned concurrency, placeholder pods, minimum instances), and admission control for the remainder.
 What to scale on: concurrency or queue age (leading indicators), not CPU, and scale down slowly to avoid oscillation.
@@ -1089,5 +1117,5 @@ How do you justify it, and what is the cheapest way to reduce it without reintro
 - Nishtala et al., "Scaling Memcache at Facebook", NSDI 2013 - leases and gutter pools for stampedes and stale sets.
 - Elhemali et al., "Amazon DynamoDB: A Scalable, Predictably Performant, and Fully Managed NoSQL Database Service", USENIX ATC 2022 - token-bucket admission control and adaptive capacity in a production data plane.
 - AWS post-event summaries: [DynamoDB, September 2015](https://aws.amazon.com/message/5467D2/), [Kinesis, November 2020](https://aws.amazon.com/message/11201/), [US-EAST-1, October 2025](https://aws.amazon.com/message/101925/) - three recovery paths that were load-proportional.
-- Google Cloud incident report for 12 June 2025 (Service Control), on the Google Cloud status page - a global config push plus a jitter-free recovery path.
+- [Google Cloud incident report for 12 June 2025 (Service Control)](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW) - a global config push plus a jitter-free recovery path.
 - Related chapters: [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]], [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_06_Multi_Account_and_Multi_Project_Landing_Zones|Multi-Account and Multi-Project Landing Zones]], [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]], and [[04-System-Design/05-Data-Stores/Redis-Architecture|Redis Architecture]] for cache-side primitives.

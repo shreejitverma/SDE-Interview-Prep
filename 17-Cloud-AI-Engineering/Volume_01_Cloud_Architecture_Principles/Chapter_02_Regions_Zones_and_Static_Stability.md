@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://aws.amazon.com/builders-library/static-stability-using-availability-zones"
@@ -12,6 +12,39 @@ sources:
   - "https://aws.amazon.com/blogs/architecture/understand-resiliency-patterns-and-trade-offs-to-architect-efficiently-in-the-cloud/"
   - "https://docs.aws.amazon.com/whitepapers/latest/availability-and-beyond-improving-resilience/fault-tolerance-and-fault-isolation.html"
   - "https://wa.aws.amazon.com/wellarchitected/2020-07-02T19-33-23/wat.question.REL_11.en.html"
+  - "https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/availability-zones.html"
+  - "https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/global-services.html"
+  - "https://docs.aws.amazon.com/global-infrastructure/latest/regions/aws-availability-zones.html"
+  - "https://docs.cloud.google.com/docs/geography-and-regions"
+  - "https://builder.aws.com/content/3K9SiqiJ369TGkkGzqPM95BuYWI/static-stability-using-availability-zones"
+  - "https://builder.aws.com/content/3EuS9Sakq7L3VLQIF3qzfMfke1Y/avoiding-fallback-in-distributed-systems"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html"
+  - "https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-shift.html"
+  - "https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-shift.resource-types.html"
+  - "https://docs.aws.amazon.com/ec2/latest/devguide/ec2-api-throttling.html"
+  - "https://karpenter.sh/docs/concepts/disruption/"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_region-endpoints.html"
+  - "https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html"
+  - "https://docs.aws.amazon.com/eks/latest/best-practices/control-plane.html"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/configuration-overview"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/container/clusters/create"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/compute/instance-groups/managed/create"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/billing/budgets/create"
+  - "https://docs.cloud.google.com/compute/docs/disks/high-availability-regional-persistent-disk"
+  - "https://docs.cloud.google.com/load-balancing/docs/backend-service"
+  - "https://docs.cloud.google.com/load-balancing/docs/service-lb-policy"
+  - "https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/priority"
+  - "https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/panic_threshold"
+  - "https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/zone_aware"
+  - "https://aws.amazon.com/message/41926/"
+  - "https://aws.amazon.com/message/11201/"
+  - "https://aws.amazon.com/message/12721/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://status.cloud.google.com/incidents/dS9ps52MUnxQfyDGPfkY"
+  - "https://aws.amazon.com/compute/sla/"
+  - "https://cloud.google.com/vpc/network-pricing"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSDataTransfer/current/us-east-1/index.json"
 ---
 
 # Regions, Zones, and Static Stability
@@ -63,12 +96,12 @@ See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04
 
 ### What a zone is, and what it is not
 
-An AWS Availability Zone is one or more discrete data centers with independent power, cooling, and networking, and the AZs in a Region are separated by meaningful distance yet connected by dedicated metro fiber with single-digit millisecond latency (AWS docs, as of 2026-10, UNVERIFIED in this pass - recalled from the AWS Regions and Availability Zones page).
-A Google Cloud zone is a deployment area within a region that Google documents as a single failure domain, and a region has at least three zones (Google Cloud docs, as of 2026-10, UNVERIFIED in this pass).
+An AWS Availability Zone is one or more discrete data centers with independent and redundant power infrastructure, networking, and connectivity, with generators and cooling equipment not shared across zones, and the AZs in a Region are up to 60 miles (about 100 km) apart yet connected by dedicated metro fiber with single-digit millisecond latency ([AWS Fault Isolation Boundaries whitepaper](https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/availability-zones.html), as of 2026-11).
+A Google Cloud zone is a deployment area within a region that Google says should be considered a single failure domain, and a region has three or more zones, although Stockholm, Osaka, and Montreal house their three zones in only one or two physical data centers ([Google Cloud geography and regions](https://docs.cloud.google.com/docs/geography-and-regions), as of 2026-11).
 Neither definition promises that the zone is independent of the regional control plane, of global services, or of whatever you built that all zones share.
 Treat the zone as a bounded blast radius for physical faults and for zonal software deployments, and nothing more.
 
-AWS maps zone names to physical zones per account, so `us-east-1a` in your account and in a vendor's account may be different data centers, and the stable identifier is the AZ ID such as `use1-az1` (AWS docs, as of 2026-10, UNVERIFIED in this pass).
+In its oldest Regions, AWS independently maps zone names to physical zones for accounts created before November 2025, so `us-east-1a` in your account and in a vendor's account may be different data centers, accounts created from November 2025 get a common mapping, and the stable identifier in every account is the AZ ID such as `use1-az1` ([AWS Availability Zones docs](https://docs.aws.amazon.com/global-infrastructure/latest/regions/aws-availability-zones.html), as of 2026-11).
 The operational consequence is that incident communications, capacity reservations shared across accounts via RAM, and zonal shift calls must all be expressed in AZ IDs, and your automation must resolve names to IDs per account before it acts.
 If you skip this step, an "AZ-b impaired" message sends half your accounts to drain the healthy zone.
 
@@ -76,7 +109,7 @@ If you skip this step, an "AZ-b impaired" message sends half your accounts to dr
 
 AWS states that once an EC2 instance is launched it is as available as a physical server and does not depend on control plane APIs to keep running or to restart after reboot, and the same holds for VPCs, S3 objects, and EBS volumes (AWS Fault Isolation Boundaries whitepaper, as of 2026-10).
 The Well-Architected Reliability pillar calls the failure of this property bimodal behavior: the workload behaves differently in failure mode than in normal mode, for example by relying on launching new instances when a zone fails (AWS Well-Architected REL 11, as of 2026-10).
-The Builders' Library article that defines the pattern is Weiss and Furr, "Static stability using Availability Zones" (Amazon Builders' Library, 2019).
+The Builders' Library article that defines the pattern is Weiss and Furr, "Static stability using Availability Zones" (Amazon Builders' Library, 2019-12-05; the current AWS copy bylines Furr alone, while secondary summaries credit both).
 Its core claim is that a statically stable system keeps doing what it was doing when a dependency is impaired, possibly without seeing updates the dependency was supposed to deliver, and it recommends over-provisioning so that a zone loss needs no scale-up (Amazon Builders' Library, as of 2026-10).
 
 The point that is missing from most getting-started guides is that static stability is a property of the recovery path, not of the steady state.
@@ -109,7 +142,7 @@ Utilization above roughly 0.9 also makes timeouts and retries start to dominate,
 
 Target-tracking policies and the Kubernetes Horizontal Pod Autoscaler scale in until average utilization equals the target.
 If the target is 60 percent, a 3-zone fleet converges to 60 percent steady state, which is the 90 percent post-loss case above, and the headroom you provisioned is removed by the same automation that is supposed to make you efficient.
-Cluster-level consolidation does the same at node granularity, for example Karpenter NodePool consolidation of underutilized nodes (Karpenter docs, UNVERIFIED in this pass).
+Cluster-level consolidation does the same at node granularity, for example Karpenter NodePool consolidation, whose default `consolidationPolicy` of `WhenEmptyOrUnderutilized` removes or replaces any node when that lowers cost ([Karpenter docs](https://karpenter.sh/docs/concepts/disruption/), as of 2026-11).
 There are three defenses.
 Set the tracking target to `rho_max * (N - k) / N` rather than to the efficient-looking number.
 Set a minimum capacity equal to `N * ceil(B / (N - k))` and let the autoscaler act only above it.
@@ -126,11 +159,12 @@ If each request stays in the zone it entered, a zone failure fails exactly the f
 The same alignment cuts the expected cross-zone hops in this chain from 3.3 to near 0, which matters for both latency and for inter-zone transfer charges (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]]).
 
 Zone affinity has its own failure mode: it makes per-zone load depend on where clients land, so a skewed client population produces a hot zone while the others idle.
-Envoy's zone-aware routing sends traffic locally when the local zone's share of healthy hosts is within bounds and spills the residual to other zones in proportion to their capacity, and it is only effective when capacity per zone is roughly balanced (Envoy docs, UNVERIFIED in this pass).
-Envoy also applies an overprovisioning factor, default 1.4, before it spills load to the next priority level, so a locality at 72 percent healthy still receives 100 percent of its traffic, and a panic threshold, default 50 percent, below which it ignores health status and spreads to all hosts (Envoy docs, UNVERIFIED in this pass).
+Envoy's zone-aware routing compares the local zone's share of healthy hosts in the originating and upstream clusters, keeps all traffic local when the upstream share is large enough, and otherwise keeps only what the local zone can absorb and spills the residual to zones chosen by residual capacity, with the preconditions that neither cluster is in panic mode, the feature is enabled by runtime configuration, and the upstream cluster has enough hosts, and it supports only priority 0 ([Envoy zone-aware routing docs](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/zone_aware), as of 2026-11).
+Because the calculation counts hosts rather than their capacity, it behaves best when hosts per zone are similar in capacity (derived, not a documented precondition).
+Envoy also applies an overprovisioning factor, default 1.4, before it spills load to the next priority level, so a priority level at 72 percent healthy still receives 100 percent of its traffic ([Envoy priority docs](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/priority), as of 2026-11), and a panic threshold, default 50 percent, below which it disregards health status and balances among all hosts or, if configured to fail traffic, none ([Envoy panic threshold docs](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/panic_threshold), as of 2026-11).
 Those two defaults are a tuning decision about whether you prefer to overload a degraded zone or to cascade into healthy ones, and you should choose them deliberately.
 
-On AWS, Application Load Balancers always have cross-zone load balancing enabled at the load balancer level, while Network Load Balancers default to disabled (AWS docs, as of 2026-10, UNVERIFIED in this pass).
+On AWS, Application Load Balancers always have cross-zone load balancing enabled at the load balancer level (it can be disabled per target group), while Network Load Balancers default to disabled ([AWS ELB docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html), as of 2026-11).
 With cross-zone disabled, DNS gives each zonal LB node an equal share of client traffic, so unequal instance counts per zone give unequal per-instance load.
 That is the mechanism by which an "almost balanced" fleet (for example 7, 7, and 6 instances) turns into a hot instance population under load.
 
@@ -139,7 +173,7 @@ That is the mechanism by which an "almost balanced" fleet (for example 7, 7, and
 There are two ways a data plane host can learn the state it needs, such as routing tables, feature flags, or credentials.
 A pull-on-miss design asks a regional service whenever it meets something unknown, so an outage of that service turns into failures for every new flow or key, and the failure rate rises with the arrival rate of new things.
 A push-full-state design has the control plane continuously deliver the complete state, so the host always holds a last-known-good copy and its failure behavior is "stale" instead of "down".
-The Builders' Library article describes how EC2 itself is built around this idea, including keeping network traffic local to the zone and avoiding regional calls on the data path (Amazon Builders' Library, as of 2026-10; the specific EC2 network-mapping details are UNVERIFIED in this pass).
+The Builders' Library article describes how EC2 itself is built around this idea: the physical host has local access to all the information it needs to route packets, so during a control plane impairment it may miss updates such as a new instance added to a VPC while existing traffic keeps flowing, packet flows stay within the zone, and zonal services call endpoints in their own zone instead of regional ones ([Amazon Builders' Library](https://builder.aws.com/content/3K9SiqiJ369TGkkGzqPM95BuYWI/static-stability-using-availability-zones), as of 2026-11).
 The cost of push-full-state is state size times fan-out and the need for versioning, which is why it pairs with constant-work techniques: [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_05_Constant_Work_and_Workload_Smoothing|Constant Work and Workload Smoothing]].
 Its operational hazard is silent staleness, so every fail-static cache needs an age metric and an alarm on it, and it needs a bounded behavior when the age exceeds the data's safe lifetime.
 
@@ -160,7 +194,7 @@ The table lists the ones that bite most often and the static-stable replacement.
 | Deployment | Need the pipeline to ship the fix | Break-glass artifact path that does not use the production dependency chain |
 
 The whitepaper also warns that if your identity provider is itself hosted on AWS it may be impaired in the same event, and recommends pre-provisioning break-glass users in a statically stable way (AWS Fault Isolation Boundaries whitepaper, as of 2026-10).
-Several global AWS services have a control plane in a single Region while their data planes are distributed, with Route 53 as the standard example (AWS Fault Isolation Boundaries whitepaper, as of 2026-10, UNVERIFIED on the exact service list).
+Several global AWS services have a control plane in a single Region while their data planes are distributed, for example IAM, Organizations, Route 53, and CloudFront in `us-east-1` and Global Accelerator in `us-west-2`, although since December 2025 Route 53 also offers a standby control plane endpoint in `us-west-2` for public records ([AWS Fault Isolation Boundaries whitepaper](https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/global-services.html), as of 2026-11).
 
 ### Circular dependency prevention
 
@@ -232,34 +266,34 @@ The next failure-modes section covers a public example of this shape.
 | Survivor utilization after 1-of-3 loss from 60 percent | 90 percent | Derived |
 | M/M/1 p99 at 20 ms service time | 230 ms at rho 0.60, 921 ms at rho 0.90 | Derived, simplified model |
 | 5-hop chain, random zone per hop, one zone dead | 13.2 percent success without retries, 55.5 percent with one retry per hop | Derived |
-| AZ separation and latency | Within 100 km of each other, single-digit millisecond latency | AWS docs, as of 2026-10, UNVERIFIED in this pass |
-| Cross-AZ data transfer price in AWS Regions | 0.01 USD per GB each direction | AWS EC2 pricing, as of 2026-10, UNVERIFIED in this pass |
-| Cross-zone data transfer price within a Google Cloud region | 0.01 USD per GB | Google Cloud network pricing, as of 2026-10, UNVERIFIED in this pass |
-| ELB DNS record TTL (bounds how fast clients stop using an removed zonal IP) | 60 seconds | AWS ELB docs, as of 2026-10, UNVERIFIED in this pass |
-| ARC zonal shift expiry range | 1 minute to 3 days, extendable | AWS ARC docs, as of 2026-10, UNVERIFIED in this pass |
-| Envoy overprovisioning factor and panic threshold defaults | 1.4 and 50 percent | Envoy docs, as of 2026-10, UNVERIFIED in this pass |
-| EC2 Region-level SLA and instance-level SLA | 99.99 percent and 99.5 percent | AWS EC2 SLA, as of 2026-10, UNVERIFIED in this pass |
-| t4g.nano On-Demand, us-east-1 (used in the lab) | 0.0042 USD per hour | AWS EC2 pricing, as of 2026-10, UNVERIFIED in this pass |
-| gp3 storage price, us-east-1 (used in the lab) | 0.08 USD per GiB-month | AWS EBS pricing, as of 2026-10, UNVERIFIED in this pass |
+| AZ separation and latency | Up to 60 miles (about 100 km) apart, single-digit millisecond latency | AWS Fault Isolation Boundaries whitepaper, as of 2026-11 |
+| Cross-AZ data transfer price, us-east-1 | 0.01 USD per GB, charged on both inbound and outbound | AWS Price List API (AWSDataTransfer) and [CUR data transfer docs](https://docs.aws.amazon.com/cur/latest/userguide/cur-data-transfers-charges.html), as of 2026-11 |
+| Cross-zone data transfer price within a Google Cloud region | 0.01 USD per GiB | Google Cloud network pricing, as of 2026-11 |
+| ELB DNS record TTL (bounds how fast clients stop using a removed zonal IP) | 60 seconds | AWS ELB docs, as of 2026-11 |
+| ARC zonal shift expiry range | 1 minute to 3 days (72 hours), extendable | AWS ARC docs, as of 2026-11 |
+| Envoy overprovisioning factor and panic threshold defaults | 1.4 and 50 percent | Envoy docs, as of 2026-11 |
+| EC2 Region-level SLA and instance-level SLA | 99.99 percent and 99.5 percent | AWS Compute SLA, as of 2026-11 |
+| t4g.nano On-Demand Linux, us-east-1 (used in the lab) | 0.0042 USD per hour | AWS EC2 price list, as of 2026-11 |
+| gp3 storage price, us-east-1 (used in the lab) | 0.08 USD per GB-month | AWS EBS price list, as of 2026-11 |
 | Fleet-wide recovery time via reactive scale-out | Minutes, driven by detection, API, capacity contention, boot, warm-up | Illustrative, operating experience, not a published figure |
 
 Note that the SLA figure is a Region-level commitment, so a single-zone failure does not by itself breach it, and the SLA gives you no design guidance.
-Treat every UNVERIFIED price as a template parameter and re-read the pricing page before you commit budget.
+Treat every price as a template parameter and re-read the pricing page before you commit budget.
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | AWS | Google Cloud |
 |---|---|---|
-| Failure-domain unit | Availability Zone, one or more data centers, AZ ID is the stable identifier and names are mapped per account (AWS docs, UNVERIFIED in this pass) | Zone, documented as a single failure domain, at least three per region (Google Cloud docs, UNVERIFIED in this pass) |
+| Failure-domain unit | Availability Zone, one or more data centers, at least three per Region, AZ ID is the stable identifier and names are mapped per account for accounts created before November 2025 in the oldest Regions (AWS docs, as of 2026-11) | Zone, documented as a single failure domain, three or more per region (Google Cloud docs, as of 2026-11) |
 | Design doctrine | Builders' Library static stability article, Fault Isolation Boundaries whitepaper | Google SRE book on cascading failures, Cloud Architecture Center infrastructure reliability guide |
-| Zonal block storage | EBS volume lives in one AZ, so a replacement instance in another AZ needs a snapshot restore or application-level replication | Persistent Disk and Hyperdisk are zonal, with a regional variant that replicates synchronously across two zones (Google Cloud docs, UNVERIFIED in this pass) |
-| Instance group spread | Auto Scaling group with subnets in several AZs, optional AZRebalance process that moves capacity to rebalance | Regional managed instance group with a target distribution shape such as EVEN (Google Cloud docs, UNVERIFIED in this pass) |
+| Zonal block storage | EBS volume lives in one AZ, so a replacement instance in another AZ needs a snapshot restore or application-level replication | Persistent Disk and Hyperdisk are zonal, with regional Persistent Disk and Hyperdisk Balanced High Availability variants that replicate synchronously across two zones (Google Cloud docs, as of 2026-11) |
+| Instance group spread | Auto Scaling group with subnets in several AZs, optional AZRebalance process that moves capacity to rebalance | Regional managed instance group with a target distribution shape such as `even`, the default, which keeps zone counts within 1 of each other (gcloud reference, as of 2026-11) |
 | Load balancing model | Per-zone LB nodes with their own IPs in DNS, cross-zone toggle, ALB on by default and NLB off by default | Software-defined global and regional proxies and Maglev-based passthrough, with no per-zone LB IP for you to remove from DNS, traffic spills by backend capacity and health (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_05_Cloud_Load_Balancing_GFEs_and_Maglev\|Cloud Load Balancing: GFEs and Maglev]]) |
-| Zonal evacuation primitive | Route 53 Application Recovery Controller zonal shift and zonal autoshift for supported resources (AWS docs, UNVERIFIED in this pass on resource list) | No managed equivalent verified in this pass, the manual lever is draining a zonal backend by setting its capacity scaler to 0 on the backend service (UNVERIFIED) |
-| Kubernetes control plane | EKS runs the control plane across multiple AZs (AWS docs, UNVERIFIED in this pass) | GKE regional clusters replicate the control plane across three zones, zonal clusters have a single control plane replica, and `--num-nodes` is per zone in regional clusters (GKE docs, UNVERIFIED in this pass) |
+| Zonal evacuation primitive | Amazon Application Recovery Controller (ARC) zonal shift and zonal autoshift for opted-in Application Load Balancers, Network Load Balancers, Auto Scaling groups, and EKS clusters, with no effect while a load balancer is failing open (AWS docs, as of 2026-11) | No zone-level managed equivalent found in the Cloud Load Balancing docs (as of 2026-11), the manual lever is draining a zonal backend by setting its capacity scaler to 0 on the backend service, which is not allowed when the service has only one backend, and a service load balancing policy's `autoCapacityDrain` drains an individual backend when fewer than 25 percent of its members pass health checks (Google Cloud docs, as of 2026-11) |
+| Kubernetes control plane | EKS runs a minimum of two API server nodes in distinct AZs, with etcd in the same managed control plane (AWS docs, as of 2026-11) | GKE regional clusters replicate the control plane across multiple zones and by default replicate node pools across three zones, zonal clusters have a single control plane in one zone, and `--num-nodes` is per zone (GKE docs and gcloud reference, as of 2026-11) |
 | Reserved capacity in a zone | On-Demand Capacity Reservations are scoped to an AZ | Compute Engine reservations are scoped to a zone |
-| Global control plane risk | Several global services have a single-Region control plane, so recovery must avoid their write APIs (AWS Fault Isolation Boundaries whitepaper) | Global resources and a globally replicated policy path, as the June 2025 Service Control incident showed (Google Cloud incident report, UNVERIFIED details) |
-| Cross-zone pricing | Per-GB in each direction (UNVERIFIED) | Per-GB (UNVERIFIED) |
+| Global control plane risk | Several global services have a single-Region control plane, so recovery must avoid their write APIs (AWS Fault Isolation Boundaries whitepaper) | Global resources and a globally replicated policy path, as the June 2025 Service Control incident showed (Google Cloud incident report, as of 2026-11) |
+| Cross-zone pricing | 0.01 USD per GB, charged on both inbound and outbound (us-east-1, as of 2026-11) | 0.01 USD per GiB (as of 2026-11) |
 
 The mechanism-level difference that matters most is the load balancer.
 On AWS you reason about zonal LB nodes, DNS TTLs, and cross-zone settings, and zone shift is a DNS-level operation with an unavoidable drain delay.
@@ -476,7 +510,7 @@ output "total_instances" {
 
 Apply with `tofu init && tofu apply -var alert_email=you@example.com` (or `terraform` in place of `tofu`).
 The default VPC must have a default subnet in each chosen AZ, and the data source fails loudly if it does not.
-AWS Budgets data lags actual spend by hours, so the budget is a backstop, and the teardown command below is the real control.
+AWS Budgets relies on billing data refreshed at least once per day, and forecast alerts need about 5 weeks of usage history before they can fire, so the budget is a backstop, and the teardown command below is the real control ([AWS Budgets best practices](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-best-practices.html), as of 2026-11).
 
 ### Step 3 - freeze the control loop and kill a zone
 
@@ -540,25 +574,25 @@ gcloud compute instance-templates create ss-lab-tmpl \
 gcloud compute instance-groups managed create ss-lab-mig \
   --template=ss-lab-tmpl --size=6 --region=us-central1 \
   --zones=us-central1-a,us-central1-b,us-central1-c \
-  --target-distribution-shape=EVEN
+  --target-distribution-shape=even
 
 gcloud billing budgets create --billing-account=BILLING_ACCOUNT_ID \
   --display-name=ss-lab --budget-amount=5USD \
   --threshold-rule=percent=0.8 --threshold-rule=percent=1.0
 ```
 
-The flags `--target-distribution-shape` and `--zones` for regional managed instance groups, and the `gcloud billing budgets create` threshold rules, are from memory and UNVERIFIED in this pass, so check `gcloud ... --help` before running.
+The flags `--target-distribution-shape` (values `any`, `any-single-zone`, `balanced`, `even`) and `--zones` for regional managed instance groups, and the `gcloud billing budgets create` threshold rules, match the gcloud reference (as of 2026-11), but the commands were not executed in this review, so check `gcloud ... --help` before running.
 Teardown: `gcloud compute instance-groups managed delete ss-lab-mig --region=us-central1 --quiet && gcloud compute instance-templates delete ss-lab-tmpl --quiet`.
 
 ### Step 5 - cost estimate and teardown
 
-Using the prices in the Numbers table (UNVERIFIED, re-check before use), the AWS lab costs:
+Using the prices in the Numbers table (AWS price list, as of 2026-11, re-check before use), the AWS lab costs:
 
 - Compute: 6 instances x 0.0042 USD per hour = 0.0252 USD per hour.
-- Root volumes: 6 x 8 GiB = 48 GiB x 0.08 USD per GiB-month = 3.84 USD per month, or about 0.0053 USD per hour.
+- Root volumes: 6 x 8 GiB = 48 GiB x 0.08 USD per GB-month = 3.84 USD per month, or about 0.0053 USD per hour.
 - Public IPv4: zero, because the launch template disables public addresses.
 - Total: about 0.031 USD per hour, 0.73 USD per day, and about 22 USD per 30 days if you forget it.
-- A two-hour session costs about 0.06 USD, and the 5 USD budget fires its forecast alert within the first day of a leak.
+- A two-hour session costs about 0.06 USD, and on a leak the 5 USD budget's 80 percent actual alert fires after about 5.5 days (4 USD / 0.73 USD per day, derived), while the forecast alert stays silent until AWS has about 5 weeks of usage data.
 
 Exact teardown, run from the same directory and variables as the apply:
 
@@ -574,21 +608,21 @@ The ASG destroy terminates all instances, so no manual instance cleanup is neede
 
 ### Public incidents that map to these mechanisms
 
-None of the incident details below were re-fetched in this pass, so each is UNVERIFIED and should be checked against the primary post-event summary before you cite it in a review.
+Each incident below was checked against its primary post-event summary (as of 2026-11), linked on its entry; read the original before you cite finer detail in a review.
 
-- S3, us-east-1, 2017-02-28: an operator command removed more servers than intended, forcing restarts of index and placement subsystems, and the status dashboard's own dependency on the impaired service delayed communication. The lesson is an observability cycle (UNVERIFIED).
-- Kinesis, us-east-1, 2020-11-25: adding front-end capacity pushed servers over an operating-system thread limit, and dependent services including CloudWatch and Cognito were impaired. The lesson is that a capacity addition, a control-plane-style action, can itself be the trigger, and that a dependent service inherits the failure (UNVERIFIED).
-- us-east-1, 2021-12-07: an automated scaling activity of an internal service caused congestion on the link between the internal network and the main network, and impairment of monitoring and operational tooling slowed the response. The lesson is that the tools to recover share fate with the thing being recovered (UNVERIFIED).
-- DynamoDB, us-east-1, 2025-10-19 to 2025-10-20: a latent race condition in the DNS management automation left an empty DNS record for the regional endpoint, and subsequent impairment of EC2 instance-launch workflows, which depended on the same database for lease management, and of network load balancer health checks extended recovery to many hours. The lesson is the soft-cycle pattern: the system that launches capacity needed the service that had lost its name (UNVERIFIED).
-- Google Cloud, 2025-06-12: a policy change with blank fields, replicated globally within seconds, hit an unguarded code path in Service Control and crashed the binaries, and recovery in one region was slowed by a herd effect on a backing database. The lesson is that a globally replicated control input defeats zonal and regional isolation, and that recovery needs randomized backoff (UNVERIFIED).
-- Google Cloud europe-west9, 2023-04: a water leak and fire in a Paris data center removed a zone, and some regional services were also affected. The lesson is that "regional" services can still have zonal dependencies you do not see (UNVERIFIED).
+- [S3, us-east-1, 2017-02-28](https://aws.amazon.com/message/41926/): an operator command removed more servers than intended, forcing restarts of index and placement subsystems, and the status dashboard's own dependency on the impaired service delayed communication. The lesson is an observability cycle.
+- [Kinesis, us-east-1, 2020-11-25](https://aws.amazon.com/message/11201/): adding front-end capacity pushed every front-end server over an operating-system thread limit, and dependent services including CloudWatch and Cognito were impaired. The lesson is that a capacity addition, a control-plane-style action, can itself be the trigger, and that a dependent service inherits the failure.
+- [us-east-1, 2021-12-07](https://aws.amazon.com/message/12721/): automated scaling of a service hosted in the main AWS network triggered unexpected behavior from many clients on the internal network, the resulting connection surge congested the devices linking the internal and main networks, and impairment of monitoring and operational tooling slowed the response. The lesson is that the tools to recover share fate with the thing being recovered.
+- [DynamoDB, us-east-1, 2025-10-19 to 2025-10-20](https://aws.amazon.com/message/101925/): a latent race condition in the DNS management automation left an empty DNS record for the regional endpoint, and subsequent impairment of EC2 instance-launch workflows, which depended on the same database for lease management, and of network load balancer health checks extended recovery to many hours. The lesson is the soft-cycle pattern: the system that launches capacity needed the service that had lost its name.
+- [Google Cloud, 2025-06-12](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW): a policy change with blank fields, replicated globally within seconds, hit an unguarded code path in Service Control and crashed the binaries, and recovery in us-central1 was slowed by a herd effect on a backing Spanner table. The lesson is that a globally replicated control input defeats zonal and regional isolation, and that recovery needs randomized backoff.
+- [Google Cloud europe-west9, 2023-04-25](https://status.cloud.google.com/incidents/dS9ps52MUnxQfyDGPfkY): a water leak and fire in a Paris data center damaged zone `europe-west9-a`, and shutting one of the region's three buildings cost regional Spanner its quorum because two of its three replicas sat in that building, which spread impairment to IAM, control planes, and many regional services. The lesson is that "regional" services can still have zonal dependencies you do not see.
 
 ### Mechanism-level failure patterns
 
 **Reactive recovery masquerading as redundancy.**
 The diagram says three zones and the recovery is "scale up elsewhere", which fails when the control plane is slow, throttled, or capacity-starved during the event.
-All tenants in the failed zone try to launch into the same surviving pools, and on-demand capacity is not guaranteed unless reserved, so you can receive insufficient-capacity errors at the worst moment (AWS docs on capacity reservations, UNVERIFIED in this pass).
-Control plane APIs are also throttled per account with token buckets, and launch calls sit in a stricter class than reads, so a large scale-out can hit the limit before it hits capacity (AWS docs, UNVERIFIED on bucket sizes, none quoted).
+All tenants in the failed zone try to launch into the same surviving pools, and on-demand capacity is not guaranteed unless reserved, so you can receive insufficient-capacity errors at the worst moment ([AWS Capacity Reservations docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-reservations.html), as of 2026-11).
+Control plane APIs are also throttled per account and per Region with token buckets, and launch calls sit in a stricter class than reads: by default `RunInstances` has a request bucket of 5 refilling at 2 per second and a resource bucket of 1000 instances refilling at 2 per second, against 100 and 20 per second for non-mutating calls, so a large scale-out can hit the limit before it hits capacity ([EC2 API throttling docs](https://docs.aws.amazon.com/ec2/latest/devguide/ec2-api-throttling.html), as of 2026-11).
 
 **Headroom erosion.**
 Target tracking, HPA, and node consolidation return the fleet to the efficient point and delete the N/(N-1) margin, as described in Internals.
@@ -618,7 +652,7 @@ Use budgeted retries with jittered backoff and a slow ramp on recovery (see [[17
 Disable AZ rebalancing during an event, because rebalancing terminates healthy instances in the surviving zones to move capacity back, which is churn at the worst time.
 
 **Fallback paths that are never exercised.**
-A fallback that only runs in failure is code that is not tested by normal traffic and creates bimodal behavior, which is the subject of the Builders' Library article "Avoiding fallback in distributed systems" (Amazon Builders' Library, UNVERIFIED in this pass).
+A fallback that only runs in failure is code that is not tested by normal traffic and creates bimodal behavior, which is the subject of the Builders' Library article "Avoiding fallback in distributed systems", although the article itself speaks of a separate operational mode rather than using the word bimodal ([Gabrielson, Amazon Builders' Library](https://builder.aws.com/content/3EuS9Sakq7L3VLQIF3qzfMfke1Y/avoiding-fallback-in-distributed-systems), 2019-12-05).
 Prefer one path that is always exercised over a primary and a fallback.
 
 **Long-lived connections defeat evacuation.**
@@ -656,13 +690,13 @@ Scope the drill identity tightly, because a role that can freeze scaling and ter
 
 Attach it only to a lab or staging role, and add an organization-level deny on these actions in production accounts except for a named game-day role with session tags and an expiry.
 Pre-provision break-glass identities and admin paths that do not require writing policy during the event, for example session-tag-based access rather than editing SCPs through the Organizations control plane (AWS Fault Isolation Boundaries whitepaper, as of 2026-10).
-Prefer regional STS endpoints over the global endpoint in recovery paths, so authentication does not depend on a single Region (UNVERIFIED in this pass).
+Prefer Regional STS endpoints over the global endpoint in recovery paths (AWS Fault Isolation Boundaries whitepaper, as of 2026-11), because the global endpoint is served locally only for Regions enabled by default when Amazon DNS resolves it, and otherwise still goes to `us-east-1` ([AWS STS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_region-endpoints.html), as of 2026-11).
 
 Key management is a boot-time dependency.
 Envelope encryption lets a running host keep a cached data key and keep serving through a key-service impairment, but any new instance with encrypted volumes or any process that fetches a secret at start needs the key service to be reachable, so a statically stable design caches data keys with a lifetime longer than your worst expected outage and keeps the boot path off remote calls where possible (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]]).
 
 Private connectivity must also be zone-complete.
-An AWS interface VPC endpoint places an ENI in each subnet you choose, so you need an endpoint ENI in every AZ you use, otherwise a zone's workloads call a remote zone's endpoint, which adds cross-AZ latency, cost, and a cross-zone runtime dependency (AWS docs, UNVERIFIED in this pass).
+An AWS interface VPC endpoint places an ENI in each subnet you choose, at most one subnet per AZ ([AWS PrivateLink docs](https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html), as of 2026-11), so you need an endpoint ENI in every AZ you use, otherwise a zone's workloads call a remote zone's endpoint, which adds cross-AZ latency, cost, and a cross-zone runtime dependency (derived).
 On Google Cloud, Private Service Connect endpoints are regional addresses, and VPC Service Controls perimeters are a separate policy layer that you must also keep out of the recovery path (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls: Security Perimeters]]).
 
 ### Cost
@@ -673,7 +707,7 @@ Reducing `B` through efficiency work shrinks the headroom in proportion, so a 20
 Headroom runs continuously, so it belongs inside your commitment coverage (Savings Plans or CUDs), not on top of it.
 Do not source headroom from Spot, because Spot capacity is reclaimed per capacity pool and reclamation correlates with zone-level capacity events, so the headroom may vanish with the zone you are protecting.
 For scarce capacity such as accelerators, reservations are zonal and billed whether used or not, so consider degrading gracefully instead of paying for 50 percent idle accelerators (see the final interview question).
-Cross-zone traffic is billed per GB in both clouds (UNVERIFIED), so zone-aligned routing is both a reliability and a cost control, and its payoff is largest for chatty, deep call graphs.
+Cross-zone traffic is billed by volume in both clouds (0.01 USD per GB inbound and outbound on AWS in us-east-1, 0.01 USD per GiB on Google Cloud, as of 2026-11), so zone-aligned routing is both a reliability and a cost control, and its payoff is largest for chatty, deep call graphs.
 
 ## Interview Questions and Model Answers
 
@@ -836,8 +870,8 @@ What happens if that is the zone that fails, and how would you restructure the r
 - [Understand resiliency patterns and trade-offs](https://aws.amazon.com/blogs/architecture/understand-resiliency-patterns-and-trade-offs-to-architect-efficiently-in-the-cloud/): a pattern ladder from single AZ to multi-Region with the cost of each step.
 - [Availability and Beyond: Understanding and Improving the Resilience of Distributed Systems on AWS](https://docs.aws.amazon.com/whitepapers/latest/availability-and-beyond-improving-resilience/fault-tolerance-and-fault-isolation.html): how fault tolerance and fault isolation compose with static stability.
 - [AWS Well-Architected Reliability REL 11](https://wa.aws.amazon.com/wellarchitected/2020-07-02T19-33-23/wat.question.REL_11.en.html): the bimodal-behavior definition and the best-practice checklist.
-- Avoiding fallback in distributed systems (Amazon Builders' Library, https://aws.amazon.com/builders-library/avoiding-fallback-in-distributed-systems/): why unexercised fallback paths create bimodal behavior (URL recalled, not re-fetched in this pass).
-- Bronson et al., "Metastable Failures in Distributed Systems" (HotOS 2021) and Huang et al., "Metastable Failures in the Wild" (OSDI 2022): the formal framing of retry and cache-cold collapse that follows a zone event.
-- Google SRE Book, chapter "Addressing Cascading Failures": the Google-side doctrine on load shedding, retries, and overload that complements zone-level headroom (URL not included because it was not re-fetched in this pass).
+- [Avoiding fallback in distributed systems](https://builder.aws.com/content/3EuS9Sakq7L3VLQIF3qzfMfke1Y/avoiding-fallback-in-distributed-systems) (Gabrielson, Amazon Builders' Library): why unexercised fallback paths create bimodal behavior.
+- Bronson et al., ["Metastable Failures in Distributed Systems"](https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s11-bronson.pdf) (HotOS 2021) and Huang et al., ["Metastable Failures in the Wild"](https://www.usenix.org/conference/osdi22/presentation/huang-lexiang) (OSDI 2022): the formal framing of retry and cache-cold collapse that follows a zone event.
+- Google SRE Book, chapter ["Addressing Cascading Failures"](https://sre.google/sre-book/addressing-cascading-failures/): the Google-side doctrine on load shedding, retries, and overload that complements zone-level headroom.
 - Primary post-event summaries for the incidents listed in Failure Modes (AWS Post-Event Summaries page and the Google Cloud Service Health incident history): read the originals before citing any detail from this chapter.
 - Related chapters: [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_01_Well_Architected_Frameworks|Well-Architected Frameworks]], [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]], [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]], and next [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]].

@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html"
@@ -14,6 +14,37 @@ sources:
   - "https://cloud.google.com/resource-manager/docs/organization-policy/overview"
   - "https://cloud.google.com/vpc-service-controls/docs/overview"
   - "https://cloud.google.com/kms/docs/resource-hierarchy"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ec2.html"
+  - "https://aws.amazon.com/blogs/aws/simplify-governance-with-declarative-policies/"
+  - "https://aws.amazon.com/blogs/aws/introducing-resource-control-policies-rcps-a-new-authorization-policy/"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/troubleshoot_general.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/requests-per-second.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-overview.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/deleting-keys.html"
+  - "https://docs.aws.amazon.com/kms/latest/APIReference/API_Encrypt.html"
+  - "https://aws.amazon.com/kms/pricing/"
+  - "https://aws.amazon.com/privatelink/pricing/"
+  - "https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-endpoints-access.html"
+  - "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html"
+  - "https://docs.aws.amazon.com/general/latest/gr/s3.html"
+  - "https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/global-services.html"
+  - "https://docs.cloud.google.com/iam/docs/release-notes"
+  - "https://docs.cloud.google.com/iam/docs/principal-access-boundary-policies"
+  - "https://docs.cloud.google.com/iam/docs/policy-types"
+  - "https://docs.cloud.google.com/iam/docs/access-change-propagation"
+  - "https://docs.cloud.google.com/iam/quotas"
+  - "https://docs.cloud.google.com/kms/quotas"
+  - "https://docs.cloud.google.com/kms/docs/release-notes"
+  - "https://docs.cloud.google.com/kms/docs/delete-kms-resources"
+  - "https://cloud.google.com/kms/pricing"
+  - "https://docs.cloud.google.com/storage/docs/encryption/customer-managed-keys"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/manage-service-perimeters"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
 ---
 
 # Identity, Security, and Governance Translation
@@ -29,10 +60,10 @@ VPC Service Controls (VPC SC) is evaluated at the Google API front end against t
 The two are not substitutes and their failure modes differ.
 4. AWS KMS authorizes through the key policy, and IAM policies only count if the key policy delegates to them.
 Cloud KMS authorizes through IAM alone, with inheritance down the project, location, key ring, key, and version tree.
-Both use envelope encryption and both put a regional KMS call in the data path of every encrypted read, so KMS throughput and availability are capacity planning inputs, not security afterthoughts.
+Both use envelope encryption and both can put a regional KMS call in the data path of encrypted reads, so KMS throughput and availability are capacity planning inputs, not security afterthoughts.
 5. Governance planes are global blast radii.
 Policy changes must ship with dry-run, staged rollout, and a break-glass path that does not depend on the plane being changed.
-Most numeric limits in this chapter are marked UNVERIFIED because the live-documentation pass was not completed; see the batch report.
+Numeric limits in this chapter were checked against vendor documentation and are dated (as of 2026-11); re-read the cited page before using one in a design review.
 
 ## Mental Model
 
@@ -50,8 +81,8 @@ flowchart TD
     end
     subgraph GCPZ["GCP decision"]
         G1["Org Policy constraints: resource config rules"]
-        G2["Deny policies at org, folder, project = DENY"]
-        G3["PAB: principal may only reach listed resources"]
+        G2["PAB: principal may only reach listed resources"]
+        G3["Deny policies at org, folder, project = DENY"]
         G4["Union of inherited allow bindings grants"]
         G1 --> G2 --> G3 --> G4
     end
@@ -81,15 +112,17 @@ Allow policies are attached at organization, folder, project, or resource nodes,
 There is no way to remove a role granted at a parent by editing a child allow policy.
 Removal requires a deny policy, which is also inherited down the hierarchy and cannot be overridden by any allow.
 Deny rules support exception principals and CEL conditions, typically on resource tags.
-PAB policies are the third filter, bound to sets of principals, and enumerate the resources (by org, folder, or project) those principals are eligible to access (Google Cloud IAM docs, deny and PAB overviews: [deny](https://cloud.google.com/iam/docs/deny-overview)).
-Treat PAB GA status as UNVERIFIED for 2026-10 and check release notes before depending on it.
+PAB policies are the third filter, bound to sets of principals, and enumerate the resources (by org, folder, or project) those principals are eligible to access (Google Cloud IAM docs, deny and PAB overviews: [deny](https://cloud.google.com/iam/docs/deny-overview), [PAB](https://docs.cloud.google.com/iam/docs/principal-access-boundary-policies)).
+PAB policies have been generally available since 2024-12-16 ([IAM release notes](https://docs.cloud.google.com/iam/docs/release-notes), as of 2026-11), can block only the permissions in their enforcement version, and fail closed on evaluation errors.
+Google presents the conceptual order as PAB, then deny, then allow, while noting that IAM evaluates all policy types simultaneously ([IAM policy types](https://docs.cloud.google.com/iam/docs/policy-types), as of 2026-11).
 
 The practical translation rule is the following.
 An SCP deny-list statement maps to a GCP organization-level deny policy.
-An SCP allow-list (removing `FullAWSAccess` and enumerating services) has no exact analog: the closest constructs are PAB (limits which resources) plus deny (limits which permissions), and neither enumerates "only these services".
+An SCP allow-list (removing `FullAWSAccess` and enumerating services) has no exact analog: the closest constructs are the Organization Policy constraint `constraints/gcp.restrictServiceUsage` (limits which resource services can be used, [constraint reference](https://docs.cloud.google.com/resource-manager/docs/organization-policy/org-policy-constraints), as of 2026-11), PAB (limits which resources), and deny (limits which permissions), and neither IAM construct enumerates "only these services".
 A resource-side guardrail (RCP) maps to deny policies on the resource hierarchy.
 Configuration invariants (no public buckets, no SA keys, region pinning) map to Organization Policy constraints on GCP and, on AWS, to a mix of SCP deny, declarative policies, and AWS Config rules.
-Declarative policies are a newer AWS Organizations policy type that enforces service-level baseline configuration; their GA status and service coverage are UNVERIFIED as of 2026-10.
+Declarative policies are an AWS Organizations policy type, launched on 2024-12-01 for EC2, VPC, and EBS attributes ([AWS News Blog](https://aws.amazon.com/blogs/aws/simplify-governance-with-declarative-policies/)), that enforces baseline configuration in the service control plane and, unlike SCPs and RCPs, also governs service-linked roles ([AWS Organizations docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative.html), no preview label, as of 2026-11).
+The [EC2 policy attributes](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ec2.html) cover VPC Block Public Access, VPC Encryption Controls, serial console access, image block public access, allowed images, instance metadata defaults, and snapshot block public access (as of 2026-11).
 
 ### The asymmetry nobody mentions: whose authority applies to an inbound call
 
@@ -97,7 +130,7 @@ An SCP is evaluated against the principal's own account and OU path.
 If a principal in account B (outside your organization) calls `s3:GetObject` on your bucket, your SCPs are not consulted, because the principal is not in your organization.
 Your bucket policy and any IAM controls in B are what decide.
 The AWS answer was Resource Control Policies, which apply to resources in member accounts regardless of who calls (AWS Organizations docs, RCPs: [link](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html)).
-RCPs support a limited list of services (S3, STS, KMS, SQS, and Secrets Manager at launch; the current list is UNVERIFIED as of 2026-10), do not grant anything, and do not apply to the management account's resources, so any resource type outside the list still relies on resource policies.
+RCPs support a limited list of services (S3, STS, KMS, SQS, and Secrets Manager at the [2024-11-13 launch](https://aws.amazon.com/blogs/aws/introducing-resource-control-policies-rcps-a-new-authorization-policy/); about 60 service prefixes now, including DynamoDB, ECR, and CloudWatch Logs but not SageMaker or Bedrock, per the AWS docs as of 2026-11), do not grant anything, and do not apply to the management account's resources, service-linked roles, or AWS managed KMS keys, so any resource type outside the list still relies on resource policies.
 GCP never had this gap in the same form, because deny and allow policies are attached to the target's hierarchy, and the caller's home organization never had a vote in the first place.
 Its equivalent gap runs the other way: a caller in your org can reach a resource in someone else's project unless PAB, VPC SC egress rules, or Org Policy (for example domain-restricted sharing and CMEK project restrictions) stop it.
 A data-exfiltration review therefore has two directions in both clouds, and you must name which control closes which.
@@ -128,7 +161,7 @@ The decision is made on those attributes, not on whether the packet traversed a 
 That is why it blocks a stolen service account key used from a laptop on the public internet, and why it blocks `gcloud storage cp` from an in-perimeter bucket to a bucket in an out-of-perimeter project: the copy request's target project differs from the source's, and the egress rule set decides.
 Ingress and egress rules replaced most uses of legacy bridge perimeters.
 Dry-run mode logs would-be violations to Cloud Audit Logs with a unique violation ID, so you can measure the blast radius before enforcing.
-Private access to Google APIs uses the restricted virtual IP range 199.36.153.4/30 via `restricted.googleapis.com`, which exposes only VPC SC-supported APIs, or Private Service Connect endpoints for Google APIs (UNVERIFIED for the PSC bundle names).
+Private access to Google APIs uses the restricted virtual IP range 199.36.153.4/30 via `restricted.googleapis.com`, which exposes only VPC SC-supported APIs ([VPC SC private connectivity](https://docs.cloud.google.com/vpc-service-controls/docs/set-up-private-connectivity)), or Private Service Connect endpoints for Google APIs using the `vpc-sc` bundle (equivalent to `restricted.googleapis.com`) or the `all-apis` bundle (equivalent to `private.googleapis.com`) ([PSC docs](https://docs.cloud.google.com/vpc/docs/about-accessing-google-apis-endpoints), as of 2026-11).
 Things neither control covers: a compromised principal writing to an in-perimeter resource it is allowed to write to, DNS tunnelling, and any service that is not on the supported list for the perimeter or endpoint policy.
 
 ### Key hierarchies
@@ -143,70 +176,71 @@ Grants are the mechanism AWS services use to get scoped, revocable, programmatic
 Encryption context is additional authenticated data bound to the ciphertext and logged in CloudTrail, which makes it both an integrity control and an authorization condition key (`kms:EncryptionContext:*`).
 
 Cloud KMS is a resource tree: project, location, key ring, crypto key, crypto key version.
-Key rings and keys cannot be deleted; only versions are destroyed, after a scheduled-destruction window.
+Destroying a version removes its key material after a scheduled-destruction window.
+Deleting keys and versions reached GA on 2026-03-02 and deleting key rings on 2026-08-24 ([Cloud KMS release notes](https://docs.cloud.google.com/kms/docs/release-notes)), but a version must already be destroyed or failed, a key needs all versions deleted, no scheduled rotation, and not be Autokey-created, a key ring needs all keys deleted and import jobs expired, and deleted key names cannot be reused ([delete Cloud KMS resources](https://docs.cloud.google.com/kms/docs/delete-kms-resources), as of 2026-11).
 Authorization is IAM only, with no key policy object, and roles can be granted at any node and inherited downward.
-Protection levels are SOFTWARE, HSM, and EXTERNAL (EKM, optionally over VPC).
+Protection levels are SOFTWARE, HSM, HSM_SINGLE_TENANT (GA 2025-12-17 in four regions), EXTERNAL, and EXTERNAL_VPC (Cloud KMS docs, as of 2026-11).
 A key's location must match the location of the resource it protects for CMEK in most services, which is a constraint that surprises multi-region designs.
 Google's own at-rest design wraps per-chunk data keys with key-encryption keys held in Keystore, and CMEK inserts a customer-controlled KEK layer into that chain (Google Cloud, "Encryption at rest in Google Cloud" whitepaper).
-Cloud KMS Autokey provisions keys and key handles on demand per resource type and location in a dedicated key project; AWS has no equivalent automatic per-resource key provisioning (Autokey GA status as of 2026-10 is UNVERIFIED).
+Cloud KMS Autokey provisions keys and key handles on demand per resource type and location in a dedicated key project (GA 2024-09-24) or the same project (GA 2026-07-29) ([Cloud KMS release notes](https://docs.cloud.google.com/kms/docs/release-notes), as of 2026-11); AWS has no equivalent automatic per-resource key provisioning.
 
 ### Control plane versus data plane of identity
 
 AWS IAM control-plane operations (create role, attach policy) are served from us-east-1, while authentication and authorization decisions are served by regional data planes that hold replicated state (AWS whitepaper, Fault Isolation Boundaries: [link](https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/abstract-and-introduction.html)).
 The consequence is that a running workload keeps authorizing during a us-east-1 control-plane event, but your break-glass automation that edits policies does not.
 Design runbooks so that emergency access uses pre-created roles (assume only, no edits), not "create a role" flows.
-GCP IAM changes are eventually consistent, with documented propagation delays measured in minutes (the commonly cited bound is about seven minutes, UNVERIFIED), and VPC SC perimeter changes can take up to roughly half an hour to take full effect (UNVERIFIED).
+GCP allow and deny policy changes typically propagate in 2 minutes and potentially 7 minutes or longer, so seven minutes is not a bound, and group membership changes can take hours ([IAM access change propagation](https://docs.cloud.google.com/iam/docs/access-change-propagation), as of 2026-11), while VPC SC perimeter changes can take up to 30 minutes to take effect ([VPC SC docs](https://docs.cloud.google.com/vpc-service-controls/docs/manage-service-perimeters), as of 2026-11).
 Both clouds therefore need "change, wait, verify with real traffic" in the pipeline, not "change, assert immediately".
 For the decision engine's global consistency problem, the closest public design reference is Google's Zanzibar paper (Pang et al., USENIX ATC 2019), which introduces consistency tokens so that an authorization check is evaluated at least as fresh as a prior write; AWS's open-source Cedar language (Cutler et al., OOPSLA 2024) is the reference for analyzable policy languages.
 Neither paper is a description of IAM's internals, so treat them as design vocabulary rather than architecture claims.
 
 ## Numbers to Know
 
-Every row below is marked UNVERIFIED because the live-documentation verification pass could not be completed for this revision (the search tool quota was exhausted).
-Treat each as a recalled value to re-check against the cited primary source before using it in a design review.
-The date tag records the intended verification date, not a completed check.
+Every row below was checked against the cited vendor documentation on the date shown.
+Defaults change, and some can be raised per account or project, so read the live value (Service Quotas, Cloud Quotas) before using a number in a design review.
+Prices are list prices in USD on the cited page.
 
 | Quantity | AWS | GCP | Source and status |
 |---|---|---|---|
-| Hierarchy nesting | OU nesting up to 5 levels below root | Folder nesting up to 10 levels | AWS Organizations quotas, Resource Manager docs; UNVERIFIED (as of 2026-10) |
-| Ceiling policy document size | SCP 5,120 characters | Org Policy has no character ceiling; constraint count per policy is bounded | AWS Organizations quotas; UNVERIFIED (as of 2026-10) |
-| Direct ceiling attachments per target | 5 SCPs per root, OU, or account | One policy per constraint per node | AWS Organizations quotas; UNVERIFIED (as of 2026-10) |
-| Identity policy sizes | Managed 6,144 chars, role inline aggregate 10,240 chars, trust policy 2,048 chars default | Allow policy about 1,500 principals per policy, group principals counted separately | IAM quotas and GCP IAM quotas; UNVERIFIED (as of 2026-10) |
-| Resource policy sizes | KMS key policy 32 KiB, S3 bucket policy 20 KB, VPC endpoint policy 20,480 chars | IAM policy on the resource, same size class as above | Service docs; UNVERIFIED (as of 2026-10) |
-| Direct symmetric encrypt payload | 4,096 bytes | 64 KiB | KMS docs on both clouds; UNVERIFIED (as of 2026-10) |
-| Symmetric KMS request quota | Shared per account per Region across all keys, region-dependent (5,500 to 30,000 requests per second) | Per project per location per minute, protection-level dependent | AWS KMS quotas, Cloud KMS quotas; UNVERIFIED (as of 2026-10) |
-| Key deletion window | 7 to 30 days pending deletion, default 30 | Version destroy-scheduled duration default 30 days, configurable at key creation (minimum 24 hours) | KMS docs on both clouds; UNVERIFIED (as of 2026-10) |
-| Automatic rotation | Configurable period from 90 to 2,560 days for symmetric keys | Schedule via `rotation_period`, creates new primary version | KMS docs on both clouds; UNVERIFIED (as of 2026-10) |
-| KMS key price | 1 USD per key per month, 0.03 USD per 10,000 requests | About 0.06 USD per software key version per month, 0.03 USD per 10,000 operations | AWS KMS pricing, Cloud KMS pricing; UNVERIFIED (as of 2026-10) |
-| Interface endpoint price | About 0.01 USD per endpoint-AZ-hour plus about 0.01 USD per GB processed (us-east-1) | PSC endpoint for Google APIs has a different price structure | AWS PrivateLink pricing, GCP PSC pricing; UNVERIFIED (as of 2026-10) |
-| IAM change propagation | Eventually consistent, typically seconds | Eventually consistent, documented up to minutes (about 7) | IAM docs; UNVERIFIED (as of 2026-10) |
-| Perimeter change propagation | Endpoint policy changes take effect after propagation, typically seconds to minutes | VPC SC changes can take up to about 30 minutes | VPC SC docs; UNVERIFIED (as of 2026-10) |
-| Restricted API VIP | not applicable | 199.36.153.4/30 for `restricted.googleapis.com` | VPC SC docs; UNVERIFIED (as of 2026-10) |
-| S3 Bucket Key effect | Claimed reduction of SSE-KMS request cost by up to 99 percent | Not applicable | S3 docs; UNVERIFIED (as of 2026-10) |
+| Hierarchy nesting | OU nesting up to 5 levels below root | Folder nesting up to 10 levels, 300 direct child folders per parent | [AWS Organizations quotas](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html), [Resource Manager limits](https://docs.cloud.google.com/resource-manager/docs/limits) (as of 2026-11) |
+| Ceiling policy document size | SCP 10,240 characters, RCP 5,120 characters | Org Policy list rules: at most 500 allowed or denied values and 32 KB | [AWS Organizations quotas](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html), [Org Policy constraints guide](https://docs.cloud.google.com/resource-manager/docs/organization-policy/using-constraints) (as of 2026-11) |
+| Direct ceiling attachments per target | 10 SCPs and 5 RCPs per root, OU, or account (hard limits) | One policy per constraint per node | [AWS Organizations quotas](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html), [Org Policy constraints guide](https://docs.cloud.google.com/resource-manager/docs/organization-policy/using-constraints) (as of 2026-11) |
+| Identity policy sizes | Managed 6,144 chars, role inline aggregate 10,240 chars, trust policy 2,048 chars default (raisable to 8,192) | Allow policy 1,500 principals, of which at most 250 Google groups and domains | [IAM quotas](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html), [GCP IAM quotas](https://docs.cloud.google.com/iam/quotas) (as of 2026-11) |
+| Resource policy sizes | KMS key policy 32 KB (32,768 bytes), S3 bucket policy 20 KB, VPC endpoint policy 20,480 chars | IAM policy on the resource, same limits as above | [KMS key policy](https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-overview.html), [S3 quotas](https://docs.aws.amazon.com/general/latest/gr/s3.html), [PrivateLink quotas](https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-limits-endpoints.html) (as of 2026-11) |
+| Direct symmetric encrypt payload | 4,096 bytes | 64 KiB for software and external keys, 8 KiB combined with AAD for HSM keys | [AWS Encrypt API](https://docs.aws.amazon.com/kms/latest/APIReference/API_Encrypt.html), [Cloud KMS encrypt API](https://docs.cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt) (as of 2026-11) |
+| Symmetric KMS request quota | Shared per account per Region across symmetric keys: default 10,000 requests per second, 20,000 in us-east-2, ap-southeast-1, ap-southeast-2, ap-northeast-1, eu-central-1, eu-west-2, and eu-south-2, 100,000 in us-east-1, us-west-2, and eu-west-1; adjustable | Regional, against the project holding the key, token-based since 2026-02-16: defaults 6,000,000 software and 3,000,000 HSM tokens per minute, 10,000 external tokens per second; a software operation costs 100 tokens, about 60,000 operations per minute; initial limits follow prior usage | [AWS KMS quotas](https://docs.aws.amazon.com/kms/latest/developerguide/requests-per-second.html) (older prose on that page still says 5,500, 10,000, or 50,000, which conflicts with its table), [Cloud KMS quotas](https://docs.cloud.google.com/kms/quotas) (as of 2026-11) |
+| Key deletion window | 7 to 30 days pending deletion, default 30, actual wait up to 24 hours longer | Version destroy-scheduled duration default 30 days, set only at key creation, 24 hours to 120 days (import-only keys minimum 0) | [AWS KMS deleting keys](https://docs.aws.amazon.com/kms/latest/developerguide/deleting-keys.html), [Cloud KMS create key](https://docs.cloud.google.com/kms/docs/create-key) (as of 2026-11) |
+| Automatic rotation | Configurable period from 90 to 2,560 days for symmetric keys, default 365 | Schedule via `rotation_period`, creates new primary version | [AWS KMS rotation](https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html), [EnableKeyRotation API](https://docs.aws.amazon.com/kms/latest/APIReference/API_EnableKeyRotation.html), Cloud KMS docs (as of 2026-11) |
+| KMS key price | 1 USD per key per month, prorated hourly, plus 1 USD per month for each of the first two rotations; 0.03 USD per 10,000 symmetric requests; 20,000 free requests per month | About 0.06 USD per software key version per month (about 1 USD for HSM symmetric, about 3 USD for external); 0.03 USD per 10,000 software operations; versions in `DESTROY_SCHEDULED` are still billed | [AWS KMS pricing](https://aws.amazon.com/kms/pricing/), [Cloud KMS pricing](https://cloud.google.com/kms/pricing) (as of 2026-11) |
+| Interface endpoint price | 0.01 USD per endpoint-AZ-hour (us-east-1 example) plus 0.01 USD per GB for the first PB per Region, then 0.006 and 0.004 | PSC endpoint for Google APIs: 0.01 USD per hour, no per-GB data charge | [AWS PrivateLink pricing](https://aws.amazon.com/privatelink/pricing/), [GCP VPC pricing](https://cloud.google.com/vpc/network-pricing) (as of 2026-11) |
+| IAM change propagation | Eventually consistent, no published time bound | Allow and deny typically 2 minutes, potentially 7 minutes or longer; group membership can take hours | [IAM troubleshooting](https://docs.aws.amazon.com/IAM/latest/UserGuide/troubleshoot_general.html), [GCP propagation docs](https://docs.cloud.google.com/iam/docs/access-change-propagation) (as of 2026-11) |
+| Perimeter change propagation | Endpoint policy changes can take a few minutes | VPC SC changes can take up to 30 minutes | [Endpoint policy docs](https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-endpoints-access.html), [VPC SC docs](https://docs.cloud.google.com/vpc-service-controls/docs/manage-service-perimeters) (as of 2026-11) |
+| Restricted API VIP | not applicable | 199.36.153.4/30 for `restricted.googleapis.com` | [VPC SC private connectivity](https://docs.cloud.google.com/vpc-service-controls/docs/set-up-private-connectivity) (as of 2026-11) |
+| S3 Bucket Key effect | Reduces SSE-KMS request cost by up to 99 percent (vendor upper bound), new objects only, at least one key fetch per requester | Not applicable | [S3 Bucket Keys](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html) (as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Concern | AWS mechanism | GCP mechanism | Critical difference |
 |---|---|---|---|
 | Isolation boundary | Account | Project | AWS roles and users are account-scoped principals; GCP service accounts live in a project but are globally addressable principals, so cross-project grants are one binding instead of trust plus identity policy. |
-| Org ceiling on principals | SCP (deny-list or allow-list) | Deny policy at org or folder, PAB | No GCP allow-list analog; SCPs also skip the management account and service-linked roles, while deny policies do not carve out the org admin automatically. |
+| Org ceiling on principals | SCP (deny-list or allow-list) | Deny policy at org or folder, PAB | No IAM-level allow-list analog on GCP (`constraints/gcp.restrictServiceUsage` is the Org Policy approximation); SCPs also skip the management account and service-linked roles, while deny policies do not carve out the org admin automatically. |
 | Org ceiling on resources | RCP (limited service list) | Deny policy on resource hierarchy, Org Policy | GCP resource-side controls are native; AWS needs RCP plus resource policies and has coverage gaps by service. |
-| Config invariants | Declarative policies, SCP deny on API actions, Config rules | Org Policy managed and custom constraints (CEL), with dry-run | Org Policy is evaluated by the service on resource create or update with inherited merge semantics (`inheritFromParent`, reset); SCP only sees API actions and cannot inspect arbitrary fields unless the condition key exists. |
+| Config invariants | Declarative policies, SCP deny on API actions, Config rules | Org Policy managed and custom constraints (CEL), with dry-run for custom, managed, and four legacy constraints ([dry-run docs](https://docs.cloud.google.com/resource-manager/docs/organization-policy/dry-run-policy), as of 2026-11) | Org Policy is evaluated by the service on resource create or update with inherited merge semantics (`inheritFromParent`, reset); SCP only sees API actions and cannot inspect arbitrary fields unless the condition key exists. |
 | Grant model | Identity policy or resource policy (union), cross-account needs both sides | Union of inherited allow bindings, roles bound at nodes | GCP cannot subtract at a child; AWS can attach a deny anywhere. |
 | Explicit deny | In any policy type | Dedicated deny policies only | GCP allow policies have no deny effect, so tooling that audits "allow statements" misses deny policies. |
 | Condition language | JSON condition operators with global and service keys, ABAC via tags | CEL conditions on bindings, resource tags in conditions | Not every GCP service supports conditional bindings; AWS key availability varies by service and action instead. |
 | Impersonation | `sts:AssumeRole` with trust policy, `iam:PassRole` for services | Token Creator on a service account, `iam.serviceAccounts.actAs` for services | Both are the escalation edge; GCP impersonation chains (delegates) can be audited via Policy Analyzer, AWS role chains by Access Analyzer and CloudTrail. |
-| Workload identity | IRSA, EKS Pod Identity, IAM Roles Anywhere | GKE Workload Identity, Workload Identity Federation | Both exchange OIDC or platform tokens for short-lived credentials; see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation\|Workload Identity Federation]]. |
+| Workload identity | IRSA, EKS Pod Identity, IAM Roles Anywhere | Workload Identity Federation for GKE (formerly GKE Workload Identity), Workload Identity Federation | Both exchange OIDC or platform tokens for short-lived credentials; see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation\|Workload Identity Federation]]. |
 | Service-owned identities | Service-linked roles, service principals | Service agents in your project | Service agents appear in your IAM and need explicit key grants; service principals are scoped via `aws:SourceArn`. |
 | Network-path control | Gateway and interface endpoints, endpoint policy, `aws:SourceVpce` | Private Google Access, PSC for Google APIs, restricted VIP | Path-based on AWS, attribute-based on GCP. |
 | API perimeter | Data perimeter pattern: SCP, RCP, endpoint policy combined | VPC SC service perimeter with ingress and egress rules, dry-run | VPC SC is one managed product with a dry-run; the AWS perimeter is a composition you assemble and test yourself. |
-| Perimeter staging | No native dry-run for SCP; use Access Analyzer, CloudTrail, simulator | VPC SC and Org Policy dry-run | Biggest rollout-safety gap on AWS. |
+| Perimeter staging | No native dry-run for SCP found in AWS Organizations docs (as of 2026-11); use test accounts, Access Analyzer, CloudTrail, simulator | VPC SC dry-run, Org Policy dry-run for custom, managed, and four legacy constraints | Biggest rollout-safety gap on AWS. |
 | KMS authorization root | Key policy (plus IAM if delegated, plus grants) | IAM only, inherited | AWS can produce a key nobody in IAM can administer; GCP keys inherit grants that may be broader than intended. |
 | KMS scope | Regional, multi-Region keys replicate material to chosen regions | Regional, multi-region and global locations managed by Google | AWS multi-Region keys are independent keys with their own policy; GCP multi-region location is a single resource whose replication you do not control. |
-| Protection levels | Standard HSM-backed, CloudHSM custom key store, external key store (XKS) | SOFTWARE, HSM, EXTERNAL and EXTERNAL_VPC via EKM | Both externalize; the external manager's availability becomes a hard dependency of reads. |
+| Protection levels | Standard HSM-backed, CloudHSM custom key store, external key store (XKS) | SOFTWARE, HSM, HSM_SINGLE_TENANT, EXTERNAL and EXTERNAL_VPC via EKM | Both externalize; the external manager's availability becomes a hard dependency of reads. |
 | Rotation | Automatic key material rotation under same ARN | New primary version, old versions stay enabled for decrypt | Neither re-encrypts existing data; service-managed layers (S3, GCS) re-wrap on their own schedule or not at all. |
 | Auto-provisioning | None native | Autokey | GCP reduces key sprawl policy gaps by design. |
-| Audit | CloudTrail logs KMS calls with encryption context | Cloud Audit Logs; Admin Activity on by default, Data Access logs for KMS crypto calls must be enabled | A GCP perimeter or KMS investigation can be blind if Data Access logs were never turned on (UNVERIFIED default per service). |
+| Audit | CloudTrail logs KMS calls with encryption context | Cloud Audit Logs; Admin Activity on by default, Data Access logs for KMS crypto calls must be enabled | A GCP perimeter or KMS investigation can be blind if Data Access logs were never turned on; they are disabled by default for all services except some BigQuery services ([audit log docs](https://docs.cloud.google.com/logging/docs/audit/configure-data-access), as of 2026-11). |
 
 ## Worked Example: A Dual-Cloud Encrypted Bucket With Guardrails
 
@@ -215,7 +249,7 @@ It then runs a capacity script that shows why KMS request rate, not bandwidth, i
 
 ### Assumptions
 
-1. A sandbox AWS account with credentials in the environment, and a GCP project inside an organization (Org Policy requires an organization-parented project, UNVERIFIED).
+1. A sandbox AWS account with credentials in the environment, and a GCP project inside an organization (the permissions to manage Org Policy and deny policies are granted on the organization resource: [apply Org Policy](https://docs.cloud.google.com/organization-policy/apply-policies), [deny access](https://docs.cloud.google.com/iam/docs/deny-access), as of 2026-11).
 2. Terraform 1.6 or later (or OpenTofu).
 3. The operator's GCP identity is passed as `break_glass_email` so the deny policy does not lock out your own teardown.
 
@@ -464,27 +498,31 @@ if rps > args.kms_quota_rps:
 Step-by-step back-of-envelope for the defaults:
 
 1. 4,096 readers at 5 objects per second each offer 20,480 KMS decrypts per second if every object read triggers a KMS call.
-2. Against an assumed shared quota of 10,000 requests per second, that is 205 percent utilization, so the data loader is throttled, not storage-bound.
-3. Monthly request cost at 0.03 USD per 10,000 requests is 20,480 x 2,592,000 / 10,000 x 0.03, about 159,000 USD (prices UNVERIFIED as of 2026-10).
-4. With bucket-level keys removing 99 percent of calls the offered load is about 205 requests per second and the monthly cost falls to about 1,600 USD.
-5. The lab itself costs a few cents: one KMS key at 1 USD per month prorated, one software key version on GCP, empty buckets, and two budgets at 10 USD.
+2. Against the default shared quota of 10,000 requests per second (Regions outside the 20,000 and 100,000 tiers, AWS KMS quotas as of 2026-11), that is 205 percent utilization, so the data loader is throttled, not storage-bound; in us-east-1, the lab's default Region, the 100,000 default makes it about 20 percent, so pass your Region's value with `--kms_quota_rps`.
+3. Monthly request cost at 0.03 USD per 10,000 requests is 20,480 x 2,592,000 / 10,000 x 0.03, about 159,000 USD ([AWS KMS pricing](https://aws.amazon.com/kms/pricing/), as of 2026-11).
+4. With bucket-level keys removing 99 percent of calls, AWS's stated upper bound, the offered load is about 205 requests per second and the monthly cost falls to about 1,600 USD; real savings depend on the number of requesters and on objects having been written with a Bucket Key ([S3 Bucket Keys](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html), as of 2026-11).
+5. The lab itself costs a few cents: one KMS key at 1 USD per month prorated hourly, one software key version on GCP, empty buckets, and two budgets at 10 USD.
 
 ### Cost estimate, alarm, teardown
 
-Expected lab cost for a day: under 1 USD on each cloud (UNVERIFIED prices).
+Expected lab cost for a day: under 1 USD on each cloud (about 0.03 USD of AWS key time and under 0.01 USD of GCP key-version time at the list prices above, before request and storage charges).
 Budget alarms are the two budget resources above, set to alert at 80 percent of 10 USD.
 
 Teardown:
 
 ```bash
+KEY_ID=$(terraform state show -no-color aws_kms_key.data | awk '$1 == "key_id" {gsub(/"/, "", $3); print $3}')
 terraform destroy -auto-approve \
   -var gcp_project=PROJECT -var alert_email=you@example.com \
   -var break_glass_email=you@example.com -var billing_account=XXXXXX-XXXXXX-XXXXXX
-aws kms describe-key --key-id alias/ch17-v04-lab --query KeyMetadata.KeyState 2>/dev/null || true
+aws kms describe-key --key-id "$KEY_ID" --query KeyMetadata.KeyState
 gcloud kms keys versions list --key data --keyring ch17v04-lab-ring --location us-central1 --project PROJECT
 ```
 
-The AWS key will show `PendingDeletion` for 7 days, and the GCP key ring remains forever (key rings cannot be deleted), but with all versions in `DESTROY_SCHEDULED` or `DESTROYED` state it accrues no charge.
+The AWS key will show `PendingDeletion` for 7 days, or up to 24 hours longer ([AWS KMS deleting keys](https://docs.aws.amazon.com/kms/latest/developerguide/deleting-keys.html), as of 2026-11).
+On GCP, `terraform destroy` drops the key and key ring from state and destroys the versions while leaving those resources in the project ([crypto key](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/kms_crypto_key) and [key ring](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/kms_key_ring) provider docs, which still say they cannot be deleted, as of 2026-11).
+Versions in `DESTROY_SCHEDULED` are still billed for this lab's 24-hour window, and only `DESTROYED` versions are free ([Cloud KMS pricing](https://cloud.google.com/kms/pricing), as of 2026-11).
+Once the deletion criteria in Internals are met you can delete the key and key ring with gcloud or the API, or leave them in place.
 If you find a version still `ENABLED`, destroy it with `gcloud kms keys versions destroy`.
 
 ## Failure Modes and Pitfalls
@@ -505,7 +543,8 @@ A principal that can launch managed compute with a more privileged role or servi
 Scope `iam:PassRole` with `iam:PassedToService` and role-path conditions, and scope `actAs` to specific service accounts instead of project-wide.
 Default compute service accounts historically carried broad roles; the Org Policy `iam.automaticIamGrantsForDefaultServiceAccounts` exists to stop that auto-grant.
 5. **Public PIR: Capital One, 2019.**
-An SSRF flaw in a web application firewall let an attacker reach the instance metadata service and fetch role credentials, and the role had broad S3 access (public reporting and the DOJ complaint).
+A misconfigured web application firewall let an attacker obtain the credentials of its IAM role, and the role could list and read S3 buckets (DOJ complaint, [as reported by TechTarget](https://www.techtarget.com/searchsecurity/news/252467901/Capital-One-hack-highlights-SSRF-concerns-for-AWS)).
+SSRF against the instance metadata service is the leading public explanation for how the credentials were fetched, not a mechanism the complaint states.
 The mechanisms that would have limited it are IMDSv2 enforcement, least-privilege roles, and a perimeter that rejects use of those credentials from outside the VPC, which is exactly what VPC endpoint conditions and, on GCP, VPC SC access levels are for.
 
 ### Perimeters
@@ -518,7 +557,7 @@ Carve out with `aws:PrincipalIsAWSService` or `aws:ViaAWSService` and test in a 
 Enforcing a perimeter around a project that hosts Vertex AI pipelines, BigQuery, and GCS typically breaks cross-project reads (for example public model weights or container images) and managed services' own egress.
 Run dry-run, read the violation log by unique ID, write ingress and egress rules, then enforce.
 3. **Perimeter changes lag.**
-Changes propagate with delay, so "I fixed the rule, it still fails" is expected for a period that can be tens of minutes (UNVERIFIED).
+Changes propagate with delay, so "I fixed the rule, it still fails" is expected for a period that can reach 30 minutes on VPC SC, with 403 errors until then ([VPC SC docs](https://docs.cloud.google.com/vpc-service-controls/docs/manage-service-perimeters), as of 2026-11).
 4. **Interface endpoint cost and quotas.**
 Each interface endpoint is billed per AZ-hour and per GB, and each endpoint consumes IPs in each subnet, so a per-service, per-AZ, per-VPC fan-out in a hub-and-spoke network gets expensive; centralize in a shared-services VPC where the resolver strategy allows it.
 
@@ -541,10 +580,10 @@ Test the restore with the DR region's keys, not just the data copy.
 ### Governance plane incidents
 
 1. **Google Cloud, 2025-06-12.**
-A policy change replicated globally within seconds and triggered a crash in the Service Control component that checks quota and policy, because of unexpected blank fields and a missing feature flag; many Google Cloud APIs returned errors until recovery, and a herd effect lengthened recovery in some regions (Google Cloud incident report; details UNVERIFIED as of 2026-10).
+A policy change with unintended blank fields replicated globally within seconds and hit a null-pointer path in Service Control, the binary that checks quota and policy, which had shipped on 2025-05-29 with no feature flag or error handling; external API requests returned 503 errors during the crash loop, and a herd effect on the underlying Spanner table lengthened recovery in large regions such as us-central1 ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-11).
 Lesson for platform designers: policy data is code, and it needs staged rollout, a flag, and fail-open or fail-static behavior in the consumer.
 2. **Google, 2020-12-14.**
-An automated quota reduction on the user ID service's storage left authentication systems unable to serve, causing a global outage of services that depend on Google sign-in (Google public incident write-up; duration and mechanism details UNVERIFIED as of 2026-10).
+A quota-system migration left the old system reporting zero usage for the User ID Service, so automation cut the quota on its account database, the Paxos leader could not write, and authentication lookups failed for about 47 minutes, causing a global outage of services that depend on Google sign-in ([Google incident report](https://status.cloud.google.com/incident/zall/20013), as of 2026-11).
 Identity services are the deepest dependency in the graph, so their quota and capacity automations need the strictest guardrails.
 3. **Your own org-wide policy.**
 An SCP or deny policy attached at the root takes effect across every account or project within propagation time and has no staged rollout in the product.
@@ -554,7 +593,7 @@ Build rollout rings yourself: sandbox OU, canary OU with real workloads, then pr
 
 ### IAM scoping
 
-1. Use a small number of org-level deny statements for invariants (leave organization, disable logging, create access keys, destroy keys) and push everything else to workload-account IAM, because the 5,120-character SCP size limit (UNVERIFIED) and the lack of staging punish large ceiling policies.
+1. Use a small number of org-level deny statements for invariants (leave organization, disable logging, create access keys, destroy keys) and push everything else to workload-account IAM, because the 10,240-character SCP and 5,120-character RCP size limits ([AWS Organizations quotas](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html), as of 2026-11) and the lack of staging punish large ceiling policies.
 2. On GCP prefer deny policies for the same invariants, Org Policy for configuration, and PAB for service accounts used by CI so a leaked CI credential cannot reach production projects.
 3. Use short-lived credentials everywhere: role sessions, workload identity federation, and impersonation instead of exported keys.
 4. Prefer attribute-based conditions (`aws:PrincipalOrgID`, `aws:ResourceOrgID`, resource tags) to long enumerations of account IDs.
@@ -569,14 +608,14 @@ Build rollout rings yourself: sandbox OU, canary OU with real workloads, then pr
 
 ### Private boundaries
 
-1. AWS: gateway endpoints for S3 and DynamoDB are free, and interface endpoints are billed per AZ-hour and per GB (UNVERIFIED), so use the gateway where it exists and restrict its policy to your organization with `aws:PrincipalOrgID` and `aws:ResourceOrgID`.
+1. AWS: gateway endpoints for S3 and DynamoDB carry no additional charge ([gateway endpoints](https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html)), and interface endpoints are billed per AZ-hour and per GB ([PrivateLink pricing](https://aws.amazon.com/privatelink/pricing/), as of 2026-11), so use the gateway where it exists and restrict its policy to your organization with `aws:PrincipalOrgID` and `aws:ResourceOrgID`.
 2. GCP: put AI data projects (GCS, BigQuery, Vertex AI) in one perimeter, restrict private access to the restricted VIP, and express cross-project exceptions as narrowly scoped ingress and egress rules.
 3. For both clouds, block the exfiltration paths that sit outside the perimeter: public buckets, public IPs on training nodes, unreviewed egress, and model-registry exports.
 
 ### Unit economics
 
 1. KMS request spend scales with read rate, not data volume; model it per million reads before choosing per-object encryption keys (see the script above).
-2. Key count is cheap (about 1 USD per month per AWS key, UNVERIFIED) compared with a quota incident, so split by workload to isolate throttling.
+2. Key count is cheap (1 USD per month per AWS key before rotation charges, [AWS KMS pricing](https://aws.amazon.com/kms/pricing/), as of 2026-11) compared with a quota incident, so split by workload to isolate throttling.
 3. Interface endpoints per AZ multiply quickly; the savings from avoiding NAT gateway processing on heavy S3 or ECR traffic usually exceeds endpoint cost, but check by multiplying GB by the per-GB rates for each path.
 4. Governance work saves the most money when it prevents key sprawl, orphaned service account keys, and unused cross-project grants; use IAM Access Analyzer unused-access findings on AWS and IAM Recommender on GCP to prune.
 
@@ -592,8 +631,8 @@ The faithful translation is a mix of constraints and deny, not a single policy.
 For "resources only in these regions" the right primitive is the Organization Policy constraint `constraints/gcp.resourceLocations`, set at the org or folder, because it is evaluated by the service at resource create time and covers many services uniformly, where the SCP matches one API action at a time.
 If I also need to prevent a specific action (for instance, only the platform team may create Compute instances), that is an IAM deny policy at the folder with exception principals.
 What I lose is the allow-list option.
-An SCP can remove `FullAWSAccess` and permit only an enumerated set of services; GCP has no ceiling that says "only these services", so I would reproduce it with an Org Policy `serviceuser`-style restriction on enabled APIs (the "restrict service usage" constraint, whose current name I would verify) plus PAB to narrow which resources principals can reach.
-What I gain is dry-run for Org Policy and a uniform view of constraint violations.
+An SCP can remove `FullAWSAccess` and permit only an enumerated set of services; GCP has no ceiling that says "only these services", so I would reproduce it with the Org Policy constraint `constraints/gcp.restrictServiceUsage` plus PAB to narrow which resources principals can reach.
+What I gain is a uniform view of constraint violations, and dry-run where Org Policy supports it: custom, managed, and four legacy constraints including restrict service usage, but not the legacy `gcp.resourceLocations` ([dry-run docs](https://docs.cloud.google.com/resource-manager/docs/organization-policy/dry-run-policy), as of 2026-11).
 The residual risk is that Org Policy constrains configuration while deny constrains permissions, so I test both: attempt creation as a principal with Editor on the project and confirm the failure comes from the expected plane.
 
 #### Follow-up Interviewer Question
@@ -676,11 +715,12 @@ Diagnose, size, and fix it on AWS, then say what changes on GCP.
 
 The symptom pattern is throttling errors on the data path with low storage utilization, which points to KMS.
 The mechanism is that each uncached object read triggers a `Decrypt` (or `GenerateDataKey` on writes) against the account's shared per-Region symmetric request quota.
-Sizing: readers times objects per second per reader equals offered KMS rate, so 4,096 readers at 5 objects per second is 20,480 per second against a quota that, depending on Region, is in the range of 5,500 to 30,000 (UNVERIFIED), so I am near or over the limit before any other workload in the account is counted.
-Fixes in order of leverage: enable S3 Bucket Keys, which let S3 derive object keys from a bucket-level key and cut KMS requests by a large factor (vendor claim up to 99 percent), which also cuts request cost from roughly 159,000 to 1,600 USD per month at these rates; pack small objects into shards (WebDataset-style) so reads per second drop by 100 to 1,000 times; cache data keys with the AWS Encryption SDK for client-side encryption; isolate the training account so no other workload shares the quota; and file a quota increase early.
+Sizing: readers times objects per second per reader equals offered KMS rate, so 4,096 readers at 5 objects per second is 20,480 per second against a default quota of 10,000, 20,000, or 100,000 depending on Region ([AWS KMS quotas](https://docs.aws.amazon.com/kms/latest/developerguide/requests-per-second.html), as of 2026-11), so I am over the limit outside us-east-1, us-west-2, and eu-west-1 before any other workload in the account is counted, and I would read the account's actual value in Service Quotas.
+Fixes in order of leverage: enable S3 Bucket Keys, which let S3 derive object keys from a bucket-level key and cut KMS requests by a large factor (vendor claim up to 99 percent), which also cuts request cost from roughly 159,000 to 1,600 USD per month at these rates, though they apply only to new objects, so the existing corpus needs a `CopyObject` pass, and S3 fetches at least one bucket-level key per requester ([S3 Bucket Keys](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html), as of 2026-11); pack small objects into shards (WebDataset-style) so reads per second drop by 100 to 1,000 times; cache data keys with the AWS Encryption SDK for client-side encryption; isolate the training account so no other workload shares the quota; and file a quota increase early.
 Bucket Keys change the encryption context seen in CloudTrail from object ARN to bucket ARN, so any key policy condition on object ARN needs updating.
-On GCP the same design question exists in a different form: GCS wraps object-level data keys with the CMEK, and Cloud KMS quotas are per project per location per minute, so the unit and the scope differ.
-I would put the key in a dedicated key project, check that project's quota, and verify whether GCS's own key caching already shields the key from per-object calls for my access pattern (UNVERIFIED, so I would measure with Cloud Monitoring KMS metrics before and after).
+On GCP the same design question exists in a different form: GCS wraps object-level data keys with the CMEK, and Cloud KMS quotas are regional and token-based, against the project that holds the key, so the unit and the scope differ ([Cloud KMS quotas](https://docs.cloud.google.com/kms/quotas), as of 2026-11).
+The GCS docs say software CMEK operations consume no Cloud KMS quota, while HSM and EKM operations count against those quotas in the key's project ([GCS CMEK docs](https://docs.cloud.google.com/storage/docs/encryption/customer-managed-keys), as of 2026-11), so the throttling risk follows the protection level.
+I would put the key in a dedicated key project, check that project's HSM or EKM quota if I use those levels, and measure with Cloud Monitoring KMS metrics before and after, because the same docs do not say whether GCS caches keys across object reads.
 
 #### Follow-up Interviewer Question
 
@@ -721,8 +761,8 @@ Governance policy is a global configuration push, so I treat it like a productio
 The principles from the June 2025 incident are that configuration data needs the same staging, feature flag, and fail-safe consumer behavior as code, and that a global control with no canary converts a bad edit into a global outage.
 My system has five parts.
 First, policy as code in a repository with schema validation, a policy linter, and automated reasoning checks (Access Analyzer policy validation, Policy Simulator, OPA unit tests) that reject policies that deny the break-glass roles.
-Second, rollout rings implemented by me: sandbox OU or folder, a canary ring with real but low-risk workloads, then regions or business-unit rings, each with a soak time greater than the propagation delay (minutes for GCP IAM and tens of minutes for VPC SC, UNVERIFIED) and an SLO-based health gate that watches AccessDenied rates, deploy failure rates, and org-level support tickets.
-Third, dry-run where it exists: Org Policy dry-run and VPC SC dry-run on GCP, and on AWS CloudTrail-driven simulation ("what would have been denied") using Access Analyzer policy generation and a log query over the last 30 days, since SCPs have no dry-run.
+Second, rollout rings implemented by me: sandbox OU or folder, a canary ring with real but low-risk workloads, then regions or business-unit rings, each with a soak time greater than the propagation delay (typically 2 and potentially 7 or more minutes for GCP IAM, and up to 30 minutes for VPC SC, per Google docs as of 2026-11) and an SLO-based health gate that watches AccessDenied rates, deploy failure rates, and org-level support tickets.
+Third, dry-run where it exists: VPC SC dry-run and Org Policy dry-run for the custom, managed, and four legacy constraints that support it on GCP, and on AWS CloudTrail-driven simulation ("what would have been denied") using Access Analyzer policy generation and a log query over the last 30 days, since SCPs have no dry-run.
 Fourth, rollback that does not depend on the plane being changed: a pipeline role excluded from the policy by condition, a pre-created break-glass role with out-of-band credentials, and runbooks that do not require IAM control-plane writes in us-east-1 during an AWS regional event.
 Fifth, change velocity limits: policies attached at the root change at most weekly, anything else goes through OU-level attachment.
 The cost is slower guardrail delivery, which I accept because the blast radius of a root-level error is the whole company.
@@ -745,7 +785,7 @@ Tier two is bring-your-own key material imported into the provider's KMS, which 
 Tier three is an external key manager (AWS XKS, Cloud EKM), where the provider calls your key manager on every wrap and unwrap, so you can revoke access instantly and, with Key Access Justifications on GCP, see a reason code per call.
 Tier four is client-side encryption where the provider never sees plaintext or keys, using libraries such as the AWS Encryption SDK or Tink.
 The cost is availability and latency: with tier three your external manager's availability, network path, and capacity are on the read path of every encrypted object that is not cached, so the data plane inherits its SLO.
-At 50 GB per second with 8 MB objects, the object rate is about 6,250 per second, which is within what a well-run external key manager can serve, but the cumulative request cost and the failure semantics, in which a key manager brownout stalls the whole training run, are what matter.
+At 50 GB per second with 8 MB objects, the object rate is about 6,250 per second, which on AWS exceeds the default 1,800 requests per second quota for each external key store unless S3 Bucket Keys or data-key caching absorb it ([AWS KMS quotas](https://docs.aws.amazon.com/kms/latest/developerguide/requests-per-second.html), as of 2026-11), and beyond that limit the cumulative request cost and the failure semantics, in which a key manager brownout stalls the whole training run, are what matter.
 I would recommend tier one with HSM protection, strict key policy or IAM separation, perimeter controls, and data-key caching for the training corpus, and reserve tier three for the small set of datasets with a legal need to be revocable, because a training job that stalls on an external dependency for hours burns accelerator-hours that cost far more than the keys.
 For checkpoints that must survive provider-side compromise, tier four with a hierarchical keyring (cached branch keys) gives revocation at the cost of an operational burden I would only accept for a narrow class.
 The decision is an availability and cost trade against a threat model; I would write the threat model first and let it select the tier.

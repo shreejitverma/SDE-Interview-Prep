@@ -11,6 +11,29 @@ sources:
   - "https://d1.awsstatic.com/events/reinvent/2021/Improve_workload_resiliency_using_shuffle_sharding_ARC308.pdf"
   - "https://blog.cloudflare.com/18-november-2025-outage/"
   - "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/white-label-name-servers.html"
+  - "https://builder.aws.com/content/3F06NpJ8YeoIGP8VHTw4n81pFn8/workload-isolation-using-shuffle-sharding"
+  - "https://docs.aws.amazon.com/wellarchitected/latest/reducing-scope-of-impact-with-cell-based-architecture/what-is-a-cell-based-architecture.html"
+  - "https://docs.aws.amazon.com/wellarchitected/latest/reducing-scope-of-impact-with-cell-based-architecture/why-to-use-a-cell-based-architecture.html"
+  - "https://docs.aws.amazon.com/wellarchitected/latest/reducing-scope-of-impact-with-cell-based-architecture/cell-design.html"
+  - "https://docs.aws.amazon.com/wellarchitected/latest/reducing-scope-of-impact-with-cell-based-architecture/cell-sizing.html"
+  - "https://docs.aws.amazon.com/wellarchitected/latest/reducing-scope-of-impact-with-cell-based-architecture/cell-routing.html"
+  - "https://docs.aws.amazon.com/wellarchitected/latest/reducing-scope-of-impact-with-cell-based-architecture/cell-deployment.html"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://aws.amazon.com/route53/sla/"
+  - "https://aws.amazon.com/blogs/compute/handling-billions-of-invocations-best-practices-from-aws-lambda/"
+  - "https://github.com/awslabs/route53-infima"
+  - "https://www.usenix.org/system/files/nsdi20-paper-brooker.pdf"
+  - "https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf"
+  - "https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/"
+  - "https://docs.cloud.google.com/architecture/deployment-archetypes"
+  - "https://docs.cloud.google.com/architecture/disaster-recovery"
+  - "https://docs.cloud.google.com/docs/quotas/overview"
+  - "https://docs.cloud.google.com/dns/docs/routing-policies-overview"
+  - "https://docs.cloud.google.com/load-balancing/docs/url-map-concepts"
+  - "https://docs.cloud.google.com/deploy/docs/overview"
+  - "https://docs.aws.amazon.com/r53recovery/latest/dg/arc-zonal-shift.html"
+  - "https://docs.aws.amazon.com/cli/latest/reference/budgets/create-budget.html"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/billing/budgets/create"
 ---
 
 # Cell-Based Architecture and Shuffle Sharding
@@ -56,9 +79,9 @@ See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02
 ### Cells: what the boundary must contain
 
 The AWS Well-Architected whitepaper on cell-based architecture states the ideal plainly.
-<br>A cell should be independent, unaware of other cells, and should not share state, with no cross-cell API calls and no shared databases or S3 buckets (AWS Well-Architected, as of 2026-10).
-The same page encourages separate AWS accounts per cell (AWS Well-Architected, as of 2026-10).
-The account is a useful boundary because AWS resources carry limits and quotas per Region and account (AWS Well-Architected, as of 2026-10).
+<br>A cell should be independent, unaware of other cells, and should not share state, with no cross-cell API calls and no shared databases or S3 buckets (AWS Well-Architected, as of 2026-11).
+The same page encourages separate AWS accounts per cell (AWS Well-Architected, as of 2026-11).
+The account is a useful boundary because AWS resources carry limits and quotas per Region and account (AWS Well-Architected, as of 2026-11).
 A cell in its own account therefore also gets its own quota blast radius, which is the failure mode people forget: one tenant exhausting an API throttle in a shared account degrades every cell in that account.
 
 A cell must be a bulkhead for four independent resources:
@@ -69,18 +92,18 @@ A cell must be a bulkhead for four independent resources:
 - **Quotas and credentials**: its own account or project, its own KMS keys, its own service-linked roles.
 
 The whitepaper's best practices are operationally specific.
-Start with multiple cells from day one, because the single cell you have today is "cell zero", and having more than one is the only way to discover cross-cell coupling (AWS Well-Architected, as of 2026-10).
-Build the cell migration mechanism from day one, because moving a tenant is the operation you will need when a cell fills or a whale appears (AWS Well-Architected, as of 2026-10).
+Treat your current stack as "cell zero" when migrating, and plan for more than one cell from day one, because that surfaces the operational issues early and reduces surprises (AWS Well-Architected, as of 2026-11).
+Build the cell migration mechanism from day one, because moving a tenant is the operation you will need when a cell fills or a whale appears (AWS Well-Architected, as of 2026-11).
 
 ### Cell sizing is a trade, not a constant
 
 The whitepaper lays out the sizing trade directly.
-With 10 cells each holds 10 percent of customers, and with 100 cells each holds 1 percent (AWS Well-Architected, as of 2026-10).
-Smaller cells reduce scope of impact and are less likely to hit scaling limits that only appear at size, but they multiply the number of replicas you operate (AWS Well-Architected, as of 2026-10).
+With 10 cells each holds 10 percent of customers, and with 100 cells each holds 1 percent (AWS Well-Architected, as of 2026-11).
+Smaller cells reduce scope of impact and are less likely to hit scaling limits that only appear at size, but they multiply the number of replicas you operate (AWS Well-Architected, as of 2026-11).
 The mechanism behind "unknown limits appear at size" is that every large system hides a non-linear resource: a connection table, a thread count per peer, a metadata shard.
 Capping cell size at a load you have stress-tested turns these from production discoveries into test-environment discoveries.
-This is the same reason Physalia, the EBS control plane, partitions into many small consensus groups rather than one large one (Brooker et al., "Millions of Tiny Databases", NSDI 2020).
-Borg likewise manages clusters as bounded "cells" (Verma et al., "Large-scale cluster management at Google with Borg", EuroSys 2015).
+Physalia, the configuration store behind the EBS control plane, makes the same partitioning move for blast radius: each partition key gets its own seven-node Paxos cell, and the paper calls this division its main tool for reducing radius (Brooker et al., "Millions of Tiny Databases", NSDI 2020).
+Borg also uses the word "cell", for the machines of a cluster managed as one independent unit, but it does not cap cell size in this sense: the median production cell is about 10k machines and some are much larger (Verma et al., "Large-scale cluster management at Google with Borg", EuroSys 2015).
 See [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_03_Physalia_EBS_Control_Plane|Physalia]] and [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_07_Google_Borg_and_Omega|Borg and Omega]].
 
 ### Partition keys and the virtual-bucket indirection
@@ -127,23 +150,24 @@ Two independently placed tenants share exactly j workers with probability given 
 `P(j) = C(m,j) * C(n-m, m-j) / C(n,m)`
 
 The probability that two tenants have identical shards is 1/C(n,m).
-For the AWS Builders' Library example, Route 53 arranges capacity into 2048 virtual name servers and assigns each domain a shuffle shard of four, giving about 730 billion possible shards, enough to give every domain a unique one (AWS Builders' Library, as of 2026-10).
-The same text says no domain will share more than two virtual name servers with any other (AWS Builders' Library, as of 2026-10).
-A DDoS against one domain spikes traffic on that domain's four virtual name servers only, and the targeted customer can then be moved to dedicated attack capacity (AWS Builders' Library, as of 2026-10).
+For the AWS Builders' Library example, Route 53 arranges capacity into 2048 virtual name servers and assigns each domain a shuffle shard of four, giving about 730 billion possible shards, enough to give every domain a unique one (AWS Builders' Library, as of 2026-11).
+The same text says no domain will share more than two virtual name servers with any other (AWS Builders' Library, as of 2026-11).
+A DDoS against one domain spikes traffic on that domain's four virtual name servers only, and the targeted customer can then be moved to dedicated attack capacity (AWS Builders' Library, as of 2026-11).
 
 Mechanisms worth knowing cold:
 
 **1. Isolation is delegated to the client.**
 Shuffle sharding only works if the client tries every endpoint in its shard until one succeeds.
 DNS resolvers do this natively, which is why Route 53 is the canonical example.
-For an HTTP or RPC service you must supply that retry logic and a way to address "this tenant's m endpoints", either through per-tenant DNS names or a content-aware router (as noted in public explainers of the Builders' Library article, as of 2026-10).
-Assignments are fixed: a tenant whose workers fail is not reshuffled onto healthy ones, because dynamic reassignment would carry the poison to new workers.
+For an HTTP or RPC service you must supply that retry logic and a way to address "this tenant's m endpoints", either through per-tenant DNS names or a content-aware router (design inference: the Builders' Library says only that requestors must be fault tolerant, and Infima's RubberTree turns shuffle shards into weighted Route 53 records, Infima README, as of 2026-11).
+Assignments are fixed as a design rule, not a statement from the Builders' Library: a tenant whose workers fail is not reshuffled onto healthy ones, because dynamic reassignment would carry the poison to new workers.
+Route 53 hosted zones behave this way visibly, since you cannot change the name servers of an existing hosted zone (Route 53 docs, as of 2026-11).
 
 **2. Topology constraints shrink the combinatorial space.**
-Route 53 gives each hosted zone four name server names, one from each of four stripes (AWS Architecture Blog, as of 2026-10).
-The stripes are hosted across four top-level domains: .com, .net, .co.uk and .org (AWS Architecture Blog, as of 2026-10).
-AWS considered advertising all four stripes from every edge location and rejected it, because it gives a poor availability model (AWS Architecture Blog, as of 2026-10).
-If the 2048-name pool is split into four equal stripes of 512 (UNVERIFIED assumption), the number of distinct shards is 512^4 = 68.7 billion, about 10.6x fewer than the unconstrained C(2048,4) = 730.9 billion (derived, lab output).
+Route 53 gives each hosted zone four name server names, one from each of four stripes (AWS Architecture Blog, as of 2026-11).
+The stripes are hosted across four top-level domains: .com, .net, .co.uk and .org (AWS Architecture Blog, as of 2026-11).
+AWS considered advertising all four stripes from every edge location and rejected it, because it gives a poor availability model (AWS Architecture Blog, as of 2026-11).
+If the 2048-name pool is split into four equal stripes of 512 (UNVERIFIED assumption: AWS publishes no per-stripe count), the number of distinct shards is 512^4 = 68.7 billion, about 10.6x fewer than the unconstrained C(2048,4) = 730.9 billion (derived, lab output).
 The lesson: when you add a topology constraint such as one worker per zone, recompute the shard space.
 It is almost always still large enough.
 
@@ -154,9 +178,9 @@ This is the Johnson bound for constant-weight codes (derived).
 For n=2048, m=4, k=2 the bound is C(2048,3)/4 = 357,389,824 shards (derived, lab output).
 A stateful assigner can enforce the rule cheaply: store all (k+1)-subsets of existing shards in a hash set, then reject a candidate if any of its own (k+1)-subsets is already present.
 That check costs C(m,k+1) lookups per candidate.
-The lab implements this, and 200,000 striped assignments needed only 597 rejections (lab output, as of 2026-10).
+The lab implements this, and 200,000 striped assignments needed only 597 rejections (lab output, as of 2026-11).
 Note that this assigner is my own illustration, not the internals of Route 53 Infima.
-Infima is described in public explainers as offering stateless hash-based and stateful sharders (as of 2026-10).
+Infima ships a stateless hash-based SimpleSignatureShuffleSharder and a StatefulSearchingShuffleSharder, and only the stateful one, which records every assignment in a datastore you provide, can enforce an overlap cap such as two endpoints (Infima README, as of 2026-11).
 
 **4. Shuffle sharding trades "down" for "degraded".**
 In the lab with n=64 workers and m=4, one poison tenant degrades 23 percent of victims, because a victim is degraded if any of its four workers is in the attacker's shard: 1 - C(60,4)/C(64,4) = 23.3 percent (derived).
@@ -164,12 +188,12 @@ Simple sharding into 16 disjoint groups degrades 6.2 percent, but fully takes do
 Shuffle sharding takes down 0 percent, and the 23 percent see retried-then-succeeded requests with added latency.
 At n=2048, m=4, the degraded fraction for one attacker falls to 0.78 percent (derived).
 Shuffle sharding therefore gets dramatically better as the fleet grows because its fully-down fraction shrinks combinatorially as 1/C(n,m), whereas simple sharding's per-group blast radius shrinks only linearly as m/n.
-The AWS Builders' Library makes the same point: most scaling challenges get harder with size, but shuffle sharding gets more effective (AWS Builders' Library, as of 2026-10).
+The AWS Builders' Library makes the same point: most scaling challenges get harder with size, but shuffle sharding gets more effective (AWS Builders' Library, as of 2026-11).
 
 **5. Recursion.**
-Shuffle sharding can be applied at multiple layers, isolating "a customer's customer" (AWS Builders' Library, as of 2026-10).
+Shuffle sharding can be applied at multiple layers, isolating "a customer's customer" (AWS Builders' Library, as of 2026-11).
 A practical stack is: cell by tenant, shuffle shard of workers inside the cell, and shuffle shard of queues or partitions inside the worker.
-AWS Lambda asynchronous invocation reportedly places a message on the shortest queue among a tenant's shard, with the example of 3 of 100 queues giving 161,700 combinations (a third-party summary of the AWS Compute Blog, as of 2026-10).
+AWS Lambda asynchronous invocation places a message on the queue with the smallest backlog among a tenant's shard, with the example of 3 of 100 queues giving 161,700 combinations ([AWS Compute Blog, 2025-03-17](https://aws.amazon.com/blogs/compute/handling-billions-of-invocations-best-practices-from-aws-lambda/), as of 2026-11).
 
 ### Poison pills: how they actually propagate
 
@@ -200,12 +224,12 @@ For N active tenants on a worker with c in flight at the instant of a crash, an 
 After k independent crashes on different workers, the expected number of innocent tenants in the intersection is (N-1) * (c/N)^k.
 With N=500 and c=50 that is about 5.0 after two crashes, 0.5 after three and 0.05 after four (derived).
 Four crashes on a shard of four workers is exactly what a retry-walking poison tenant produces, so by the time the shard is dead you have a one-tenant suspect.
-Then move that tenant to a quarantine shard, matching the "dedicated attack capacity" idea in the Route 53 description (AWS Builders' Library, as of 2026-10).
+Then move that tenant to a quarantine shard, matching the "dedicated attack capacity" idea in the Route 53 description (AWS Builders' Library, as of 2026-11).
 The independence assumption is approximate: tenants with correlated traffic patterns will co-appear, so treat the output as a ranked list rather than a verdict.
 
 ### Capacity: isolation is not free capacity
 
-Shuffle sharding is described as usually costing no additional resources, because it is a smart arrangement of existing ones (AWS Builders' Library, as of 2026-10).
+Shuffle sharding is described as a smart way to arrange existing resources that usually comes at no additional cost (AWS Builders' Library, as of 2026-11).
 It does not create headroom, though, and two rules fall out of the arithmetic:
 
 - When one of a shard's m workers dies, survivors each carry m/(m-1) of their prior load, so per-worker utilization u must satisfy u * m/(m-1) <= 1. For m=4 that is u <= 75 percent, and for m=2 it is u <= 50 percent (derived).
@@ -215,41 +239,41 @@ It does not create headroom, though, and two rules fall out of the arithmetic:
 
 | Quantity | Value | Source |
 |---|---|---|
-| Route 53 virtual name server pool | 2048 | AWS Builders' Library, as of 2026-10 |
-| Route 53 shard size per hosted zone | 4 | AWS Builders' Library, as of 2026-10 |
-| Possible Route 53 shuffle shards | about 730 billion | AWS Builders' Library, as of 2026-10 |
-| Exact C(2048,4) | 730,862,190,080 | derived, lab output, as of 2026-10 |
-| Max overlap between any two Route 53 hosted zones | 2 name servers | AWS Builders' Library and AWS Architecture Blog, as of 2026-10 |
-| Route 53 stripes (TLDs) | 4: .com, .net, .co.uk, .org | AWS Architecture Blog, as of 2026-10 |
-| Johnson bound on zones with max overlap 2 | 357,389,824 | derived, lab output, as of 2026-10 |
-| 8 nodes, 2 per shard: shards, P(identical) | 28 shards, 3.6 percent | AWS re:Invent 2021 ARC308 slides, as of 2026-10 |
-| 8 nodes, simple sharding by pairs | 25 percent of customers affected | AWS re:Invent 2021 ARC308 slides, as of 2026-10 |
-| 100 nodes, 5 per shard: P(identical shard) | 1 in 75,287,520 | derived, lab output, as of 2026-10 |
-| Lambda async queue example: 3 of 100 queues | 161,700 combinations | third-party summary of AWS Compute Blog, as of 2026-10 |
-| Blast radius with 10 / 100 cells | 10 percent / 1 percent of customers | AWS Well-Architected cell-based whitepaper, as of 2026-10 |
-| Route 53 availability objective | 100 percent SLA | AWS re:Invent 2021 ARC308 slide text, as of 2026-10 |
-| Google Cloud Service Control incident: latent code to trigger | 2025-05-29 deploy, 2025-06-12 trigger, 14 days | Google incident report as quoted in secondary summaries, as of 2026-10 |
-| Same incident: global metadata propagation | within seconds | Google incident report as quoted in secondary summaries, as of 2026-10 |
-| Cloudflare 2025-11-18: feature file size change | doubled, exceeded a proxy limit | Cloudflare blog, as of 2026-10 |
-| Cloudflare feature file propagation cadence | every five minutes | ilert postmortem summary, as of 2026-10 |
-| Virtual buckets in this chapter's router | 4096 (design choice) | lab, as of 2026-10 |
+| Route 53 virtual name server pool | 2048 | AWS Builders' Library, as of 2026-11 |
+| Route 53 shard size per hosted zone | 4 | AWS Builders' Library, as of 2026-11 |
+| Possible Route 53 shuffle shards | about 730 billion | AWS Builders' Library, as of 2026-11 |
+| Exact C(2048,4) | 730,862,190,080 | derived, lab output, as of 2026-11 |
+| Max overlap between any two Route 53 hosted zones | 2 name servers | AWS Builders' Library and AWS Architecture Blog, as of 2026-11 |
+| Route 53 stripes (TLDs) | 4: .com, .net, .co.uk, .org | AWS Architecture Blog, as of 2026-11 |
+| Johnson bound on zones with max overlap 2 | 357,389,824 | derived, lab output, as of 2026-11 |
+| 8 nodes, 2 per shard: shards, P(identical) | 28 shards, 3.6 percent | AWS re:Invent 2021 ARC308 slides, as of 2026-11 |
+| 8 nodes, simple sharding by pairs | 25 percent of customers affected | AWS re:Invent 2021 ARC308 slides, as of 2026-11 |
+| 100 nodes, 5 per shard: P(identical shard) | 1 in 75,287,520 | derived, lab output, as of 2026-11 |
+| Lambda async queue example: 3 of 100 queues | 161,700 combinations | AWS Compute Blog (2025-03-17), as of 2026-11 |
+| Blast radius with 10 / 100 cells | 10 percent / 1 percent of customers | AWS Well-Architected cell-based whitepaper, as of 2026-11 |
+| Route 53 availability objective | 100 percent SLA (service credits start below 100 percent monthly uptime) | AWS re:Invent 2021 ARC308 slide text and Route 53 SLA, as of 2026-11 |
+| Google Cloud Service Control incident: latent code to trigger | 2025-05-29 feature added, 2025-06-12 trigger, 14 days | Google incident report, as of 2026-11 |
+| Same incident: global metadata propagation | within seconds | Google incident report, as of 2026-11 |
+| Cloudflare 2025-11-18: feature file size change | doubled, exceeded a proxy limit of 200 features | Cloudflare blog, as of 2026-11 |
+| Cloudflare feature file generation cadence | every five minutes | Cloudflare blog, as of 2026-11 |
+| Virtual buckets in this chapter's router | 4096 (design choice) | lab, as of 2026-11 |
 
 No list prices are stated in this chapter, because shuffle sharding and cell routing do not have a direct price; cell overhead is a function of whatever fixed-cost resources your cell needs.
 
 ## AWS vs GCP Mechanism Parity
 
-Rows marked (U) were not re-verified against Google Cloud primary documentation this month and are listed in the batch report.
+Rows were checked against AWS and Google Cloud primary documentation (as of 2026-11), and where a targeted search found no Google Cloud equivalent, the row says so.
 
 | Mechanism | AWS | Google Cloud |
 |---|---|---|
-| Documented cell guidance | Dedicated Well-Architected whitepaper on cell-based architecture (AWS Well-Architected, as of 2026-10) | No dedicated cell-based whitepaper verified; Architecture Center documents zonal, regional, multi-regional and global deployment archetypes (Google Cloud docs, as of 2026-10) (U) |
-| Natural cell boundary | Separate AWS accounts encouraged per cell (AWS Well-Architected, as of 2026-10) | Project per cell is the analogous boundary (U) |
-| Quota scope that bounds noisy neighbors | Limits per Region and account (AWS Well-Architected, as of 2026-10) | Per-project quotas, design inference (U) |
-| Public shuffle sharding in managed services | Route 53: four name servers per zone, one per stripe, overlap capped at two (AWS Architecture Blog, as of 2026-10) | No equivalent public statement verified (U) |
-| Regional isolation evidence | Regions are the unit cells aim to resemble in containment (AWS Well-Architected, as of 2026-10) | Cloud Build is described as regionally isolated instances (Google Cloud docs, as of 2026-10) |
-| Global metadata coupling, failure example | Not an AWS incident in this chapter | Service Control is a regional service whose datastore metadata replicates almost instantly worldwide (Google incident report, as quoted in secondary sources, as of 2026-10) |
-| Router implementation options | Route 53 weighted or geo records, ALB or CloudFront with a lookup layer (U) | Cloud DNS routing policies, global external Application Load Balancer URL maps (U) |
-| Deployment waves across cells | Per-cell pipeline stages, ARC zonal shift for AZ-level evacuation (U) | Rollouts by region and zone, Cloud Deploy stages (U) |
+| Documented cell guidance | Dedicated Well-Architected whitepaper on cell-based architecture (AWS Well-Architected, as of 2026-11) | No dedicated cell-based whitepaper found in a targeted docs search; Architecture Center documents zonal, regional, multi-regional, global, hybrid and multicloud deployment archetypes (Google Cloud docs, as of 2026-11) |
+| Natural cell boundary | Separate AWS accounts encouraged per cell (AWS Well-Architected, as of 2026-11) | Project per cell is the analogous boundary (design inference from project-level quotas; no Google cell guidance found, as of 2026-11) |
+| Quota scope that bounds noisy neighbors | Limits per Region and account (AWS Well-Architected, as of 2026-11) | Quotas generally apply per project, and folder-level and organization-level quotas also exist that count child project usage (Google Cloud docs, as of 2026-11) |
+| Public shuffle sharding in managed services | Route 53: four name servers per zone, one per stripe, overlap capped at two (AWS Architecture Blog, as of 2026-11) | No equivalent public statement found in a targeted docs search (as of 2026-11) |
+| Regional isolation evidence | Regions are the unit cells aim to resemble in containment (AWS Well-Architected, as of 2026-11) | Cloud Build is described as regionally isolated instances (Google Cloud docs, as of 2026-11) |
+| Global metadata coupling, failure example | Not an AWS incident in this chapter | Service Control is a regional service whose datastore metadata replicates almost instantly worldwide (Google incident report, as of 2026-11) |
+| Router implementation options | Route 53, API Gateway, or a compute layer (EC2, ECS, EKS) with an S3 cell map (AWS Well-Architected, as of 2026-11) | Cloud DNS routing policies (weighted round robin, geolocation, failover), global external Application Load Balancer URL maps with path and header matching (Google Cloud docs, as of 2026-11); cell routing use is a design inference |
+| Deployment waves across cells | Deploy in waves, cell by cell or set of cells (AWS Well-Architected, as of 2026-11); ARC zonal shift for temporary AZ-level traffic evacuation (AWS ARC docs, as of 2026-11) | Region-by-region binary rollout (Google incident report, as of 2026-11); Cloud Deploy promotion sequence through targets (Google Cloud docs, as of 2026-11) |
 | Strongest consistency trade | Cell state kept local, cross-cell calls discouraged | Spanner and global quota data give global consistency at the price of global blast radius |
 
 The substantive difference is not product naming but where global state lives.
@@ -440,7 +464,7 @@ fresh client, moved key, new cell: OK
 
 Read the output carefully, because it contains three results that surprise people.
 
-1. **Shuffle sharding is not strictly better at small n.** With n=64 and 10 simultaneous poison tenants, 3.6 percent of victims are fully down and 91.8 percent are degraded. The fleet is too small relative to k*m = 40 workers lost. Shuffle sharding needs n large relative to m times the number of concurrent attackers.
+1. **Shuffle sharding is not strictly better at small n.** With n=64 and 10 simultaneous poison tenants, 3.6 percent of victims are fully down and 91.8 percent are degraded. The fleet is too small relative to k*m = 40 worker slots at risk (0.453 x 64 = 29 distinct workers lost in this run, since shards overlap). Shuffle sharding needs n large relative to m times the number of concurrent attackers.
 2. **The win is the tail, not the mean.** Simple sharding with one attacker takes 6.2 percent of tenants fully down, while shuffle sharding takes 0 percent down and 23 percent degraded. If your clients retry across the shard, 23 percent degraded means higher p99 latency, not errors.
 3. **Rebalancing with buckets moves 11.3 percent of keys versus 88.9 percent for mod-N.** The 0.2 point gap versus the ideal 11.1 percent is hash noise over 20,000 keys.
 
@@ -469,12 +493,12 @@ Skip this if you stay local.
 If you deploy real cells, set a budget before the first resource and tear down with a single command per cell.
 
 ```bash
-# AWS: monthly budget with an 80 percent actual-spend email alert (flags not re-verified this session)
+# AWS: monthly budget with an 80 percent actual-spend email alert (flags per AWS CLI reference, as of 2026-11)
 aws budgets create-budget --account-id 111122223333 \
   --budget '{"BudgetName":"cells-lab","BudgetLimit":{"Amount":"20","Unit":"USD"},"TimeUnit":"MONTHLY","BudgetType":"COST"}' \
   --notifications-with-subscribers '[{"Notification":{"NotificationType":"ACTUAL","ComparisonOperator":"GREATER_THAN","Threshold":80,"ThresholdType":"PERCENTAGE"},"Subscribers":[{"SubscriptionType":"EMAIL","Address":"you@example.com"}]}]'
 
-# GCP: equivalent budget (flags not re-verified this session)
+# GCP: equivalent budget (flags per gcloud reference, as of 2026-11)
 gcloud billing budgets create --billing-account=BILLING_ID \
   --display-name=cells-lab --budget-amount=20USD --threshold-rule=percent=0.8
 
@@ -487,22 +511,22 @@ For real cells, one Terraform or OpenTofu state per cell makes `tofu destroy` pe
 ## Failure Modes and Pitfalls
 
 **1. Data bypasses the cell boundary: Google Cloud Service Control, 2025-06-12.**
-Per Google's incident report as quoted in secondary summaries (the primary status page was not retrievable this session), a Service Control change adding quota policy checks shipped on 2025-05-29 without adequate error handling and without feature-flag protection (as of 2026-10).
-The rollout was region by region, but the failing code path required a specific policy row and so was never exercised during the rollout (as of 2026-10).
-On 2025-06-12, a policy change with unintended blank fields was inserted into regional Spanner tables and replicated globally within seconds (as of 2026-10).
+Per [Google's incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), a Service Control change adding quota policy checks shipped on 2025-05-29 without adequate error handling and without feature-flag protection (as of 2026-11).
+The rollout was region by region, but the failing code path required a specific policy row and so was never exercised during the rollout (as of 2026-11).
+On 2025-06-12, a policy change with unintended blank fields was inserted into regional Spanner tables and replicated globally within seconds (as of 2026-11).
 Every region hit the null pointer and crashed, then restarted into the same row.
 The cell-architecture reading is simple: code went in waves, data did not, so the wave discipline was bypassed by the data plane.
 The prescription: make data artifacts (policy, config, feature files, schemas) roll out per cell, with validation and a bake time, exactly like binaries.
 A bake time only exercises code paths that traffic exercises, and here the latent path sat dormant for 14 days, so seed canary cells with synthetic poison inputs.
 
 **2. Oversized config propagates to the whole fleet: Cloudflare, 2025-11-18.**
-Per Cloudflare's own post-mortem, a database permission change caused a query to emit duplicate entries, doubling a Bot Management feature file, which was then propagated to all machines in the network (Cloudflare blog, as of 2026-10).
-A summary reports the file exceeded a hard limit in the core proxy and was regenerated and pushed every five minutes, so parts of the fleet flipped between good and bad states (ilert, as of 2026-10).
+Per Cloudflare's own post-mortem, a database permission change caused a query to emit duplicate entries, doubling a Bot Management feature file, which was then propagated to all machines in the network (Cloudflare blog, as of 2026-11).
+The same post-mortem reports that the file exceeded a limit of 200 features in the core proxy and was regenerated every five minutes, so the network flipped between good and bad configuration files (Cloudflare blog, as of 2026-11).
 The cell-based lessons: a hard-coded limit consumed in a global path is a poison-pill trigger, and a file that is "generated by a pipeline" deserves the same staged rollout as code.
 Fail-static helps too: a proxy that rejects an invalid feature file and keeps the last-known-good one turns an outage into stale features.
 
 **3. Shuffle sharding without client retry.**
-The isolation comes from the client trying every member of its shard, and public explainers of the Builders' Library article stress that clients must be fault tolerant and able to retry (as of 2026-10).
+The isolation comes from the client trying every member of its shard, and the Builders' Library makes service continuity conditional on requestors being fault tolerant, for example with retries (AWS Builders' Library, as of 2026-11).
 Teams that implement shard assignment on the server side and keep a single-endpoint client get the cost of the machinery and none of the isolation.
 The corollary: retries must have a budget (see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Resilient Communication]]), because a retry loop that crosses m workers also delivers a poison request to m workers.
 
@@ -519,7 +543,7 @@ The router itself must be rolled out in waves and monitored by a canary that exe
 **6. Cell migration is where isolation is deliberately violated.**
 Moving a tenant means a window where two cells may both believe they own the data.
 The worked example's per-bucket epoch check is the minimum: the destination cell accepts the bucket only after the source has stopped accepting writes at the old epoch.
-Rehearse migration continuously, because the whitepaper's advice to build it on day one is really advice to avoid discovering its bugs during an incident (AWS Well-Architected, as of 2026-10).
+Rehearse migration continuously, because the whitepaper's advice to build it on day one is really advice to avoid discovering its bugs during an incident (AWS Well-Architected, as of 2026-11).
 
 **7. Hot tenants and skew.**
 A tenant larger than one bucket's share of a cell makes that cell hot, while cell-count averages look healthy.
@@ -536,7 +560,7 @@ Treat a cell definition as a single module instantiated N times (see [[17-Cloud-
 
 **10. Shared quota accounts.**
 Cells in a single account share account-level API throttles and quotas, so one cell's scale-out can throttle the others.
-This is the argument for account-per-cell in the whitepaper (AWS Well-Architected, as of 2026-10), and for project-per-cell on Google Cloud (design inference, UNVERIFIED).
+This is the argument for account-per-cell in the whitepaper (AWS Well-Architected, as of 2026-11), and for project-per-cell on Google Cloud (design inference from project-level quotas, Google Cloud docs, as of 2026-11).
 For longer outage anatomy see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
 ## Security and Cost Angles
@@ -557,7 +581,7 @@ Private endpoints and egress controls (VPC endpoints on AWS, VPC Service Control
 Shuffle sharding by itself offers no security isolation, since two tenants sharing a worker share a process and kernel, so apply it to availability and combine it with per-request sandboxing for confidentiality.
 
 **Cost levers.**
-- Shuffle sharding is described as typically free in resource terms, because it rearranges capacity you already have (AWS Builders' Library, as of 2026-10). Its real cost is headroom, per the utilisation rules above.
+- Shuffle sharding is described as usually coming at no additional cost, because it rearranges resources you already have (AWS Builders' Library, as of 2026-11). Its real cost is headroom, per the utilisation rules above.
 - Fixed per-cell overhead dominates at small cell sizes, so shrink the fixed floor first: shared-nothing does not mean one load balancer per 100 requests per second.
 - Evacuating a failed cell into the others costs capacity you must hold in reserve, and it also breaks isolation, so prefer fast re-creation of the cell, or per-cell reserve.
 - Cross-zone traffic inside a cell is billed, so decide whether a cell spans zones (higher availability, cross-zone data charges) or sits in one zone (cheaper, zone loss equals cell loss). See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]].
@@ -572,7 +596,7 @@ A teammate says "we already have autoscaling groups across three AZs, so we do n
 Autoscaling across AZs addresses capacity and zone loss, which are infrastructure faults.
 Cells address a different class: changes and software faults that are correlated across the fleet.
 A bad deploy, a poison request or a bad config row hits every instance in the group regardless of AZ spread, because the failure domain is "all instances running this code with this data".
-A cell caps that domain at 1/C of tenants: with 10 cells each holds 10 percent of customers and with 100 cells each holds 1 percent (AWS Well-Architected, as of 2026-10).
+A cell caps that domain at 1/C of tenants: with 10 cells each holds 10 percent of customers and with 100 cells each holds 1 percent (AWS Well-Architected, as of 2026-11).
 Cells also change how you deploy: you can ship to one cell, watch it, and stop.
 They also cap size at a stress-tested maximum, which converts hidden scaling limits into pre-production findings.
 The honest cost is operating C copies, a routing layer and a migration mechanism.
@@ -586,7 +610,7 @@ Compute the blast radius for a shuffle-sharded fleet of 8 workers with 2 workers
 
 #### Model Answer
 There are C(8,2) = 28 distinct shards.
-A random victim has an identical shard to a given attacker with probability 1/28, or 3.6 percent, versus 25 percent for simple sharding into four pairs (AWS re:Invent 2021 ARC308 slides, as of 2026-10).
+A random victim has an identical shard to a given attacker with probability 1/28, or 3.6 percent, versus 25 percent for simple sharding into four pairs (AWS re:Invent 2021 ARC308 slides, as of 2026-11).
 A victim shares exactly one worker with probability 12/28 = 42.9 percent, and zero workers with 15/28 = 53.6 percent (derived).
 The 3.6 percent only holds if the client retries across both of its workers.
 Without retry, a victim sharing one dead worker fails half its requests, so 42.9 percent of tenants see 50 percent errors, which is worse than the simple-sharding story for the median tenant.
@@ -653,7 +677,7 @@ Your biggest customer is 8 percent of total traffic. How does that change the ce
 You own a quota and policy system that must be globally consistent within seconds, and it is on the critical path of every API. A blank-field row crashing every region in seconds is your nightmare. Redesign it without giving up the consistency requirement entirely.
 
 #### Model Answer
-The 2025 Google Service Control incident shows the shape of the problem: code was rolled out region by region, but the metadata that triggers a latent path replicated worldwide in seconds, so the wave discipline applied to the binary and not to the data (Google incident report as quoted in secondary summaries, as of 2026-10).
+The 2025 Google Service Control incident shows the shape of the problem: code was rolled out region by region, but the metadata that triggers a latent path replicated worldwide in seconds, so the wave discipline applied to the binary and not to the data (Google incident report, as of 2026-11).
 I would split the data into two classes.
 Class A is data that truly needs global consistency in seconds, such as a kill switch or a revocation.
 Class B is everything else, including most policy and quota configuration edits, and it can tolerate staged propagation.
@@ -694,7 +718,7 @@ How many tenants can Route 53-style shuffle sharding support if you require that
 Each pair of tenants may share at most 2 workers, so no triple of workers can appear in two different shards.
 Each shard contains C(4,3) = 4 triples, and there are C(2048,3) triples in total, so at most C(2048,3)/4 = 357,389,824 shards exist: the Johnson bound (derived).
 That is a ceiling for a perfect packing; a randomised assigner with a subset-hash rejection check, like the lab's, reached 200,000 shards with only 597 rejections, so it is far from saturation at realistic tenant counts.
-Striping constrains each shard to one worker per stripe, so the unconstrained count of 730.9 billion becomes 512^4 = 68.7 billion if the stripes are equal (UNVERIFIED assumption), a factor of about 10.6 less.
+Striping constrains each shard to one worker per stripe, so the unconstrained count of 730.9 billion becomes 512^4 = 68.7 billion if the stripes are equal (UNVERIFIED assumption: AWS publishes no per-stripe count), a factor of about 10.6 less.
 The overlap-bounded ceiling shrinks too, though striping only restricts which shards are legal, and the bound is still far above any plausible tenant count.
 The point for design is that the combinatorial space is rarely the binding constraint.
 What binds is per-shard capacity, the need for fixed assignment, and the overlap-guarantee check cost.
@@ -714,5 +738,5 @@ A tenant doubles its traffic and its four workers saturate. Do you reshuffle it,
 - Brooker et al., "Millions of Tiny Databases", NSDI 2020 - Physalia, a production example of compartmentalising a control plane into many small consensus groups.
 - DeCandia et al., "Dynamo: Amazon's Highly Available Key-value Store", SOSP 2007 - the virtual node lineage behind the fixed-bucket indirection.
 - Verma et al., "Large-scale cluster management at Google with Borg", EuroSys 2015 - the Borg cell as an operational boundary.
-- Google Cloud's incident report for 2025-06-12 (Service Control) - read the primary status page, since this chapter relied on secondary quotations of it.
+- [Google Cloud's incident report for 2025-06-12 (Service Control)](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW) - the primary account of the latent code path, the blank-field policy row and the global replication.
 - [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]] and [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control|Load Shedding, Backpressure, and Admission Control]] - the layers above and below the cell boundary in this curriculum.
