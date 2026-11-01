@@ -2,7 +2,7 @@
 type: case-study
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/pdf/2309.06180"
@@ -21,6 +21,28 @@ sources:
   - "https://aws.amazon.com/builders-library/avoiding-insurmountable-queue-backlogs/"
   - "https://aws.amazon.com/builders-library/using-load-shedding-to-avoid-overload/"
   - "https://sre.google/sre-book/handling-overload/"
+  - "https://aws.amazon.com/ec2/instance-types/p5/"
+  - "https://b0.p.awsstatic.com/pricing/2.0/meteredUnitMaps/ec2/USD/current/ec2-ondemand-without-sec-sel/US%20East%20%28N.%20Virginia%29/Linux/index.json"
+  - "https://pricing.us-east-1.amazonaws.com/savingsPlan/v1.0/aws/AWSComputeSavingsPlan/20261029175641/us-east-1/index.json"
+  - "https://aws.amazon.com/blogs/aws/announcing-up-to-45-price-reduction-for-amazon-ec2-nvidia-gpu-accelerated-instances/"
+  - "https://aws.amazon.com/eks/pricing/"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-blocks.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/09/sagemaker-hyperpod-inference-gateway/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://www.nvidia.com/en-us/data-center/h100/"
+  - "https://huggingface.co/unsloth/Llama-3.3-70B-Instruct/raw/main/config.json"
+  - "https://docs.vllm.ai/en/stable/design/prefix_caching/"
+  - "https://docs.vllm.ai/en/v0.11.2/configuration/tpu/"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/tutorials/serve-vllm-tpu"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/machine-learning/inference/autoscaling"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/dws"
+  - "https://docs.cloud.google.com/compute/docs/instances/about-flex-start-vms"
+  - "https://docs.cloud.google.com/compute/docs/instances/future-reservations-calendar-mode-overview"
+  - "https://docs.cloud.google.com/compute/docs/instances/spot"
+  - "https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/"
+  - "https://keda.sh/docs/2.17/scalers/prometheus/"
 ---
 
 # Capstone 3: High-Throughput LLM Serving Stack with Autoscaling
@@ -74,12 +96,12 @@ Scale-out is the only data-plane capability that depends on the control plane, a
 ### Mechanism 1: where the KV block pool comes from
 
 PagedAttention ([Kwon et al., SOSP 2023](https://arxiv.org/pdf/2309.06180)) stores the KV cache in fixed-size blocks mapped through per-sequence block tables, like virtual memory pages.
-The paper reports 2-4x throughput over prior systems, and its authors summarize waste as under 4% versus large reservation-based waste in earlier systems (paper and summary slides, as of 2026-10).
-The sizing mechanism is not in getting-started guides, and the following description comes from reading the engine, so confirm it against your pinned version.
+The paper reports 2-4x throughput over prior systems, and its Figure 2 shows 96.3% effective KV usage for vLLM (about 3.7% waste) versus 20.4-38.2% in the earlier systems it profiled (paper, as of 2026-11).
+The sizing mechanism is not in getting-started guides, and the following description comes from reading the engine ([`determine_available_memory` in `gpu_worker.py`, main branch](https://github.com/vllm-project/vllm/blob/main/vllm/v1/worker/gpu_worker.py), as of 2026-11), so confirm it against your pinned version.
 
 1. At startup the engine loads weights.
 2. It runs a profiling forward pass with a dummy batch of `max_num_batched_tokens` tokens to measure peak activation memory.
-3. It computes the pool as `gpu_memory_utilization * total_HBM - weights - peak_activations - non_torch_memory`.
+3. It computes the pool as `gpu_memory_utilization * total_HBM - weights - peak_activations - non_torch_memory` (current main also subtracts a CUDA graph memory estimate when one applies).
 4. It divides the pool by bytes per block (`block_size * kv_bytes_per_token`) to get the block count.
 5. It logs the result as a KV cache size in tokens.
 
@@ -95,17 +117,17 @@ Four consequences follow.
 vLLM V1 schedules per step rather than per phase.
 Each step spends at most `max_num_batched_tokens` tokens across running sequences (one token each for decoders) and chunks of waiting prompts.
 The step time is the inter-token latency (ITL) every running sequence experiences, so any prefill chunk that rides in a step delays all decoders in that step.
-The vLLM tuning docs state the trade-off: smaller values improve ITL and larger values improve TTFT ([vLLM optimization docs](https://docs.vllm.ai/en/stable/configuration/optimization/), as of 2026-10).
+The vLLM tuning docs state the trade-off: smaller values improve ITL and larger values improve TTFT ([vLLM optimization docs](https://docs.vllm.ai/en/stable/configuration/optimization/), as of 2026-11).
 The docs also say that with chunked prefill disabled, `max_num_batched_tokens` must exceed `max_model_len` or startup can crash.
-Chunked prefill in V1 is on by default whenever possible ([Parasail, as of 2026-10](https://www.parasail.io/guides/offline-llm-inference-batching-throughput)), and defaults vary by version and hardware, so read the startup log rather than trusting a doc table.
+Chunked prefill in V1 is on by default whenever possible (same docs, as of 2026-11), and defaults vary by version and hardware, so read the startup log rather than trusting a doc table.
 The lineage is Orca's iteration-level scheduling (OSDI 2022) and Sarathi-Serve's stall-free chunked batching (OSDI 2024).
 Disaggregation is the next step and is covered in [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_07_Prefill_and_Decode_Disaggregation|Prefill and Decode Disaggregation]].
 
 ### Mechanism 3: preemption is a positive feedback loop
 
 When the KV pool cannot hold all running sequences, vLLM preempts a request, frees its blocks, and recomputes it later.
-The docs describe recompute and recommend raising `gpu_memory_utilization` or tensor parallel size ([vLLM docs, as of 2026-10](https://docs.vllm.ai/en/stable/configuration/optimization/)).
-V1 defaults to recompute over swap and dropped the swap-space flag ([Parasail, as of 2026-10](https://www.parasail.io/guides/offline-llm-inference-batching-throughput)).
+The docs describe recompute and recommend raising `gpu_memory_utilization` or tensor parallel size ([vLLM docs, as of 2026-11](https://docs.vllm.ai/en/stable/configuration/optimization/)).
+V1 defaults to recompute over swap (same docs), and the swap option is gone from [`CacheConfig` on main](https://github.com/vllm-project/vllm/blob/main/vllm/config/cache.py) (as of 2026-11).
 Recompute makes overload self-amplifying:
 
 1. A preempted request re-enters the waiting queue.
@@ -118,14 +140,14 @@ The defense is admission control before the engine saturates, plus alerting on t
 
 ### Mechanism 4: prefix cache semantics that confuse dashboards and routers
 
-Automatic prefix caching hashes full blocks as a chain, where each block's hash covers its parent hash and its tokens (plus extras such as LoRA identity).
+Automatic prefix caching ([vLLM design docs](https://docs.vllm.ai/en/stable/design/prefix_caching/), as of 2026-11) hashes full blocks as a chain, where each block's hash covers its parent hash and its tokens (plus extras such as LoRA identity).
 Only complete blocks are shareable.
 Unreferenced cached blocks sit in a free list in LRU order and are evicted only when an allocation needs them.
 As a result `kv_cache_usage_perc` can read low on a replica whose free list is full of valuable cached prefixes.
 Usage therefore tells you about admission headroom, not about cache value.
-The cache-value signals are `vllm:prefix_cache_hits` divided by `vllm:prefix_cache_queries`, as the llm-d metrics page describes (as of 2026-10).
+The cache-value signals are `vllm:prefix_cache_hits_total` divided by `vllm:prefix_cache_queries_total`, as the llm-d metrics page describes (as of 2026-11).
 The same page warns that a low hit rate suggests the endpoint picker is not routing effectively.
-In production, Vertex AI doubled its prefix hit rate from 35% to 70% after adopting GKE Inference Gateway ([Google Cloud blog, as of 2026-10](https://cloud.google.com/blog/products/containers-kubernetes/how-gke-inference-gateway-improved-latency-for-vertex-ai)).
+In production, Vertex AI doubled its prefix hit rate from 35% to 70% after adopting GKE Inference Gateway ([Google Cloud blog, as of 2026-11](https://cloud.google.com/blog/products/containers-kubernetes/how-gke-inference-gateway-improved-latency-for-vertex-ai)).
 The same post shows that the picker is a weighted scorer over prefix, queue and KV utilization.
 Moving the weights from 3:3:2 to 3:5:2 made the picker bypass hot replicas even when they had a cache hit.
 Cache affinity and load balance are in direct tension, and the weights are the dial.
@@ -148,18 +170,19 @@ During a lag `L` the load multiplies by `exp(g * L)`.
 To avoid saturating before new capacity arrives, steady-state utilization must stay below `exp(-g * L)`.
 This is why headroom is a function of cold-start time, and why cold-start engineering (weights on local NVMe, image pre-pull, a compile cache) buys real money.
 The same lag is why a bare queue-depth trigger fires too late.
-The GKE docs recommend `num_requests_waiting` for throughput and cost optimization.
-They recommend cache usage when latency targets are tight and queue-based scaling is not fast enough ([GKE docs, as of 2026-10](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/machine-learning/inference/autoscaling)).
+The [GKE TPU tutorial](https://docs.cloud.google.com/kubernetes-engine/docs/tutorials/serve-vllm-tpu) recommends `num_requests_waiting` for throughput and cost optimization.
+It recommends cache usage (`gpu_cache_usage_perc`) for latency-sensitive workloads, and the [GKE autoscaling best practices](https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/machine-learning/inference/autoscaling) draw the same line between queue size and batch size when queue-based scaling is not fast enough (as of 2026-11).
 This chapter's trigger sums running and waiting requests, which acts as a Little's-law concurrency estimate and moves earlier than waiting alone.
 
 ### Mechanism 6: TPU path
 
 GKE documents serving an LLM on TPU Trillium with vLLM and scaling it with the same `num_requests_waiting` and cache-usage metrics.
-The doc notes that the metric works the same on GPUs and TPUs even though its name follows the GPU naming schema ([GKE TPU tutorial, as of 2026-10](https://cloud.google.com/kubernetes-engine/docs/tutorials/serve-vllm-tpu)).
+The doc notes that the metric works the same on GPUs and TPUs even though its name follows the GPU naming schema ([GKE TPU tutorial, as of 2026-11](https://cloud.google.com/kubernetes-engine/docs/tutorials/serve-vllm-tpu)).
 The operational difference is compilation.
-XLA compiles for static shapes, so the TPU backend pads token counts and batch sizes into buckets and compiles per bucket at startup.
-Warmup is therefore longer, and an unexpected shape can trigger a mid-traffic recompile stall (UNVERIFIED, from backend design; check your version's startup log).
+XLA compiles for static shapes, so the TPU backend pads token counts and batch sizes into buckets and compiles per bucket at startup ([vLLM TPU docs, v0.11.2](https://docs.vllm.ai/en/v0.11.2/configuration/tpu/), as of 2026-11).
+Warmup is therefore longer, and a shape missed by warmup needs a compile during execution, which is what the debug flag `VLLM_XLA_CHECK_RECOMPILATION` asserts against after each step ([`envs.py`, v0.11.2](https://github.com/vllm-project/vllm/blob/v0.11.2/vllm/envs.py), as of 2026-11; the docs do not quantify the added latency, so measure it).
 Treat the XLA compile cache as a first-class artifact on a persistent volume, the same way you treat weights.
+The GKE tutorial warns that concurrent writes to `VLLM_XLA_CACHE_PATH` cause an error when scaling to multiple replicas, so populate the cache from one replica first (as of 2026-11).
 
 ### Mechanism 7: why an eval gate cannot use exact match
 
@@ -178,23 +201,23 @@ Two hundred prompts cannot do it, and the lab output below shows this.
 
 | Quantity | Value | Source |
 |---|---|---|
-| PagedAttention throughput vs prior systems | 2-4x | [Kwon et al., SOSP 2023](https://arxiv.org/pdf/2309.06180) (paper, as of 2026-10) |
-| KV waste under PagedAttention | under 4% | Paper results as summarized in course slides, [UT Austin](https://www.cs.utexas.edu/~pingali/CS395TFall25/presentations/grassi_pagedattention.pdf) (as of 2026-10) |
-| KV usage danger zone | above 0.9 means preemption or rejection risk | [llm-d metrics docs](https://llm-d.ai/docs/operations/observability/model-server-metrics) (as of 2026-10) |
-| Vertex AI prefix hit rate with Inference Gateway | 35% to 70% | [Google Cloud blog](https://cloud.google.com/blog/products/containers-kubernetes/how-gke-inference-gateway-improved-latency-for-vertex-ai) (as of 2026-10) |
-| Default gateway scorer weights prefix:queue:KV | 3:3:2, tuned to 3:5:2 | Same post (as of 2026-10) |
-| Multi-cluster gateway spill trigger in a Google example | 40% KV-cache utilization | [Google Cloud blog](https://cloud.google.com/blog/products/containers-kubernetes/gpu-and-tpu-utilization-with-multi-cluster-gke-inference-gateway) (as of 2026-10) |
-| GMP scrape interval in GKE autoscaling example | 15 s | [GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/machine-learning/inference/autoscaling) (as of 2026-10) |
-| p5.48xlarge shape | 8x H100 80 GB (640 GB HBM3), 192 vCPU, 2 TiB RAM, 3200 Gbps EFA, 8x3.84 TB NVMe | Instance catalog mirrors: [Spare Cores](https://sparecores.com/server/aws/p5.48xlarge), [CloudZero](https://advisor.cloudzero.com/aws/ec2/p5.48xlarge) (as of 2026-10) |
-| p5.48xlarge on-demand, us-east-1 | $55.04/hr ($6.88 per GPU-hr) | [Spheron](https://www.spheron.network/blog/aws-h100-pricing-2026/), [Thunder Compute](https://www.thundercompute.com/blog/aws-p5-vs-thunder-compute), both citing AWS list price (as of 2026-10) |
-| AWS P5 price cut | about 44% in June 2025 | Spheron (as of 2026-10) |
-| p5.48xlarge 1-yr / 3-yr commitment | about $38.53 / about $24.77 per hr | Spheron (approximate, as of 2026-10) |
-| p5.48xlarge observed Spot, us-east-1 | $20.78 to $27.87 per hr snapshots (volatile) | [DoiT Spot tracker](https://compute.doit.com/spot/us-east-1/p5.48xlarge) (as of 2026-10) |
-| Derived: commitment breakeven utilization | 70% (1-yr), 45% (3-yr) | `1 - discount` from the two rows above |
+| PagedAttention throughput vs prior systems | 2-4x | [Kwon et al., SOSP 2023](https://arxiv.org/pdf/2309.06180) (paper, as of 2026-11) |
+| KV waste under PagedAttention | about 3.7% (96.3% effective, versus 20.4-38.2% in prior systems) | [Kwon et al., SOSP 2023](https://arxiv.org/pdf/2309.06180), Figure 2 (paper, as of 2026-11) |
+| KV usage danger zone | above 0.9 means preemption or rejection risk | [llm-d metrics docs](https://llm-d.ai/docs/operations/observability/model-server-metrics) (as of 2026-11) |
+| Vertex AI prefix hit rate with Inference Gateway | 35% to 70% | [Google Cloud blog](https://cloud.google.com/blog/products/containers-kubernetes/how-gke-inference-gateway-improved-latency-for-vertex-ai) (as of 2026-11) |
+| Default gateway scorer weights prefix:queue:KV | 3:3:2, tuned to 3:5:2 | Same post (as of 2026-11) |
+| Multi-cluster gateway spill trigger in a Google example | 40% KV-cache utilization | [Google Cloud blog](https://cloud.google.com/blog/products/containers-kubernetes/gpu-and-tpu-utilization-with-multi-cluster-gke-inference-gateway) (as of 2026-11) |
+| GMP scrape interval in GKE autoscaling example | 15 s | [GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/machine-learning/inference/autoscaling) (as of 2026-11) |
+| p5.48xlarge shape | 8x H100 80 GB (640 GB HBM3), 192 vCPU, 2 TiB RAM, 3200 Gbps EFA, 8x3.84 TB NVMe | [AWS P5 page](https://aws.amazon.com/ec2/instance-types/p5/) (as of 2026-11) |
+| p5.48xlarge on-demand, us-east-1 | $55.04/hr ($6.88 per GPU-hr) | [AWS price list](https://b0.p.awsstatic.com/pricing/2.0/meteredUnitMaps/ec2/USD/current/ec2-ondemand-without-sec-sel/US%20East%20%28N.%20Virginia%29/Linux/index.json), Linux, published 2026-10-29 (as of 2026-11) |
+| AWS P5 price cut | 44% On-Demand from the May 31, 2025 baseline, effective June 1, 2025 | [AWS News Blog](https://aws.amazon.com/blogs/aws/announcing-up-to-45-price-reduction-for-amazon-ec2-nvidia-gpu-accelerated-instances/) (as of 2026-11) |
+| p5.48xlarge 1-yr / 3-yr Savings Plan, No Upfront | EC2 Instance SP $34.68 / $23.78 per hr; Compute SP $43.34 / $40.42 per hr | [AWS Savings Plans price list](https://pricing.us-east-1.amazonaws.com/savingsPlan/v1.0/aws/AWSComputeSavingsPlan/20261029175641/us-east-1/index.json), published 2026-10-29 (as of 2026-11) |
+| p5.48xlarge observed Spot, us-east-1 | $20.62 to $37.38 per hr across AZs, one snapshot on 2026-11-01 (volatile) | [DoiT Spot tracker](https://www.doit.com/compute/spot/us-east-1/p5.48xlarge), third-party (as of 2026-11) |
+| Derived: commitment breakeven utilization | EC2 Instance SP 63% (1-yr), 43% (3-yr); Compute SP 79% (1-yr), 73% (3-yr) | `1 - discount` from the rows above |
 | Derived: KV per token, 70B-class with 8 KV heads, 80 layers, head_dim 128 | 320 KiB BF16, 160 KiB FP8 | Computed by `capacity_model.py` below |
 | Derived: gate sample size for 2-pt margin, d = 0.15 | about 1015 prompts | Formula in Internals |
 
-I could not re-verify list prices on the official AWS and Google pricing pages in this session.
+The AWS on-demand and Savings Plans rates come from AWS's published price files, and the Spot range is a third-party snapshot.
 Treat every dollar figure as a planning input and re-pull it before spending money.
 
 ## AWS vs GCP Mechanism Parity
@@ -203,12 +226,12 @@ Treat every dollar figure as a planning input and re-pull it before spending mon
 |---|---|---|---|
 | Serving accelerators | EC2 P5 (H100) and G6e family; see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_01_Accelerator_Architectures_GPUs_Trainium_TPUs\|Accelerator Architectures]] | A3 and G2 GPU machine types, plus Cloud TPU Trillium on GKE (documented vLLM tutorial) | Only GCP offers TPU in this stack. TPU needs shape-bucketed compilation and slice-shaped node pools |
 | Node autoscaler | Karpenter `NodePool` with `limits` as a hard GPU cap | GKE node pools with autoscaling, or node auto-provisioning and compute classes | Karpenter bin-packs and picks instance types per pod. GKE pool autoscalers scale pre-defined machine shapes |
-| Capacity assurance | On-Demand Capacity Reservations and Capacity Blocks (fixed-duration, fixed-price, seen in P5 listings) | Reservations; flex-start and calendar-mode options (UNVERIFIED in this session) | Both require a plan for GPU stockouts. Neither autoscaler can create capacity that does not exist |
+| Capacity assurance | On-Demand Capacity Reservations and [Capacity Blocks](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-blocks.html) (short fixed-duration reservations, start up to 8 weeks ahead, no cancellation, p5.48xlarge supported in us-east-1; AWS docs, as of 2026-11) | Reservations; [future reservations in calendar mode](https://docs.cloud.google.com/compute/docs/instances/future-reservations-calendar-mode-overview) (up to 90 days) and [Flex-start VMs](https://docs.cloud.google.com/compute/docs/instances/about-flex-start-vms) (up to 7 days). On GKE, flex-start with queued provisioning is GA and basic flex-start is listed as Preview ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/dws), as of 2026-11) | Both require a plan for GPU stockouts. Neither autoscaler can create capacity that does not exist |
 | Metrics store | Self-managed Prometheus or Amazon Managed Prometheus | Google Managed Prometheus with `PodMonitoring` | GMP names metrics for HPA as `prometheus.googleapis.com\|<metric>\|gauge` per the GKE docs |
 | HPA plumbing | KEDA Prometheus scaler (lab) or Prometheus adapter | HPA directly on GMP metrics via the GKE adapter, or KEDA | Both converge on the same external-metric HPA mechanics |
-| AI-aware load balancing | Gateway API Inference Extension or llm-d endpoint picker on your own proxy (first-party equivalent UNVERIFIED) | GKE Inference Gateway, a managed endpoint picker scoring KV, queue, LoRA and prefix | On GCP this is a managed feature. On AWS you operate the picker |
+| AI-aware load balancing | Gateway API Inference Extension or llm-d endpoint picker on your own proxy, or the first-party [SageMaker HyperPod Inference Gateway](https://aws.amazon.com/about-aws/whats-new/2026/09/sagemaker-hyperpod-inference-gateway/), an EKS add-on announced 2026-09-24 with per-cluster routing available and cross-cluster routing coming soon (as of 2026-11) | GKE Inference Gateway, a managed endpoint picker scoring KV, queue, LoRA and prefix | On GCP this is a managed feature. On AWS the first-party option is positioned for HyperPod, and on plain EKS you operate the picker |
 | Weights path | S3 to local NVMe, parallel or streamed load | GCS to local SSD or FUSE | Both are bounded by object-store concurrency and the first-byte tail. Pre-stage weights |
-| Spot or preemptible signal | 2-minute interruption notice | 30-second preemption notice | See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_03_Spot_Economics_and_Interruption_Handling\|Spot Economics]]. A 30 s window cannot drain a 30 s generation |
+| Spot or preemptible signal | 2-minute interruption notice, best effort ([AWS docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html), as of 2026-11) | Best-effort shutdown period of up to 30 s, plus a preemption notice settable to 120 s that defaults to 0 s ([Compute Engine docs](https://docs.cloud.google.com/compute/docs/instances/spot), as of 2026-11) | See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_03_Spot_Economics_and_Interruption_Handling\|Spot Economics]]. At GCP defaults, a best-effort 30 s window cannot reliably drain a 30 s generation |
 | Managed fallback | Amazon Bedrock | Vertex AI | See [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_09_Managed_Inference_Amazon_Bedrock_vs_Vertex_AI\|Managed Inference]]. The overflow tier needs its own eval parity |
 
 ## Worked Example: A Portable vLLM Stack with Queue-Driven Autoscaling and an Eval Gate
@@ -223,8 +246,8 @@ Pin `VLLM_IMAGE` to a specific release tag you have tested, and never use `lates
 
 Worst case is 4 GPU nodes for 3 hours.
 
-- GPU nodes: 4 x 3 h x $2.50/hr planning ceiling (UNVERIFIED; look up the real rate below) = $30.
-- Control plane: 3 h x $0.10/hr = $0.30 (UNVERIFIED).
+- GPU nodes: 4 x 3 h x $2.50/hr planning ceiling = $30. Actual on-demand rates sit below it: g6e.xlarge $1.861/hr and g6e.2xlarge $2.242/hr in us-east-1 (AWS price list, as of 2026-11), and g2-standard-8 about $0.85/hr in us-central1 ([gcloud-compute.com](https://gcloud-compute.com/g2-standard-8.html), third-party, as of 2026-11). Look up the real rate below.
+- Control plane: 3 h x $0.10/hr = $0.30 ([EKS pricing](https://aws.amazon.com/eks/pricing/), standard support, as of 2026-11).
 - NAT, EBS and data transfer: allow $5.
 - Total ceiling is about $35, so set the budget to $50.
 
@@ -320,7 +343,7 @@ if __name__ == "__main__":
 
 The script ran in the sandbox and produced the following for a 70B-class model in FP8 weights, TP=4, two replicas per p5.48xlarge.
 Inputs are 80 GiB per GPU, `gpu_memory_utilization` 0.90, 6 GiB per-GPU runtime reserve, 3.35 TB/s HBM per GPU, roofline efficiency 0.65 (an assumption to calibrate), 3000-token average resident context, and $55.04 per node-hour.
-The HBM bandwidth and the 70B shape are from memory and are UNVERIFIED.
+The 3.35 TB/s bandwidth is the H100 SXM figure on the [NVIDIA H100 page](https://www.nvidia.com/en-us/data-center/h100/), and the 70B shape matches the [Llama 3.3 70B config](https://huggingface.co/unsloth/Llama-3.3-70B-Instruct/raw/main/config.json) (80 layers, 8 KV heads, head_dim 128) and its 70.55B parameter count on Hugging Face (as of 2026-11).
 
 | Quantity | BF16 KV | FP8 KV |
 |---|---|---|
@@ -336,7 +359,7 @@ The HBM bandwidth and the 70B shape are from memory and are UNVERIFIED.
 Read this table with four caveats.
 
 - The roofline counts HBM bytes only. It ignores TP all-reduce time, attention-kernel inefficiency and the compute ceiling at 433 sequences, so the FP8-KV column is an upper bound. Calibrate `eta` with Step 4.
-- It is decode-only. Prefill is compute-bound. With FP8 dense peak of about 1.98 PFLOPS per H100 (datasheet, UNVERIFIED) and 40% utilization, a 2000-token prompt on a 70.6B model costs about `2 * 70.6e9 * 2000 / (4 * 1.98e15 * 0.4)` = 0.09 replica-seconds.
+- It is decode-only. Prefill is compute-bound. With FP8 dense peak of about 1.98 PFLOPS per H100 (NVIDIA lists 3,958 TFLOPS with sparsity, and its spec note as [reproduced by a reseller](https://www.hpctech.co.jp/product/nvidia-h100-tensor-core-gpu/) puts specifications 1/2 lower without sparsity, as of 2026-11) and 40% utilization, a 2000-token prompt on a 70.6B model costs about `2 * 70.6e9 * 2000 / (4 * 1.98e15 * 0.4)` = 0.09 replica-seconds.
 - A 1000-token response costs about 0.15 replica-seconds of decode at 6,650 tok/s. Prefill is therefore about 37% of replica time for this 2000-in, 1000-out mix, and an output-only $/M figure understates real cost.
 - One replica sustains about `1 / 0.24` = 4.2 requests per second, which is about 15,000 requests per hour. At $27.52 per replica-hour (half a node) that is about $0.0018 per request.
 
@@ -686,7 +709,7 @@ For open-ended tasks, replace `grade` with an LLM judge and see [[13-Agentic-AI/
 
 On GKE you can skip KEDA and use the HPA directly on Managed Service for Prometheus metrics.
 The GKE docs show the pod metric name pattern `prometheus.googleapis.com|<metric>|gauge`.
-For vLLM the name is `prometheus.googleapis.com|vllm:num_requests_waiting|gauge` (confirm the exact string against your cluster's custom metrics API).
+For vLLM the name is `prometheus.googleapis.com|vllm:num_requests_waiting|gauge` per the GKE TPU tutorial (as of 2026-11; confirm the exact string against your cluster's custom metrics API).
 GMP replaces the `PodMonitor` with a `PodMonitoring` resource.
 For TPU, follow the [GKE Trillium tutorial](https://cloud.google.com/kubernetes-engine/docs/tutorials/serve-vllm-tpu), and mount a persistent volume for the XLA compile cache.
 
@@ -701,10 +724,12 @@ aws budgets delete-budget --account-id "$AWS_ACCOUNT_ID" --budget-name capstone3
 ## Failure Modes and Pitfalls
 
 - **Silent metric rename.**
-  The cache-usage gauge is `vllm:kv_cache_usage_perc` in current vLLM docs and dashboards, and the GKE docs still discuss `gpu_cache_usage_perc`.
-  A community walkthrough explicitly calls out a Grafana and HPA fix for the real names.
-  If an HPA or KEDA query references a missing series, the HPA stays at its floor or stops scaling, because missing metrics are treated conservatively (scale-up is blocked and scale-down avoided).
-  Alert on `kube_horizontalpodautoscaler_status_condition` for `ScalingActive=False`, and pin the engine version in the same change that pins queries.
+  The cache-usage gauge is `vllm:kv_cache_usage_perc` in current vLLM docs and [source](https://github.com/vllm-project/vllm/blob/main/vllm/v1/metrics/loggers.py), which no longer defines `gpu_cache_usage_perc`, yet the GKE TPU tutorial still discusses the old name (as of 2026-11).
+  The [llm-d metrics docs](https://llm-d.ai/docs/dev/operations/observability/model-server-metrics) likewise warn that older dashboards may reference renamed vLLM metrics.
+  If an HPA or KEDA query references a missing series, the HPA stays at its floor or stops scaling, and the mechanism differs by path.
+  When a metric fetch errors, the HPA cannot act on that metric, and with several metrics it skips any suggested scale-down while still being able to scale up on the others ([Kubernetes docs](https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/), as of 2026-11).
+  KEDA's Prometheus scaler defaults to `ignoreNullValues: true`, so an empty result reads as 0 rather than as an error, and the HPA sits at its floor with no fetch failure to report ([KEDA docs](https://keda.sh/docs/2.17/scalers/prometheus/) and [source](https://github.com/kedacore/keda/blob/main/pkg/scalers/prometheus_scaler.go), as of 2026-11).
+  Set `ignoreNullValues: "false"` so an empty result surfaces as an error, alert on `kube_horizontalpodautoscaler_status_condition` for `ScalingActive=False`, and pin the engine version in the same change that pins queries.
 - **Preemption storm.**
   `kv_cache_usage_perc` near 1.0 with `num_requests_waiting` above 0 and `num_preemptions` rising is the signature, and the [Red Hat triage guide](https://developers.redhat.com/articles/2026/03/09/5-steps-triage-vllm-performance) describes the same symptoms.
   Root causes are an over-large `max-num-seqs`, a lowered `gpu_memory_utilization`, a raised `max_num_batched_tokens`, or a long-context tenant.
@@ -724,14 +749,14 @@ aws budgets delete-budget --account-id "$AWS_ACCOUNT_ID" --budget-name capstone3
   Object-store per-prefix request limits and Hugging Face Hub rate limits become your scale-up ceiling.
   Mirror weights into your own bucket in the same region, shard them into many safetensors files, and stage them onto local NVMe (p5 ships 8x3.84 TB NVMe).
 - **Scale-out depends on a control plane that fails.**
-  The AWS us-east-1 DynamoDB DNS event in October 2025 impaired EC2 launches in the region, which is the call your node autoscaler makes (see the AWS post-event summary; details UNVERIFIED in this session).
-  The June 2025 Google Cloud incident, where a bad quota or policy path crashed a global API-serving service, shows the same pattern from the other side.
+  The AWS us-east-1 DynamoDB DNS event of October 19-20, 2025 broke EC2 launches in the region, which is the call your node autoscaler makes: launches began succeeding again only at 10:37 AM PDT on October 20, with EC2 APIs and launches normal by 1:50 PM PDT ([AWS post-event summary](https://aws.amazon.com/message/101925/), as of 2026-11).
+  The June 12, 2025 Google Cloud incident, where a policy change with blank fields hit an unguarded null-pointer path and crash-looped the global Service Control binary, shows the same pattern from the other side ([Google incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-11).
   Both are analyzed in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
   Lesson: serving capacity that exists keeps serving, and capacity you planned to create does not arrive.
   Keep static headroom sized to survive a lost zone with no scaling, as in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]].
 - **Stream truncation on scale-down or Spot reclaim.**
   Removing a pod ends in-flight SSE streams.
-  A 30-second GCP preemption notice cannot drain a long generation, and the 2-minute AWS notice only helps if `terminationGracePeriodSeconds` and the gateway's drain logic cooperate.
+  GCP's best-effort shutdown period of up to 30 seconds, with the default 0-second preemption notice, cannot drain a long generation, and the 120-second GCP notice option and the 2-minute AWS notice only help if `terminationGracePeriodSeconds` and the gateway's drain logic cooperate.
   Keep interactive traffic off Spot, or make clients resume.
 - **Consolidation churn.**
   Cost-driven node consolidation moves warm replicas and discards their caches, so use `WhenEmpty` for GPU pools.
@@ -768,7 +793,7 @@ Levers in rough order of impact:
 1. Quantization of weights and KV: FP8 KV doubled concurrency in the capacity model, and the quality cost goes through the eval gate (see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_06_Model_Quantization_and_Compression|Model Quantization and Compression]]).
 2. Cold-start engineering: it directly reduces the headroom multiplier (39 versus 28 replicas in the example).
 3. Prefix-hit rate through cache-aware routing, which is free capacity.
-4. Commitment coverage: for the p5 rates above, a commitment pays off when the covered capacity is busy more than `1 - discount` of the time (about 70% for 1-year and about 45% for 3-year, using the third-party figures). Cover the baseline and burst above it ([[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Commitment Discounts]]).
+4. Commitment coverage: for the p5 rates above, a commitment pays off when the covered capacity is busy more than `1 - discount` of the time (about 63% for 1-year and about 43% for 3-year on No Upfront EC2 Instance Savings Plans, and about 79% and 73% on Compute Savings Plans). Cover the baseline and burst above it ([[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Commitment Discounts]]).
 5. Spot for batch and offline evaluation tiers only.
 6. Scale-down discipline: a 900 s window costs idle GPU-minutes, so quantify it. At $6.88 per GPU-hour, 10 extra idle minutes on 8 GPUs is about $9 per scale-down event.
 
@@ -931,10 +956,10 @@ Defend your capacity and cost strategy.
 
 First, size it.
 From the capacity model, one 4-GPU replica handles about 4 rps, so 100 rps needs about 24 replicas of raw capacity and about 39 with 0.62 utilization headroom for a 420 s lag.
-That is about 20 p5.48xlarge nodes at roughly $1,100 per hour on-demand using third-party list figures, so every point of headroom is real money.
+That is about 20 p5.48xlarge nodes at roughly $1,100 per hour at the AWS on-demand list price, so every point of headroom is real money.
 
 Second, split the demand curve into tiers rather than one pool.
-Baseline load (what is busy more than 70% of the day) goes on commitments: the commitment breakeven is `1 - discount`, so a 30% one-year discount pays off above 70% utilization and a 55% three-year discount above 45%.
+Baseline load (what is busy more than about 63% of the day) goes on commitments: the commitment breakeven is `1 - discount`, so the 37% one-year No Upfront EC2 Instance Savings Plan discount pays off above 63% utilization and the 57% three-year discount above 43%.
 I would commit up to the load level that stays busy past breakeven, not to the peak.
 The next tier is on-demand or reserved capacity (ODCR or Capacity Blocks on AWS, reservations on GCP) sized to the lag-driven headroom.
 Capacity Blocks are fixed-duration, so they suit planned peaks and not always-on baseline.
@@ -992,7 +1017,7 @@ Do they consume error budget the same as pre-first-token failures, and how do yo
 - [vLLM Optimization and Tuning](https://docs.vllm.ai/en/stable/configuration/optimization/) - Primary source for chunked prefill, token budget and preemption behavior.
 - [vLLM Metrics design](https://docs.vllm.ai/en/stable/design/metrics/) and [Production Metrics](https://docs.vllm.ai/en/stable/usage/metrics/) - Authoritative metric names and semantics your autoscaler and gate depend on.
 - [llm-d model server metrics](https://llm-d.ai/docs/operations/observability/model-server-metrics) - How an endpoint picker interprets KV usage, queue depth and prefix hit rate.
-- [GKE: autoscaling LLM workloads](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/machine-learning/inference/autoscaling) - Google's guidance on queue versus cache-usage triggers and GMP-backed HPA.
+- [GKE: autoscaling LLM workloads](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/machine-learning/inference/autoscaling) - Google's TGI-based walkthrough of queue-size triggers and GMP-backed HPA.
 - [GKE: serve an LLM on TPU Trillium with vLLM](https://cloud.google.com/kubernetes-engine/docs/tutorials/serve-vllm-tpu) - The documented TPU serving path and its autoscaling metrics.
 - [How GKE Inference Gateway improved latency for Vertex AI](https://cloud.google.com/blog/products/containers-kubernetes/how-gke-inference-gateway-improved-latency-for-vertex-ai) - Production evidence for prefix-aware routing and scorer weight tuning.
 - [Choose a load balancing strategy for AI/ML inference on GKE](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/machine-learning/choose-lb-strategy) - The signals an AI-aware gateway uses and when plain load balancing is enough.

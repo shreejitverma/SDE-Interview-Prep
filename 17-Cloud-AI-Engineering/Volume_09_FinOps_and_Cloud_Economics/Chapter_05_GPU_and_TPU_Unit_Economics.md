@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/abs/2204.02311"
@@ -14,6 +14,37 @@ sources:
   - "https://arxiv.org/abs/2309.06180"
   - "https://arxiv.org/abs/2304.01433"
   - "https://aws.amazon.com/about-aws/whats-new/2025/06/pricing-usage-model-ec2-instances-nvidia-gpus"
+  - "https://arxiv.org/abs/2305.16264"
+  - "https://arxiv.org/abs/2409.03992"
+  - "https://docs.cloud.google.com/tpu/docs/v5p"
+  - "https://docs.cloud.google.com/tpu/docs/v6e"
+  - "https://docs.cloud.google.com/tpu/docs/tpu7x"
+  - "https://docs.cloud.google.com/tpu/docs/release-notes"
+  - "https://cloud.google.com/tpu/pricing"
+  - "https://www.nvidia.com/en-us/data-center/h100/"
+  - "https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/"
+  - "https://docs.nvidia.com/dgx/dgxh100-user-guide/introduction-to-dgxh100.html"
+  - "https://docs.aws.amazon.com/ec2/latest/instancetypes/ac.html"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-1/index.csv"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3/current/us-east-1/index.csv"
+  - "https://aws.amazon.com/ec2/capacityblocks/pricing/"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/capacity-blocks-using.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/capacity-blocks-purchase.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/capacity-blocks-pricing-billing.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_PurchaseCapacityBlock.html"
+  - "https://www.theregister.com/2026/01/05/aws_price_increase/"
+  - "https://docs.cloud.google.com/compute/docs/accelerator-optimized-machines"
+  - "https://docs.cloud.google.com/compute/docs/instances/committed-use-discounts-overview"
+  - "https://docs.cloud.google.com/compute/docs/release-notes"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/dws"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/gpu-bandwidth-gpudirect-tcpx"
+  - "https://raw.githubusercontent.com/meta-llama/llama-models/main/models/sku_list.py"
+  - "https://www.sec.gov/Archives/edgar/data/1326801/000132680125000017/meta-20241231.htm"
+  - "https://www.sec.gov/Archives/edgar/data/1018724/000101872425000004/amzn-20241231.htm"
+  - "https://platform.claude.com/docs/en/about-claude/pricing"
+  - "https://ai.google.dev/gemini-api/docs/pricing"
+  - "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-controls.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html"
 ---
 
 # GPU and TPU Unit Economics
@@ -54,6 +85,7 @@ The rest of this chapter makes each factor measurable and shows where each one s
 A cloud accelerator-hour bundles amortized hardware, power and cooling at facility PUE, networking fabric share, host CPU and memory, software and operations, and a scarcity premium for guaranteed capacity.
 The scarcity term is the one that moves: AWS cut On-Demand prices for P5 by 44 percent, P5en by 25 percent, and P4d/P4de by 33 percent effective 2025-06-01, with Savings Plan reductions of up to 45 percent for P5 and up to 26 percent for P5en, and with Savings Plan purchases repriced after 2025-06-04 (AWS What's New, 2025-06-05, as of 2026-10; [announcement](https://aws.amazon.com/about-aws/whats-new/2025/06/pricing-usage-model-ec2-instances-nvidia-gpus); [AWS News Blog](https://aws.amazon.com/blogs/aws/announcing-up-to-45-price-reduction-for-amazon-ec2-nvidia-gpu-accelerated-instances/)).
 The percentages apply to Amazon Linux and are smaller for other operating systems (same source), and the same announcement made at-scale On-Demand capacity available in more Regions and made Savings Plans available for P6-B200, which had launched only through EC2 Capacity Blocks for ML (same source).
+The series also moves up: AWS raised Capacity Block rates about 15 percent in January 2026 ([The Register, 2026-01-05](https://www.theregister.com/2026/01/05/aws_price_increase/)), and its page now lists p5.48xlarge blocks in major US Regions at $47.757 per instance-hour with the next update scheduled for January 2027 ([AWS Capacity Blocks pricing](https://aws.amazon.com/ec2/capacityblocks/pricing/), as of 2026-11).
 The lesson for a model is that list price is a time series, not a constant, and a three-year commitment signed before a cut keeps paying the old rate.
 Treat any $/hr in a spreadsheet as an input with a timestamp and a source query, as the worked example does.
 
@@ -73,7 +105,7 @@ See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_01_Ac
 Dense transformer training costs about 6 x N x D FLOPs for N parameters and D tokens: 2ND for the forward pass and 4ND for the backward pass (Kaplan et al., [Scaling Laws](https://arxiv.org/abs/2001.08361); [Hoffmann et al., Chinchilla](https://arxiv.org/abs/2203.15556)).
 Full activation recomputation adds roughly another forward pass, giving 8ND of hardware FLOPs, but the useful work stays 6ND.
 For mixture-of-experts models N is the active parameter count per token, while memory sizing (and therefore chip count and communication) is set by total parameters, so MoE cost per FLOP is not comparable to dense cost per FLOP.
-"Cost per epoch" is just 6 x N x D_epoch x $/useful FLOP, and it is only a meaningful unit for fine-tuning and data-constrained runs; repeated epochs have diminishing value beyond a few passes (Muennighoff et al., 2023, UNVERIFIED recall), so the economic unit for pretraining is cost per unique token.
+"Cost per epoch" is just 6 x N x D_epoch x $/useful FLOP, and it is only a meaningful unit for fine-tuning and data-constrained runs; repeated epochs have diminishing value beyond a few passes, with up to 4 epochs giving negligible loss change against unique data ([Muennighoff et al., 2023](https://arxiv.org/abs/2305.16264)), so the economic unit for pretraining is cost per unique token.
 
 ### Goodput: why cluster size taxes your price
 
@@ -99,7 +131,7 @@ Accelerators are allocated in indivisible shapes: an 8-GPU node, a multi-node pl
 A job that needs 5 GPUs on 8-GPU nodes strands 3 for the node's lifetime unless a scheduler bin-packs smaller jobs into the remainder.
 Gang scheduling makes it worse: a 512-GPU job cannot start until all 512 are free in one network-adjacent domain, so a scheduler either reserves headroom (idle spend) or backfills with preemptible work (complexity and restarts).
 Fleet-level economics therefore has three distinct utilizations: allocated (nodes assigned to a job), active (SMs or MXUs busy), and useful (MFU x goodput); a dashboard that shows only the first overstates efficiency by 2x or more.
-TPU slices add a billing-granularity wrinkle: you pay per chip for the whole slice topology you provision, and valid multi-host slice shapes are discrete (UNVERIFIED this session), so a workload that needs 20 chips' worth of HBM provisions 32.
+TPU slices add a billing-granularity wrinkle: you pay per chip for the whole slice topology you provision, and valid slice shapes are discrete, for example 2x2x2 (8 chips) then 2x4x4 (32 chips) among the common v5p shapes and 4x4 (16) then 4x8 (32) on v6e ([TPU v5p docs](https://docs.cloud.google.com/tpu/docs/v5p), [TPU v6e docs](https://docs.cloud.google.com/tpu/docs/v6e), as of 2026-11), so a workload that needs 20 chips' worth of HBM provisions 32.
 See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_03_High_Performance_AI_Cluster_Architectures|High-Performance AI Cluster Architectures]] for placement rules.
 
 ### Serving economics: the decode roofline
@@ -110,7 +142,7 @@ Decode generates one token per sequence per step and must stream all weights plu
 step = (weight_bytes + B x ctx x kv_bytes_per_token) / (chips x HBM_BW x efficiency)
 
 and tokens per second is B / step ([Pope et al., Efficiently Scaling Transformer Inference](https://arxiv.org/abs/2211.05102); [Kwon et al., vLLM/PagedAttention, SOSP 2023](https://arxiv.org/abs/2309.06180)).
-KV bytes per token is 2 x layers x kv_heads x head_dim x bytes_per_element; for a Llama-3-70B-class model (80 layers, 8 KV heads, head dim 128, FP16 KV; config UNVERIFIED recall) that is 327,680 bytes, or 320 KiB, per token.
+KV bytes per token is 2 x layers x kv_heads x head_dim x bytes_per_element; for a Llama-3-70B-class model (80 layers, 8 KV heads, head dim 8192 / 64 = 128 per [Meta's llama-models SKU list](https://raw.githubusercontent.com/meta-llama/llama-models/main/models/sku_list.py), as of 2026-11; FP16 KV is this chapter's assumption) that is 327,680 bytes, or 320 KiB, per token.
 Batching amortizes the weight read but not the KV read, so there is a crossover batch B* = weight_bytes / (ctx x kv_bytes), about 52 sequences at 4K context for 70 GB of FP8 weights.
 Past B*, KV traffic dominates and throughput asymptotes at HBM_BW / (ctx x kv_bytes) regardless of how many more sequences you pack in.
 This is the mechanism behind several non-obvious levers: grouped-query attention and KV-cache quantization (FP8 KV halves the dominant term) matter more than weight quantization at long context; prefix caching removes KV reads and prefill compute together; and the output-to-input price ratio of commercial APIs reflects the cost asymmetry between a memory-bound decode token and a compute-bound prefill token.
@@ -122,16 +154,16 @@ Finally, the busy factor: fleets provisioned for peak with diurnal load run at 3
 
 Every non-on-demand purchase trades flexibility for price and guarantees.
 If the discounted price is p_c and on-demand is p_od, the commitment wins when your billable-hour utilization u of the committed hours satisfies p_c < u x p_od, that is u > p_c / p_od, and the same inequality with an amortized all-in rate gives the own-versus-rent threshold.
-Short fixed-window products such as EC2 Capacity Blocks for ML (prepaid, start time and duration fixed at purchase, instances ending at the window end) add a packing problem: a run that finishes early or slips past the window wastes the tail or forces a gap between blocks, so the effective price is the block price divided by window-fill ratio (block mechanics UNVERIFIED this session).
+Short fixed-window products such as EC2 Capacity Blocks for ML (charged up front at the rate in effect at purchase, not cancellable, 1-day increments up to 14 days and 7-day increments up to 182 days, ending at 11:30 UTC with instance termination starting at 11:00 UTC on the final day) add a packing problem: a run that finishes early or slips past the window wastes the tail or forces a gap between blocks unless an extension is on offer, so the effective price is the block price divided by window-fill ratio ([AWS Capacity Blocks docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/capacity-blocks-using.html), [purchase](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/capacity-blocks-purchase.html), [billing](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/capacity-blocks-pricing-billing.html), as of 2026-11).
 Ownership adds correlated risks that a rental price hides: power and cooling lead times, firmware and NIC fault rates in your own operations, and obsolescence.
-Accelerator price-performance has roughly doubled each generation, and the rental market reprices older generations downward, so the economic life of an owned fleet is shorter than the five-to-six year depreciation schedule used for accounting (accounting lives UNVERIFIED).
+Accelerator price-performance has roughly doubled each generation, and the rental market reprices older generations downward, so the economic life of an owned fleet is shorter than the five-to-six year depreciation schedule used for accounting: Meta extended most servers and network assets to 5.5 years for fiscal 2025 ([Meta FY2024 10-K](https://www.sec.gov/Archives/edgar/data/1326801/000132680125000017/meta-20241231.htm)), and Amazon cut a subset of servers and networking equipment from six to five years effective 2025-01-01 ([Amazon FY2024 10-K](https://www.sec.gov/Archives/edgar/data/1018724/000101872425000004/amzn-20241231.htm)).
 The own-versus-rent model in the worked example makes that explicit by dividing owned cost by residual economic value.
 See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Commitment Discounts: Savings Plans vs CUDs]] for the commitment mechanics and [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics]] for the data-movement terms (checkpoint replication, cross-region dataset copies) that sit outside the accelerator price.
 
 ## Numbers to Know
 
-Status column: "Verified" means retrieved from the cited primary page in this authoring session; "UNVERIFIED" means recalled and listed in the batch report.
-Do not paste UNVERIFIED rows into a business case; re-query the cited source.
+Status column: "Verified" means retrieved from the cited source on the stated date; "model output" and "derivation" rows come from this chapter's own arithmetic.
+Prices are dated inputs; re-query the cited source before pasting a row into a business case.
 
 | Quantity | Value | Source and date | Status |
 |---|---|---|---|
@@ -139,36 +171,36 @@ Do not paste UNVERIFIED rows into a business case; re-query the cited source.
 | AWS GPU On-Demand cut, P5en | 25 percent On-Demand (up to 26 percent with Savings Plans) | AWS What's New, 2025-06-05 (as of 2026-10) | Verified |
 | AWS GPU On-Demand cut, P4d and P4de | up to 33 percent | AWS What's New, 2025-06-05 (as of 2026-10) | Verified |
 | P6-B200 Savings Plans | available since 2025-06 (at launch only via Capacity Blocks) | AWS What's New, 2025-06-05 (as of 2026-10) | Verified |
-| Current absolute P5/P6 hourly price | varies by Region and OS; query the Pricing API | AWS Price List API (as of 2026-10) | UNVERIFIED (not fetched) |
-| H100 SXM dense BF16 | about 989 TFLOPS (1979 with sparsity) | NVIDIA H100 datasheet (as of 2026-10) | UNVERIFIED |
-| H100 SXM HBM | 80 GB HBM3, about 3.35 TB/s | NVIDIA H100 datasheet (as of 2026-10) | UNVERIFIED |
-| p5.48xlarge shape | 8 x H100, 640 GB HBM, 3200 Gbps EFA | AWS EC2 docs (as of 2026-10) | UNVERIFIED |
-| TPU v5p | about 459 TFLOPS BF16, 95 GB HBM | Google Cloud TPU docs (as of 2026-10) | Verified (secondary spec sheets) |
-| TPU v6e (Trillium) | about 918 TFLOPS BF16, 32 GB HBM, 256-chip pod | Google Cloud TPU docs (as of 2026-10) | Verified |
-| TPU v6e list price, us-east1 and us-east5 | about $2.70 per chip-hour (illustrative input) | Google Cloud TPU pricing (as of 2026-10) | Verified (copy of pricing page) |
-| TPU v5p list price | about $4.20 per chip-hour (illustrative input) | Google Cloud TPU pricing (as of 2026-10) | Verified (secondary sources) |
-| TPU v7 (Ironwood) GA status and price | not stated here | Google Cloud docs (as of 2026-10) | UNVERIFIED |
+| Current On-Demand Linux price, us-east-1 | p5.48xlarge $55.04, p5en.48xlarge $63.296, p6-b200.48xlarge $113.93 per instance-hour; varies by Region and OS | [AWS Price List bulk file](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-1/index.csv), published 2026-10-29 (as of 2026-11) | Verified |
+| H100 SXM dense BF16 | about 989 TFLOPS, half of the 1979 published with sparsity | [NVIDIA H100 page](https://www.nvidia.com/en-us/data-center/h100/) gives only the sparse figure (as of 2026-11); dense is half per the 1000 and 2000 preliminary figures in [NVIDIA's Hopper blog](https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/) | Verified (dense derived) |
+| H100 SXM HBM | 80 GB HBM3, 3.35 TB/s | [NVIDIA H100 page](https://www.nvidia.com/en-us/data-center/h100/) and [Hopper blog](https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/) for HBM3 (as of 2026-11) | Verified |
+| p5.48xlarge shape | 8 x H100, 640 GiB GPU memory, 3200 Gbps with EFA | [AWS EC2 docs](https://docs.aws.amazon.com/ec2/latest/instancetypes/ac.html) (as of 2026-11) | Verified |
+| TPU v5p | 459 TFLOPS BF16, 95 GiB usable HBM (96 physical), 8960-chip pod | [Google Cloud TPU v5p docs](https://docs.cloud.google.com/tpu/docs/v5p) (as of 2026-11) | Verified |
+| TPU v6e (Trillium) | 918 TFLOPS BF16, 32 GB nominal HBM (31.25 GiB usable), 256-chip pod | [Google Cloud TPU v6e docs](https://docs.cloud.google.com/tpu/docs/v6e) (as of 2026-11) | Verified |
+| TPU v6e list price, us-east1 and us-east5 | $2.70 per chip-hour On-Demand, $1.89 1-year and $1.22 3-year commitment | [Google Cloud TPU pricing](https://cloud.google.com/tpu/pricing) (as of 2026-11) | Verified |
+| TPU v5p list price, us-east1 and us-east5 | $4.20 per chip-hour On-Demand, $2.94 1-year and $1.89 3-year commitment | [Google Cloud TPU pricing](https://cloud.google.com/tpu/pricing) (as of 2026-11) | Verified |
+| TPU7x (Ironwood) status, specs, price | GA 2026-03-31; 2307 TFLOPS BF16, 192 GiB HBM, 9216-chip pod; $12.00 per chip-hour On-Demand in us-central1 | [TPU release notes](https://docs.cloud.google.com/tpu/docs/release-notes), [TPU7x docs](https://docs.cloud.google.com/tpu/docs/tpu7x), [TPU pricing](https://cloud.google.com/tpu/pricing) (as of 2026-11) | Verified |
 | PaLM 540B MFU | 46.2 percent on 6144 TPU v4 | Chowdhery et al., 2022 | Verified |
 | Llama 3 405B, 16,384 H100 | 466 interruptions in 54 days, MFU 38 to 43 percent | Llama 3 Herd of Models, 2024 | Verified |
-| DGX H100 max system power | about 10.2 kW | NVIDIA DGX H100 docs (as of 2026-10) | UNVERIFIED |
-| KV bytes per token, 70B-class GQA, FP16 | 327,680 B (320 KiB) | derived from model config | UNVERIFIED config |
+| DGX H100 max system power | 10.2 kW | [NVIDIA DGX H100 user guide](https://docs.nvidia.com/dgx/dgxh100-user-guide/introduction-to-dgxh100.html) (as of 2026-11) | Verified |
+| KV bytes per token, 70B-class GQA, FP16 | 327,680 B (320 KiB) | derived from [Meta's llama-models config](https://raw.githubusercontent.com/meta-llama/llama-models/main/models/sku_list.py) (as of 2026-11) | Verified config, derived value |
 | Young/Daly optimum interval | T* = sqrt(2 C M) | Young 1974, Daly 2006 | derivation, checked numerically |
 | Output tokens cost multiple vs input, this chapter's model | about 2.1x at 40 percent prefill MFU, 65 percent decode bandwidth efficiency | worked example below | model output |
 | Decode throughput asymptote, 8 x H100, 4K ctx, FP16 KV | about 20K tokens/s ideal | worked example below | model output |
-| S3 Standard storage | about $0.023 per GB-month first tier | AWS S3 pricing (as of 2026-10) | UNVERIFIED |
+| S3 Standard storage, us-east-1 | $0.023 per GB-month first 50 TB, $0.022 next 450 TB | [AWS Price List bulk file](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3/current/us-east-1/index.csv) (as of 2026-11) | Verified |
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | AWS | Google Cloud | Economic consequence |
 |---|---|---|---|
-| Merchant GPU families | P4d/P4de (A100), P5 (H100), P5en (H200), P6-B200 | A2 (A100), A3 family (H100, H200 variants), A4 (B200) | Names and shapes change per generation; always price per GPU, not per instance (families UNVERIFIED for GCP) |
+| Merchant GPU families | P4d/P4de (A100), P5 (H100), P5en (H200), P6-B200 | A2 (A100), A3 family (H100, H200 variants), A4 (B200) | Names and shapes change per generation; always price per GPU, not per instance ([GCP accelerator-optimized docs](https://docs.cloud.google.com/compute/docs/accelerator-optimized-machines), as of 2026-11) |
 | Custom silicon | Trainium2 in Trn2 instances, Inferentia | TPU v5e, v5p, v6e, newer generations | Lower $/FLOP, but MFU depends on compiler maturity (Neuron SDK, XLA); portability cost is a one-time engineering spend |
 | Billing unit | Instance-hour, per-second for On-Demand Linux | Per GPU or per TPU chip-hour, per-second | TPU slices bill all chips in the provisioned topology, so shape granularity creates stranded chips |
 | On-demand capacity | Subject to `InsufficientInstanceCapacity` | Subject to zonal resource-pool exhaustion errors | On-demand price is not availability; the effective price of a failed launch is the delay |
-| Guaranteed short-term capacity | EC2 Capacity Blocks for ML (prepaid fixed window) | Dynamic Workload Scheduler calendar mode and reservations (UNVERIFIED) | Fixed windows need job-to-window packing; fill ratio sets effective price |
-| Queued best-effort capacity | Spot Instances, interruption notice | Spot VMs; DWS flex-start queued provisioning (UNVERIFIED) | Break-even is waste fraction, see Internals; capacity re-acquisition dominates R |
-| Long commitments | EC2 Instance Savings Plans, Compute Savings Plans, Reserved capacity via ODCR | Resource-based CUDs for accelerators and TPUs; spend-based flexible CUDs do not cover GPUs (UNVERIFIED) | Commit to a shape and Region vs commit to dollars; obsolescence risk sits with you either way |
-| Scale-out fabric | EFA with SRD multipath transport | GPUDirect-TCPXO or RoCE on A3 Mega and later; TPU ICI plus OCS | Fabric efficiency feeds MFU; see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI\|Interconnect Technologies]] |
+| Guaranteed short-term capacity | EC2 Capacity Blocks for ML (prepaid fixed window) | Dynamic Workload Scheduler calendar mode, future reservations of up to 90 days for GPUs and TPUs, GA 2025-12-17 ([Compute Engine release notes](https://docs.cloud.google.com/compute/docs/release-notes), as of 2026-11) | Fixed windows need job-to-window packing; fill ratio sets effective price |
+| Queued best-effort capacity | Spot Instances, interruption notice | Spot VMs; on GKE, DWS flex-start with queued provisioning is GA and plain flex-start is Preview ([GKE DWS docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/dws), as of 2026-11) | Break-even is waste fraction, see Internals; capacity re-acquisition dominates R |
+| Long commitments | EC2 Instance Savings Plans, Compute Savings Plans, Reserved capacity via ODCR | Resource-based CUDs for GPUs; 1-year and 3-year TPU commitments on the TPU price list; spend-based flexible CUDs cover attached GPUs only on G2 and G4 ([GCP CUD docs](https://docs.cloud.google.com/compute/docs/instances/committed-use-discounts-overview), [TPU pricing](https://cloud.google.com/tpu/pricing), as of 2026-11) | Commit to a shape and Region vs commit to dollars; obsolescence risk sits with you either way |
+| Scale-out fabric | EFA with SRD multipath transport | GPUDirect-TCPX on A3 High and Edge, GPUDirect-TCPXO on A3 Mega, GPUDirect RDMA on A3 Ultra and later ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/gpu-bandwidth-gpudirect-tcpx), as of 2026-11); TPU ICI plus OCS | Fabric efficiency feeds MFU; see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI\|Interconnect Technologies]] |
 | Auto-recovery managed layer | SageMaker HyperPod resiliency and auto-resume | GKE node auto-repair plus orchestration; Pathways-style resilient runtimes | Shrinks R directly; value equals (R saved) / M x fleet cost |
 | Cost telemetry | Cost and Usage Report, Data Exports, Cost Explorer | Billing export to BigQuery | Neither exports MFU or goodput; you must join billing with DCGM or TPU runtime metrics |
 | Budget enforcement | AWS Budgets actions can apply IAM or SCP policies or stop instances | Budgets notify; enforcement needs Pub/Sub plus automation | Hard stops need engineering on GCP and careful scoping on AWS |
@@ -306,7 +338,8 @@ Going from B = 256 to B = 320 buys only 3 percent more throughput, confirming th
 
 **Prefill and the input/output asymmetry.**
 Prefill at 40 percent MFU delivers 22.6K tokens/s on the node, or $0.68 per million input tokens, so output is about 2.1x input in this model.
-Commercial price ratios are usually larger than this, which reflects ITL headroom, queueing slack, and margin on a latency-sensitive resource (UNVERIFIED as a statement about vendor pricing).
+Commercial price ratios are usually larger than this, for example 5x on Claude Fable 5.1 ($10 in, $50 out per million) and on Gemini 4 Argon through 2026-11-30 ($2 in, $10 out per million) ([Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing), [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing), as of 2026-11).
+Vendors do not publish the reason; this chapter's inference is that the gap reflects ITL headroom, queueing slack, and margin on a latency-sensitive resource.
 
 **Busy factor.**
 The same decode fleet at 80, 50, and 30 percent average busy costs $1.77, $2.83, and $4.72 per million output tokens, so the autoscaler and the traffic shape move cost per token more than any kernel optimization.
@@ -352,7 +385,7 @@ The model's weakest inputs are decode bandwidth efficiency and MFU.
 This lab measures tokens/s and tensor-pipe activity for a small model on one cheap GPU so you can calibrate the model's structure; the absolute numbers will not transfer to a TP8 70B deployment.
 
 **Cost estimate.**
-One g6e.xlarge-class single-GPU instance for at most 1.5 hours at an assumed $2 per hour is about $3, plus a gp3 root volume worth cents; the instance auto-terminates after 90 minutes (prices UNVERIFIED, check the Pricing API).
+One g6e.xlarge-class single-GPU instance for at most 1.5 hours at an assumed $2 per hour is about $3, plus a gp3 root volume worth cents; the instance auto-terminates after 90 minutes (g6e.xlarge is $1.861 per hour On-Demand Linux in us-east-1, [AWS Price List](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-1/index.csv), as of 2026-11; re-check for your Region).
 
 **Budget alarm (AWS).**
 
@@ -434,7 +467,7 @@ Alert on p50 and p99 context length alongside cost per token.
 Weight-only INT4 reduces the weight term, but at long context the KV term dominates, so the measured throughput gain is far below the 2x you expected; quantize KV or reduce KV (GQA, sliding windows, prefix reuse) for that regime ([[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_06_Model_Quantization_and_Compression|Model Quantization and Compression]]).
 
 **Hidden terms outside the accelerator line.**
-A 405B-parameter run keeping full-precision optimizer state checkpoints on the order of 16 bytes per parameter, about 6.5 TB per snapshot; retaining 50 snapshots is 325 TB, roughly $7.5K per month at about $0.023 per GB-month (price UNVERIFIED), plus request charges and cross-AZ or cross-region transfer if replicated; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]].
+A 405B-parameter run keeping full-precision optimizer state checkpoints on the order of 16 bytes per parameter, about 6.5 TB per snapshot; retaining 50 snapshots is 325 TB, roughly $7.2K per month at S3 Standard us-east-1 tiers of $0.023 per GB-month for the first 50 TB and $0.022 for the next 450 TB (AWS Price List, as of 2026-11), plus request charges and cross-AZ or cross-region transfer if replicated; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]].
 These are small beside the compute bill, but unbounded retention and unused FSx or Lustre throughput provisioning are classic budget leaks.
 
 **Capacity errors as a cost.**
@@ -447,7 +480,7 @@ Hyperscaler post-incident reviews rarely discuss accelerator economics; the most
 
 **Spend-authority IAM.**
 Purchases that commit money for months should be a distinct, narrowly granted permission set.
-On AWS, restrict `savingsplans:CreateSavingsPlan` and the Capacity Block purchase action (`ec2:PurchaseCapacityBlock`, name UNVERIFIED) to a FinOps role through an SCP deny with a principal-tag exemption, and require a cost-center tag condition on `ec2:RunInstances` for accelerator instance types.
+On AWS, restrict `savingsplans:CreateSavingsPlan` and the Capacity Block purchase action (`ec2:PurchaseCapacityBlock`, [EC2 API reference](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_PurchaseCapacityBlock.html), as of 2026-11) to a FinOps role through an SCP deny with a principal-tag exemption, and require a cost-center tag condition on `ec2:RunInstances` for accelerator instance types.
 On GCP, grant `compute.commitments.create` and `compute.reservations.create` only to a billing-owner custom role, and keep project-level editors away from them.
 The principle is the same one used for key administration: separate the person who can spend irreversibly from the person who runs jobs.
 
@@ -458,7 +491,7 @@ GCP budgets only notify by default; hard enforcement needs a Pub/Sub subscriber 
 **Checkpoint and weight protection.**
 Weights are the highest-value artifact in the fleet.
 Encrypt checkpoint buckets with a customer-managed key, use S3 Bucket Keys to cut KMS request volume (AWS documents up to a 99 percent reduction in request traffic) so per-object KMS charges do not scale with shard count, and keep access inside the network boundary with VPC endpoints on AWS and VPC Service Controls on GCP ([[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]]).
-Confidential computing modes on accelerators impose some throughput overhead that belongs in the MFU term if you enable them (magnitude UNVERIFIED).
+Confidential computing modes on accelerators impose some throughput overhead that belongs in the MFU term if you enable them; one benchmark on NVIDIA Hopper GPUs reports under 7 percent for typical LLM queries, mostly from CPU-GPU transfers over PCIe ([Zhu et al., 2024 preprint](https://arxiv.org/abs/2409.03992)), so measure your own workload.
 
 **Unit-economics levers, ranked by typical leverage.**
 First, raise goodput: async checkpointing, faster restart, hot spares, topology-aware placement.

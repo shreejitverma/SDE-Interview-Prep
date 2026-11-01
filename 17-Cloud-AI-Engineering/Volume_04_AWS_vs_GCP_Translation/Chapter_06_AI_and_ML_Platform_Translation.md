@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-token-burndown.html"
@@ -13,13 +13,41 @@ sources:
   - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/arch/neuron-hardware/trn2-arch.html"
   - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/arch/neuron-hardware/trn3-arch.html"
   - "https://aws.amazon.com/sagemaker/ai/hyperpod/features/"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/prov-throughput.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/global-cross-region-inference.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/geographic-cross-region-inference.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-prereq.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/scaling-throughput-best-practices.html"
+  - "https://aws.amazon.com/bedrock/sla/"
+  - "https://aws.amazon.com/bedrock/pricing/"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-eks-checkpointless.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-eks-checkpointless-in-process-recovery.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/12/amazon-ec2-trn3-ultraservers/"
+  - "https://www.aboutamazon.com/news/aws/trainium-3-ultraserver-faster-ai-training-lower-cost"
+  - "https://aws.amazon.com/ec2/capacityblocks/pricing/"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/v2.28.1/libraries/nxd-inference/developer_guides/feature-guide.html"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/provisioned-throughput/use-provisioned-throughput"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/standard-paygo"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/priority-paygo"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/flex-paygo"
+  - "https://cloud.google.com/vertex-ai/generative-ai/sla"
+  - "https://cloud.google.com/vertex-ai/generative-ai/pricing"
+  - "https://cloud.google.com/blog/products/data-analytics/bigquery-enhancements-to-boost-gen-ai-inference"
+  - "https://docs.cloud.google.com/tpu/docs/release-notes"
+  - "https://docs.cloud.google.com/tpu/docs/v5p"
+  - "https://cloud.google.com/tpu"
+  - "https://cloud.google.com/tpu/pricing"
+  - "https://blog.google/innovation-and-ai/infrastructure-and-cloud/google-cloud/eighth-generation-tpu-agentic-era/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
 ---
 
 # AI and ML Platform Translation
 
 ## TL;DR
 
-1. The serving-plane admission rule is the real contract on both clouds: Bedrock charges a request's `max_tokens` against your token quota at admission and reconciles after completion, while Vertex serves Gemini pay-as-you-go from a shared dynamic pool with no guarantee, and only Provisioned Throughput buys a reserved lane on either cloud.
+1. The serving-plane admission rule is the real contract on both clouds: Bedrock charges a request's `max_tokens` against your token quota at admission and reconciles after completion, while Vertex serves Gemini pay-as-you-go from a shared dynamic pool with no guarantee, and a reserved lane costs a commitment on either cloud: Provisioned Throughput on both, plus the Reserved tier on Bedrock.
 2. Persistent resilient clusters (SageMaker HyperPod, GKE with TPU or GPU pools) are worth choosing over ephemeral training jobs once job MTBF drops below roughly a day. At 4096 chips with an assumed 50,000 h chip-level MTBF, checkpoint-restart goodput is about 93 percent by the Young-Daly model below, so recovery design is a first-order cost lever.
 3. Accelerator choice is a compiler and topology choice before it is a FLOPs choice: Neuron and XLA both compile ahead of execution against static shapes, Trn3 is a switched all-to-all scale-up domain, and TPUs are 2D or 3D tori with optical circuit switching that carves slices out of 64-chip cubes.
 4. Memory bandwidth, not peak FLOPs, sets the decode floor: for a 70B FP8 model the weights-plus-KV streaming time is 15 to 22 ms per step on one Ironwood or Trainium3 chip, and no amount of extra FLOPs changes it.
@@ -51,38 +79,44 @@ On the silicon plane the translation is the hardest, because the compiler and th
 ### Serving-plane admission on Bedrock
 
 Bedrock enforces requests per minute (RPM), tokens per minute (TPM), and tokens per day (TPD) quotas per model and Region.
-Tokens are deducted at two points: at request start the quota is charged for total input tokens plus the `max_tokens` value, and after completion the charge is reconciled to input tokens plus cache-write tokens plus output tokens multiplied by a model-specific burndown rate (Bedrock docs, as of 2026-10).
-The burndown rate is 5x for output tokens on Anthropic Claude versions 4.7 and below, 10x or 15x on newer listed models, and 1:1 for all other models (Bedrock docs, as of 2026-10).
+Tokens are deducted in three stages: at request start the quota is charged for total input tokens plus the `max_tokens` value, during processing the charge is periodically adjusted to the output generated so far, and at the end it is reconciled to input tokens plus cache-write tokens plus output tokens multiplied by a model-specific burndown rate (Bedrock docs, as of 2026-11).
+The burndown rate on the `bedrock-runtime` endpoint is 15x for output tokens on Claude 4.8, 10x on Claude Opus 5.5, Sonnet 5, Opus 5, Fable 5.1, and OpenAI GPT-5.6 models, 5x on other Anthropic Claude versions 4.7 and below, and 1:1 for all other models unless the model card says otherwise (Bedrock docs, as of 2026-11).
+Models available only on the `bedrock-mantle` endpoint have separate input and output quotas, so burndown does not apply to them (Bedrock docs, as of 2026-11).
 
 This is the mechanism a getting-started guide does not tell you.
-The admission-time reservation is a function of what you ask for, not what you use, so an application that sets `max_tokens` to 32,000 "to be safe" and emits 500 tokens is billed for 500 tokens but is admitted against 35,000.
-The reconciliation step is a refund, but the refund arrives after the request completes, so for the duration of the request the unused reservation is unavailable to every other caller sharing the quota.
-My reading of the doc is that the refund is applied at completion; the worked example below models it that way and treats the exact timing as an assumption to measure.
-The consequence is that the sustainable request rate is governed by `rps * (60 * final_cost + latency * (reserve - final_cost))`, not by `rps * 60 * final_cost`, and long-latency requests with large `max_tokens` are the most expensive thing you can send to the quota.
+The admission-time reservation is a function of what you ask for, not what you use, so an application with 3,000 input tokens that sets `max_tokens` to 32,000 "to be safe" and emits 500 tokens is billed for its actual 3,500 tokens but is admitted against 35,000.
+The reconciliation is a refund, but it arrives through periodic adjustment and a final replenishment, so until then the unused reservation is unavailable to every other caller sharing the quota (Bedrock docs, as of 2026-11).
+The docs do not state the adjustment period, so the worked example below models the worst case, in which the full reservation is held until completion, and the real timing is something to measure.
+The consequence in that worst case is that the sustainable request rate is governed by `rps * (60 * final_cost + latency * (reserve - final_cost))`, not by `rps * 60 * final_cost`, and long-latency requests with large `max_tokens` are the most expensive thing you can send to the quota.
 
 Cross-Region inference changes the capacity pool, not the API.
-A geographic profile routes within a geography such as US or EU, and a global profile routes to a supported commercial Region worldwide (Bedrock docs, as of 2026-10).
-Global profiles can be priced lower per token than geographic ones; for one Claude model the docs state roughly 10 percent savings, with price computed from the source Region (Bedrock docs, as of 2026-10).
+A geographic profile routes within a geography such as US or EU, and a global profile routes to a supported commercial Region worldwide (Bedrock docs, as of 2026-11).
+Global profiles are priced approximately 10 percent lower than geographic ones on both input and output tokens, with price computed from the source Region (Bedrock docs, as of 2026-11).
+Inference profiles do not support Provisioned Throughput, so the reserved-capacity path and the cross-Region path are separate choices (Bedrock docs, as of 2026-11).
 The trade-off is a data-residency boundary that you give up in exchange for burst capacity.
 
 ### Serving-plane admission on Vertex AI
 
-Vertex quotas apply at the Google Cloud project level, and system limits are separate and cannot be raised (Google Cloud docs, as of 2026-10).
-Gemini pay-as-you-go traffic uses Dynamic Shared Quota (DSQ), where throughput is allocated from a large shared pool based on real-time availability and demand across all customers (Google Cloud blog, as of 2026-10).
-Google's own description of DSQ's limitation is that it has an upper bound and a risk of quota errors because it is not guaranteed (Google Cloud blog, as of 2026-10).
-Provisioned Throughput (PT) is the dedicated alternative, and a per-request header, `X-Vertex-AI-LLM-Request-Type`, selects `dedicated` (use PT) or `shared` (use pay-as-you-go) (Google Cloud docs, as of 2026-10).
+Vertex quotas generally apply at the Google Cloud project level, and system limits are separate fixed values that cannot be changed (Google Cloud docs, as of 2026-11).
+Gemini pay-as-you-go traffic uses what Google introduced as Dynamic Shared Quota (DSQ) and now documents as Standard PayGo, where throughput comes from a large shared pool based on real-time availability and demand across customers (Google Cloud docs, as of 2026-11).
+Google's own description of DSQ's limitation is that it has an inherent upper bound and a risk of quota errors because it is not guaranteed (Google Cloud blog, as of 2026-11).
+Standard PayGo adds spend-based usage tiers: traffic under an organization-level TPM threshold gets prioritized access ahead of burst traffic, but throughput and availability still depend on shared-pool demand and are not assured (Google Cloud docs, as of 2026-11).
+Priority PayGo and Flex PayGo are selected per request with the `X-Vertex-AI-LLM-Shared-Request-Type` header, for a higher or discounted rate (Google Cloud docs, as of 2026-11).
+Provisioned Throughput (PT) is the dedicated alternative, and a per-request header, `X-Vertex-AI-LLM-Request-Type`, selects `dedicated` (use only PT, with a 429 above the order) or `shared` (use only pay-as-you-go), while omitting it uses PT and spills the excess over to pay-as-you-go (Google Cloud docs, as of 2026-11).
 
-The practical difference from Bedrock is that Vertex PayGo failure is a function of other tenants' demand, so it is correlated across your retries and is not something you can fix by tuning request shape.
+The practical difference from Bedrock is that Vertex PayGo failure is largely a function of other tenants' demand, so it is correlated across your retries, and tuning request shape helps only at the margin by smoothing bursts and staying under your tier threshold.
 Bedrock throttling is mostly self-inflicted and diagnosable from your own token arithmetic.
-Google's documentation set for these APIs is now branded Gemini Enterprise Agent Platform while the product and API surface still use the Vertex AI name (Google Cloud docs, as of 2026-10), so expect both names in console, IAM role names, and docs.
+That is a rule of thumb and not a guarantee, because AWS states that a quota is an upper bound and that during high demand on-demand requests can be queued or receive transient capacity errors (Bedrock docs, as of 2026-11).
+Bedrock also has per-request `service_tier` values (`reserved`, `priority`, `default`, `flex`); Priority, Standard, and Flex share the on-demand quota, while Reserved is a separate 1 or 3 month TPM reservation that overflows to Standard and targets 99.5 percent uptime (Bedrock docs, as of 2026-11).
+Google's documentation set for these APIs is now branded Gemini Enterprise Agent Platform while the product and API surface still use the Vertex AI name (Google Cloud docs, as of 2026-11), so expect both names in console, IAM role names, and docs.
 
 ### Training plane
 
 SageMaker training jobs and Vertex custom training jobs are ephemeral: provision, run, tear down, with data in S3 or Cloud Storage.
 They are the right default below a few hundred accelerators.
 Above that, job MTBF falls linearly with chip count, and you want a persistent cluster with health monitoring and fast node replacement.
-SageMaker HyperPod is AWS's answer, and it now offers checkpointless training, in which a failed component is swapped and training state is recovered by peer-to-peer transfer from healthy accelerators, with AWS claiming over 95 percent goodput on clusters with thousands of accelerators (AWS docs, as of 2026-10).
-HyperPod also offers elastic training, which expands a job to absorb idle accelerators and shrinks it when higher-priority work needs capacity (AWS docs, as of 2026-10).
+SageMaker HyperPod is AWS's answer, and it now offers checkpointless training, in which a failed component is swapped and training state is recovered by peer-to-peer transfer from healthy accelerators, with AWS claiming over 95 percent goodput on clusters with thousands of accelerators (AWS docs, as of 2026-11).
+HyperPod also offers elastic training, which expands a job to absorb idle accelerators and shrinks it when higher-priority work needs capacity (AWS docs, as of 2026-11).
 The GCP equivalent is composed rather than packaged: GKE node pools of TPU or GPU capacity with a queueing layer and auto-repair, covered in [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_03_High_Performance_AI_Cluster_Architectures|High-Performance AI Cluster Architectures]].
 
 The model to reason with is Young-Daly.
@@ -97,22 +131,23 @@ See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_06_Hi
 
 ### Silicon plane: Trainium and TPU topologies
 
-AWS Trn2 instances carry 16 Trainium2 chips joined by NeuronLink-v3 in a 4x4 2D torus, and a Trn2 UltraServer joins four trn2u.48xlarge instances for 64 chips, with same-coordinate chips across instances linked in a ring (Neuron docs, as of 2026-10).
+AWS Trn2 instances carry 16 Trainium2 chips joined by NeuronLink-v3 in a 4x4 2D torus, and a Trn2 UltraServer joins four trn2u.48xlarge instances for 64 chips, with same-coordinate chips across instances linked in a ring (Neuron docs, as of 2026-11).
 Trainium3 changes the topology class.
-Trn3 UltraServers come in a Gen1 form with 64 chips (four servers of 16) and a Gen2 form with 144 chips (36 servers of 4), both using NeuronSwitch-v1 for all-to-all connectivity between chips, explicitly aimed at Mixture-of-Experts and autoregressive serving (Neuron docs, as of 2026-10).
-In Gen2, devices within a server connect through a first-level NeuronSwitch-v1 and devices across servers through two second-level NeuronSwitch-v1 planes over NeuronLink-v4 (Neuron docs, as of 2026-10).
+Trn3 UltraServers come in a Gen1 form with 64 chips (four servers of 16) and a Gen2 form with 144 chips (36 servers of 4), both using NeuronSwitch-v1 for all-to-all connectivity between chips, explicitly aimed at Mixture-of-Experts and autoregressive serving (Neuron docs, as of 2026-11).
+In Gen2, devices within a server connect through a first-level NeuronSwitch-v1 and devices across servers through two second-level NeuronSwitch-v1 planes over NeuronLink-v4 (Neuron docs, as of 2026-11).
 
 TPUs take the opposite approach.
-Ironwood (TPU7x in the docs) chips have two TensorCores on a dual-chiplet package and 192 GB of HBM, and slices are specified as 3D topologies whose building block is a 64-chip cube (the docs table expresses 2x2x1 as 1/16 of a cube) (Google Cloud docs, as of 2026-10).
-v6e chips have one TensorCore, a 2D torus, and a 256-chip pod (Google Cloud docs, as of 2026-10).
+Ironwood (TPU7x in the docs) chips have two TensorCores on a dual-chiplet package and 192 GiB of HBM, and slices are specified as 3D topologies whose building block is a 64-chip cube (the docs table expresses 2x2x1 as 1/16 of a cube) (Google Cloud docs, as of 2026-11).
+v6e chips have one TensorCore, a 2D torus, and a 256-chip pod (Google Cloud docs, as of 2026-11).
 The mechanism that makes this work is optical circuit switching: the TPU v4 paper (Jouppi et al., ISCA 2023, "TPU v4: An Optically Reconfigurable Supercomputer for Machine Learning with Hardware Support for Embeddings") shows that OCS lets the scheduler wire together any healthy cubes into a requested torus, so a failed host removes a cube from the pool instead of fragmenting the machine.
 This is a failure-domain feature as much as a performance feature, and it has no direct Trainium equivalent: a Trn2 UltraServer is a fixed physical group of four instances.
 The same OCS idea at datacenter scale is described in "Jupiter Evolving" (Poutievski et al., SIGCOMM 2022).
 
 Topology determines which collectives are cheap.
 A torus is excellent for ring all-reduce and nearest-neighbor halo exchange, and degrades for all-to-all because bisection bandwidth grows as N to the 2/3 power in 3D (and as the square root of N in 2D) while all-to-all traffic grows with N.
-The v6e page publishes both numbers for one 256-chip pod: all-reduce bandwidth 102.4 TB/s and bisection bandwidth 3.2 TB/s (Google Cloud docs, as of 2026-10).
-Half of each chip's all-to-all payload must cross the bisection, so a worst-case all-to-all across the full pod runs roughly 32x slower than a per-chip-link bound would suggest (order of magnitude, my arithmetic from the published figures).
+The v6e page publishes both numbers for one 256-chip pod: all-reduce bandwidth 102.4 TB/s and bisection bandwidth 3.2 TB/s (Google Cloud docs, as of 2026-11).
+Half of each chip's all-to-all payload must cross the bisection, so aggregate all-to-all throughput is at most 4x the one-way bisection bandwidth, and 3.2 TB/s matches 32 links of 100 GB/s each way across a 16x16 torus, which gives 12.8 TB/s.
+That is roughly 8x below the 102.4 TB/s the chips can inject, not the raw 32x ratio of the two published numbers, and it would be 16x if 3.2 TB/s were a two-way total (order of magnitude, my arithmetic from the published figures).
 That gap is exactly what NeuronSwitch-v1 removes for Trn3 inside a 64 or 144 chip domain, and it is why expert-parallel placement on a torus is done to keep experts within a sub-torus.
 See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI|Interconnect Technologies: NVLink, EFA, and TPU ICI]].
 
@@ -128,7 +163,9 @@ The consequences are the part a getting-started guide omits:
 3. A freshly autoscaled replica is not serving-ready when the process starts but when its compile cache is warm, so the compile cache must be a shipped artifact (baked into the image or fetched from object storage), not a runtime side effect.
 4. Collective operations are compiled into the program against a fixed device mesh, so the mesh shape (for example 8x8x16 versus 4x8x32) is a compile-time input and changing slice size means recompiling and usually resharding.
 
-These behaviors are well established for XLA; I did not re-verify the Neuron specifics against current docs for this chapter, and they are listed below as such.
+These behaviors are well established for XLA.
+For Neuron, the NxD Inference guide confirms that the compiler produces executables that expect static shapes, that the library picks the smallest bucket that fits and pads, and that a persistent cache reuses artifacts only when the compiler version and model configuration match (Neuron docs, as of 2026-11).
+I did not find a compile-on-miss path described in that guide, so treat point 1 as the XLA JIT case and test what Neuron does with a request above the largest bucket.
 
 ### Foundational papers
 
@@ -145,34 +182,37 @@ The TPU lineage is treated in depth in [[17-Cloud-AI-Engineering/Volume_13_Semin
 
 | Item | Value | Source |
 |---|---|---|
-| Trn2 instance (trn2.48xlarge / trn2u.48xlarge) | 16 Trainium2 chips, 4x4 2D torus, 192 vCPUs | Neuron docs, as of 2026-10 |
-| Trn2 UltraServer | 4 instances, 64 chips, ring across same-coordinate chips | Neuron docs, as of 2026-10 |
-| Trainium3 chip | 2.52 PFLOPs FP8, 144 GB HBM3e, 4.9 TB/s HBM bandwidth | AIwire reporting AWS launch figures, 2025-12, re-checked 2026-10 |
-| Trainium3 vs Trainium2 | 1.5x HBM capacity, 1.7x HBM bandwidth, so Trn2 is about 96 GB and 2.9 TB/s (derived) | AWS launch repost, as of 2026-10 |
-| Trn3 Gen1 UltraServer | 64 chips, 161 PFLOPs dense MXFP8, 314 TB/s HBM, 9 TB HBM | Neuron docs, as of 2026-10 |
-| Trn3 Gen2 UltraServer | 144 chips, 362 PFLOPs dense MXFP8, 706 TB/s HBM, 20 TB HBM (AWS announcement says 20.7 TB) | Neuron docs and AWS announcement, as of 2026-10 |
-| Trn3 chip-to-chip fabric delay | under 10 microseconds | Amazon announcement, as of 2026-10 |
+| Trn2 instance (trn2.48xlarge / trn2u.48xlarge) | 16 Trainium2 chips, 4x4 2D torus, 192 vCPUs | Neuron docs, as of 2026-11 |
+| Trn2 UltraServer | 4 instances, 64 chips, ring across same-coordinate chips | Neuron docs, as of 2026-11 |
+| Trainium3 chip | 2.52 PFLOPs FP8, 144 GB HBM3e, 4.9 TB/s HBM bandwidth | AWS What's New, 2025-12, as of 2026-11 |
+| Trainium3 vs Trainium2 | 1.5x HBM capacity, 1.7x HBM bandwidth; Trainium2 is 96 GiB and 2.9 TB/s per chip | AWS What's New and Neuron docs, as of 2026-11 |
+| Trn3 Gen1 UltraServer | 64 chips, 161 PFLOPs dense MXFP8, 314 TB/s HBM, 9 TB HBM | Neuron docs, as of 2026-11 |
+| Trn3 Gen2 UltraServer | 144 chips, 362 PFLOPs dense MXFP8, 706 TB/s HBM, 20 TB HBM (AWS announcement says 20.7 TB) | Neuron docs and AWS announcement, as of 2026-11 |
+| Trn3 chip-to-chip fabric delay | under 10 microseconds | Amazon announcement, as of 2026-11 |
 | Trn3 status | GA, announced at re:Invent 2025 | AWS announcement, 2025-12 |
-| Trainium4 | previewed, no GA date stated | Press reporting, as of 2026-10 (Preview, not GA) |
-| TPU v5p chip | 459 TFLOPs bf16, 95 GiB HBM, 2765 GB/s, ICI 1200 GB/s bidirectional | Google Cloud docs, as of 2026-10 |
-| TPU v6e chip | 918 TFLOPs bf16, 32 GB HBM, 1638 GB/s, ICI 800 GB/s, 4 ICI ports, 8 chips per host | Google Cloud docs, as of 2026-10 |
-| TPU v6e pod | 256 chips, 2D torus, 234.9 PFLOPs bf16, all-reduce 102.4 TB/s, bisection 3.2 TB/s, 25.6 Tbps DCN | Google Cloud docs, as of 2026-10 |
-| TPU7x Ironwood chip | 4614 TFLOPs FP8, 192 GB HBM, 7380 GB/s, ICI 1200 GB/s bidirectional, 2 TensorCores, 4 SparseCores | Google Cloud docs, as of 2026-10 |
-| Ironwood scale | slice topologies in docs up to 8x16x16 (2048 chips) in 64-chip cubes (largest documented topology UNVERIFIED); 9,216-chip superpod in launch material | Google Cloud docs and Google blog, as of 2026-10 |
-| Ironwood status | docs page exists for TPU7x; press sources disagree on GA date (late 2025 versus 2026-04) so treat the GA date as UNVERIFIED | Press reporting, as of 2026-10 |
-| TPU 8t and 8i | previewed, press-reported late 2027 target (UNVERIFIED) | Press reporting, as of 2026-10 (Preview, not GA) |
-| Bedrock output-token burndown | 5x for Claude 4.7 and below, 10x or 15x for newer listed models, 1:1 for others | Bedrock docs, as of 2026-10 |
-| Bedrock admission charge | input tokens plus `max_tokens` at start, reconciled to input plus cache-write plus output x burndown | Bedrock docs, as of 2026-10 |
-| Bedrock global versus geographic profile | roughly 10 percent lower price for one Claude model, priced by source Region | Bedrock docs, as of 2026-10 |
-| HyperPod checkpointless training | recovery in minutes, over 95 percent goodput claimed on thousands of accelerators | AWS docs, as of 2026-10 |
-| Vertex PayGo Gemini | Dynamic Shared Quota, shared pool, not guaranteed | Google Cloud blog, as of 2026-10 |
-| Vertex request-type header | `X-Vertex-AI-LLM-Request-Type`: `dedicated` or `shared` | Google Cloud docs, as of 2026-10 |
-| Per-token and per-chip-hour list prices | not retrieved for this chapter; use current pricing pages | UNVERIFIED |
-| p99 latency of managed endpoints | neither cloud publishes a latency SLO for on-demand model APIs in the sources checked | UNVERIFIED |
+| Trainium4 | in development with no GA date; design targets of at least 6x FP4, 3x FP8, and 4x memory bandwidth, with NVLink Fusion support | Amazon announcement, 2025-12 (announced, not GA and not a preview service) |
+| TPU v5p chip | 459 TFLOPs bf16, 95 GiB HBM, 2765 GB/s, ICI 1200 GB/s bidirectional | Google Cloud docs, as of 2026-11 |
+| TPU v6e chip | 918 TFLOPs bf16, 32 GB HBM, 1638 GB/s, ICI 800 GB/s, 4 ICI ports, 8 chips per host | Google Cloud docs, as of 2026-11 |
+| TPU v6e pod | 256 chips, 2D torus, 234.9 PFLOPs bf16, all-reduce 102.4 TB/s, bisection 3.2 TB/s, 25.6 Tbps DCN | Google Cloud docs, as of 2026-11 |
+| TPU7x Ironwood chip | 4614 TFLOPs FP8 (2307 BF16), 192 GiB HBM, 7380 GB/s, ICI 1200 GB/s bidirectional, 2 TensorCores, 4 SparseCores | Google Cloud docs, as of 2026-11 |
+| Ironwood scale | listed slice topologies up to 8x16x16 (2048 chips) in 64-chip cubes, larger shapes through your account team; pod up to 9,216 chips (144 cubes) | Google Cloud docs, as of 2026-11 |
+| Ironwood status | TPU7x Preview 2025-11-24, GA 2026-03-31 | Cloud TPU release notes, as of 2026-11 |
+| TPU 8t and 8i | announced 2026-04 with GA promised later in 2026; product page still says "Coming soon" and release notes have no entry, so not GA | Google blog, TPU page, and release notes, as of 2026-11 |
+| Bedrock output-token burndown | 15x for Claude 4.8; 10x for Claude Opus 5.5, Sonnet 5, Opus 5, Fable 5.1 and GPT-5.6; 5x for other Claude 4.7 and below; 1:1 for others unless the model card differs | Bedrock docs, as of 2026-11 |
+| Bedrock admission charge | input tokens plus `max_tokens` at start, periodically adjusted, reconciled to input plus cache-write plus output x burndown | Bedrock docs, as of 2026-11 |
+| Bedrock global versus geographic profile | approximately 10 percent lower input and output price, priced by source Region | Bedrock docs, as of 2026-11 |
+| Bedrock Reserved tier | 1 or 3 month TPM reservation, minimum 100,000 input and 10,000 output TPM, overflows to Standard, targets 99.5 percent uptime | Bedrock docs, as of 2026-11 |
+| HyperPod checkpointless training | recovery in minutes, over 95 percent goodput claimed on thousands of accelerators; needs at least 2 distributed optimizer instances | AWS docs, as of 2026-11 |
+| Vertex PayGo Gemini | Standard PayGo (formerly DSQ), shared pool, not assured; Gemini Pro tier thresholds 500,000 to 10,000,000 org TPM by 30-day spend | Google Cloud docs, as of 2026-11 |
+| Vertex request-type header | `X-Vertex-AI-LLM-Request-Type`: `dedicated` or `shared`; omitted means PT with spillover to pay-as-you-go | Google Cloud docs, as of 2026-11 |
+| TPU chip-hour list prices, US, on-demand / 1-year / 3-year | Ironwood $12.00 / $8.40 / $5.40; v6e $2.70 / $1.89 / $1.22; v5p $4.20 / $2.94 / $1.89; v5e $1.20 / $0.84 / $0.54 | Cloud TPU pricing, as of 2026-11 |
+| Trainium list prices | Trn2 Capacity Block $2.235 per chip-hour; Trn3 is not on that page, and no Trn2 or Trn3 appeared in the public EC2 on-demand feed for us-east-1, us-east-2, or us-west-2 | EC2 Capacity Blocks pricing and EC2 price feed, as of 2026-11 |
+| Sample per-token list prices, per million input / output | Gemini 4 Argon global $2.00 / $10.00 through 2026-11-30; Kimi 3 on Bedrock $3.00 / $15.00 global, $3.30 / $16.50 US | Agent Platform and Bedrock pricing, as of 2026-11 |
+| Latency SLOs for managed endpoints | none for on-demand in the Bedrock or Gemini SLAs; Gemini under PT commits 99 percent of 5-minute intervals above 60 TPS (2.5 Pro), 80 TPS (2.5 Flash), or 110 TPS (2.5 Flash-Lite) on streaming calls at the global endpoint | AWS and Google SLAs, as of 2026-11 |
 
 Derived ratios for reasoning, from the rows above: Trainium3 FP8 peak divided by HBM bandwidth is about 514 FLOPs per byte, and Ironwood FP8 is about 625 FLOPs per byte.
 Decode at small batch has arithmetic intensity of order 1 to 100 FLOPs per byte, so decode is bandwidth-bound on every chip listed, and chip choice for decode is a bandwidth-per-dollar decision.
-The generation columns are not like-for-like on precision: v5p and v6e peaks above are bf16, Ironwood's is FP8.
+The generation columns are not like-for-like on precision: v5p and v6e peaks above are bf16, Ironwood's headline figure is FP8.
 
 ## AWS vs GCP Mechanism Parity
 
@@ -180,8 +220,8 @@ The generation columns are not like-for-like on precision: v5p and v6e peaks abo
 |---|---|---|---|
 | ML platform umbrella | Amazon SageMaker AI, with Unified Studio as the workspace layer | Vertex AI, documented under Gemini Enterprise Agent Platform branding | Both are control planes over compute you could also run yourself on EKS or GKE |
 | Serverless model API | Bedrock with Converse and InvokeModel | Gemini API on Vertex plus Model Garden managed APIs | Bedrock is multi-provider by design; on GCP the first-party model is the primary path and partners are added through Model Garden |
-| Admission currency | RPM, TPM, TPD per model and Region, `max_tokens` reserved at start, output burndown | Project-level quotas, DSQ shared pool for Gemini PayGo | AWS failure is mostly self-inflicted and computable; GCP PayGo failure is correlated with other tenants |
-| Dedicated capacity | Bedrock Provisioned Throughput (model units, commitment terms) | Vertex Provisioned Throughput with per-request dedicated or shared header | GCP lets one request choose its lane; verify spillover default before relying on it |
+| Admission currency | RPM, TPM, TPD per model and Region, `max_tokens` reserved at start, output burndown | Project-level quotas, Standard PayGo (formerly DSQ) shared pool with spend-based tiers for Gemini | AWS failure is mostly self-inflicted and computable; GCP PayGo failure is correlated with other tenants |
+| Dedicated capacity | Bedrock Provisioned Throughput (model units; no commitment, 1 month, or 6 months; not usable through inference profiles) and Reserved tier (1 or 3 months, TPM-based) | Vertex Provisioned Throughput with per-request dedicated or shared header | Both can overflow: Vertex PT spills to pay-as-you-go by default unless the request sets `dedicated`, and Bedrock Reserved overflows to Standard |
 | Cross-region routing | Geographic and global inference profiles, priced from source Region | Regional and global endpoints | AWS exposes routing as a named resource you must grant IAM on; GCP exposes it as an endpoint choice |
 | Bring your own weights | Custom Model Import, SageMaker endpoints | Model Garden self-deploy, Vertex endpoints on GPU or TPU | Self-hosting moves capacity risk and compile risk to you on both clouds |
 | Managed training | SageMaker training jobs | Vertex custom training jobs | Equivalent for small scale; neither is the right abstraction past a few hundred accelerators |
@@ -266,7 +306,9 @@ Quota admission, with a placeholder 2,000,000 TPM quota, 3000 input tokens, 500 
 | 8192 | 5,500 | 11,192 | 5.17 |
 | 32000 | 5,500 | 35,000 | 3.20 |
 
-Setting `max_tokens` to 32,000 instead of 1,024 cuts sustainable throughput by 47 percent with no change in billed tokens.
+These rates are the worst case in which the reservation is held until completion, because the docs say the charge is also adjusted periodically during processing without stating the period.
+In the 1024 row the literal admission deduction is 4,024 (3,000 + 1,024); the table shows 5,500 because the planner takes the larger of the deduction and the final charge.
+Setting `max_tokens` to 32,000 instead of 1,024 cuts sustainable throughput by up to 47 percent with no change in billed tokens.
 The output burndown dominates the final charge here: 500 output tokens at 5x is 2,500 of the 5,500.
 The fix is to set `max_tokens` from the measured p99 of completion length per route, and to truncate or continue explicitly beyond that, not to raise the quota.
 
@@ -389,23 +431,25 @@ Training clusters, Trn3 UltraServers, and TPU slices are not provisioned by this
 1. **Throttling at a fraction of quota.** Symptom: `ThrottlingException` while CloudWatch shows consumed tokens at 40 percent of TPM. Cause: large `max_tokens` reserved at admission by long-latency requests. Fix: per-route `max_tokens` from measured p99 completion length, shorter latency through streaming and caching, and an alarm on the ratio of admitted to final tokens.
 2. **Retry amplification.** Every retry reserves `input + max_tokens` again at admission, so retrying a throttled request makes the throttle worse. Use capped exponential backoff with full jitter and a retry budget as in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Resilient Communication]], and shed load by priority per [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control|Load Shedding and Admission Control]].
 3. **Hedged requests double burn.** Hedging a slow LLM call sends a second reservation and, if both complete, two full output charges. Hedge only the time-to-first-token phase and cancel the loser on first byte.
-4. **Correlated PayGo exhaustion on Vertex.** DSQ is a shared pool, so a regional demand peak yields 429s for many tenants at once, and your retries compete with everyone else's. Mitigation: PT for the floor, a second region or global endpoint for overflow, and a lower-tier model fallback with eval gating.
+4. **Correlated PayGo exhaustion on Vertex.** Standard PayGo (formerly DSQ) is a shared pool, so a regional demand peak yields 429s for many tenants at once, and your retries compete with everyone else's. Mitigation: PT for the floor, the global endpoint for overflow (Google documents it as the widest pool, and tier thresholds apply there), smoothing traffic within each minute, and a lower-tier model fallback with eval gating.
 5. **Cold compile on autoscale.** A new Neuron or XLA replica that must compile its shapes is not ready when the container starts. Ship the compile cache with the image or from object storage, gate readiness on a warm-shape probe, and pre-warm replicas ahead of load, as in [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_08_Cloud_GPU_Autoscaling_and_Cold_Start_Mitigation|Cloud GPU Autoscaling and Cold-Start Mitigation]].
 6. **Unbucketed shape p99 cliff.** A rare long prompt that misses every bucket triggers compilation inside the request path. Cap input length at the largest bucket and reject or chunk anything larger.
 7. **Fragmented accelerator capacity.** A Trn2 UltraServer is four co-located instances, and a TPU slice is whole cubes, so 60 free chips scattered across hosts may satisfy zero 64-chip requests. Reserve in the unit you schedule (UltraServer, cube) and keep a defragmentation policy for preemptible work.
 8. **Checkpoint stampede.** After a failure, thousands of ranks read the same checkpoint from object storage at once, and the restart time in the goodput model becomes the object-store throughput limit, not the node replacement time. See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_06_High_Throughput_Checkpointing_to_Object_Storage|High-Throughput Checkpointing to Object Storage]].
-9. **Peer-recovery assumptions.** Checkpointless recovery by peer-to-peer transfer needs a healthy copy of the lost state somewhere. A parallelism layout with no replicated shards has nothing to copy from, so verify with the HyperPod documentation that your layout is eligible before removing checkpoints from your plan (my inference; UNVERIFIED against current docs).
+9. **Peer-recovery assumptions.** Checkpointless recovery by peer-to-peer transfer needs a healthy copy of the lost state somewhere. AWS's implementation fully replicates model and optimizer state across node groups, requires `num_distributed_optimizer_instances` of at least 2, adds roughly one DCP checkpoint of device memory per redundant replica, and falls back to loading a checkpoint from storage when recovery is infeasible or fails (AWS docs, as of 2026-11). A layout with no replicated shards has nothing to copy from, and the published recipes are NeMo on P5 H100 GPUs, so confirm support for your framework and accelerator before removing checkpoints from your plan.
 10. **Silent numeric divergence after a port.** bf16 accumulation order, FP8 scaling recipes, and stochastic rounding differ across chips, and loss curves can match for weeks before eval regressions show. Gate ports on eval parity and not only loss.
-11. **Region-deny policies breaking routing.** An SCP or org policy that denies all but one Region can block cross-Region inference profiles, because the profile fans out to other Regions. Test the exact profile with the exact deny policy before rollout.
+11. **Region-deny policies breaking routing.** An SCP or org policy that denies all but one Region can block cross-Region inference profiles, because the profile fans out to other Regions. Geographic profiles need every destination Region allowed, and global profiles need `aws:RequestedRegion` value `unspecified` allowed, or in either case a `bedrock:InferenceProfileArn` exception (Bedrock docs, as of 2026-11). Test the exact profile with the exact deny policy before rollout.
 12. **Model lifecycle surprises.** Both clouds retire model versions. Pin versions, track retirement dates, and re-run your eval suite before the forced migration.
-13. **Control-plane incidents.** Public post-incident reviews, including the AWS us-east-1 event of October 2025 and the Google Cloud global service-control outage of June 2025, show that managed AI APIs inherit the blast radius of shared control-plane dependencies. Details of these events were not re-verified for this chapter. The design response is regional static stability and a tested fallback, as in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
+13. **Control-plane incidents.** Public post-incident reviews show that managed services inherit the blast radius of shared control-plane dependencies. In the AWS us-east-1 event of 2025-10-19 to 2025-10-20, a race in DynamoDB's DNS automation emptied the regional endpoint record and took dependent services down with it, including EC2 launches, Lambda, STS, and IAM sign-in (AWS summary, as of 2026-11); that summary does not name Bedrock, so the AI impact there is an inference from those dependencies. In the Google Cloud outage of 2025-06-12, a quota policy with blank fields replicated globally and crash-looped Service Control on a null pointer, and Google's report lists Vertex Gemini API among the affected products (Google incident report, as of 2026-11). The design response is regional static stability and a tested fallback, as in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
 ## Security and Cost Angles
 
 ### Identity and network boundaries
 
 On AWS, scope `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` to specific model and inference-profile ARNs and not to `*`.
-A cross-Region profile requires permission on the profile and on the underlying foundation models in every destination Region, and the exact resource and condition syntax for global profiles should be confirmed in the current IAM documentation before you encode it in a policy (UNVERIFIED).
+A geographic profile requires permission on the profile and on the underlying foundation model in the source Region and every destination Region (Bedrock docs, as of 2026-11).
+A global profile requires three resources: the profile ARN, the foundation model in the source Region, and the Region-less `arn:aws:bedrock:::foundation-model/MODEL_ID`, for which `aws:RequestedRegion` evaluates to `unspecified` (Bedrock docs, as of 2026-11).
+The docs write that third ARN out explicitly, so do so when scoping a global profile instead of relying on the wildcard Region in the example below.
 
 ```json
 {
@@ -434,9 +478,9 @@ Checkpoints contain optimizer state and are as sensitive as the weights.
 ### Unit economics levers
 
 1. Right-size `max_tokens` per route: free capacity, not money, but capacity is what you buy PT for.
-2. Use global profiles when residency allows; one documented case gives roughly 10 percent per-token savings (Bedrock docs, as of 2026-10).
+2. Use global profiles when residency allows; AWS documents approximately 10 percent savings on input and output tokens over geographic profiles (Bedrock docs, as of 2026-11).
 3. Hold PT only for the traffic floor; use the break-even formula from the worked example with real prices.
-4. Cache stable prefixes and batch offline work; both clouds offer batch and caching modes whose current discounts must be read from pricing pages (UNVERIFIED here).
+4. Cache stable prefixes and batch offline work; batch is 50 percent below on-demand on Bedrock for supported models and on Gemini, while cache pricing is model-specific, for example Kimi 3 on Bedrock reads at 10 percent of input and writes at 125 percent, and Gemini 4 Argon cached input is 5 percent of input through 2026-11-30 (Bedrock and Agent Platform pricing, as of 2026-11).
 5. Choose accelerators by cost per useful token: price per chip-hour divided by measured tokens per second at your SLO, times goodput, and not by peak FLOPs.
 6. Tag by application inference profile on AWS and by project or label on GCP so spend maps to products, per [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cloud_Billing_Models_and_Unit_Cost_Allocation|Cloud Billing Models and Unit Cost Allocation]].
 
@@ -448,9 +492,9 @@ A team reports Bedrock throttling at 40 percent of their TPM quota. Walk me thro
 
 #### Model Answer
 
-Start with the admission rule: the quota is charged `input + max_tokens` at request start and reconciled to `input + cache_write + output x burndown` at completion (Bedrock docs, as of 2026-10).
+Start with the admission rule: the quota is charged `input + max_tokens` at request start, adjusted periodically during processing, and reconciled to `input + cache_write + output x burndown` at completion (Bedrock docs, as of 2026-11).
 So the first question is what `max_tokens` is set to and what the real completion length distribution is.
-If completions average 500 tokens and `max_tokens` is 32,000, each in-flight request holds 35,000 tokens of quota for its whole latency, which my model shows cuts sustainable rate from about 6 to 3.2 requests per second at 2M TPM and 10 s latency.
+If completions average 500 tokens and `max_tokens` is 32,000, each new request deducts 35,000 tokens of quota at 3,000 input tokens, which my worst-case model, holding that charge for the full latency, shows cuts sustainable rate from about 6 to 3.2 requests per second at 2M TPM and 10 s latency.
 Second, check the burndown for the model in use, because 5x, 10x, or 15x on output tokens makes the final charge much larger than the billed tokens suggest, and dashboards that plot billed tokens will under-report quota use.
 Third, check retries: SDK default retries each re-reserve, so a throttled burst inflates itself.
 The fix order is: set `max_tokens` from measured p99 per route, cap SDK retries and add jitter, use streaming with early stop where possible, and only then request a quota increase or buy Provisioned Throughput.
@@ -468,8 +512,8 @@ When would you choose Provisioned Throughput over on-demand on Bedrock or Vertex
 Provisioned capacity is an insurance and latency-stability purchase, not a discount.
 Compute break-even utilization as `PT price per hour / (lane tokens per second x 3600 / 1e6 x blended on-demand price per million tokens)`.
 With placeholder numbers the break-even is between 31 and 74 percent depending on lane throughput and token mix, so the answer is workload-specific and must use current prices and measured lane throughput.
-On Vertex the on-demand alternative is a shared pool with no guarantee (Google Cloud blog, as of 2026-10), so PT also buys protection from correlated exhaustion, and a per-request header lets individual calls choose the lane (Google Cloud docs, as of 2026-10).
-On Bedrock on-demand failure is mostly your own quota arithmetic, so PT is justified more by latency stability and commitment pricing than by availability.
+On Vertex the on-demand alternative is a shared pool with no guarantee (Google Cloud docs, as of 2026-11), so PT also buys protection from correlated exhaustion and, for Gemini 2.5 streaming at the global endpoint, a published latency SLO (Google SLA, as of 2026-11), and a per-request header lets individual calls choose the lane (Google Cloud docs, as of 2026-11).
+On Bedrock on-demand failure is mostly your own quota arithmetic, though AWS warns of transient capacity errors under high demand (Bedrock docs, as of 2026-11), so PT or the TPM-based Reserved tier is justified more by latency stability and commitment pricing than by availability.
 I would size PT to the traffic floor (the 5th to 10th percentile of hourly demand over a month), keep the peak on on-demand with a lower-tier fallback, and re-evaluate quarterly because token mix drifts.
 
 #### Follow-up Interviewer Question
@@ -503,7 +547,7 @@ Peak FLOPs is the least interesting variable.
 The determinants are compile and kernel coverage, shape discipline, topology fit, and goodput.
 Compile and kernels: every op in your model, including new attention variants and custom losses, must lower through XLA or Neuron or have a hand-written kernel in Pallas or NKI, and unsupported ops fall back to slow paths or fail.
 Shape discipline: static shapes mean padded batches and sequence buckets, so measure padding waste and recompilation behavior on your real length distribution.
-Topology fit: a switched Trn3 domain (64 or 144 chips, all-to-all) suits expert parallelism, while a torus suits ring-structured data and tensor parallelism and needs expert placement inside sub-tori; the v6e pod's 32x gap between all-reduce and bisection bandwidth (Google Cloud docs, as of 2026-10) is the number that makes this concrete.
+Topology fit: a switched Trn3 domain (64 or 144 chips, all-to-all) suits expert parallelism, while a torus suits ring-structured data and tensor parallelism and needs expert placement inside sub-tori; the v6e pod's 32x gap between all-reduce and bisection bandwidth (Google Cloud docs, as of 2026-11) is the number that makes this concrete.
 Goodput: price per chip-hour divided by (tokens per second x goodput) is the metric, and recovery tooling (HyperPod checkpointless, OCS route-around) belongs in it.
 Execution plan: port a small variant, prove loss and eval parity over a few thousand steps against the GPU baseline, then scale in stages, and keep a framework-neutral checkpoint format so the exit door stays open.
 
@@ -519,8 +563,8 @@ You run 4096 accelerators. Argue for or against checkpointless training.
 
 Model it first.
 With an assumed 50,000 h chip-level MTBF, job MTBF is about 12 hours, the Young-Daly interval is about 38 minutes for a 60 s checkpoint, and checkpoint-restart goodput is about 92.7 percent with a 15 minute restart and 94.4 percent with a 3 minute restart.
-AWS reports over 95 percent goodput for checkpointless training on clusters of thousands of accelerators (AWS docs, as of 2026-10), so the gain over a well-tuned checkpoint-restart is 1 to 3 points, worth roughly 1,000 to 3,000 chip-hours per day at this scale, and the gain grows quickly at 16K chips where the same model gives 81 percent.
-Against that: peer-to-peer recovery needs a healthy replica of the lost state, so it constrains parallelism layout; it adds a new failure mode of its own (corrupted peer state propagating) that periodic checkpoints would have bounded; and you still need durable checkpoints for rollback after a bad data batch or loss spike, so you cannot delete the checkpoint path.
+AWS reports over 95 percent goodput for checkpointless training on clusters of thousands of accelerators (AWS docs, as of 2026-11), so the gain over a well-tuned checkpoint-restart is at least 0.6 to 2.3 points, worth roughly 600 to 2,300 chip-hours per day at this scale, and the gain grows quickly at 16K chips where the same model gives 81 percent.
+Against that: peer-to-peer recovery needs a healthy replica of the lost state, which AWS implements as full replication across node groups at the cost of device memory (AWS docs, as of 2026-11), so it constrains parallelism layout; it adds a new failure mode of its own (corrupted peer state propagating) that periodic checkpoints would have bounded; and you still need durable checkpoints for rollback after a bad data batch or loss spike, so you cannot delete the checkpoint path.
 My recommendation is to keep periodic durable checkpoints at a longer interval for rollback, adopt peer recovery for hardware faults if the layout is eligible, and measure goodput directly from step-time telemetry instead of trusting either the model or the vendor figure.
 
 #### Follow-up Interviewer Question
@@ -535,7 +579,7 @@ Trn3 is a switched all-to-all domain and Ironwood is an OCS-shaped 3D torus. You
 
 MoE serving is dominated by two all-to-alls per layer (dispatch and combine) plus the decode bandwidth floor.
 On a switched domain, each chip's all-to-all share is limited by its port bandwidth, so expert parallelism can span the whole 64 or 144 chip UltraServer, and routing imbalance is a load problem and not a topology problem.
-On a torus, all-to-all across a full pod is bisection-limited: the v6e numbers (102.4 TB/s all-reduce versus 3.2 TB/s bisection for 256 chips, Google Cloud docs, as of 2026-10) imply order-of-32x degradation versus the per-link ideal, and the gap widens with torus edge length.
+On a torus, all-to-all across a full pod is bisection-limited: the v6e numbers (102.4 TB/s all-reduce versus 3.2 TB/s bisection for 256 chips, Google Cloud docs, as of 2026-11) imply roughly 8x degradation versus the per-chip injection bound (16x if the bisection figure is a two-way total), and the gap widens with torus edge length.
 So on TPUs I would map expert parallelism onto a sub-torus (for example one or two 64-chip cubes), keep tensor parallelism on the shortest-latency axis, put data parallelism across the long axis, and use OCS slice shaping to pick a topology that matches the expert count, which is a lever Trainium does not have.
 The other side of the trade is that OCS slice shapes are compile-time inputs, so elastic resizing means recompiling and resharding, whereas a Trn3 UltraServer boundary is physical and fixed at 64 or 144 chips, with the failure of one server degrading the domain.
 I would decide on measured tokens per second per dollar at the p99 inter-token latency SLO for my actual routing skew, not on peak numbers, and I would keep the serving engine's parallelism config as data so a re-layout is a config change plus a compile-cache rebuild.
