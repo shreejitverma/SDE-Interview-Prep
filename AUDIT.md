@@ -8,7 +8,7 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 17353 |
+| Tracked files | 17354 |
 | Markdown notes | 2944 |
 | Internal links checked | 22661 |
 | Broken links (links into private locations are not counted) | 0 |
@@ -51,10 +51,10 @@ Re-run the script after every structural change; this file is its output and sho
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-10-25 |
 | `16-Interview-Command-Center` | 51 | 51 | 0 | 0 | 0 | 0.1 | 2026-10-25 |
 | `17-Cloud-AI-Engineering` | 162 | 162 | 0 | 0 | 0 | 8.9 | 2026-10-25 |
-| `18-Developer-Toolchain` | 365 | 343 | 12 | 0 | 10 | 0.8 | 2026-11-01 |
-| `19-Shell-and-Unix-Engineering` | 500 | 406 | 55 | 0 | 39 | 2.3 | 2026-10-27 |
+| `18-Developer-Toolchain` | 366 | 343 | 12 | 0 | 11 | 0.8 | 2026-11-01 |
+| `19-Shell-and-Unix-Engineering` | 520 | 406 | 69 | 0 | 45 | 2.6 | 2026-11-01 |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `tools` | 26 | 1 | 23 | 0 | 2 | 0.2 | 2026-10-26 |
+| `tools` | 26 | 1 | 23 | 0 | 2 | 0.2 | 2026-11-01 |
 
 ## 2. Duplicate and overlapping sections
 
