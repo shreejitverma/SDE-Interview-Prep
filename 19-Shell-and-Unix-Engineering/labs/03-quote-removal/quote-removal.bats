@@ -365,28 +365,13 @@ xargs_input() {
 }
 
 # xargs_flavor: print gnu, busybox, or bsd for the xargs that the shell under test finds first.
-# GNU is findutils 4.10.0 and BusyBox is 1.37.0; another build is "unknown" so the test fails.
+# Any other xargs is "unknown", so the test fails; the tests compare each flavor's exact messages.
 xargs_flavor() {
   local help kernel
   help=$(xargs --version 2>&1 || true)
   case "$help" in
-    *"GNU findutils"*)
-      if [ "${help%%$'\n'*}" = "xargs (GNU findutils) 4.10.0" ]; then
-        echo gnu
-      else
-        echo unknown
-      fi
-      return 0
-      ;;
-    *"BusyBox v1.37.0"*)
-      echo busybox
-      return 0
-      ;;
-    *) ;;
-  esac
-  help=$(xargs --help 2>&1 || true)
-  case "$help" in
-    *"BusyBox v1.37.0"*) echo busybox ;;
+    *"GNU findutils"*) echo gnu ;;
+    *BusyBox*) echo busybox ;;
     *)
       kernel=$(uname -s)
       if [ "$kernel" = Darwin ]; then

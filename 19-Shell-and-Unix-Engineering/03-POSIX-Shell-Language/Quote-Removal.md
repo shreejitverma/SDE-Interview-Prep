@@ -162,7 +162,7 @@ Utilities have their own quote removal when they read quoted text, and these are
 
 | Utility | Single quotes, double quotes, `\ ` | `"say \"hi\""` | Newline inside quotes |
 | :--- | :--- | :--- | :--- |
-| `xargs`, GNU findutils 4.10.0 | processed | exit 1, `xargs: unmatched double quote; by default quotes are special to xargs unless you use the -0 option` | exit 1, stdout `<x>`, stderr `xargs: unmatched single quote; by default quotes are special to xargs unless you use the -0 option` |
+| `xargs`, GNU findutils 4.9.0 and 4.10.0 | processed | exit 1, `xargs: unmatched double quote; by default quotes are special to xargs unless you use the -0 option` | exit 1, stdout `<x>`, stderr `xargs: unmatched single quote; by default quotes are special to xargs unless you use the -0 option` |
 | `xargs`, macOS (BSD) | processed | exit 1, `xargs: unterminated quote` | exit 1, `xargs: unterminated quote`, stdout empty |
 | `xargs`, BusyBox 1.37.0 | processed | exit 1, `xargs: unmatched double quote` | exit 0, `<x><a` newline `b><y>` |
 | `xargs`, uutils | not measured | not measured | not measured |
@@ -280,7 +280,7 @@ Run it with `bats labs/03-quote-removal/quote-removal.bats`, or `LAB_SHELL="dash
 > [!warning] Different quote rules in `xargs`
 > Trigger: `find . -name '*.txt' | xargs rm` with a file named `it's.txt`, or `"say \"hi\""` written for a shell but read by `xargs`.
 > Symptom: an unmatched quote in the input, such as the apostrophe of `it's.txt` or the lab's `'a\'b'`, makes `xargs` exit 1, and each implementation prints its own diagnostic (measured by the lab).
-> GNU findutils 4.10.0 prints `xargs: unmatched single quote; by default quotes are special to xargs unless you use the -0 option`, and for a quoted newline it writes `<x>` on stdout and that diagnostic on stderr.
+> GNU findutils 4.9.0 and 4.10.0 print `xargs: unmatched single quote; by default quotes are special to xargs unless you use the -0 option`, and for a quoted newline it writes `<x>` on stdout and that diagnostic on stderr.
 > BusyBox 1.37.0 prints `xargs: unmatched single quote`.
 > macOS `xargs` prints `xargs: unterminated quote` and leaves stdout empty.
 > The shell spelling `"say \"hi\""` is the same failure, with `double` in place of `single` on GNU and BusyBox, and the same `unterminated quote` text on macOS.

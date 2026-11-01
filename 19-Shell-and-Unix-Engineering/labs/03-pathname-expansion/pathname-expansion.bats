@@ -415,12 +415,12 @@ dots_listed() {
 
 @test "a pattern expands before exec, so a large directory overflows the argument limit of an external command" {
   mkdir "$BATS_TEST_TMPDIR/many"
-  run_lab "$LAB/many-files.sh" "$BATS_TEST_TMPDIR/many" 13000
+  run_lab "$LAB/many-files.sh" "$BATS_TEST_TMPDIR/many" 32000
   [ "$status" -eq 0 ]
-  # the shell itself expands all 13000 names, and a builtin needs no exec (printf is not a builtin in every shell)
+  # the shell itself expands all 32000 names, and a builtin needs no exec (printf is not a builtin in every shell)
   expand_in "$BATS_TEST_TMPDIR/many" 'set -- *; echo "$#"'
   [ "$status" -eq 0 ]
-  [ $((output)) -eq 13000 ]
+  [ $((output)) -eq 32000 ]
   # an external command receives them all as one argument vector, and exec refuses
   expand_in "$BATS_TEST_TMPDIR/many" 'rc=0; /bin/echo * >/dev/null || rc=$?; echo "rc=$rc"'
   [ "$status" -eq 0 ]
@@ -475,5 +475,5 @@ dots_listed() {
   # xargs splits the same names into batches that each fit, so none is lost
   expand_in "$BATS_TEST_TMPDIR/many" 'for f in *; do echo "$f"; done | xargs /bin/echo | wc -w'
   [ "$status" -eq 0 ]
-  [ $((output)) -eq 13000 ]
+  [ $((output)) -eq 32000 ]
 }

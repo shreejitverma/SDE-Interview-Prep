@@ -100,7 +100,7 @@ The gap is `fork` plus `execve` per iteration.
 | Required integer type | signed long, at least 32 bits by ISO C | POSIX.1-2024 XCU 2.6.4, XCU 1.1.2.1 and rationale C.2.6.4 |
 | Integer width in mksh | exactly 32 bits, silent wraparound; `lksh` uses `long` | mksh manual (Debian trixie page); lab test "integer width" |
 | Integer width elsewhere in the matrix | 64 bits: `2147483647 + 1` is `2147483648` | lab test "integer width" |
-| `9223372036854775807 + 1` | wraps to `-9223372036854775808` (bash, dash, zsh, BusyBox, posh), `0` (mksh), `9223372036854775808` (ksh93u+m, not a wrap), `9223372036854775807` (ksh93u+ 2012), error (yash) | lab test "signed overflow" |
+| `9223372036854775807 + 1` | wraps to `-9223372036854775808` (bash, dash, zsh, BusyBox, posh), `0` (mksh), `9223372036854775808` on aarch64 and `9.22337203685477581e+18` on x86-64 (ksh93u+m, not a wrap), `9223372036854775807` (ksh93u+ 2012), error (yash) | lab test "signed overflow" |
 | Digits that keep a sum of two operands inside 31 bits | 9 digits per operand (`999999999 + 999999999 = 1999999998`) | arithmetic; lab test "add of two nine-digit numbers" |
 | Digits that keep a product of two operands inside 31 bits | 4 digits per operand (`9999 * 9999 = 99980001`); 5 digits do not (`99999 * 99999 = 9999800001`) | arithmetic |
 | bash recursion depth for variable values | 1024 levels: a 1000-link chain works, a 1100-link chain fails | bash-5.3 expr.c `MAX_EXPR_RECURSION_LEVEL`; lab tests "1000-link chain" and "1100-link chain" |

@@ -120,10 +120,10 @@ None of these exists in POSIX sh, so a script that must run under `/bin/sh` cann
 | `getconf ARG_MAX` in the Alpine image (musl) | 131072, although the kernel limit is the stack-derived one: `/bin/echo` accepted 1.5 MB of arguments there and refused 2.6 MB | measured by hand (as of 2026-11); kernel rule from execve(2) |
 | Linux limit on all `argv` and `envp` strings | 1/4 of the soft stack limit, capped at 3/4 of 8 MiB (6 MiB) | execve(2) |
 | Linux limit on one argument string | 32 pages (128 KiB with 4 KiB pages) | execve(2) |
-| Fixture for the overflow test | 13000 names, 200 bytes each, about 2.6 MB of strings | the lab, `many-files.sh` |
-| A builtin counts all 13000 expanded names | 13000 | the lab, test 25 |
+| Fixture for the overflow test | 32000 names, 200 bytes each, about 6.4 MB of strings, above the 6 MiB Linux cap so that it overflows at any stack limit; 13000 names (2.6 MB) passed `/bin/echo` under a 16 MiB stack | the lab, `many-files.sh`; cap from execve(2); 16 MiB case measured by hand in the matrix image (as of 2026-11) |
+| A builtin counts all 32000 expanded names | 32000 | the lab, test 25 |
 | `/bin/echo *` over the same names | fails in every shell, with a diagnostic that the argument list is too long; status 126 in bash, dash, ksh93, mksh, yash, and BusyBox ash, status 127 in native zsh and `zsh --emulate sh`, status 1 in posh | the lab, test 25 |
-| `xargs` hands the same 13000 names to `/bin/echo` in batches | 13000 words in total | the lab, test 25 |
+| `xargs` hands the same 32000 names to `/bin/echo` in batches | 32000 words in total | the lab, test 25 |
 | Order of the lab fixture under `LC_ALL=C` | `-n B1 [x] ^c a.c a1 a[b b.c b.h dangling dir sp ace.c` | the lab, test 1 |
 | Order of the same names in bash 5.3 on the macOS host with `en_US.UTF-8` | `-n [x] ^c a.c a[b a1 b.c b.h B1 dangling dir sp ace.c` | measured by hand on the host (as of 2026-11) |
 
@@ -240,7 +240,7 @@ The lab passed all 26 tests in the macOS host shells (`/bin/sh`, `/bin/bash`, ba
 > bash, dash, ksh93, mksh, yash, and BusyBox ash return status 126; native zsh and `zsh --emulate sh` return 127; posh returns 1.
 > Each diagnostic says the argument list is too long (zsh spells that phrase in lower case, and ksh93 wraps it as "cannot execute").
 > Fix: `find dir -exec cmd {} +`, or `printf '%s\0' ./* | xargs -0 cmd` where `printf` is a builtin (`-0` is in POSIX.1-2024 xargs), which batches under the limit.
-> The lab's plainer `for f in *; do echo "$f"; done | xargs cmd` shows 13000 names that overflow `/bin/echo` yet pass through `xargs` intact, but only because those names hold no blanks or quotes: without `-0`, `xargs` split `a b` into two words and stopped at a stray `"` (measured in the Debian image, as of 2026-11).
+> The lab's plainer `for f in *; do echo "$f"; done | xargs cmd` shows 32000 names that overflow `/bin/echo` yet pass through `xargs` intact, but only because those names hold no blanks or quotes: without `-0`, `xargs` split `a b` into two words and stopped at a stray `"` (measured in the Debian image, as of 2026-11).
 
 > [!warning] `[^a]` and `[[:class:]]` are not portable
 > Trigger: `[^0-9]*` in a script run by dash, mksh, or posh.
@@ -342,7 +342,7 @@ Pin `LC_ALL=C` in scripts whose output order is read by something else.
 > > A builtin never calls `execve`, so the same list passes.
 > > Use `find dir -type f -exec rm {} +` or `printf '%s\0' ./* | xargs -0 rm`, which batch the names under the limit.
 > >
-> > Follow-up: Alpine's `getconf ARG_MAX` prints 131072 although the kernel limit follows the stack size; which of the two does the lab's 2.6 MB of names exceed, and how would you tell?
+> > Follow-up: Alpine's `getconf ARG_MAX` prints 131072 although the kernel limit follows the stack size; which of the two does `/bin/echo` obey, and how would you tell?
 
 > [!question] L7+: A security review finds `rm -f $UPLOAD_DIR/$name` where `name` comes from a user: how does unquoted expansion make it worse than a quoted version?
 >

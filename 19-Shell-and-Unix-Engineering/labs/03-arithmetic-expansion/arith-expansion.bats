@@ -213,7 +213,14 @@ run_chain() {
     yash) expect_error ;;
     ksh93)
       case $VERSION in
-        *93u+m*) expect_value 9223372036854775808 ;;
+        *93u+m*)
+          # ksh93u+m leaves the integer range here, and the digits it prints differ by machine (measured).
+          case $(uname -m) in
+            x86_64) expect_value 9.22337203685477581e+18 ;;
+            aarch64) expect_value 9223372036854775808 ;;
+            *) false ;;
+          esac
+          ;;
         *) expect_value 9223372036854775807 ;;
       esac
       ;;
