@@ -38,7 +38,7 @@ Part of [The POSIX Shell Language](README.md) in [Shell and Unix Engineering](..
 - Rule: assignments inside the expression take effect in the current shell, a variable name is read without a dollar sign, and `x` and `$x` are guaranteed to agree only when `x` holds a valid integer constant with an optional leading sign (POSIX.1-2024 XCU 2.6.4).
 - Trap: a value that is data to you is code to the evaluator - `010` is octal, `3-$x` with a negative `x` forms `--`, and in bash, mksh, posh and ksh93u+ a variable holding `a[$(cmd)]` runs `cmd` when named in an expression.
 - Portability: only signed long, the C operators, and the `$((` versus `$(` disambiguation are specified; `**`, `++`, `,`, `base#n`, `((...))` as a command, 64-bit width, overflow results and recursive evaluation of variable values all vary (measured in the shell matrix).
-- When not to use it: for untrusted input without validating it first, for anything needing floating point or more than 63 bits (use `awk` or `bc`), and for exit-status tests (`[ ]` over `$((...))` is the portable spelling).
+- When not to use it: for untrusted input without validating it first, for anything needing floating point (use `awk` or `bc`) or more than 63 bits (use `bc`; `awk` numbers are doubles, exact only to 2^53), and for exit-status tests (`[ ]` over `$((...))` is the portable spelling).
 
 ## Mental model
 
@@ -102,6 +102,7 @@ The gap is `fork` plus `execve` per iteration.
 | Integer width elsewhere in the matrix | 64 bits: `2147483647 + 1` is `2147483648` | lab test "integer width" |
 | `9223372036854775807 + 1` | wraps to `-9223372036854775808` (bash, dash, zsh, BusyBox, posh), `0` (mksh), `9223372036854775808` (ksh93u+m, not a wrap), `9223372036854775807` (ksh93u+ 2012), error (yash) | lab test "signed overflow" |
 | Digits that keep a sum of two operands inside 31 bits | 9 digits per operand (`999999999 + 999999999 = 1999999998`) | arithmetic; lab test "add of two nine-digit numbers" |
+| Digits that keep a product of two operands inside 31 bits | 4 digits per operand (`9999 * 9999 = 99980001`); 5 digits do not (`99999 * 99999 = 9999800001`) | arithmetic |
 | bash recursion depth for variable values | 1024 levels: a 1000-link chain works, a 1100-link chain fails | bash-5.3 expr.c `MAX_EXPR_RECURSION_LEVEL`; lab tests "1000-link chain" and "1100-link chain" |
 | zsh recursion depth | 254 links evaluate to 5 and 255 links fail (zsh 5.9 and 5.9.2); 1000 links fail | lab tests for the 255-link and 1000-link chains (as of October 2026) |
 | ksh93u+ 2012 recursion depth | 8 links evaluate to 5 and 9 links fail; 1000 links fail | lab tests for the 9-link and 1000-link chains, on ksh93u+ 2012-08-01 (as of October 2026) |
@@ -244,7 +245,7 @@ The validated script prints the same answer, `20`, for `add 010 010` in all of t
 > [!warning] Width and overflow are not portable
 > Trigger: hashing, timestamps in nanoseconds, or `2147483647 + 1` style counters computed in the shell.
 > Symptom: mksh wraps at 32 bits, ksh93u+m returns 2^63 instead of wrapping, ksh93u+ 2012 saturates, yash raises an error, the rest wrap at 64 bits - and ISO C leaves overflow undefined, so POSIX gives none of this.
-> Fix: bound the inputs (the lab uses 9 digits), or do the work in `awk` or `bc`.
+> Fix: bound the inputs for the operator in use (the lab's 9 digits protect sums only; a product of two operands needs at most 4 digits each), or do the work in `bc`, or in `awk` while results stay under 2^53.
 
 ## Security and robustness
 
@@ -340,7 +341,8 @@ Prefer `[ "$a" -lt "$b" ]` for comparisons in conditions, since it needs no exte
 > > [!success]- Answer
 > > POSIX requires only `signed long`, and overflow is undefined in ISO C, so each shell chooses: 64-bit wrap in bash and dash, 32-bit wrap in mksh, error in yash, saturation in ksh93u+ 2012.
 > > The script is relying on implementation behavior.
-> > Bound operand widths before multiplying (nine digits keeps sums safe in 31 bits), or do the computation in `awk` or `bc`, or in the language that owns the data.
+> > Bound operand widths before multiplying: two operands of at most 4 digits stay inside 31 bits (`9999 * 9999 = 99980001`), 5 digits do not (`99999 * 99999 = 9999800001`), and the 9-digit bound that protects sums does not protect products.
+> > Otherwise do the computation in `bc`, in `awk` while results stay under 2^53 (its numbers are doubles), or in the language that owns the data.
 > >
 > > Follow-up: how would you prove in a test that your bound holds on a 32-bit shell?
 

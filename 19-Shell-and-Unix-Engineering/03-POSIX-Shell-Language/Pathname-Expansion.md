@@ -208,7 +208,7 @@ show "$v"         1 args: <*.c>
 show $(printf "%s\n" *.c)   4 args: <a.c> <b.c> <sp> <ace.c>
 ```
 
-The lab passed all 25 tests in the macOS host shells (`/bin/sh`, `/bin/bash`, bash 5.3, dash, `/bin/ksh`, zsh, `zsh --emulate sh`), in the Debian image (`sh`, dash, bash, posh, ksh93u+m, mksh, BusyBox ash, zsh, `zsh --emulate sh`), and in the Alpine image (`sh`, BusyBox ash, mksh, yash, dash, zsh, `zsh --emulate sh`, and bash 3.2, 4.4, 5.1, 5.2, and 5.3).
+The lab passed all 26 tests in the macOS host shells (`/bin/sh`, `/bin/bash`, bash 5.3, dash, `/bin/ksh`, zsh, `zsh --emulate sh`), in the Debian image (`sh`, dash, bash, posh, ksh93u+m, mksh, BusyBox ash, zsh, `zsh --emulate sh`), and in the Alpine image (`sh`, BusyBox ash, mksh, yash, dash, zsh, `zsh --emulate sh`, and bash 3.2, 4.4, 5.1, 5.2, and 5.3).
 
 ## Pitfalls
 

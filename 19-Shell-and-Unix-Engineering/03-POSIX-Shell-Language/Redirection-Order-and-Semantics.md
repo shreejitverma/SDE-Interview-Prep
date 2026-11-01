@@ -121,7 +121,7 @@ The lab asserts exit statuses too: a failed redirection on a simple command retu
 | Soft `RLIMIT_NOFILE` in the Debian matrix container | 20480 (hard 1048576) | measured by hand 2026-10-27, rechecked with `ulimit -n` and `ulimit -Hn` in the container 2026-10-28 |
 | Bytes of `out 0\n` then `err\n` in `>f 2>f` | file ends as `err\n0\n` (6 bytes) | the lab, `order.sh` line `four.open` |
 | Redirections `order.sh` asserts per shell | 8 report lines | the lab |
-| Tests in the lab | 38, all passing in the 30 shell configurations listed under Worked example | the lab, run 2026-10-27 |
+| Tests in the lab | 34, all passing in the 30 shell configurations listed under Worked example | the lab, run 2026-11-01 |
 
 Syscall cost is two calls per file redirection (`open`, `dup2`) plus one `close` of the temporary; I did not measure it, so no timing is claimed.
 
@@ -245,8 +245,8 @@ A simplified excerpt of a test that proves the zsh-only behavior (`MULTIOS`) wit
 }
 ```
 
-The lab was run on 2026-10-27 under: macOS host `/bin/sh` (bash 3.2.57 POSIX mode), `/bin/bash`, bash 5.3, dash, `/bin/ksh` (ksh93u+ 2012), zsh, `zsh --emulate sh`, `bash --posix`; Alpine `sh` (BusyBox ash), `busybox ash`, bash, dash, mksh, yash, zsh, `zsh --emulate sh`, bash 3.2, 4.4, 5.1, 5.2, 5.3; Debian `sh` (dash), bash, dash, mksh, zsh, `zsh --emulate sh`, posh, ksh93u+m 1.0.10, BusyBox ash.
-All 38 tests passed in each of the 30 configurations.
+The lab was run on 2026-11-01 under: macOS host `/bin/sh` (bash 3.2.57 POSIX mode), `/bin/bash`, bash 5.3, dash, `/bin/ksh` (ksh93u+ 2012), zsh, `zsh --emulate sh`, `bash --posix`; Alpine `sh` (BusyBox ash), `busybox ash`, bash, dash, mksh, yash, zsh, `zsh --emulate sh`, bash 3.2, 4.4, 5.1, 5.2, 5.3; Debian `sh` (dash), bash, dash, mksh, zsh, `zsh --emulate sh`, posh, ksh93u+m 1.0.10, BusyBox ash.
+All 34 tests passed in each of the 30 configurations.
 
 ## Pitfalls
 

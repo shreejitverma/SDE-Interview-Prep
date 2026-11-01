@@ -138,11 +138,11 @@ Under native zsh this bare form is wrong, because MULTIOS also copies the comman
 | Shell families that pass `exec`-opened descriptors above 2 to children | 7 of 9 (all except ksh93 and mksh; mksh and ksh93u+m pass them on under `set -o posix`, an option ksh93u+ 2012 rejects) | lab, test "descriptors above 2 opened by exec" (2026-10) |
 | Delay a leaked pipe end adds to `$(...)` | the background job's lifetime, with the job started by an inner `/bin/sh`: 3 s for `sleep 3` in every measured shell except ksh93u+m 1.0.10, and under 3 s with `>/dev/null` in all of them | lab, test "a background child holding a duplicate" (2026-10) |
 | Descriptors open in a child of a bats test | 0, 1, 2, 3, 4 (bats holds 3 and 4) | measured with the lab's `fdprobe` (2026-10) |
-| Lab assertions passing | 26 of 26 in each of 30 shell configurations | lab run, 2026-10 |
+| Lab assertions passing | 27 of 27 in each of 30 shell configurations | lab run, 2026-11-01 |
 
 ## Portability
 
-Every cell is asserted by the lab or measured in the shell matrix on the same date (2026-10); cells the lab does not assert were re-measured by hand in 2026-11.
+Every cell is asserted by the lab or measured in the shell matrix on the date in its row; cells the lab does not assert were re-measured by hand in 2026-11.
 Versions: bash 3.2.57 (macOS), bash 3.2 to 5.3 (images), zsh 5.9 (5.9.2 on the macOS host), dash 0.5.12, ksh93u+m 1.0.10 and macOS ksh93u+ 2012-08-01, mksh R59 (2020/10/31 on Alpine, 2025/04/26 on Debian), yash 2.58.1, posh 0.14.1, BusyBox 1.37.0 ash.
 
 | Shell | Redirection error on a special built-in (`: >&9`) | `exec 8>f` then external child | `exec 10>f` | `{fd}>f` | `>&word`, word not a number | `>&$v` with `v=-` | built-in `echo` with stdout closed |
@@ -171,7 +171,7 @@ No shell reopens a closed 0, 1 or 2 on `/dev/null` for the child (lab, test "a c
 
 ## Worked example
 
-The lab is [lab](../labs/03-descriptor-duplication-and-closing/): `fdprobe.c` lists the descriptors an external process really inherited, `fd-idioms.sh` runs the classic idioms and reports what each stream received, and `test.bats` asserts 26 behaviors per shell.
+The lab is [lab](../labs/03-descriptor-duplication-and-closing/): `fdprobe.c` lists the descriptors an external process really inherited, `fd-idioms.sh` runs the classic idioms and reports what each stream received, and `test.bats` asserts 27 behaviors per shell.
 
 Simplified excerpt of `fd-idioms.sh` (the noisy command and the stderr filter; the real file adds the report and the mode dispatch):
 
@@ -239,7 +239,7 @@ Verbatim excerpt of the test that proves the ksh behavior and its escape hatch (
 }
 ```
 
-Run it with `cd labs/03-descriptor-duplication-and-closing && LAB_SHELL=dash bats test.bats`; the expected TAP summary is `1..26` followed by 26 `ok` lines, and the matrix run (2026-10) printed 26 `ok` lines in each of the 30 configurations (8 on the macOS host: `/bin/sh`, `/bin/bash`, bash 5.3, `sh` on `PATH` (bash 5.3 in POSIX mode), dash, `/bin/ksh`, zsh native and `--emulate sh`; 9 on Debian; 13 on Alpine including bash 3.2, 4.4, 5.1, 5.2 and 5.3).
+Run it with `cd labs/03-descriptor-duplication-and-closing && LAB_SHELL=dash bats test.bats`; the expected TAP summary is `1..27` followed by 27 `ok` lines, and the matrix run (2026-11-01) printed 27 `ok` lines in each of the 30 configurations (8 on the macOS host: `/bin/sh`, `/bin/bash`, bash 5.3, `sh` on `PATH` (bash 5.3 in POSIX mode), dash, `/bin/ksh`, zsh native and `--emulate sh`; 9 on Debian; 13 on Alpine including bash 3.2, 4.4, 5.1, 5.2 and 5.3).
 
 ## Pitfalls
 

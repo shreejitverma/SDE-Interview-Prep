@@ -380,17 +380,13 @@ run_chain() {
 @test "prefix increment changes the variable in most shells but silently does nothing in dash" {
   run_lab_c 'exec 2>/dev/null; x=3; echo $((++x)) $x'
   case $FAMILY in
-    bash | ksh93 | zsh | zsh-sh | busybox | mksh | posh)
+    bash | ksh93 | zsh | zsh-sh | busybox | mksh | posh | yash)
       [ "$status" -eq 0 ]
       [ "$output" = "4 4" ]
       ;;
     dash)
       [ "$status" -eq 0 ]
       [ "$output" = "3 3" ]
-      ;;
-    yash)
-      [ "$status" -eq 0 ]
-      [ "$output" = "4 4" ]
       ;;
     *) false ;;
   esac

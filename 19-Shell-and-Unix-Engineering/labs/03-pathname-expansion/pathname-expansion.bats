@@ -403,6 +403,16 @@ dots_listed() {
   esac
 }
 
+@test "many-files.sh fills a directory named by a relative path" {
+  mkdir "$BATS_TEST_TMPDIR/rel" "$BATS_TEST_TMPDIR/rel/many"
+  cd "$BATS_TEST_TMPDIR/rel" || return 1
+  run_lab "$LAB/many-files.sh" many 3
+  [ "$status" -eq 0 ]
+  [ -e "many/$(printf '%0200d' 3)" ]
+  set -- many/*
+  [ "$#" -eq 3 ]
+}
+
 @test "a pattern expands before exec, so a large directory overflows the argument limit of an external command" {
   mkdir "$BATS_TEST_TMPDIR/many"
   run_lab "$LAB/many-files.sh" "$BATS_TEST_TMPDIR/many" 13000

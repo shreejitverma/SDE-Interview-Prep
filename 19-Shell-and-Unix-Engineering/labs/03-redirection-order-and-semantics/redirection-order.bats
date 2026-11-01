@@ -12,11 +12,6 @@ setup() {
   ORDER=$BATS_TEST_DIRNAME/order.sh
 }
 
-# has_line LINE: succeed when LINE is one whole line of $output.
-has_line() {
-  printf '%s\n' "$output" | grep -Fxq -- "$1"
-}
-
 # bash_posix_mode: succeed when the shell under test has bash's posix option on (for example bash
 # started as sh); it does not touch $status or $output.
 bash_posix_mode() {
@@ -42,6 +37,7 @@ bash_ambiguous() {
 @test "order.sh prints exactly the report the note documents" {
   run_lab "$ORDER" "$D"
   [ "$status" -eq 0 ]
+  # four.open: the second truncating open starts at offset 0 and "err\n" overwrites "out " in "out 0\n"
   [ "$output" = "one=[out 0|err|]
 two.file=[out 0|]
 two.outer=[err|]
@@ -50,35 +46,6 @@ three.stderr=[out 0|]
 four.dup=[out 0|err|]
 four.open=[err|0|]
 four.append=[out 0|err|]" ]
-}
-
-@test ">file 2>&1 sends both streams to the file, in the order they were written" {
-  run_lab "$ORDER" "$D"
-  [ "$status" -eq 0 ]
-  has_line 'one=[out 0|err|]'
-}
-
-@test "2>&1 >file copies the old stdout first, so only stdout reaches the file" {
-  run_lab "$ORDER" "$D"
-  [ "$status" -eq 0 ]
-  has_line 'two.file=[out 0|]'
-  has_line 'two.outer=[err|]'
-}
-
-@test "3>&1 1>&2 2>&3 swaps stdout and stderr through a spare descriptor" {
-  run_lab "$ORDER" "$D"
-  [ "$status" -eq 0 ]
-  has_line 'three.stdout=[err|]'
-  has_line 'three.stderr=[out 0|]'
-}
-
-@test "a duplicate shares one offset, two opens of the same file do not, O_APPEND repairs it" {
-  run_lab "$ORDER" "$D"
-  [ "$status" -eq 0 ]
-  has_line 'four.dup=[out 0|err|]'
-  # the second truncating open starts at offset 0 and "err\n" overwrites "out " in "out 0\n"
-  has_line 'four.open=[err|0|]'
-  has_line 'four.append=[out 0|err|]'
 }
 
 @test "command substitution idiom: 2>&1 >/dev/null captures stderr, the reverse captures nothing" {

@@ -7,10 +7,11 @@
  */
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
 
 int main(int argc, char **argv)
 {
-  FILE *out = (argc > 1 && argv[1][0] == '-' && argv[1][1] == 'e') ? stderr : stdout;
+  FILE *out = (argc > 1 && strcmp(argv[1], "-e") == 0) ? stderr : stdout;
   int fd;
 
   for (fd = 0; fd < 64; fd++) {
