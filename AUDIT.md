@@ -8,9 +8,9 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 17333 |
+| Tracked files | 17353 |
 | Markdown notes | 2944 |
-| Internal links checked | 22598 |
+| Internal links checked | 22661 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
