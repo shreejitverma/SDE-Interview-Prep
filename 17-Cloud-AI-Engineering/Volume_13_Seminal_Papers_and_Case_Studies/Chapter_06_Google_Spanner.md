@@ -2,7 +2,7 @@
 type: paper
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/system/files/conference/osdi12/osdi12-final-16.pdf"
@@ -22,6 +22,27 @@ sources:
   - "https://wsts.atis.org/wp-content/uploads/2025/04/WSTS25_DemocratizingandScalingAccurateTimeforDistributedApplications_LevinsonRidoux_Final.pdf"
   - "https://aws.amazon.com/about-aws/whats-new/2025/06/amazon-dynamo-db-global-tables-multi-region-strong-consistency-generally-available/"
   - "https://www.cockroachlabs.com/blog/living-without-atomic-clocks/"
+  - "https://cloud.google.com/spanner/pricing"
+  - "https://docs.cloud.google.com/spanner/docs/release-notes"
+  - "https://docs.cloud.google.com/spanner/docs/replication"
+  - "https://docs.cloud.google.com/spanner/docs/transactions"
+  - "https://docs.cloud.google.com/spanner/docs/cmek"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/spanner/instances/create"
+  - "https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45855.pdf"
+  - "https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/46103.pdf"
+  - "https://blog.cloudflare.com/how-and-why-the-leap-second-affected-cloudflare-dns/"
+  - "https://developers.google.com/time/smear"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/05/amazon-aurora-dsql-generally-available/"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/CHAP_quotas.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/disaster-recovery-resiliency.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/what-is-aurora-dsql.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-concurrency-control.html"
+  - "https://aws.amazon.com/blogs/database/everything-you-dont-need-to-know-about-amazon-aurora-dsql-part-3-transaction-processing/"
+  - "https://brooker.co.za/blog/2024/12/04/inside-dsql.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/set-time.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configure-ec2-ntp.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/DocumentHistory.html"
+  - "https://docs.cockroachlabs.com/docs/stable/architecture/transaction-layer"
 ---
 
 # Google Spanner: Globally-Distributed Database (2012 OSDI)
@@ -100,7 +121,7 @@ Writes must start Paxos at the leader.
 Reads can be served directly from any replica that is "sufficiently up to date", a term defined precisely below under safe time.
 Leaders are long-lived and hold time-based leases, 10 seconds by default.
 A replica grants a lease vote and promises not to vote for another leader until the lease expires.
-A leader extends its lease by sending lease votes along with successful writes.
+A replica extends its lease vote implicitly on a successful write, and the leader requests lease-vote extensions when they near expiration (Corbett et al., OSDI 2012).
 The mechanism a getting-started guide never shows is the *disjointness invariant*: for each Paxos group, the lease intervals of any two leaders do not overlap in absolute time.
 Spanner uses TrueTime to enforce it.
 Let `s_max` be the largest timestamp a leader has ever assigned.
@@ -112,9 +133,9 @@ Raft's leader-lease read optimization makes the same bet on bounded clock drift,
 On top of Paxos, each leader runs two more components.
 The *lock table* implements two-phase locking with *wound-wait* deadlock avoidance: an older transaction wounds (aborts) a younger lock holder, while a younger one waits for an older holder.
 The *transaction manager* handles distributed transactions; the leader whose group takes part in a transaction is the *participant leader*.
-Locks live only at the leader and are never replicated through Paxos.
+Locks live only at the leader and are held in memory only (Bacon et al., SIGMOD 2017).
 Losing the leader therefore loses in-memory locks, causing uncommitted, un-prepared in-flight read-write transactions on that group to abort.
-Prepared participants survive because prepare records are Paxos-logged; the new leader recovers them and reacquires the locks.
+Prepared participants survive because prepare records are Paxos-logged and transaction manager state is replicated through the group (Corbett et al., OSDI 2012); neither paper spells out how a new leader rebuilds the locks of a prepared transaction.
 That is cheaper than replicating lock state on every read, and safe, because nothing reaches durable storage without a Paxos-logged commit.
 
 ### Directories, splits, and placement
@@ -126,7 +147,7 @@ In Cloud Spanner this surfaces as *splits*, plus *interleaved tables*, which sto
 Interleaving is not a cosmetic schema feature.
 It is how you keep a parent and its children inside one split.
 A transaction touching both then stays a single-group transaction and skips 2PC entirely.
-The production quotas page also documents a pre-splitting API, which lets you create split points ahead of a known load spike instead of waiting for load-based splitting (Google Cloud docs, as of 2026-10).
+The production quotas page also documents a pre-splitting API, which lets you create split points ahead of a known load spike instead of waiting for load-based splitting (Google Cloud docs, as of 2026-11).
 
 ### TrueTime: implementation and how the error bound is built
 
@@ -137,7 +158,7 @@ The API is three calls.
 Epsilon is half the width of the interval.
 The guarantee is that true time at the moment `TT.now()` is called lies inside the returned interval.
 Google's later product documentation restates the property operationally.
-If one `TT.now()` call finishes before another begins, even on a different machine, the second call's `latest` is later than the first call's `earliest` (Google Cloud Spanner Omni docs, as of 2026-10).
+If one `TT.now()` call finishes before another begins, even on a different machine, the second call's `latest` is later than the first call's `earliest` (Google Cloud Spanner Omni docs, as of 2026-11).
 
 Each datacenter runs several *time masters*.
 Most have GPS receivers with dedicated antennas.
@@ -194,7 +215,7 @@ Google's own walk-through of the commit sequence has six steps:
 
 Because the timestamp is fixed in step 1 and the wait happens in step 3, the wait runs in parallel with the quorum round trip (Google Cloud blog, "Strict Serializability and External Consistency in Spanner").
 The Spanner Omni TrueTime documentation states the consequence directly.
-TrueTime uncertainty does not add commit latency as long as it is smaller than the Paxos round-trip latency (Google Cloud docs, as of 2026-10).
+TrueTime uncertainty does not add commit latency as long as it is smaller than the Paxos round-trip latency (Google Cloud docs, as of 2026-11).
 Our derivation gives the slightly stricter condition that the wait is fully hidden only when the Paxos round trip is at least `2 * epsilon`.
 
 There is a second-order effect most users miss: locks are released only after commit wait (step 5 after step 3).
@@ -211,7 +232,7 @@ The client drives a multi-group transaction.
 It buffers all writes locally, so reads inside a paper-era transaction do not see that transaction's own buffered writes.
 It sends reads to the leaders of the groups involved, and those reads take read locks.
 When ready to commit, the client picks one group as coordinator.
-It sends the commit message to the coordinator leader, along with the coordinator's identity and the buffered writes for each participant.
+It sends a commit message to each participant's leader, along with the coordinator's identity and any buffered writes (Corbett et al., OSDI 2012).
 Having the client send each group's writes straight to that group means the data crosses the wide-area network once instead of twice.
 
 Each non-coordinator participant leader then does four things:
@@ -226,7 +247,7 @@ It chooses a commit timestamp `s` that satisfies three conditions:
 - `s` is greater than `TT.now().latest` at the moment the coordinator received the commit message.
 - `s` is greater than any timestamp the coordinator has assigned before.
 
-It logs the commit record through Paxos, or an abort if a participant did not prepare.
+It logs the commit record through Paxos, or an abort if it timed out waiting on the other participants.
 It then performs commit wait and sends `s` to the client and all participants.
 Each participant logs the outcome through Paxos, applies the writes at `s`, and releases its locks.
 Classic 2PC blocks if the coordinator dies after participants have prepared.
@@ -277,9 +298,10 @@ Cloud Spanner exposes three replica roles:
 - Witness replicas vote, and so help form quorums, but do not serve reads.
 
 Multi-region configurations also have a *default leader region*, where Paxos leaders are placed by preference, which fixes where write latency is paid.
-Today, dual-region and multi-region configurations require the Enterprise Plus edition (Google Cloud docs, as of 2026-10).
+Today, dual-region and multi-region configurations require the Enterprise Plus edition (Google Cloud docs, as of 2026-11).
 Eric Brewer's 2017 paper "Spanner, TrueTime and the CAP Theorem" frames Spanner as technically CP (consistent and partition-tolerant, giving up availability during a partition).
-He argues it is effectively CA (consistent and available) because Google's private network makes partitions rare relative to other causes of downtime (UNVERIFIED: exact incident-cause percentages).
+He argues it is effectively CA (consistent and available) because Google's private network makes partitions rare relative to other causes of downtime.
+His Spanner incident table, counted by frequency rather than impact, attributes 52.5% to user error, 13.3% to bugs, 12.1% to cluster problems, 10.9% to other causes, 7.6% to network, and 3.7% to operators (Brewer, 2017).
 For the GCP product view, see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_10_Cloud_Spanner_TrueTime_and_External_Consistency|Cloud Spanner: TrueTime and External Consistency]].
 For AWS's answer to the same problem, see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_12_Aurora_DSQL_Multi_Region_Active_Active_SQL|Aurora DSQL]].
 
@@ -294,47 +316,47 @@ For AWS's answer to the same problem, see [[17-Cloud-AI-Engineering/Volume_02_AW
 | Default Paxos leader lease | 10 s | Corbett et al., OSDI 2012 |
 | Tablets per spanserver | 100 to 1000 | Corbett et al., OSDI 2012 |
 | Idle-group MinNextTS advance | 8 s default | Corbett et al., OSDI 2012 |
-| Compute unit | 1 node = 1000 processing units (PU) | Google Cloud pricing, as of 2026-10 |
-| Storage per compute | 1024 GiB per 100 PU below 1 node; 10 TiB per node at 1 node and above | Google Cloud docs, as of 2026-10 |
-| Commit size limit | 100 MiB, including indexes and change streams | Google Cloud docs, as of 2026-10 |
-| Mutations per commit, Mutation API | 80,000, including indexes | Google Cloud docs, as of 2026-10 |
-| Mutations per DML statement | 80,000, enforced per statement since 2026-08-11 | Google Cloud release notes, as of 2026-10 |
-| Mutation limit history | 20,000 to 40,000 (2022-09), to 80,000 (2023-12) | Google Cloud release notes, as of 2026-10 |
-| Non-commit request size | 10 MiB | Google Cloud docs, as of 2026-10 |
-| Concurrent reads per session | 100 | Google Cloud docs, as of 2026-10 |
-| Pre-split points per API request | 100; 10 per minute per node; 200 per day per node | Google Cloud docs, as of 2026-10 |
-| Standard edition compute | From $0.030 per 100 PU per hour per replica | Google Cloud pricing, as of 2026-10 |
-| Enterprise edition compute | From $0.041 per 100 PU per hour per replica | Google Cloud pricing, as of 2026-10 |
-| Enterprise Plus edition compute | From $0.057 per 100 PU per hour per replica | Google Cloud pricing, as of 2026-10 |
-| Data Boost | From $0.00117 per serverless PU per hour | Google Cloud pricing, as of 2026-10 |
-| Availability SLA | 99.99% Standard and Enterprise (regional); up to 99.999% Enterprise Plus (dual-region, multi-region) | Google Cloud docs, as of 2026-10 |
-| Aurora DSQL | GA 2025-05-27; designed for 99.99% single-Region and 99.999% multi-Region | AWS What's New, as of 2026-10 |
-| DynamoDB global tables strong consistency (MRSC) | GA 2025-06-30, RPO zero | AWS What's New, as of 2026-10 |
-| Amazon Time Sync, PTP hardware clock | About 20 microseconds in-guest clock error bound | AWS talk at WSTS 2025, as of 2026-10 |
-| Amazon Time Sync, NTP | About 80 microseconds in-guest clock error bound | AWS talk at WSTS 2025, as of 2026-10 |
-| Aurora DSQL transaction and connection caps | 5 min max transaction; 60 min max connection | AWS re:Invent DEV308 summary, as of 2026-10 (secondary source) |
+| Compute unit | 1 node = 1000 processing units (PU) | Google Cloud pricing, as of 2026-11 |
+| Storage per compute | 1024 GiB per 100 PU below 1 node; 10 TiB per node at 1 node and above | Google Cloud docs, as of 2026-11 |
+| Commit size limit | 100 MiB, including indexes and change streams | Google Cloud docs, as of 2026-11 |
+| Mutations per commit, Mutation API | 80,000, including indexes | Google Cloud docs, as of 2026-11 |
+| Mutations per DML statement | 80,000, enforced per statement since 2026-08-11 | Google Cloud release notes, as of 2026-11 |
+| Mutation limit history | 20,000 to 40,000 (2022-09), to 80,000 (2023-12) | Google Cloud release notes, as of 2026-11 |
+| Non-commit request size | 10 MiB | Google Cloud docs, as of 2026-11 |
+| Concurrent reads per session | 100 | Google Cloud docs, as of 2026-11 |
+| Pre-split points per API request | 100; 10 per minute per node; 200 per day per node | Google Cloud docs, as of 2026-11 |
+| Standard edition compute | From $0.030 per 100 PU per hour per replica | Google Cloud pricing, as of 2026-11 |
+| Enterprise edition compute | From $0.041 per 100 PU per hour per replica | Google Cloud pricing, as of 2026-11 |
+| Enterprise Plus edition compute | From $0.057 per 100 PU per hour per replica | Google Cloud pricing, as of 2026-11 |
+| Data Boost | From $0.00117 per serverless PU per hour | Google Cloud pricing, as of 2026-11 |
+| Availability SLA | 99.99% Standard and Enterprise (regional); up to 99.999% Enterprise Plus (dual-region, multi-region) | Google Cloud docs, as of 2026-11 |
+| Aurora DSQL | GA 2025-05-27; designed for 99.99% single-Region and 99.999% multi-Region | AWS What's New, as of 2026-11 |
+| DynamoDB global tables strong consistency (MRSC) | GA 2025-06-30, RPO zero | AWS What's New, as of 2026-11 |
+| Amazon Time Sync, PTP hardware clock | About 20 microseconds in-guest clock error bound | AWS talk at WSTS 2025, as of 2026-11 |
+| Amazon Time Sync, NTP | About 80 microseconds in-guest clock error bound | AWS talk at WSTS 2025, as of 2026-11 |
+| Aurora DSQL transaction and connection caps | 5 min max transaction; 60 min max connection; 3,000 rows mutated and 10 MiB modified per transaction | AWS docs, as of 2026-11 |
 
 A sanity check on pricing: a regional Standard configuration has three read-write replicas, so one node costs `10 x $0.030 x 3 = $0.90` per hour, about $657 per 730-hour month.
-That matches third-party summaries of regional node-hour pricing.
+That matches the $0.90 per node-hour Google lists for Standard in us-central1, where the per-replica rates above are derived from the listed $0.90, $1.23, and $1.71 node-hour prices divided by 10 and by 3 replicas (Google Cloud pricing, as of 2026-11).
 "Starting at" prices vary by region, so check the pricing page for your region before committing a budget.
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | Google Spanner | AWS (Aurora DSQL, DynamoDB MRSC) |
 | --- | --- | --- |
-| Time source | TrueTime: GPS plus atomic-clock masters per datacenter, timeslave with Marzullo intersection | Amazon Time Sync: GPS-disciplined reference clocks in the Nitro System, exposed as NTP and as a PTP hardware clock |
+| Time source | TrueTime: GPS plus atomic-clock masters per datacenter, timeslave with Marzullo intersection | Amazon Time Sync: a fleet of satellite-connected and atomic reference clocks in each Region, exposed as NTP and as a PTP hardware clock that is part of the Nitro System (AWS docs, as of 2026-11) |
 | Clock error exposure | Internal `TT.now()` interval; not a customer API on Cloud Spanner | Open-source ClockBound returns a timestamp plus error bound to any EC2 workload |
-| Typical uncertainty | About 1 to 7 ms in 2012; Google says it is hidden when smaller than the Paxos RTT | About 20 microseconds (PHC) or 80 microseconds (NTP) in-guest (AWS, 2025) |
+| Typical uncertainty | About 1 to 7 ms in 2012; under 1 ms at the 99th percentile in Google's later blog post; Google says it is hidden when smaller than the Paxos RTT | About 20 microseconds (PHC) or 80 microseconds (NTP) in-guest (AWS, 2025) |
 | Concurrency control | Pessimistic 2PL with wound-wait at Paxos leaders | Aurora DSQL is optimistic: conflicts are checked at commit by adjudicators |
 | Ordering primitive | Commit timestamp plus commit wait gives external consistency | Hybrid of physical time and logical ordering (AWS DSQL clocks blog) |
-| Replication unit | Paxos group per split; leader lease 10 s | DSQL: journal and storage replicas across AZs; multi-Region uses peered Regions plus a witness (UNVERIFIED topology details) |
+| Replication unit | Paxos group per split; leader lease 10 s | DSQL: transaction log synchronously replicated to storage replicas in three AZs; multi-Region uses two peered Regions plus a witness Region that stores only encrypted transaction logs and has no endpoint (AWS docs, as of 2026-11) |
 | Cross-shard transactions | 2PC over Paxos groups, client-driven, coordinator skips prepare | DSQL: commit through adjudicator and journal, no client-held locks |
 | Hot-key behavior | Serialized by lock hold time, including commit wait | Under OCC, conflicting commits abort and the client retries; heavy contention means abort storms |
-| Reads | Strong reads anywhere (may cost a leader round trip); bounded-staleness reads served locally | DSQL reads served locally at a snapshot timestamp |
+| Reads | Strong reads anywhere (may cost a leader round trip); bounded-staleness reads served locally | DSQL reads go to the nearest replica at a snapshot start timestamp, without going to a leader (Brooker, AWS, 2024) |
 | SQL dialect | GoogleSQL and PostgreSQL interface | PostgreSQL-compatible subset |
 | Availability design | Up to 99.999% (Enterprise Plus multi-region) | Up to 99.999% multi-Region (DSQL, DynamoDB global tables) |
 | Pricing model | Provisioned PU per replica per hour, plus storage; serverless Data Boost for analytics | DSQL is serverless and billed per usage; DynamoDB is billed per request or provisioned capacity |
-| Transaction limits | 80,000 mutations, 100 MiB per commit | DSQL: 5 min transaction cap, per-transaction row-modification cap (secondary source) |
+| Transaction limits | 80,000 mutations, 100 MiB per commit | DSQL: 5 min transaction cap, 3,000 rows mutated and 10 MiB modified per transaction (AWS docs, as of 2026-11) |
 | Maturity | Paper 2012; production at Google for over a decade | DSQL GA 2025-05; DynamoDB MRSC GA 2025-06 |
 
 The deep difference is not the clock hardware.
@@ -350,7 +372,7 @@ It uses hybrid logical clocks with a configured maximum clock offset instead of 
 ### Cost estimate and budget alarm
 
 The lab uses one regional Standard instance at 100 PU.
-Compute costs `1 x $0.030 x 3 replicas = $0.09` per hour (Google Cloud pricing, as of 2026-10).
+Compute costs `1 x $0.030 x 3 replicas = $0.09` per hour (Google Cloud pricing, as of 2026-11).
 A three-hour lab costs about $0.27 in compute; storage for a few thousand rows is negligible.
 Set a $10 budget with alerts anyway, because a forgotten instance costs about $66 per month.
 
@@ -513,7 +535,7 @@ Example workload:
 - A peak of 8,000 read-write transactions per second and 60,000 point reads per second.
 - A customer requirement for zero recovery point objective (RPO) under the loss of a region.
 
-Step 1, storage floor: 30 TiB / 10 TiB per node = 3 nodes minimum (Google Cloud docs, as of 2026-10).
+Step 1, storage floor: 30 TiB / 10 TiB per node = 3 nodes minimum (Google Cloud docs, as of 2026-11).
 Step 2, throughput: run a load test at your target CPU utilization and measure per-node capacity.
 For illustration only, assume the test shows 1,000 read-write transactions per second per node and 10,000 point reads per second per node.
 These are not Google-published figures.
@@ -522,7 +544,8 @@ Step 3, regional Standard cost: `14 nodes x $0.90/h x 730 h = $9,198` per month 
 Step 4, zero RPO across regions requires dual-region or multi-region, which means Enterprise Plus.
 At $0.057 per 100 PU per replica-hour, one node costs `$0.57 x R` per hour, where R is the number of billed replicas in the chosen configuration.
 With R = 5: `14 x $2.85 x 730 = $29,127` per month, about 3.2 times the regional bill, before storage and network.
-Whether witness replicas count toward R is UNVERIFIED; check the configuration's pricing line.
+Witness replicas appear to count toward R for compute: Google bills a base multi-region node as five or more replicas, and `nam-eur-asia1`, with eight read-write and read-only replicas plus one witness, lists at $5.13 per node-hour, which is 9 x $0.57.
+Witness replicas carry no storage cost (Google Cloud pricing, as of 2026-11).
 Step 5, the hot-row ceiling.
 Suppose the leader region's nearest voting replica is in another region with about 25 ms round-trip time (RTT), a physics-based estimate.
 Lock hold time is then at least about 25 ms plus client round trips, so a single hot account sustains about 30 to 40 serialized debits per second.
@@ -555,8 +578,8 @@ DML statements behave differently, and mixing the two styles inside one transact
 
 ### Mutation and commit limits on bulk operations
 
-A large `DELETE` or backfill fails once it exceeds 80,000 mutations or 100 MiB, and index entries count against the mutation limit (Google Cloud docs, as of 2026-10).
-Since 2026-08-11, the DML limit is enforced per statement rather than across the whole transaction (Google Cloud release notes, as of 2026-10).
+A large `DELETE` or backfill fails once it exceeds 80,000 mutations or 100 MiB, and index entries count against the mutation limit (Google Cloud docs, as of 2026-11).
+Since 2026-08-11, the DML limit is enforced per statement rather than across the whole transaction (Google Cloud release notes, as of 2026-11).
 Transactions that previously failed may now succeed and hold locks much longer.
 Use Partitioned DML for table-wide changes, which gives up atomicity across the whole table in exchange for not holding a giant lock set.
 
@@ -574,8 +597,9 @@ Never fall back to the raw system clock.
 ### Leap seconds and time stepping
 
 Clock-dependent systems break when time steps or repeats.
-Cloudflare's DNS outage on 2017-01-01 came from code that assumed time never goes backwards, which broke when the leap second was inserted (UNVERIFIED: recalled from Cloudflare's public post-mortem, not re-checked this session).
-Google and AWS time services smear leap seconds over a long window instead of stepping the clock.
+Cloudflare's partial DNS outage on 2017-01-01 came from code that assumed time never goes backwards: a negative duration from Go's non-monotonic `time.Now()` reached `rand.Int63n()`, which panicked, and about 0.2% of DNS queries were affected at peak ([Cloudflare post-mortem](https://blog.cloudflare.com/how-and-why-the-leap-second-affected-cloudflare-dns/)).
+Google smears leap seconds linearly over 24 hours, and AWS smears them on its NTP sources, instead of stepping the clock (Google and AWS docs, as of 2026-11).
+The AWS PTP hardware clock does not smear, and AWS recommends against using smeared and non-smeared sources together during a leap second (AWS docs, as of 2026-11).
 If you mix smeared and non-smeared time sources in one fleet, the two can disagree by up to the full smear offset.
 That breaks any assumption of an error bound below 1 second.
 
@@ -632,7 +656,7 @@ Pick the cheapest edition that meets your availability need.
 Regional Standard costs $0.030 per 100 PU per replica-hour, against $0.057 for Enterprise Plus.
 That gap is 1.9x per replica-hour before counting the extra replicas.
 Buying multi-region "just in case" is the single largest Spanner overspend pattern.
-Enterprise includes managed autoscaling, and committed use discounts apply to compute (Google Cloud pricing, as of 2026-10).
+Enterprise includes managed autoscaling, and committed use discounts apply to compute (Google Cloud pricing, as of 2026-11).
 Interleave child tables to cut 2PC.
 Fewer multi-group transactions means less CPU and fewer lock-hold milliseconds per business operation.
 Every secondary index multiplies mutations and can turn a single-group write into a multi-group 2PC.
@@ -793,7 +817,7 @@ What is missing is everything Spanner built on top of it, each piece a multi-yea
 Building it also creates new operational failure domains.
 Clock-bound unavailability must stop timestamp issuance.
 Leap-second smear must be consistent across the whole fleet.
-Instance types without hardware-clock support must be kept out of the fleet; the June 2026 Precision Time Placement Groups launch shows that support is still instance-type-specific.
+Instance types without hardware-clock support must be kept out of the fleet; the June 2026 precision-time placement group launch shows that support is still instance-type-specific, limited to listed Gen7 and later families (AWS docs, as of 2026-11).
 Aurora DSQL already uses Time Sync for ordering and is designed for 99.999% multi-Region availability.
 It became GA in May 2025.
 Its constraints are real, though: optimistic concurrency, a cap on transaction duration, a PostgreSQL-compatible subset, and young operational history.
@@ -819,12 +843,12 @@ During a real partition that isolates a Paxos leader from its quorum, the minori
 Strong reads that need the leader also block, so Spanner chooses consistency over availability on the minority side and is CP.
 The claim, which Brewer makes in his 2017 paper, is that these partitions are rare enough that measured availability exceeds 99.999%.
 Two things make them rare.
-Google runs the network end to end with redundant paths, so partitions are a small share of incidents next to operator error, bugs, and user error.
+Google runs the network end to end with redundant paths, so the network category, which includes partitions, is 7.6% of Spanner incidents next to 52.5% user error, 13.3% bugs, and 12.1% cluster problems (Brewer, 2017).
 And quorum placement keeps a majority reachable through any single zone or region loss.
 So "effectively CA" is an empirical statement about one operator's failure distribution, not a theorem.
 It does not carry over to a self-hosted clone on a network you do not control.
 For the CTO I would turn this into contract terms.
-The SLA applies to Enterprise Plus multi-region configurations, at up to 99.999%, while regional configurations are 99.99% (Google Cloud docs, as of 2026-10).
+The SLA applies to Enterprise Plus multi-region configurations, at up to 99.999%, while regional configurations are 99.99% (Google Cloud docs, as of 2026-11).
 Our application's availability is that SLA multiplied by our own dependencies: KMS, IAM, the network to Google, and our serving tier.
 That product usually lands well below five nines unless each of those dependencies is also designed to stay statically stable.
 Then I would ask what we gain.

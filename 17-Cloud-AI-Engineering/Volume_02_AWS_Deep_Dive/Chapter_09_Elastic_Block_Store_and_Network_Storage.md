@@ -122,7 +122,7 @@ A learner with log gaps that no peer can fill runs a procedure the authors call 
 Cells reconfigure membership using the Paxos-in-the-log approach from Lampson's 1996 consensus paper, which lets a cell migrate node by node without a separate membership service.
 The control plane deliberately gives each node a different mix of cells, so a poison-pill transaction or a load spike that kills nodes of one cell cannot take down an aligned set of other cells.
 The authors also emphasize misuse resistance: the API is shaped so that a buggy client cannot easily drive a cell into an unsafe state.
-For the full paper treatment see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_03_Physalia_EBS_Control_Plane|Physalia: Millions of Distributed Databases]] and for the general pattern see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]].
+For the full paper treatment see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_03_Physalia_EBS_Control_Plane|Physalia: Millions of Tiny Databases]] and for the general pattern see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]].
 
 ### What failover actually does
 

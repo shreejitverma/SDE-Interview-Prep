@@ -2,7 +2,7 @@
 type: paper
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://research.google.com/archive/bigtable-osdi06.pdf"
@@ -13,6 +13,26 @@ sources:
   - "https://www.usenix.org/conference/atc22/presentation/elhemali"
   - "https://sre.google/sre-book/service-level-objectives/"
   - "https://sre.google/sre-book/monitoring-distributed-systems/"
+  - "https://cloud.google.com/bigtable/pricing"
+  - "https://docs.cloud.google.com/bigtable/quotas"
+  - "https://docs.cloud.google.com/bigtable/docs/garbage-collection"
+  - "https://docs.cloud.google.com/bigtable/docs/tiered-storage"
+  - "https://docs.cloud.google.com/bigtable/docs/release-notes"
+  - "https://docs.cloud.google.com/bigtable/docs/scaling"
+  - "https://docs.cloud.google.com/bigtable/docs/app-profiles"
+  - "https://docs.cloud.google.com/bigtable/docs/replication-overview"
+  - "https://docs.cloud.google.com/bigtable/docs/authorized-views"
+  - "https://docs.cloud.google.com/bigtable/docs/access-control"
+  - "https://docs.cloud.google.com/bigtable/docs/cmek"
+  - "https://docs.cloud.google.com/logging/docs/audit"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/supported-products"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/bigtable/instances/create"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/billing/budgets/create"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/burst-adaptive-capacity.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Constraints.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/S3DataExport.HowItWorks.html"
+  - "https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-endpoints-ddb.html"
+  - "https://aws.amazon.com/message/5467D2/"
 ---
 
 # Google Bigtable (2006 OSDI)
@@ -23,7 +43,7 @@ Bigtable is a sparse, persistent, sorted map from (row, column, timestamp) to un
 The tablet server never edits data in place. A write is a redo record appended to a commit log plus an insert into the in-memory memtable. A read merges the memtable with a stack of immutable SSTables. Compactions (minor, merging, major) turn this write-optimized log into a read-optimized layout, at the cost of rewriting data more than once (write amplification).
 Bigtable is a data plane on top of other services. Durability comes from GFS (now Colossus), and "who serves what" comes from Chubby locks. Each tablet has exactly one serving process at a time, so safety rests on leases and lock-file deletion rather than on replica quorums.
 Location lookup is a three-level B+-tree: a Chubby file, then the root tablet, then the METADATA tablets. With 128 MB METADATA tablets it can address 2^34 tablets. Clients cache locations, so the master is almost never on the request path.
-The trade-off you need to know cold: single-row atomicity only, range scans are cheap, sequential keys create hot spots, and a dead server costs you reassignment plus log replay rather than a quorum failover. Cloud Bigtable keeps the model, but moves routing into a frontend pool and keeps all data, including the shared log, in Colossus.
+The trade-off you need to know cold: single-row atomicity only, range scans are cheap, sequential keys create hot spots, and a dead server costs you reassignment plus log replay rather than a quorum failover. Cloud Bigtable keeps the model, but sends requests through a frontend layer and keeps all data, including the shared log, in Colossus.
 
 ## Mental Model
 
@@ -74,14 +94,14 @@ That reversal is a physical-layout decision written into the key. Lexicographic 
 
 The 2006 Bigtable stored its commit logs and data files in GFS. See [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_09_GFS_and_Colossus|GFS and Colossus]] for that layer.
 An SSTable is a persistent, ordered, immutable map from keys to values stored as a sequence of blocks (64 KB by default). A block index stored at the end of the file is loaded into memory when the file is opened. A point lookup then costs one binary search in memory plus one block read. An SSTable can optionally be mapped entirely into memory ([Chang et al., OSDI 2006](https://research.google.com/archive/bigtable-osdi06.pdf)).
-Chubby is a highly available, persistent lock service. It exposes a small namespace of directories and files, each usable as an advisory lock. Clients hold sessions kept alive by leases. In the deployment the paper describes, a Chubby cell has five replicas with one elected master, kept consistent with Paxos (five-replica figure UNVERIFIED).
+Chubby is a highly available, persistent lock service. It exposes a small namespace of directories and files, each usable as an advisory lock. Clients hold sessions kept alive by leases. In the deployment the paper describes, a Chubby cell has five replicas with one elected master, kept consistent with Paxos ([Chang et al., OSDI 2006](https://research.google.com/archive/bigtable-osdi06.pdf)).
 Bigtable uses Chubby for five jobs:
 - guarantee at most one active master;
 - store the bootstrap location of the root tablet;
 - discover tablet servers and finalize their deaths;
 - store schema (the column families of each table);
 - store access control lists.
-The dependency is real and the paper measured it. Averaged over the server-hours of its 14 busiest clusters, the share of Bigtable server-hours unavailable because of Chubby unavailability was 0.0047% ([Chang et al., OSDI 2006](https://research.google.com/archive/bigtable-osdi06.pdf)).
+The dependency is real and the paper measured it. Across 14 Bigtable clusters spanning 11 Chubby instances, the average share of Bigtable server-hours with some data unavailable because of Chubby unavailability was 0.0047%, and 0.0326% for the worst-affected cluster ([Chang et al., OSDI 2006](https://research.google.com/archive/bigtable-osdi06.pdf)).
 
 ### Chubby as the ownership oracle: the fencing protocol
 
@@ -112,7 +132,7 @@ The capacity arithmetic is worth doing once:
 - A METADATA row is about 1 KB, and METADATA tablets are capped at 128 MB, so one METADATA tablet indexes 2^27 / 2^10 = 2^17 = 131,072 tablets.
 - The root tablet indexes 2^17 METADATA tablets, so the scheme addresses 2^17 * 2^17 = 2^34 (about 17.2 billion) user tablets.
 - At 128 MB per tablet, that is 2^34 * 2^27 = 2^61 bytes, or 2 EiB.
-The client library caches tablet locations. With an empty cache a lookup takes three network round trips. With a stale cache it can take up to six (UNVERIFIED figure from the paper text), because stale entries are only discovered on a miss.
+The client library caches tablet locations. With an empty cache a lookup takes three network round trips. With a stale cache it can take up to six ([Chang et al., OSDI 2006](https://research.google.com/archive/bigtable-osdi06.pdf)), because stale entries are only discovered on a miss.
 Two refinements keep METADATA off the critical path. Clients prefetch the locations of neighboring tablets whenever they read METADATA. The location column family of METADATA sits in an in-memory locality group, so lookups never touch disk.
 The master is not involved in any of this. In the original design, clients talk to tablet servers directly for both location and data, which is why one master could manage thousands of servers.
 
@@ -135,7 +155,7 @@ Here is the mechanism a getting-started guide skips. A non-major merging compact
 Only a major compaction, which merges every SSTable the tablet has, can safely drop both tombstones and the data they suppress. The paper calls this the way Bigtable reclaims deleted data and makes deletes physically disappear on a timely basis, which matters for sensitive data.
 The Worked Example includes a runnable toy tablet that reproduces this resurrection bug.
 Two further consequences follow:
-- GC policies are enforced lazily during compaction. Cloud Bigtable likewise warns that cells eligible for GC can still appear in reads until GC runs (exact delay UNVERIFIED), so readers that need strict TTL semantics must filter by timestamp.
+- GC policies are enforced lazily during compaction. Cloud Bigtable likewise warns that cells eligible for GC still appear in reads until they are removed, which can take up to a week ([Google Cloud docs](https://docs.cloud.google.com/bigtable/docs/garbage-collection), as of 2026-11), so readers that need strict TTL semantics must filter by timestamp.
 - Immutability turns file deletion into a global mark-and-sweep. The master garbage-collects SSTables that no tablet references, and the METADATA table is the root set.
 
 ### Splits and merges without copying data
@@ -148,7 +168,7 @@ The master starts creations, deletions, and merges. The tablet server starts spl
 A split is committed by writing the new tablet's entry into the METADATA table. The tablet server then notifies the master.
 If that notification is lost, the system repairs itself. The next time the master asks some server to load the parent tablet, that server finds a METADATA entry covering only part of the requested range and tells the master about the split.
 Because SSTables are immutable, a split rewrites no data. The two child tablets share the parent's SSTables, each reading only its own key range, and later compactions separate them physically.
-This is why a split takes a metadata write and a minor compaction, not a bulk copy. It is the same property that lets Cloud Bigtable rebalance in minutes.
+This is why a split is essentially a metadata write, not a bulk copy. It is the same property that lets Cloud Bigtable rebalance in minutes.
 
 ### The commit log: one per server, and sorted recovery
 
@@ -156,7 +176,7 @@ A log file per tablet would mean many concurrent append streams per server, so m
 The paper therefore has each tablet server write one commit log that mixes mutations from all its tablets.
 The cost appears at recovery. Suppose a server with 100 tablets dies and those tablets move to 100 servers. Done naively, each new server reads the entire dead log to find its own entries, which multiplies log reads by 100.
 Bigtable avoids this by first sorting the log by the key (table, row name, log sequence number). After sorting, each tablet's mutations sit in one contiguous run that can be read with a single seek and sequential reads.
-The sort is parallel. The log is cut into 64 MB segments (figure UNVERIFIED), and the master coordinates sorting them on different tablet servers.
+The sort is parallel. The log is cut into 64 MB segments ([Chang et al., OSDI 2006](https://research.google.com/archive/bigtable-osdi06.pdf)), and the master coordinates sorting them on different tablet servers.
 Two smaller mechanisms protect write latency:
 - Each tablet server runs two log-writer threads, each with its own log file, and only one is active at a time. If GFS appends on the active file slow down, for example because of a sick chunk replica, the server switches files. Sequence numbers let recovery drop duplicate records written during the switch.
 - Before a planned tablet move, the source server runs a minor compaction, stops serving, and runs a second small minor compaction. The target server then has almost no log to replay ([Chang et al., OSDI 2006](https://research.google.com/archive/bigtable-osdi06.pdf)).
@@ -167,7 +187,7 @@ Locality groups: clients group column families into locality groups, and each ta
 A scan that reads only the small `language:` family never touches the large `contents:` bytes.
 A locality group can be marked in-memory, which is how the METADATA location family stays resident.
 Compression is set per locality group. Bigtable compresses each SSTable block on its own, so a single block can be read without decompressing the whole file.
-The common scheme has two passes: a Bentley-McIlroy pass that finds long repeated strings over a large window, then a fast pass over a small window. On Webtable it reached roughly 10:1, compared with 3:1 or 4:1 for Gzip on HTML (ratios UNVERIFIED). The gain came from the row-key layout: pages from one host sit together and share boilerplate.
+The common scheme has two passes: a Bentley-McIlroy pass that finds long repeated strings over a large window, then a fast pass over a small window. On Webtable it reached roughly 10:1, compared with 3:1 or 4:1 for Gzip on HTML ([Chang et al., OSDI 2006](https://research.google.com/archive/bigtable-osdi06.pdf)). The gain came from the row-key layout: pages from one host sit together and share boilerplate.
 There are two cache levels. The Scan Cache holds key-value pairs, which helps when the same data is read repeatedly. The Block Cache holds SSTable blocks fetched from GFS, which helps reads that touch nearby data.
 Each locality group can carry Bloom filters. A lookup can then skip any SSTable that cannot contain the requested row and column, so most reads of absent cells never touch GFS.
 
@@ -184,11 +204,12 @@ The lesson is still current. Block size times random-read rate is your real netw
 
 ### From the paper to Cloud Bigtable
 
-In Cloud Bigtable, every client request goes through a pool of frontend servers before reaching a node, and nodes are the paper's tablet servers (Google Cloud docs, as of 2026-10).
-Data is never stored on the nodes themselves. Each node holds pointers to tablets stored in Colossus. Acknowledged writes go to a shared log in Colossus, which plays the role of the paper's per-server commit log (Google Cloud docs, as of 2026-10).
-Clients no longer resolve locations. A routing layer sends each request to the node that owns the tablet, and the docs say rebalancing is fast and node failure loses no data because nothing is copied between nodes (Google Cloud docs, as of 2026-10).
-After a cluster resize, Bigtable typically needs a few minutes under load to rebalance across the new set of nodes (Google Cloud docs, as of 2026-10).
-Storage per node is still a real constraint, even though nodes hold no data. Google's docs say higher storage per node means more background work such as indexing, which raises latency even when CPU is sufficient (Google Cloud docs, as of 2026-10).
+In Cloud Bigtable, the architecture overview shows client requests going through a frontend server before reaching a node, and nodes are the paper's tablet servers (Google Cloud docs, as of 2026-11).
+Eligible clients on supported libraries can use direct connectivity, which bypasses the Google frontend ([Google Cloud docs](https://docs.cloud.google.com/bigtable/docs/performance), as of 2026-11).
+Data is never stored on the nodes themselves. Each node holds pointers to tablets stored in Colossus. Acknowledged writes go to a shared log in Colossus, which plays the role of the paper's per-server commit log (Google Cloud docs, as of 2026-11).
+The documented request path has no client-side METADATA walk like the paper's, and the docs say rebalancing is fast and node failure loses no data because nothing is copied between nodes (Google Cloud docs, as of 2026-11).
+After nodes are added to a cluster, it can take up to 20 minutes under load before performance significantly improves, because Bigtable has to rebalance across the new set of nodes ([Google Cloud docs](https://docs.cloud.google.com/bigtable/docs/scaling), as of 2026-11).
+Storage per node is still a real constraint, even though nodes hold no data. Google's docs say higher storage per node means more background work such as indexing, which raises latency even when CPU is sufficient (Google Cloud docs, as of 2026-11).
 That is the compaction and index bookkeeping from the paper, showing up as a documented limit.
 Placement and failure domains: a Cloud Bigtable cluster lives in a single zone. Replication adds clusters in other zones or regions inside one instance and is eventually consistent between clusters. App profiles choose single-cluster routing, which allows single-row transactions such as check-and-mutate and read-modify-write, or multi-cluster routing, which allows automatic failover.
 See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_11_Cloud_Bigtable_LSM_Storage_and_Tablet_Serving|Cloud Bigtable: LSM Storage and Tablet Serving]] for the product-level treatment.
@@ -212,21 +233,21 @@ The underlying storage idea comes from the log-structured merge-tree of O'Neil e
 | METADATA tablet cap | 128 MB | (Chang et al., OSDI 2006) |
 | Addressable tablets | 2^34 tablets, 2^61 bytes | (Chang et al., OSDI 2006) |
 | Location lookup, cold cache | 3 round trips | (Chang et al., OSDI 2006) |
-| Location lookup, stale cache | up to 6 round trips | (Chang et al., OSDI 2006; UNVERIFIED) |
+| Location lookup, stale cache | up to 6 round trips | (Chang et al., OSDI 2006) |
 | SSTable block size | 64 KB default | (Chang et al., OSDI 2006) |
-| Unavailability due to Chubby | 0.0047% of server-hours, averaged over the 14 busiest clusters | (Chang et al., OSDI 2006) |
+| Unavailability due to Chubby | 0.0047% of server-hours on average across 14 clusters; 0.0326% for the worst cluster | (Chang et al., OSDI 2006) |
 | Single tablet server, 1000-byte values | 1,212 random reads/s; 10,811 in-memory reads/s; 8,850 random writes/s; 4,425 sequential reads/s | (Chang et al., OSDI 2006) |
 | Per-server random reads at 500 servers | 241/s | (Chang et al., OSDI 2006) |
-| Cloud Bigtable SSD node, 1 KB rows | up to 17,000 reads/s or 14,000 writes/s or 220 MBps scan | (Google Cloud docs, as of 2026-10) |
-| Enterprise Plus in-memory tier | 40,000 rows/s read per node, scalable in 40,000 steps to 120,000 | (Google Cloud docs, as of 2026-10; GA status UNVERIFIED) |
-| Storage per node limit | 5 TB SSD, 16 TB HDD | (Google Cloud docs, as of 2026-10) |
-| Recommended max storage utilization | 70% for throughput, 60% for latency | (Google Cloud docs, as of 2026-10) |
-| Tiered storage limit | 32 TB/node Enterprise, 64 TB/node Enterprise Plus; labeled Preview in autoscaling docs | (Google Cloud docs, as of 2026-10) |
-| Rebalance after resize | a few minutes under load | (Google Cloud docs, as of 2026-10) |
-| Node price, us-central1 | about $0.65/node-hour Enterprise, about $0.85 Enterprise Plus | (nOps summary of Google Cloud pricing, as of 2026-08; confirm on the pricing page) |
-| Storage price | about $0.17/GB-month SSD, about $0.026/GB-month HDD | (nOps summary of Google Cloud pricing, as of 2026-08; confirm on the pricing page) |
-| DynamoDB per-partition ceiling | 3,000 RCU, 1,000 WCU, about 10 GB | (AWS docs; UNVERIFIED as of 2026-10) |
-| DynamoDB max item size | 400 KB | (AWS docs; UNVERIFIED as of 2026-10) |
+| Cloud Bigtable SSD node, 1 KB rows | up to 17,000 reads/s or 14,000 writes/s or 220 MBps scan | (Google Cloud docs, as of 2026-11) |
+| Enterprise Plus in-memory tier (Preview, not GA) | 40,000 rows/s read per node, scalable in 40,000 steps to 120,000; 8 GB per node; rows over 1 MiB not served | (Google Cloud docs, as of 2026-11) |
+| Storage per node limit | 5 TB SSD, 16 TB HDD | (Google Cloud docs, as of 2026-11) |
+| Recommended max storage utilization | 70% for throughput, 60% for latency | (Google Cloud docs, as of 2026-11) |
+| Tiered storage limit (Preview, not GA) | 32 TB/node Enterprise, 64 TB/node Enterprise Plus, at most 5 TB of it SSD | (Google Cloud docs, as of 2026-11) |
+| Performance after adding nodes | up to 20 minutes under load before it significantly improves | (Google Cloud docs, as of 2026-11) |
+| Node price, us-central1 | $0.65/node-hour Enterprise, $0.85 Enterprise Plus | (Google Cloud pricing page, as of 2026-11) |
+| Storage price, us-central1 | about $0.17/GiB-month SSD, about $0.026/GiB-month HDD ($0.000232877 and $0.000035616/GiB-hour, x 730) | (Google Cloud pricing page, as of 2026-11) |
+| DynamoDB per-partition ceiling | 3,000 RCU, 1,000 WCU, 10 GB | (AWS docs, as of 2026-11) |
+| DynamoDB max item size | 400 KB | (AWS docs, as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -242,8 +263,8 @@ The underlying storage idea comes from the log-structured merge-tree of O'Neil e
 | Multi-region | Replication between clusters inside one instance, eventually consistent; app profiles route | Global tables | HBase: DIY replication. Keyspaces: multi-Region replication |
 | Capacity unit | Nodes (CPU) plus storage per node, with autoscaling | RCU/WCU provisioned or on-demand; partition-level ceilings | HBase: EC2 instances. Keyspaces: capacity units |
 | Hot-key behavior | Hot row stays on one node (a row is never split); hot range splits until it is one row | Hot partition key limited per partition; adaptive capacity isolates hot items | Same as the column to the left in each family |
-| Row-level access control | Family and table-level IAM; no per-row IAM | IAM condition `dynamodb:LeadingKeys` restricts by partition key | HBase: cell ACLs via Ranger or coprocessors |
-| Private access | Private Google Access, VPC Service Controls perimeter | VPC gateway endpoint plus endpoint policy | VPC-native (EMR); interface endpoints (Keyspaces) |
+| Row-level access control | Project, instance, table, and authorized-view IAM; an authorized view scopes a grant to a row-key prefix and column qualifiers (Google Cloud docs, as of 2026-11) | IAM condition `dynamodb:LeadingKeys` restricts by partition key | HBase: cell ACLs via Ranger or coprocessors |
+| Private access | Private Google Access, VPC Service Controls perimeter | VPC gateway or interface endpoint, plus endpoint policy (AWS docs, as of 2026-11) | VPC-native (EMR); interface endpoints (Keyspaces) |
 
 The most important difference is in the second and fourth rows.
 Bigtable lets you range-scan the whole table because it is range-partitioned. It can afford a single owner per tablet because durability is delegated to a replicated file system.
@@ -374,7 +395,7 @@ if __name__ == "__main__":
               f"write_amp={wa} | live SSTables={runs} | block reads for {misses} absent keys={reads}")
 ```
 
-Output from a run on Python 3.11:
+Output from a run on Python 3.15.2:
 
 ```text
 drop_tombstones_early=False: deleted row reads back as None | write_amp=3.55 | live SSTables=3 | block reads for 5000 absent keys=68
@@ -388,7 +409,7 @@ How to read it:
 
 ### Part B - Webtable on Cloud Bigtable (billable)
 
-Cost estimate: one SSD node at about $0.65/node-hour plus negligible storage, so a two-hour lab costs about $1.30 to $1.50 (nOps summary of Google Cloud pricing, as of 2026-08).
+Cost estimate: one SSD node at $0.65/node-hour (Enterprise edition, us-central1) plus negligible storage, so a two-hour lab costs about $1.30 to $1.50 (Google Cloud pricing page, as of 2026-11).
 If you forget to tear it down, the same node costs about $0.65 * 730 = $474.50 per month.
 Set a budget alarm before creating anything:
 
@@ -472,21 +493,21 @@ gcloud billing budgets list --billing-account="$BILLING" --filter='displayName=b
 ### Part C - Capacity and cost sizing
 
 Workload: vehicle telemetry with 50,000 writes/s of 1 KB rows, 15,000 point reads/s, 200 scans/s of 100 rows each, and 14-day retention, in one SSD cluster.
-Step 1, write CPU: 50,000 / 14,000 = 3.57 node-equivalents, using the per-node SSD figure (Google Cloud docs, as of 2026-10).
+Step 1, write CPU: 50,000 / 14,000 = 3.57 node-equivalents, using the per-node SSD figure (Google Cloud docs, as of 2026-11).
 Step 2, read CPU: 15,000 / 17,000 = 0.88 node-equivalents.
 Step 3, scan CPU: 200 * 100 * 1 KB = 20 MB/s, and 20 / 220 = 0.09 node-equivalents.
 Step 4, mixing: the docs give reads, writes, and scans as alternatives, so we approximate by adding the fractions: 3.57 + 0.88 + 0.09 = 4.54 nodes at 100% CPU. This linear mix is a planning assumption, not a documented formula.
-Step 5, CPU headroom: at a 70% CPU planning target (our assumption), 4.54 / 0.7 = 6.5, so 7 nodes.
+Step 5, CPU headroom: at a 70% CPU planning target (our assumption, between Google's stated maximums of 90% for throughput and 60% for latency, Google Cloud docs, as of 2026-11), 4.54 / 0.7 = 6.5, so 7 nodes.
 Step 6, logical bytes: 50 MB/s * 86,400 s = 4.32 TB/day, and 14 days gives 60.5 TB.
 Step 7, stored bytes: assuming 2:1 block compression (an assumption that depends on the workload), about 30.2 TB on disk.
-Step 8, storage nodes: at the 70% throughput-oriented utilization guidance, each SSD node holds 5 TB * 0.7 = 3.5 TB, so 30.2 / 3.5 = 8.6, which rounds to 9 nodes (Google Cloud docs, as of 2026-10).
+Step 8, storage nodes: at the 70% throughput-oriented utilization guidance, each SSD node holds 5 TB * 0.7 = 3.5 TB, so 30.2 / 3.5 = 8.6, which rounds to 9 nodes (Google Cloud docs, as of 2026-11).
 Step 9, the binding constraint is storage (9 nodes), not CPU (7 nodes).
-The levers are shorter retention, shorter column qualifiers (each cell carries its family, qualifier, and timestamp), coarser rows that pack several readings into one cell, or tiered storage, which is Preview as of 2026-10 and not something to plan production on.
+The levers are shorter retention, shorter column qualifiers (each cell carries its family, qualifier, and timestamp), coarser rows that pack several readings into one cell, or tiered storage, which is Preview as of 2026-11 and not something to plan production on.
 Step 10, monthly cost:
 - nodes: 9 * $0.65 * 730 = $4,270.50;
 - storage: 30,200 GB * $0.17 = $5,134;
-- total: about $9,405 per month for a single cluster (nOps summary of Google Cloud pricing, as of 2026-08).
-Step 11, HA: a second replicated cluster roughly doubles node and storage cost, and adds replication network charges between regions (rate UNVERIFIED).
+- total: about $9,405 per month for a single cluster (Google Cloud pricing page, as of 2026-11).
+Step 11, HA: a second replicated cluster roughly doubles node and storage cost, and adds replication network charges between regions: none within one region, $0.01/GiB within the U.S., and for example $0.12/GiB for the first 1,024 GiB from North America to Europe (Google Cloud pricing page, as of 2026-11).
 Under multi-cluster routing, each cluster must also have CPU headroom to absorb the other's traffic after failover, which pushes the per-cluster CPU target well below 70%.
 Step 12, recovery cost check, using the paper's design: a server holds an unflushed log tail L = 4 GB (assumption) and its tablets are spread across N = 100 new owners.
 Naive recovery reads N * L = 400 GB. Sorted recovery reads L once, writes about L of sorted segments, and lets each owner read only its own slice, so about 8 to 12 GB of I/O in total.
@@ -504,7 +525,7 @@ Mitigation: put a high-cardinality field such as device ID first and the time se
 
 A row is the unit of atomicity, so it is never split across tablets.
 A single celebrity row, a global counter, or a tall row that keeps growing with versions stays on one node no matter how many nodes you add.
-Mitigation: shard counters across N rows and sum on read, cap versions with GC rules, and model time-series data as many short rows instead of one ever-growing row. Cloud Bigtable's row and cell size limits are 256 MB and 100 MB respectively (UNVERIFIED as of 2026-10).
+Mitigation: shard counters across N rows and sum on read, cap versions with GC rules, and model time-series data as many short rows instead of one ever-growing row. Cloud Bigtable's hard row and cell size limits are 256 MB and 100 MB respectively, and the recommended limits are 100 MB and 10 MB ([Google Cloud docs](https://docs.cloud.google.com/bigtable/quotas), as of 2026-11).
 
 ### Deleted or expired data is still readable
 
@@ -514,14 +535,14 @@ Mitigation: apply timestamp-range filters on read, and for regulated data use cr
 
 ### Storage density causes latency even when CPU is idle
 
-Google documents that higher storage per node raises latency because of background indexing work, and recommends at most 60% storage utilization for latency-sensitive workloads (Google Cloud docs, as of 2026-10).
+Google documents that higher storage per node raises latency because of background indexing work, and recommends at most 60% storage utilization for latency-sensitive workloads (Google Cloud docs, as of 2026-11).
 A team that sizes nodes by CPU alone and lets data grow will see p99 drift up for weeks with no deployment or traffic change to blame.
 Mitigation: alert on storage utilization per node, and let autoscaling consider storage targets as well as CPU.
 
 ### Autoscaling lags traffic spikes
 
-Rebalancing after a resize takes a few minutes under load (Google Cloud docs, as of 2026-10). Autoscaling also needs time to observe CPU before it acts.
-A step change in traffic, such as a batch job starting or a marketing push, will be served by the old node count for several minutes.
+After nodes are added, performance can take up to 20 minutes under load to improve significantly (Google Cloud docs, as of 2026-11). Autoscaling also needs time to observe CPU before it acts.
+A step change in traffic, such as a batch job starting or a marketing push, will not get the full benefit of new nodes for up to 20 minutes.
 Mitigation: pre-scale on a schedule before known events, and send batch traffic through a separate app profile pointed at a separate cluster.
 
 ### Lease expiry on pauses: the HBase lesson
@@ -534,13 +555,13 @@ A home-grown Bigtable-like system that skips fencing gets split-brain writes. Th
 
 Bigtable is unavailable whenever Chubby is unavailable for longer than session leases can cover, as the paper's 0.0047% measurement shows.
 The Google SRE book describes the opposite failure. Chubby was so reliable that services quietly took hard dependencies on it, so Google began deliberately taking Chubby down for planned outages to keep its real availability close to its SLO and expose those dependencies ([Google SRE book, Service Level Objectives](https://sre.google/sre-book/service-level-objectives/)).
-The same book covers Bigtable SRE's own story of over-alerting on low-level latency signals and moving to SLO-based alerting ([Google SRE book, Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)).
+The same book covers Bigtable SRE's own story of over-alerting: alerts tied to an SLO on mean latency fired constantly because of a large tail, so the team temporarily dialed the target back to 75th-percentile latency and disabled email alerts while it fixed the underlying problems ([Google SRE book, Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)).
 
 ### Metadata-plane overload: a cross-cloud analogue
 
-In the 2015-09-20 DynamoDB event in us-east-1, larger membership metadata responses (caused by Global Secondary Index adoption) pushed requests from storage servers to the internal metadata service past their timeouts. Retries then overloaded that service and caused a cascade (AWS PIR, UNVERIFIED as of 2026-10).
+In the 2015-09-20 DynamoDB event in us-east-1, a brief network disruption sent storage servers back to the internal metadata service for membership data, and larger membership responses (caused by Global Secondary Index adoption) pushed those requests past their timeouts. Retries then overloaded that service and caused a cascade ([AWS PIR](https://aws.amazon.com/message/5467D2/)).
 The Bigtable equivalent is a mass client restart that empties location caches and sends a wave of METADATA lookups at the same time.
-The paper's defenses are an in-memory METADATA location family, prefetching, and a tree that never needs a fourth level. Cloud Bigtable goes further and removes client-side resolution entirely by routing in the frontend pool.
+The paper's defenses are an in-memory METADATA location family, prefetching, and a tree that never needs a fourth level. Cloud Bigtable's documented request path goes further, sending requests through a frontend rather than through a client-side METADATA walk.
 
 ### Replication semantics surprises
 
@@ -564,26 +585,28 @@ They also argue for waiting to add new features, explicitly general-purpose mult
 ### IAM scoping
 
 Cloud Bigtable predefined roles separate administration (`roles/bigtable.admin`), data read/write (`roles/bigtable.user`), read-only data (`roles/bigtable.reader`), and metadata-only visibility (`roles/bigtable.viewer`). Bind them at the instance or table level, not the project level.
-Bigtable has no per-row IAM condition comparable to DynamoDB's `dynamodb:LeadingKeys`. Multi-tenant row isolation therefore has to be enforced in the service layer, or by using a table per tenant where tenant counts allow.
+Bigtable has no per-row IAM condition comparable to DynamoDB's `dynamodb:LeadingKeys`, but an authorized view lets you grant IAM on a subset of a table defined by row-key prefix and column qualifiers, and Google documents it for isolating data in multi-tenant tables ([Google Cloud docs](https://docs.cloud.google.com/bigtable/docs/authorized-views), as of 2026-11).
+Otherwise, multi-tenant row isolation has to be enforced in the service layer, or by using a table per tenant where tenant counts allow.
 Use workload identity federation for GKE and Cloud Run callers instead of service account keys. See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]].
 
 ### Encryption key hierarchy
 
 Data is encrypted at rest by default under Google-managed keys. CMEK lets a Cloud KMS key wrap the data encryption keys for each cluster.
 With CMEK, disabling or destroying the key version makes the data unreadable. That gives you a crypto-shredding lever, which lazy GC alone cannot provide.
+Disabling or destroying a key can take up to 4 hours to propagate, and a destroyed key leaves every instance with a cluster under that key permanently inaccessible, so per-tenant keys imply per-tenant instances ([Google Cloud docs](https://docs.cloud.google.com/bigtable/docs/cmek), as of 2026-11).
 The trade-off is that a revoked or region-mismatched key is a self-inflicted availability outage, so test key rotation and access in staging first. See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Envelope Encryption]].
 
 ### Network perimeter
 
 Put `bigtable.googleapis.com` inside a VPC Service Controls perimeter, so stolen credentials cannot read data from outside the perimeter. Reach the API from private subnets through Private Google Access.
-Turn on Data Access audit logs for tables with sensitive data. Data reads are not logged by default, and enabling the logs costs log volume. See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]].
+Turn on Data Access audit logs for tables with sensitive data. Data reads are not logged by default, and enabling the logs costs log volume ([Google Cloud docs](https://docs.cloud.google.com/logging/docs/audit), as of 2026-11). See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]].
 
 ### Unit economics levers
 
 The cost model has two inputs: nodes, sized by the larger of CPU need and storage density, and stored bytes. The sizing example above shows storage density often sets node count before CPU does.
 Cell overhead is real. Each stored cell carries its family, qualifier, and timestamp, so short qualifiers and packing many readings into one cell cut both storage and node count.
-SSD versus HDD is a latency decision before it is a price decision. HDD storage is about 85% cheaper per GB, but random reads suffer badly (nOps summary of Google Cloud pricing, as of 2026-08).
-Committed use discounts reduce node prices for steady baseline capacity (Google Cloud product page, as of 2026-10). Keep the autoscaled burst on demand. See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Savings Plans vs CUDs]].
+SSD versus HDD is a latency decision before it is a price decision. HDD storage is about 85% cheaper per GB (Google Cloud pricing page, as of 2026-11), but random reads suffer badly, at up to 500 rows/s per node against 17,000 for SSD (Google Cloud docs, as of 2026-11).
+Committed use discounts reduce the us-central1 Enterprise node price from $0.65 to $0.52 per hour for 1 year or $0.39 for 3 years, for steady baseline capacity (Google Cloud pricing page, as of 2026-11). Keep the autoscaled burst on demand. See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Savings Plans vs CUDs]].
 Replication multiplies cost by the number of clusters, and the CPU headroom needed for failover multiplies it again. Price HA explicitly against the cost of the outage it prevents.
 
 ## Interview Questions and Model Answers
@@ -596,7 +619,7 @@ You are storing IoT sensor readings in Bigtable with row key `timestamp#device_i
 
 Bigtable range-partitions on the lexicographic row key, so every new write lands at the right edge of the key space, in the single tablet that holds the newest timestamps.
 Bigtable will split that tablet, but the new right-hand child immediately becomes the hot one. Splitting moves the hotspot without spreading it.
-CPU on one node saturates near the per-node write figure (14,000 rows/s for SSD with 1 KB rows, Google Cloud docs as of 2026-10), and adding nodes does nothing because they receive no writes.
+CPU on one node saturates near the per-node write figure (14,000 rows/s for SSD with 1 KB rows, Google Cloud docs as of 2026-11), and adding nodes does nothing because they receive no writes.
 The redesign is `device_id#reverse_or_bucketed_timestamp`.
 Device ID first spreads writes across the whole key space, in proportion to device cardinality.
 A time component second keeps one device's history contiguous, so "last hour for device X" is one short range scan.
@@ -668,7 +691,7 @@ Two more levers bound L in the first place:
 - minor compactions that advance redo points;
 - a minor compaction before every planned move, so planned moves have almost no replay.
 The availability cost: tablets on the dead server are unavailable from detection until replay finishes, measured in seconds to minutes depending on L. This is the price of having a single owner instead of a replica quorum.
-In Cloud Bigtable, nodes hold no data, and acknowledged writes go to a shared log in Colossus (Google Cloud docs, as of 2026-10). Reassignment is a pointer move, and the docs describe fast recovery because nothing is copied.
+In Cloud Bigtable, nodes hold no data, and acknowledged writes go to a shared log in Colossus (Google Cloud docs, as of 2026-11). Reassignment is a pointer move, and the docs describe fast recovery because nothing is copied.
 What stays the same is that one node owns each tablet at a time. A node failure therefore still causes a short per-tablet unavailability, which client retries with deadlines have to absorb.
 
 #### Follow-up Interviewer Question
@@ -684,7 +707,7 @@ The product team wants a feature store serving 2M point reads/s with p99 under 1
 First, separate the access patterns: point reads by entity key online, and full or time-ranged scans offline.
 Bigtable's range partitioning makes ordered full-table and prefix scans first-class. DynamoDB's hash partitioning makes Scan unordered and expensive in read units, so offline export usually goes through export to S3 instead.
 For online serving, both can reach 2M reads/s.
-On Bigtable, 2M / 17,000 is about 118 SSD node-equivalents at 100% CPU, or about 170 nodes at a 70% target, before considering storage density. In-memory-tier nodes on Enterprise Plus at 40,000 rows/s per increment could cut that sharply (Google Cloud docs, as of 2026-10; GA status UNVERIFIED).
+On Bigtable, 2M / 17,000 is about 118 SSD node-equivalents at 100% CPU, or about 170 nodes at a 70% target and about 196 at Google's 60% latency-oriented CPU maximum, before considering storage density. In-memory-tier nodes on Enterprise Plus at 40,000 rows/s per increment could cut that sharply, but that tier is Preview with 8 GB per node, so I would not commit a production design to it yet (Google Cloud docs, as of 2026-11).
 On DynamoDB, cost scales with read units, and per-partition ceilings mean a hot entity is throttled per partition, not per table.
 The bigger risk is the nightly scan. On Bigtable, scanning the serving cluster competes for the same nodes and threatens the p99.
 I would isolate it with a separate replicated cluster and a batch app profile, so the scan reads from a replica and serving keeps its own CPU. That costs a second cluster, or a serverless analytics compute path where offered.
@@ -724,7 +747,7 @@ You run a multi-tenant Bigtable-like platform for 400 internal teams. Compaction
 
 #### Model Answer
 
-Start from what is actually shared on a node: CPU for foreground requests, CPU and I/O for compaction, and the background work that grows with storage per node, which Google documents as a source of latency (Google Cloud docs, as of 2026-10).
+Start from what is actually shared on a node: CPU for foreground requests, CPU and I/O for compaction, and the background work that grows with storage per node, which Google documents as a source of latency (Google Cloud docs, as of 2026-11).
 A tenant that writes heavily, or deletes heavily so that tombstones pile up, consumes compaction capacity that its neighbors pay for in p99. Foreground QPS quotas alone do not capture that.
 Isolation, in layers:
 - Cells: cluster or instance groups per tenant tier, so a misbehaving tenant's blast radius is one cell. See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture]].
@@ -737,7 +760,7 @@ Internally, also track compaction backlog, storage per node, and per-node CPU sk
 Governance:
 - Key-design review for new tables, to catch sequential keys before launch.
 - Mandatory GC rules for every family.
-- Crypto-shredding via per-tenant CMEK for tenants with deletion obligations, because lazy GC alone is not a timely delete.
+- Crypto-shredding via per-tenant CMEK for tenants with deletion obligations, because lazy GC alone is not a timely delete. CMEK keys apply per cluster, so those tenants need their own instances.
 Finally, I would run planned dependency-failure drills, in the spirit of SRE's deliberate Chubby outages, so that teams find hidden hard dependencies on the platform's control plane before a real outage does.
 
 #### Follow-up Interviewer Question
@@ -749,11 +772,11 @@ Which single metric would you put in front of leadership to show platform health
 - [Bigtable: A Distributed Storage System for Structured Data (OSDI 2006)](https://research.google.com/archive/bigtable-osdi06.pdf) - the primary source for the location hierarchy, Chubby fencing, compactions, and sorted log recovery.
 - [Bigtable, ACM TOCS 26(2), 2008](https://dl.acm.org/doi/10.1145/1365815.1365816) - the journal version with the same design; cite this in formal work.
 - [The Chubby Lock Service for Loosely-Coupled Distributed Systems (OSDI 2006)](https://research.google.com/archive/chubby-osdi06.pdf) - sessions, leases, sequencers, and lock-delay, which are the fencing tools behind Bigtable's single-owner safety.
-- [Cloud Bigtable overview](https://docs.cloud.google.com/bigtable/docs/overview) - how the paper's tablet servers became stateless nodes over Colossus with a frontend routing pool.
+- [Cloud Bigtable overview](https://docs.cloud.google.com/bigtable/docs/overview) - how the paper's tablet servers became stateless nodes over Colossus behind a frontend.
 - [Cloud Bigtable: Understand performance](https://docs.cloud.google.com/bigtable/docs/performance) - current per-node throughput and the storage-utilization guidance that sizing depends on.
 - [Amazon DynamoDB: A Scalable, Predictably Performant, and Fully Managed NoSQL Database Service (USENIX ATC 2022)](https://www.usenix.org/conference/atc22/presentation/elhemali) - the AWS counterpoint: hash partitioning and Paxos replica groups instead of range tablets with a single owner.
 - [Google SRE book: Service Level Objectives](https://sre.google/sre-book/service-level-objectives/) - the planned Chubby outage story and why an over-reliable dependency is a risk.
-- [Google SRE book: Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/) - the Bigtable SRE over-alerting case study and the move to SLO-based alerting.
+- [Google SRE book: Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/) - the Bigtable SRE over-alerting case study and how backing off alerts bought time to fix root causes.
 - [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_07_Google_Borg_and_Omega|Google Borg and Omega]] - previous chapter: the cluster manager that schedules Bigtable's tablet servers and shares its Chubby dependency.
 - [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_09_GFS_and_Colossus|GFS and Colossus]] - next chapter: the storage layer whose replication makes single-owner tablets safe.
 - [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_06_Google_Spanner|Google Spanner]] - where Bigtable's single-row model ends and Paxos-per-split transactions begin.

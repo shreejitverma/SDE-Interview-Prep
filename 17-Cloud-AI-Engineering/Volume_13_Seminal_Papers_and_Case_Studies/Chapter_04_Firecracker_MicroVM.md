@@ -21,6 +21,30 @@ sources:
   - "https://docs.kernel.org/virt/kvm/api.html"
   - "https://docs.kernel.org/admin-guide/mm/userfaultfd.html"
   - "https://gvisor.dev/docs/"
+  - "https://github.com/firecracker-microvm/firecracker/blob/main/SPECIFICATION.md"
+  - "https://github.com/firecracker-microvm/firecracker/blob/main/README.md"
+  - "https://github.com/firecracker-microvm/firecracker/blob/main/CHANGELOG.md"
+  - "https://github.com/firecracker-microvm/firecracker/blob/main/docs/jailer.md"
+  - "https://github.com/firecracker-microvm/firecracker/blob/main/docs/prod-host-setup.md"
+  - "https://github.com/firecracker-microvm/firecracker/blob/main/docs/cpu_templates/cpu-templates.md"
+  - "https://github.com/firecracker-microvm/firecracker/blob/main/docs/api_requests/block-caching.md"
+  - "https://github.com/firecracker-microvm/firecracker/issues/5679"
+  - "https://www.usenix.org/system/files/atc23-brooker.pdf"
+  - "https://brooker.co.za/blog/2023/05/23/snapshot-loading.html"
+  - "https://arxiv.org/abs/2101.09355"
+  - "https://aws.amazon.com/message/061323/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://aws.amazon.com/blogs/aws/run-isolated-sandboxes-with-full-lifecycle-control-aws-lambda-introduces-microvms/"
+  - "https://aws.amazon.com/lambda/pricing/"
+  - "https://aws.amazon.com/ec2/pricing/on-demand/"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/configuration-memory.html"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/lambda-managed-instances.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/amazon-ec2-nested-virtualization.html"
+  - "https://cloud.google.com/products/compute/pricing/general-purpose"
+  - "https://docs.cloud.google.com/compute/docs/instances/nested-virtualization/overview"
+  - "https://docs.cloud.google.com/run/docs/about-execution-environments"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/sandbox-pods"
 ---
 
 # Firecracker: Lightweight Virtualization (2020 NSDI)
@@ -80,7 +104,7 @@ It registers that range with KVM as a user memory region, which lets KVM transla
 Guest RAM is ordinary pageable process memory to the host, and that single fact is the basis of the memory overcommit story below.
 Firecracker does not run firmware.
 It writes the guest kernel image into guest memory, fills the architectural boot structures (on x86 the Linux boot protocol zero page and an e820 map), sets the vCPU registers so execution begins at the kernel entry point, and appends `virtio_mmio.device=` parameters to the kernel command line so the guest discovers devices without enumerating a bus.
-Release v1.17.0 added booting compressed bzImage kernels on x86_64 alongside the uncompressed ELF vmlinux it has always supported ([Firecracker releases, as of 2026-10](https://github.com/firecracker-microvm/firecracker/releases)).
+Release v1.17.0 added booting compressed bzImage kernels on x86_64 alongside the uncompressed ELF vmlinux it has always supported ([Firecracker releases, as of 2026-11](https://github.com/firecracker-microvm/firecracker/releases)).
 Each vCPU is a host thread that loops on `KVM_RUN`.
 Most guest execution, including guest page faults inside already-mapped EPT ranges, never leaves the CPU's guest mode.
 A VM exit to user space only happens when the guest touches something KVM cannot handle in-kernel, which in Firecracker is mostly MMIO to a virtio device's configuration registers.
@@ -93,28 +117,31 @@ Firecracker registers that register address with KVM as an ioeventfd, so KVM com
 The VMM thread sleeps in `epoll` on those eventfds, wakes, walks the descriptor chain in guest memory, applies the device's rate limiter, and performs the host I/O: a `read` or `write` on the TAP fd for net, or file I/O against the backing file for block.
 Completion goes the other way: the VMM writes used-ring entries into guest memory and signals an irqfd, and KVM injects the interrupt through the in-kernel interrupt controller.
 Three consequences follow.
-First, device emulation for a microVM is serialized through its VMM thread, so a single noisy device or a slow backing file adds latency to every other device in that microVM.
+First, device emulation for a microVM is serialized through its VMM thread, so a single noisy device or a slow backing file adds latency to every other device in that microVM ([design doc, as of 2026-11](https://github.com/firecracker-microvm/firecracker/blob/main/docs/design.md)).
+The unreleased section of the [changelog (as of 2026-11)](https://github.com/firecracker-microvm/firecracker/blob/main/CHANGELOG.md) adds an optional block `num_queues` field that moves each queue to a dedicated worker thread, so this holds for v1.17.0 but is expected to loosen for block devices.
 Second, emulation CPU is charged to the Firecracker process's cgroup, not to the guest's vCPU time, so a host CPU plan has to budget the VMM thread separately from vCPUs.
-Third, block writes land in the host page cache unless the backing file is opened for direct I/O, which matters for both durability semantics and host memory accounting.
-The paper's evaluation reported weaker block I/O throughput than QEMU at high queue depth, which it attributed to the serial block emulation of the time (UNVERIFIED - exact figures not re-checked).
+Third, block writes land in the host page cache, and the default `Unsafe` cache type does not even advertise the virtio flush feature, while `Writeback` turns guest flushes into `fsync` on the backing file ([block caching doc, as of 2026-11](https://github.com/firecracker-microvm/firecracker/blob/main/docs/api_requests/block-caching.md)), which matters for both durability semantics and host memory accounting.
+A direct-write mode exists only as an open pull request ([#5910, as of 2026-11](https://github.com/firecracker-microvm/firecracker/pull/5910)), so a released Firecracker offers no direct I/O path to rely on.
+The paper's evaluation at queue depth 32 reported about 13,000 4 KiB read IOPS against more than 340,000 from the hardware, which it attributed to handling I/O serially, and it notes that QEMU had the more optimized I/O path ([NSDI 2020 paper, Section 5.3](https://www.usenix.org/system/files/nsdi20-paper-agache.pdf)).
 
 ### The minimal device model
 
-The device set is virtio-net, virtio-block, virtio-vsock, a serial console, and a minimal i8042 controller that exists mainly so the guest can request a reset; later releases added virtio-balloon, an entropy device, and virtio-mem memory hotplug ([Firecracker memory hotplug doc, as of 2026-10](https://github.com/firecracker-microvm/firecracker/blob/main/docs/memory-hotplug.md)).
+The device set is virtio-net, virtio-block, virtio-vsock, a serial console, and a minimal i8042 controller that exists mainly so the guest can request a reset; later releases added virtio-balloon, an entropy device, virtio-pmem, and virtio-mem memory hotplug ([Firecracker memory hotplug doc, as of 2026-11](https://github.com/firecracker-microvm/firecracker/blob/main/docs/memory-hotplug.md)).
+Release v1.13.0 also added an optional PCI virtio transport behind `--enable-pci`, so "no PCI" now describes the default and the 2020 design, not a hard property ([changelog, as of 2026-11](https://github.com/firecracker-microvm/firecracker/blob/main/CHANGELOG.md)).
 Each device is a parser for guest-controlled data structures, so each device is attack surface, and writing them in Rust removes the memory-safety bug classes that dominate the QEMU CVE history.
 Rust does not prevent logic bugs in descriptor-chain validation, which is why the device count matters as much as the language.
 Each net and block device takes an optional rate limiter with two token buckets, one for bandwidth and one for operations, each with a size, a refill time, and an optional one-time burst, and the VMM thread enforces these before it does host I/O.
 The microVM metadata service (MMDS) is emulated inside the VMM's network path so the host can pass configuration to the guest without real network plumbing ([Firecracker site](https://firecracker-microvm.github.io/)).
-Release v1.17.0 added virtio device reset, transparent huge pages for guest memory via `madvise(MADV_HUGEPAGE)`, and official support for 6.18 guest kernels ([Firecracker releases, as of 2026-10](https://github.com/firecracker-microvm/firecracker/releases)).
+Release v1.17.0 added virtio device reset, transparent huge pages for guest memory via `madvise(MADV_HUGEPAGE)`, and official support for 6.18 guest kernels ([Firecracker releases, as of 2026-11](https://github.com/firecracker-microvm/firecracker/releases)).
 
 ### Process and thread architecture, and the jailer
 
 One Firecracker process runs one microVM, which makes the failure domain of a VMM crash exactly one tenant sandbox.
-Inside it there is an API thread serving REST over a Unix socket, a VMM thread for device emulation, and one thread per vCPU, each with its own seccomp filter ([Firecracker README mirror](https://github.com/chroot-dev/firecracker)).
+Inside it there is an API thread serving REST over a Unix socket, a VMM thread for device emulation, and one thread per vCPU, each with its own seccomp filter ([Firecracker README, as of 2026-11](https://github.com/firecracker-microvm/firecracker/blob/main/README.md)).
 In production the jailer starts Firecracker: it sets up the resources that need privilege, such as cgroups and the chroot, drops privileges, and `exec()`s into the Firecracker binary, which from then on can only reach resources that were copied or passed in ([Firecracker design doc](https://github.com/firecracker-microvm/firecracker/blob/main/docs/design.md)).
-The jailer builds `<chroot_base>/<exec_file_name>/<id>/root`, copies the binary there, writes the PID into cgroup controllers, chowns `/dev/kvm` and `/dev/net/tun` to the target uid:gid, and execs Firecracker with `--id`, `--api-sock`, and seccomp settings ([jailer doc mirror](https://gitee.com/xydong/firecracker/blob/master/docs/jailer.md)).
-The current jailer uses `pivot_root`, supports both cgroup v1 and v2, and always creates a mount namespace, with optional PID and network namespaces (DeepWiki source analysis, as of 2026-10, secondary source).
-Release v1.17.0 fixed a TOCTOU race in the aarch64 jailer when setting ownership of CPU cache files copied into the chroot ([Firecracker releases, as of 2026-10](https://github.com/firecracker-microvm/firecracker/releases)), a reminder that the jailer is itself privileged code that needs a patch cadence.
+The jailer builds `<chroot_base>/<exec_file_name>/<id>/root`, copies the binary there, writes the PID into cgroup controllers, creates `/dev/kvm` and `/dev/net/tun` nodes inside the jail with `mknod`, chowns them to the target uid:gid, and execs Firecracker with `--id` plus any arguments forwarded after `--`, such as `--api-sock` and seccomp settings ([jailer doc, as of 2026-11](https://github.com/firecracker-microvm/firecracker/blob/main/docs/jailer.md)).
+The current jailer uses `pivot_root`, supports both cgroup v1 and v2, and always creates a mount namespace, with optional PID and network namespaces ([jailer doc, as of 2026-11](https://github.com/firecracker-microvm/firecracker/blob/main/docs/jailer.md)).
+Release v1.17.0 fixed a TOCTOU race in the aarch64 jailer when setting ownership of CPU cache files copied into the chroot ([Firecracker releases, as of 2026-11](https://github.com/firecracker-microvm/firecracker/releases)), a reminder that the jailer is itself privileged code that needs a patch cadence.
 
 ### Memory overcommit: the one-way page ratchet
 
@@ -124,75 +151,76 @@ From then on the page is resident in the Firecracker process, and nothing in the
 Host-resident memory per microVM is therefore roughly the VMM overhead plus the guest's high-water mark of touched pages, and the guest page cache pushes that mark up toward the configured size over time.
 Soft allocation therefore works well for short-lived sandboxes, which die before they ratchet up, and needs active reclaim for long-lived ones.
 Firecracker's reclaim tools are the virtio-balloon device, where the guest pins free pages and the VMM discards them from the host, plus free page reporting in newer releases, and virtio-mem, where whole blocks are unplugged.
-The balloon API exposes `amount_mib`, `deflate_on_oom`, and `stats_polling_interval_s`, and with `deflate_on_oom` set the guest takes pages back from the balloon instead of invoking its OOM killer ([Firecracker ballooning doc, as of 2026-10](https://github.com/firecracker-microvm/firecracker/blob/main/docs/ballooning.md)).
+The balloon API exposes `amount_mib`, `deflate_on_oom`, and `stats_polling_interval_s`, and with `deflate_on_oom` set the guest takes pages back from the balloon instead of invoking its OOM killer ([Firecracker ballooning doc, as of 2026-11](https://github.com/firecracker-microvm/firecracker/blob/main/docs/ballooning.md)).
 The same document warns that the balloon depends on the guest driver behaving correctly, so it is a density tool, not a security boundary, and a hard cap must still come from the host cgroup and the configured memory size.
 A practical rule follows: a correctly sized host overcommits on the distribution of guest high-water marks across tenants, and it keeps the right to kill idle sandboxes as its last resort, which Lambda has because execution environments are disposable by contract.
 
 ### Snapshots: restore cost is O(device state), not O(RAM)
 
 A full snapshot writes vCPU registers, device state, and KVM state into a small state file, and guest RAM into a separate memory file.
-On load, `backend_type: File` maps the memory file so the host kernel resolves page faults from it, and `backend_type: Uffd` hands a userfaultfd to an external process that serves each fault ([Firecracker snapshot docs, as of 2026-10](https://github.com/firecracker-microvm/firecracker/blob/main/docs/snapshotting/snapshot-support.md)).
+On load, `backend_type: File` maps the memory file so the host kernel resolves page faults from it, and `backend_type: Uffd` hands a userfaultfd to an external process that serves each fault ([Firecracker snapshot docs, as of 2026-11](https://github.com/firecracker-microvm/firecracker/blob/main/docs/snapshotting/snapshot-support.md)).
 Because the mapping is lazy, the restore call returns after restoring state, not after reading RAM, and Marc Brooker reports restores in as little as 4 ms, about 10 ms for a full decent-sized Linux system ([Brooker, 2022-11](https://brooker.co.za/blog/2022/11/29/snapstart.html)).
 The cost has not gone away; it has moved into first-touch page faults during the first invocation, which is why the working set of a restored guest decides its post-restore tail latency.
 With a private file mapping, many clones of the same snapshot on one host share the host page cache pages of the memory file until a clone writes a page, so clones get copy-on-write deduplication without KSM.
 The uffd path lets a platform stream memory from a remote store, but then every guest page fault becomes a network request on the critical path of a parked vCPU.
-On 5.10 hosts the uffd object comes from the `userfaultfd` syscall and on 6.1 hosts from `/dev/userfaultfd`, which the jailer exposes inside the jail when present ([Firecracker uffd doc, as of 2026-10](https://github.com/firecracker-microvm/firecracker/blob/main/docs/snapshotting/handling-page-faults-on-snapshot-resume.md)).
+On 5.10 hosts the uffd object comes from the `userfaultfd` syscall and on 6.1 hosts from `/dev/userfaultfd`, which the jailer exposes inside the jail when present ([Firecracker uffd doc, as of 2026-11](https://github.com/firecracker-microvm/firecracker/blob/main/docs/snapshotting/handling-page-faults-on-snapshot-resume.md)).
 The uffd handler must also process `UFFD_EVENT_REMOVE` for ballooned or hot-unplugged ranges, otherwise it can fault stale snapshot contents into memory the guest expects to be zero ([Firecracker memory hotplug doc](https://github.com/firecracker-microvm/firecracker/blob/main/docs/memory-hotplug.md)).
-Clones break assumptions about uniqueness: identical memory means identical PRNG state, and [Brooker et al., "Restoring Uniqueness in MicroVM Snapshots", arXiv 2021](https://arxiv.org/abs/2102.12892) proposes `MADV_WIPEONSUSPEND` and SysGenId as interfaces that let software know it has been cloned.
+Clones break assumptions about uniqueness: identical memory means identical PRNG state, and [Brooker et al., "Restoring Uniqueness in MicroVM Snapshots", arXiv 2021](https://arxiv.org/abs/2102.12892) proposes `MADV_WIPEONSUSPEND` and VmGenId, with SysGenId as its Linux device-driver counterpart, as interfaces that let software know it has been cloned.
 
 ### Lambda integration and the control plane boundary
 
-The paper places Firecracker inside Lambda: a Frontend accepts invokes, a Worker Manager routes them to warm slots, a Placement service leases new slots on workers, and a per-worker MicroManager drives Firecracker processes (paper Section 4; component names from memory, UNVERIFIED wording).
+The paper places Firecracker inside Lambda: a Frontend accepts invokes, a Worker Manager routes them to warm slots, a Placement service leases new slots on workers, and a per-worker MicroManager drives Firecracker processes ([NSDI 2020 paper, Section 4](https://www.usenix.org/system/files/nsdi20-paper-agache.pdf)).
 The worker data plane keeps serving warm slots when placement is impaired, which is the static stability pattern from [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]].
 Cold starts depend on the control plane, so control plane incidents show up as failed scale-up, not as failed warm invokes.
 Later papers extend the design: [On-demand Container Loading in AWS Lambda (USENIX ATC 2023)](https://www.usenix.org/conference/atc23/presentation/brooker) describes a chunked, deduplicated, cached image pipeline that supports 10 GiB images while scaling to 15,000 new containers per second for a single customer with start-up as low as 50 ms.
-That design rests on sparsity: Harter et al. found that on average only about 6.5% of container data is read, which makes on-demand loading roughly 15x cheaper than full downloads ([Brooker, 2023-05](https://brooker.co.za/blog/2023/05/23/snapshot-loading/)).
+That design rests on sparsity: Harter et al. found that on average only about 6.4% of container data is needed at startup ([ATC 2023 paper](https://www.usenix.org/system/files/atc23-brooker.pdf); Brooker's post rounds it to 6.5%), and Brooker describes the result as a roughly 15x acceleration from avoiding downloading whole images ([Brooker, 2023-05](https://brooker.co.za/blog/2023/05/23/snapshot-loading.html)).
 
 ### Where Firecracker sits in 2026
 
-The current release is v1.17 (2026-09-10), v1.16 (2026-06-03) is still supported, and the policy supports the last two minor releases for up to one year and any minor release for at least six months ([Firecracker release policy, as of 2026-10](https://github.com/firecracker-microvm/firecracker/blob/main/docs/RELEASE_POLICY.md)).
-AWS announced AWS Lambda MicroVMs on 2026-06-22 as a primitive for stateful, isolated sandboxes for user- or AI-generated code, with direct lifecycle control ([AWS News Blog, 2026-06](https://aws.amazon.com/blogs/aws/run-isolated-sandboxes-with-full-lifecycle-control-aws-lambda-introduces-microvms/)); its GA or preview status by region is UNVERIFIED.
+The current release is v1.17 (2026-09-10), v1.16 (2026-06-03) is still supported, and the policy supports the last two minor releases for up to one year and any minor release for at least six months ([Firecracker release policy, as of 2026-11](https://github.com/firecracker-microvm/firecracker/blob/main/docs/RELEASE_POLICY.md)).
+AWS announced AWS Lambda MicroVMs on 2026-06-22 as a primitive for stateful, isolated sandboxes for user- or AI-generated code, with direct lifecycle control ([AWS News Blog, 2026-06](https://aws.amazon.com/blogs/aws/run-isolated-sandboxes-with-full-lifecycle-control-aws-lambda-introduces-microvms/)).
+The post says it is available today, carries no preview label, and lists N. Virginia, Ohio, Oregon, Ireland, and Tokyo on ARM64, with up to 16 vCPUs, 32 GB of memory, and 8 hours of runtime per MicroVM ([AWS News Blog, 2026-06](https://aws.amazon.com/blogs/aws/run-isolated-sandboxes-with-full-lifecycle-control-aws-lambda-introduces-microvms/); [Lambda quotas, as of 2026-11](https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html)).
 Bedrock AgentCore gives each agent session its own microVM for up to 8 hours and destroys it when the session ends ([Brooker, "Seven Years of Firecracker", 2025-09](https://brooker.co.za/blog/2025/09/18/firecracker.html)).
-Outside AWS, Perplexity open-sourced SPACE, which runs each agent task in its own Firecracker microVM and keeps credentials and egress policy outside the guest ([MarkTechPost, 2026-10](https://www.marktechpost.com/2026/10/16/perplexity-open-sources-space-firecracker-microvm-sandbox-ai-agents/)).
+Outside AWS, Perplexity open-sourced SPACE under Apache-2.0, which runs each sandbox as an isolated Firecracker microVM and enforces egress policy and credential injection in a gateway outside the guest ([SPACE repository](https://github.com/perplexityai/SPACE) and [architecture doc](https://github.com/perplexityai/SPACE/blob/main/docs/architecture.md), as of 2026-11).
 The agent-runtime implications are covered in [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_03_Agent_Runtimes_and_Cloud_Execution_Environments|Agent Runtimes and Cloud Execution Environments]].
 
 ## Numbers to Know
 
 | Quantity | Value | Source and date |
 |---|---|---|
-| Boot, `InstanceStart` to guest `/sbin/init` | <= 125 ms, serial console off, minimal kernel and rootfs, CI-enforced | Firecracker SPECIFICATION.md as summarized by [Miget](https://miget.com/blog/cloud-hypervisor-vs-firecracker) and [Firecracker site](https://firecracker-microvm.github.io/) (as of 2026-10) |
-| VMM memory overhead | <= 5 MiB for 1 vCPU and 128 MiB guest; can exceed with many vsock connections | Firecracker SPECIFICATION.md via [Miget](https://miget.com/blog/cloud-hypervisor-vs-firecracker) (as of 2026-10) |
+| Boot, `InstanceStart` to guest `/sbin/init` | <= 125 ms, serial console off, minimal kernel and rootfs, CI-enforced | [Firecracker SPECIFICATION.md](https://github.com/firecracker-microvm/firecracker/blob/main/SPECIFICATION.md) (as of 2026-11) |
+| VMM memory overhead | <= 5 MiB for 1 vCPU and 128 MiB guest; can exceed with many vsock connections | [Firecracker SPECIFICATION.md](https://github.com/firecracker-microvm/firecracker/blob/main/SPECIFICATION.md) (as of 2026-11) |
 | MicroVM creation rate | up to 150 per second per host | [NSDI 2020 paper](https://www.usenix.org/system/files/nsdi20-paper-agache.pdf) (2020) |
 | Snapshot restore | as little as 4 ms; about 10 ms for a full Linux system | [Brooker blog](https://brooker.co.za/blog/2022/11/29/snapstart.html) (2022-11) |
 | Code size vs QEMU | 96% fewer lines; branch of crosvm with >50% removed | [NSDI 2020 slides](https://www.usenix.org/sites/default/files/conference/protected-files/nsdi20_slides_agache.pdf) (2020) |
-| Per-VM memory overhead, paper benchmark | about 3 MB Firecracker vs about 131 MB QEMU | NSDI 2020 paper Section 5 (UNVERIFIED) |
-| Default microVM shape | 1 vCPU, 128 MiB | Firecracker v1.17.0 README via [KitPloit mirror](https://kitploit.com/en/posts/github-firecracker-microvm-firecracker-v1170) (as of 2026-10) |
-| Latest release | v1.17.0, released 2026-09-10, min end of support 2027-03-10 | [Release policy](https://github.com/firecracker-microvm/firecracker/blob/main/docs/RELEASE_POLICY.md) (as of 2026-10) |
-| Support window | last two minors for up to 1 year; any minor >= 6 months | [Release policy](https://github.com/firecracker-microvm/firecracker/blob/main/docs/RELEASE_POLICY.md) (as of 2026-10) |
-| Host kernels in uffd docs | 5.10 and 6.1 | [uffd doc](https://github.com/firecracker-microvm/firecracker/blob/main/docs/snapshotting/handling-page-faults-on-snapshot-resume.md) (as of 2026-10) |
+| Per-VM memory overhead, paper benchmark | about 3 MB Firecracker vs about 131 MB QEMU | [NSDI 2020 paper, Section 5.2](https://www.usenix.org/system/files/nsdi20-paper-agache.pdf) (2020) |
+| Default microVM shape | 1 vCPU, 128 MiB | [Firecracker README](https://github.com/firecracker-microvm/firecracker/blob/main/README.md) (as of 2026-11) |
+| Latest release | v1.17.0, released 2026-09-10, min end of support 2027-03-10 | [Release policy](https://github.com/firecracker-microvm/firecracker/blob/main/docs/RELEASE_POLICY.md) (as of 2026-11) |
+| Support window | last two minors for up to 1 year; any minor >= 6 months | [Release policy](https://github.com/firecracker-microvm/firecracker/blob/main/docs/RELEASE_POLICY.md) (as of 2026-11) |
+| Host kernels in uffd docs | 5.10 and 6.1 | [uffd doc](https://github.com/firecracker-microvm/firecracker/blob/main/docs/snapshotting/handling-page-faults-on-snapshot-resume.md) (as of 2026-11) |
 | Lambda scale-up | up to 15,000 new containers per second, single customer; start-up as low as 50 ms | [ATC 2023](https://www.usenix.org/system/files/atc23-brooker.pdf) (2023) |
-| Lambda package limits | 250 MB zip; 10 GiB container image | [ATC 2023](https://www.usenix.org/system/files/atc23-brooker.pdf) (2023) |
-| Container bytes read at start | about 6.5% on average | [Brooker blog citing Harter et al.](https://brooker.co.za/blog/2023/05/23/snapshot-loading/) (2023-05) |
+| Lambda package limits | .zip package 50 MB zipped for direct upload and 250 MB unzipped; container image 10 GB uncompressed | [Lambda quotas](https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html) (as of 2026-11) |
+| Container data needed at start | about 6.4% on average | [ATC 2023 citing Harter et al.](https://www.usenix.org/system/files/atc23-brooker.pdf) (2023) |
 | Package download at 25 Gb/s | 250 MB in about 80 ms; warm routing typically < 10 ms | [Uniqueness paper](https://ar5iv.labs.arxiv.org/html/2102.12892) (2021) |
 | AgentCore session microVM lifetime | up to 8 hours | [Brooker blog](https://brooker.co.za/blog/2025/09/18/firecracker.html) (2025-09) |
-| Lambda memory range and CPU scaling | 128 MB to 10,240 MB; 1,769 MB = 1 vCPU equivalent | AWS Lambda docs (as of 2026-10, UNVERIFIED) |
-| Lambda x86 compute price | USD 0.0000166667 per GB-second, USD 0.20 per 1M requests, us-east-1 | AWS Lambda pricing (as of 2026-10, UNVERIFIED) |
-| EC2 c6g.metal on-demand | about USD 2.176 per hour, 64 vCPU, 128 GiB, us-east-1 | AWS EC2 pricing (as of 2026-10, UNVERIFIED) |
-| GCE n2-standard-4 on-demand | about USD 0.19 per hour, us-central1 | Google Cloud pricing (as of 2026-10, UNVERIFIED) |
+| Lambda memory range and CPU scaling | 128 MB to 10,240 MB; 1,769 MB = 1 vCPU equivalent | [AWS Lambda docs](https://docs.aws.amazon.com/lambda/latest/dg/configuration-memory.html) (as of 2026-11) |
+| Lambda x86 compute price | USD 0.0000166667 per GB-second first tier, USD 0.20 per 1M requests, us-east-1 | [AWS Lambda pricing](https://aws.amazon.com/lambda/pricing/) (as of 2026-11) |
+| EC2 c6g.metal on-demand | USD 2.176 per hour, 64 vCPU, 128 GiB, us-east-1 | [AWS EC2 pricing](https://aws.amazon.com/ec2/pricing/on-demand/) (as of 2026-11) |
+| GCE n2-standard-4 on-demand | USD 0.194236 per hour, us-central1 | [Google Cloud pricing](https://cloud.google.com/products/compute/pricing/general-purpose) (as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
-| First-party serverless sandbox | Firecracker microVM per execution environment in Lambda; Fargate per 2020 paper | gVisor user-space kernel for Cloud Run first-generation and GKE Sandbox ([gVisor docs](https://gvisor.dev/docs/)) | Firecracker trusts KVM plus a guest kernel; gVisor reimplements Linux syscalls in a Go Sentry, so compatibility gaps show up as unsupported syscalls rather than as guest kernel tax |
-| Second-generation serverless | Lambda MicroVMs for stateful sandboxes (announced 2026-06, status UNVERIFIED) | Cloud Run second-generation execution environment with full Linux compatibility; underlying VMM not publicly documented (UNVERIFIED) | Only AWS publishes its VMM source and design paper |
-| Snapshot-based cold start | Lambda SnapStart built on Firecracker snapshot and clone | No public VM-snapshot cold-start primitive for Cloud Run (UNVERIFIED) | SnapStart moves init cost to deploy time and requires uniqueness hygiene |
-| Customer-run VMM | Firecracker on `.metal` instances; nested virtualization on EC2 (UNVERIFIED) | Firecracker on GCE with `--enable-nested-virtualization` on Intel machine series | Nested virt adds a second exit layer and distorts latency, so it is fine for labs and risky for density benchmarks |
+| First-party serverless sandbox | Firecracker microVM per execution environment in Lambda's default compute type, while Lambda Managed Instances use containers on Nitro instead ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/lambda/latest/dg/lambda-managed-instances.html)); Fargate per 2020 paper | gVisor user-space kernel for Cloud Run first-generation and the GKE Sandbox `gvisor` RuntimeClass ([gVisor docs](https://gvisor.dev/docs/)) | Firecracker trusts KVM plus a guest kernel; gVisor reimplements Linux syscalls in a Go Sentry, so compatibility gaps show up as unsupported syscalls rather than as guest kernel tax |
+| Second-generation serverless | Lambda MicroVMs for stateful sandboxes (launched 2026-06 with no preview label, ARM64, five Regions, as of 2026-11) | Cloud Run second-generation execution environment, documented as a Linux microVM with full Linux compatibility; the docs do not name its VMM ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/run/docs/about-execution-environments)) | Only AWS publishes its VMM source and design paper |
+| Snapshot-based cold start | Lambda SnapStart built on Firecracker snapshot and clone | No VM-snapshot cold-start primitive found for Cloud Run (UNVERIFIED: one docs search found none, which does not prove absence); the nearest is [GKE Pod snapshots](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/pod-snapshots), which require GKE Sandbox and take a few seconds to restore the kernel (as of 2026-11) | SnapStart moves init cost to deploy time and requires uniqueness hygiene |
+| Customer-run VMM | Firecracker on `.metal` instances; since 2026-02 also nested virtualization with KVM on virtual instances such as C8i, M8i, and R8i, though AWS points latency-sensitive workloads to bare metal ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/amazon-ec2-nested-virtualization.html)) | Firecracker on GCE with `--enable-nested-virtualization`; E2, memory-optimized, Arm, and AMD series other than N4D are excluded ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/compute/docs/instances/nested-virtualization/overview)) | Nested virt adds a second exit layer and distorts latency, so it is fine for labs and risky for density benchmarks |
 | Host offload under the VMM | Nitro cards and Nitro hypervisor - [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_04_EC2_Nitro_Architecture_and_Graviton\|EC2, Nitro and Graviton]] | Titanium offload - [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_06_Compute_Engine_and_Titanium_Architecture\|Compute Engine and Titanium]] | On metal, Firecracker's virtio I/O runs on host CPU; Nitro handles the host's own VPC and EBS |
 | Isolation layering | KVM boundary, Rust VMM, jailer, seccomp, cgroups | gVisor Sentry, Gofer file proxy, host seccomp, namespaces | gVisor reduces host syscalls; Firecracker exposes a full kernel to the guest but a tiny host surface |
 | Memory elasticity | Balloon, free page reporting, virtio-mem; one process per VM | gVisor sandboxes allocate from host memory directly with no guest kernel ratchet | gVisor has no double page cache; Firecracker pays guest page cache plus host page cache |
-| Agent sandboxes | AgentCore Runtime microVM per session; Lambda MicroVMs | GKE Sandbox with gVisor; Kubernetes agent-sandbox integration (UNVERIFIED) | Choose by threat model and syscall compatibility, not by brand |
-| Kubernetes integration | Kata Containers or firecracker-containerd on EKS self-managed nodes | GKE Sandbox RuntimeClass `gvisor` - [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_07_GKE_Deep_Dive_Standard_vs_Autopilot\|GKE Deep Dive]] | GKE ships a managed sandbox runtime; EKS requires you to operate one |
+| Agent sandboxes | AgentCore Runtime microVM per session; Lambda MicroVMs | GKE Sandbox with gVisor or microVMs; [Agent Sandbox on GKE](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/agent-sandbox), an open-source controller whose samples use gVisor (GA or preview status UNVERIFIED: the docs show no label, as of 2026-11) | Choose by threat model and syscall compatibility, not by brand |
+| Kubernetes integration | Kata Containers or firecracker-containerd on EKS self-managed nodes | GKE Sandbox RuntimeClass `gvisor`, or `microvm` (Kata Containers plus Cloud Hypervisor on nested-virtualization nodes, GA 2026-10-07 from GKE 1.37.0-gke.4713000, per [docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/sandbox-pods) and [release notes](https://docs.cloud.google.com/kubernetes-engine/docs/release-notes)) - [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_07_GKE_Deep_Dive_Standard_vs_Autopilot\|GKE Deep Dive]] | GKE ships a managed sandbox runtime; EKS requires you to operate one |
 
 ## Worked Example: Boot, Balloon, Snapshot, and Restore a MicroVM, then Size a Host
 
@@ -267,7 +295,7 @@ if __name__ == "__main__":
 ```
 
 Run it as `python3 fc_density.py`, then `python3 fc_density.py --rho 0.3`, then `python3 fc_density.py --rho 1.0`.
-The defaults describe a 64 vCPU, 128 GiB arm64 metal host at about USD 2.176 per hour (UNVERIFIED price), 8 GiB reserved for the host, 1 GiB configured guests, a mean high-water mark of 300 MiB with 150 MiB standard deviation, a 5 MiB VMM overhead, and a z of 4.
+The defaults describe a 64 vCPU, 128 GiB arm64 metal host at USD 2.176 per hour (AWS EC2 pricing, as of 2026-11), 8 GiB reserved for the host, 1 GiB configured guests, a mean high-water mark of 300 MiB with 150 MiB standard deviation, a 5 MiB VMM overhead, and a z of 4.
 
 | rho | N memory-bound | Overcommit ratio | USD per microVM-hour | Break-even busy fraction vs Lambda |
 |---|---|---|---|---|
@@ -285,7 +313,7 @@ The break-even column compares a fully packed self-managed host with paying Lamb
 
 ### Step 2 - Lab on Google Cloud (nested virtualization, cheapest path)
 
-Cost estimate: an n2-standard-4 at about USD 0.19 per hour (UNVERIFIED) plus a 30 GB balanced disk comes to under USD 1 for a two-hour session.
+Cost estimate: an n2-standard-4 at about USD 0.19 per hour (Google Cloud pricing, as of 2026-11) plus a 30 GB boot disk comes to under USD 1 for a two-hour session.
 
 ```bash
 #!/usr/bin/env bash
@@ -303,7 +331,7 @@ gcloud billing budgets create \
   --threshold-rule=percent=0.9 \
   --threshold-rule=percent=1.0
 
-# Nested virtualization requires an Intel-based machine series such as N2.
+# Nested virtualization needs a supported series such as Intel N2 (AMD only on N4D; no E2 or Arm).
 gcloud compute instances create fc-lab \
   --project="${PROJECT}" --zone="${ZONE}" \
   --machine-type=n2-standard-4 \
@@ -315,11 +343,11 @@ gcloud compute ssh fc-lab --project="${PROJECT}" --zone="${ZONE}" \
   --command='ls -l /dev/kvm && grep -cw vmx /proc/cpuinfo'
 ```
 
-If the org policy constraint `compute.disableNestedVirtualization` is enforced, instance creation fails, and the fix is a project-level policy exception, not a different flag.
+If the org policy constraint `compute.disableNestedVirtualization` is enforced, the VM can still be created but Compute Engine does not pass it the virtualization extensions, so it cannot run L2 VMs ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/compute/docs/instances/nested-virtualization/managing-constraint)), and the fix is a project-level policy exception, not a different flag.
 
 ### Step 2 (alternative) - Lab on AWS (bare metal, production-faithful)
 
-Cost estimate: c6g.metal at about USD 2.176 per hour (UNVERIFIED) for two hours is about USD 4.40 plus a few cents of gp3; fetch the live price with `aws pricing get-products --region us-east-1 --service-code AmazonEC2 --filters Type=TERM_MATCH,Field=instanceType,Value=c6g.metal Type=TERM_MATCH,Field=location,Value="US East (N. Virginia)" Type=TERM_MATCH,Field=operatingSystem,Value=Linux Type=TERM_MATCH,Field=tenancy,Value=Shared Type=TERM_MATCH,Field=preInstalledSw,Value=NA Type=TERM_MATCH,Field=capacitystatus,Value=Used`.
+Cost estimate: c6g.metal at USD 2.176 per hour (AWS EC2 pricing, as of 2026-11) for two hours is about USD 4.35 plus a few cents of gp3; fetch the live price with `aws pricing get-products --region us-east-1 --service-code AmazonEC2 --filters Type=TERM_MATCH,Field=instanceType,Value=c6g.metal Type=TERM_MATCH,Field=location,Value="US East (N. Virginia)" Type=TERM_MATCH,Field=operatingSystem,Value=Linux Type=TERM_MATCH,Field=tenancy,Value=Shared Type=TERM_MATCH,Field=preInstalledSw,Value=NA Type=TERM_MATCH,Field=capacitystatus,Value=Used`.
 
 ```bash
 #!/usr/bin/env bash
@@ -468,29 +496,29 @@ Clones also restore TCP connections that the peer has already timed out or that 
 
 With a uffd backend serving pages from a remote store, every first touch parks a vCPU until the handler answers, and the guest cannot time out the stall.
 A slow store becomes guest soft-lockup warnings, clock jumps, and missed heartbeats, not clean errors.
-Prefetching the recorded working set and serving from a host-local cache before going remote (the approach evaluated in REAP, ASPLOS 2021, UNVERIFIED) turns thousands of serial faults into one bulk read.
+Prefetching the recorded working set, the mechanism evaluated in [REAP, ASPLOS 2021](https://arxiv.org/abs/2101.09355), and serving from a host-local cache before going remote turns thousands of serial faults into one bulk read.
 
 ### CPU feature mismatch across host generations
 
 A snapshot taken on a host that exposes newer instructions can crash or misbehave when restored on an older host, because guest libraries pick code paths based on CPUID at init time.
-Firecracker's CPU templates (static and custom) normalize the CPUID and MSR view so a snapshot stays portable across a defined set of host types (Firecracker docs, UNVERIFIED for the current template list).
+Firecracker's CPU templates normalize the CPUID and MSR view so a snapshot stays portable across a defined set of host types; custom JSON templates are the supported path, and the static templates (C3, T2, T2S, T2CL, T2A, V1N1) have been deprecated since v1.5.0 ([CPU templates doc, as of 2026-11](https://github.com/firecracker-microvm/firecracker/blob/main/docs/cpu_templates/cpu-templates.md)).
 
 ### Side channels and host configuration
 
-The paper treats microarchitectural side channels as part of the threat model, and Firecracker's production host guidance covers SMT, kernel page-table isolation, and memory deduplication (Firecracker prod-host-setup doc; exact recommendations UNVERIFIED).
+The paper treats microarchitectural side channels as part of the threat model, and Firecracker's production host guidance says to disable SMT where tenants need separation, disable Kernel Samepage Merging, disable swap or make it secure, use Rowhammer-mitigated memory, and check the host against vendor side-channel guidance ([prod-host-setup doc, as of 2026-11](https://github.com/firecracker-microvm/firecracker/blob/main/docs/prod-host-setup.md)).
 Enabling KSM to increase density brings back cross-tenant page-sharing timing channels that hardware virtualization otherwise closes.
 
 ### Control plane dependency during regional events
 
-The 2023-06-13 Lambda event in us-east-1 was traced to the Frontend capacity management subsystem, so invokes failed even though the worker microVMs were healthy ([AWS PIR](https://aws.amazon.com/message/061323/); details UNVERIFIED).
-In the 2025-10 us-east-1 event, a DynamoDB DNS failure spread into services that need control-plane state to launch new capacity ([AWS PIR](https://aws.amazon.com/message/101925/); details UNVERIFIED).
+The 2023-06-13 Lambda event in us-east-1 came from a latent defect in the Lambda Frontend fleet, triggered when scaling crossed a threshold never before reached in one cell: execution environments were allocated but never fully used by the Frontend, so new requests in that cell could not get environments and failed or slowed ([AWS PIR](https://aws.amazon.com/message/061323/)).
+In the 2025-10-19 to 2025-10-20 us-east-1 event, a race in DynamoDB's automated DNS management left an empty record for the regional endpoint, and EC2 launches kept failing after DynamoDB recovered because the droplet leases that make a host a launch candidate depend on DynamoDB, while already-running instances stayed healthy ([AWS PIR](https://aws.amazon.com/message/101925/)).
 The general lesson is in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]]: warm sandboxes are statically stable, while cold starts, snapshot fetches, and placement are not.
 
 ### Operational pitfalls in self-hosted fleets
 
 Running Firecracker without the jailer in production removes the second wall, and the API socket becomes a full-control endpoint for anyone who can reach it.
-VMM overhead grows beyond 5 MiB with many vsock connections ([Miget summary of SPECIFICATION.md](https://miget.com/blog/cloud-hypervisor-vs-firecracker)), so agent platforms that multiplex tool calls over vsock should measure it rather than assume it.
-The 125 ms figure ends at guest init and leaves out jailer setup, TAP creation, IP allocation, and application start, which third-party measurements put at 100 to 300 ms more on a cold path ([Particula, as of 2026-10](https://particula.tech/blog/firecracker-vs-libkrun-boot-time-memory-sizing), secondary source).
+VMM overhead grows beyond 5 MiB with many vsock connections ([SPECIFICATION.md, as of 2026-11](https://github.com/firecracker-microvm/firecracker/blob/main/SPECIFICATION.md)), so agent platforms that multiplex tool calls over vsock should measure it rather than assume it.
+The 125 ms figure ends at guest init and leaves out jailer setup, TAP creation, IP allocation, and application start, which third-party measurements put at 100 to 300 ms more on a cold path ([Particula, as of 2026-11](https://particula.tech/blog/firecracker-vs-libkrun-boot-time-memory-sizing), secondary source).
 Fleets pinned to an old minor version lose security patches when the six-month to one-year support window closes ([Release policy](https://github.com/firecracker-microvm/firecracker/blob/main/docs/RELEASE_POLICY.md)).
 
 ## Security and Cost Angles
@@ -499,7 +527,7 @@ Fleets pinned to an old minor version lose security patches when the six-month t
 
 Treat the guest as hostile: any credential injected into the microVM (a Lambda execution role's temporary credentials, an agent's API token) belongs to the tenant code and to anything that compromises it.
 Scope execution roles to the single function and resource ARNs it needs, and use resource policies or SCPs as backstops per [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]].
-For AI-agent sandboxes, keep long-lived credentials and egress policy outside the VM and have a host-side proxy add short-lived credentials, the pattern SPACE uses ([MarkTechPost, 2026-10](https://www.marktechpost.com/2026/10/16/perplexity-open-sources-space-firecracker-microvm-sandbox-ai-agents/)); see [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_08_Cloud_Security_for_AI_Systems_Attacks_and_Defenses|Cloud Security for AI Systems]].
+For AI-agent sandboxes, keep long-lived credentials and egress policy outside the VM and have a host-side proxy add short-lived credentials, the pattern SPACE's gateway uses ([SPACE architecture doc, as of 2026-11](https://github.com/perplexityai/SPACE/blob/main/docs/architecture.md)); see [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_08_Cloud_Security_for_AI_Systems_Attacks_and_Defenses|Cloud Security for AI Systems]].
 On a self-managed fleet, the Firecracker API socket is a root-equivalent control channel for its VM, so put it in the jail, restrict it to the orchestrator uid, and never forward it over the network.
 
 ### Encryption of snapshot and memory artifacts
@@ -551,7 +579,7 @@ The guest's block layer builds a virtio request (header, data buffer, status byt
 The driver writes `QueueNotify` on the device's MMIO window, which traps; because Firecracker registered an ioeventfd for that address, KVM completes the write in the kernel by signaling an eventfd, and the vCPU goes back into the guest without a user-space exit.
 The VMM thread wakes from `epoll`, reads the chain directly from guest memory (it is mapped in its own address space), checks the device's bandwidth and ops token buckets, and if allowed issues the write against the backing file.
 It writes the status, updates the used ring, and signals an irqfd, so KVM injects the completion interrupt.
-Consequences: the work is serialized per microVM in the VMM thread, so block and net requests queue behind each other; that CPU is charged to the Firecracker process cgroup, not the guest's vCPU quota; a buffered backing file means the write is acknowledged once it reaches the host page cache, so a host crash can lose it unless the platform flushes or uses direct I/O; and the rate limiter is the only thing preventing one tenant from saturating a shared NVMe device.
+Consequences: the work is serialized per microVM in the VMM thread, so block and net requests queue behind each other; that CPU is charged to the Firecracker process cgroup, not the guest's vCPU quota; a buffered backing file means the write is acknowledged once it reaches the host page cache, so a host crash can lose it unless the drive uses `cache_type: Writeback` and the guest issues a flush, which becomes `fsync`, because the default `Unsafe` mode does not advertise flush at all; and the rate limiter, together with the jailer's resource limits, is what prevents one tenant from saturating a shared NVMe device.
 
 #### Follow-up Interviewer Question
 
@@ -616,11 +644,11 @@ You must build a multi-tenant AI-agent code-execution platform on both AWS and G
 #### Model Answer
 
 The threat model is adversarial code that an LLM generates under prompt injection, so I assume every sandbox is hostile and the risks are host escape, credential theft, and data exfiltration through egress.
-On AWS I would choose between Lambda MicroVMs or AgentCore Runtime (managed microVM per session, with Firecracker's KVM boundary and AWS's operational ownership) and self-managed Firecracker on metal when I need custom images, GPUs nearby, or specific networking, and I would check the GA status of the managed options per region before committing.
-On Google Cloud the first-party option is gVisor through GKE Sandbox, which removes the guest kernel tax and double page cache but has syscall compatibility gaps and different performance for syscall-heavy tools; for kernel-level fidelity I would run Firecracker on GCE with nested virtualization only after measuring the nested-exit overhead on my workloads.
+On AWS I would choose between Lambda MicroVMs or AgentCore Runtime (managed microVM per session, with Firecracker's KVM boundary and AWS's operational ownership) and self-managed Firecracker on metal when I need custom images, GPUs nearby, or specific networking, and I would check regional availability of the managed options before committing, since Lambda MicroVMs launched in five Regions on ARM64 only.
+On Google Cloud the first-party default is gVisor through GKE Sandbox, which removes the guest kernel tax and double page cache but has syscall compatibility gaps and different performance for syscall-heavy tools; for kernel-level fidelity I would use GKE Sandbox's `microvm` RuntimeClass (Kata Containers plus Cloud Hypervisor, GA since 2026-10) or Firecracker on GCE, both of which rest on nested virtualization, only after measuring the nested-exit overhead on my workloads.
 Across both, credentials and egress policy stay outside the guest in a host-side proxy, per-session sandboxes are destroyed at session end, and every sandbox runs under a per-tenant key and a per-tenant network policy.
-For the CFO, the cost drivers are memory density and idle time: per-session microVMs with short lifetimes keep the ratchet low, the break-even against managed per-second billing sits around 10 to 25% busy fraction in my model depending on tenant correlation, and anything below that favors managed sandboxes because they absorb idle capacity.
-I would not standardize on one isolation technology across both clouds just for symmetry; I would standardize the sandbox API, policy model, and telemetry, and let the backend differ, accepting two security reviews in exchange for not running nested virtualization in production.
+For the CFO, the cost drivers are memory density and idle time: per-session microVMs with short lifetimes keep the ratchet low, the break-even against managed per-second billing sits around 10 to 27% busy fraction in my model depending on tenant correlation, and anything below that favors managed sandboxes because they absorb idle capacity.
+I would not standardize on one isolation technology across both clouds just for symmetry; I would standardize the sandbox API, policy model, and telemetry, and let the backend differ, accepting two security reviews in exchange for not running nested virtualization in production unless the measurements justify it.
 
 #### Follow-up Interviewer Question
 
@@ -638,7 +666,7 @@ Device state lives in GPU memory and firmware that the VMM cannot capture, so sn
 The attack surface moves into the PCI emulation, the IOMMU configuration, and GPU firmware, which are far larger than the virtio device set Rust was meant to keep small.
 My recommendation is to keep the general Firecracker fleet GPU-free and serve inference from a separate GPU tier behind a network API with per-tenant quotas, as in [[17-Cloud-AI-Engineering/Volume_14_Staff_Plus_Interview_Arena/Chapter_01_Design_Multi_Tenant_LLM_Inference_Platform|Multi-Tenant LLM Inference Platform]].
 If a product truly needs a tenant-owned GPU, I would use whole-host or whole-GPU dedicated VMs with a VMM built for device assignment, priced as dedicated capacity, rather than weaken the density and snapshot properties of the main fleet.
-Firecracker's current device-assignment roadmap is UNVERIFIED, so I would check upstream before stating its position as fact.
+Upstream is actively exploring this: VFIO passthrough is an open feature request ([#5679, as of 2026-11](https://github.com/firecracker-microvm/firecracker/issues/5679)) with work merging into a `feature/vfio` branch, but it is absent from v1.17.0 and from the main-branch changelog, so I would treat it as unreleased and re-check these costs against whatever ships.
 
 #### Follow-up Interviewer Question
 
@@ -660,6 +688,6 @@ If confidential-computing GPUs with attested device memory encryption become sta
 - [Linux KVM API documentation](https://docs.kernel.org/virt/kvm/api.html) - the ioctls behind memory regions, ioeventfd, irqfd, and `KVM_RUN`.
 - [Linux userfaultfd documentation](https://docs.kernel.org/admin-guide/mm/userfaultfd.html) - the kernel contract every uffd snapshot handler depends on.
 - [gVisor documentation](https://gvisor.dev/docs/) - the Google Cloud design point to compare against.
-- REAP: Benchmarking, Analysis, and Optimization of Serverless Function Snapshots, ASPLOS 2021 (UNVERIFIED citation details) - working-set record and prefetch for snapshot restore.
-- Blending Containers and Virtual Machines: A Study of Firecracker and gVisor, VEE 2020 (UNVERIFIED citation details) - an independent measurement of where each sandbox spends host kernel time.
+- [Benchmarking, Analysis, and Optimization of Serverless Function Snapshots, ASPLOS 2021](https://arxiv.org/abs/2101.09355) - the REAP paper on working-set record and prefetch for snapshot restore.
+- [Blending Containers and Virtual Machines: A Study of Firecracker and gVisor, VEE 2020](https://conf.researchr.org/details/vee-2020/vee-2020-papers/1/Blending-Containers-and-Virtual-Machines-A-Study-of-Firecracker-and-gVisor) - an independent measurement of where each sandbox spends host kernel time.
 - Related chapters: [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_03_Physalia_EBS_Control_Plane|Physalia (previous)]], [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_05_Amazon_S3_ShardStore_Formal_Methods|ShardStore (next)]], [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_08_Cloud_Run_and_Serverless_Container_Execution|Cloud Run and Serverless Container Execution]], [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_08_Cloud_GPU_Autoscaling_and_Cold_Start_Mitigation|Cloud GPU Autoscaling and Cold-Start Mitigation]], [[15-Technical-Whitepapers/06-Defensive-Security-and-Hardening/Container-and-Microservice-Security|Container and Microservice Security]].

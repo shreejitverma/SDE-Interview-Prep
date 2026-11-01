@@ -602,7 +602,7 @@ Quota increases are themselves a control plane action, so they must be done befo
 **Zone-bound state.**
 An EBS volume lives in one AZ, so a replacement instance in another AZ cannot attach it, and a Kubernetes pod with a zonal persistent volume cannot reschedule across zones.
 For stateful systems the recovery is "replicas already exist in the survivors", and re-replication after a loss is a long, risky period (see the Kafka question below).
-See [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_03_Physalia_EBS_Control_Plane|Physalia: Millions of Distributed Databases]] for how EBS contains the blast radius of its own control plane.
+See [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_03_Physalia_EBS_Control_Plane|Physalia: Millions of Tiny Databases]] for how EBS contains the blast radius of its own control plane.
 
 **Imbalance.**
 Cross-zone load balancing disabled with unequal per-zone counts, or zone-aware routing with skewed clients, produces hot instances while average utilization looks fine.

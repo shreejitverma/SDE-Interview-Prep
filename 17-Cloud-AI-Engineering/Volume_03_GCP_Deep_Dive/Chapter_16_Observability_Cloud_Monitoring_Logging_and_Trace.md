@@ -18,17 +18,44 @@ sources:
   - "https://docs.cloud.google.com/stackdriver/docs/instrumentation/google-built-otel"
   - "https://cloud.google.com/products/observability/pricing"
   - "https://aws.amazon.com/builders-library/instrumenting-distributed-systems-for-operational-visibility/"
+  - "https://static.googleusercontent.com/media/research.google.com/en//archive/papers/dapper-2010-1.pdf"
+  - "https://docs.cloud.google.com/logging/docs/routing/overview"
+  - "https://docs.cloud.google.com/logging/docs/export/aggregated_sinks"
+  - "https://docs.cloud.google.com/logging/docs/export/configure_export_v2"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/logging/sinks/update"
+  - "https://docs.cloud.google.com/logging/docs/logs-based-metrics"
+  - "https://docs.cloud.google.com/logging/docs/log-analytics"
+  - "https://docs.cloud.google.com/logging/docs/routing/managed-encryption-storage"
+  - "https://docs.cloud.google.com/logging/docs/agent/ops-agent/use-telemetry-api"
+  - "https://docs.cloud.google.com/monitoring/agent/ops-agent"
+  - "https://docs.cloud.google.com/monitoring/api/troubleshooting"
+  - "https://docs.cloud.google.com/monitoring/api/metrics_gcp_c"
+  - "https://docs.cloud.google.com/stackdriver/docs/release-notes"
+  - "https://docs.cloud.google.com/trace/docs/trace-context"
+  - "https://docs.cloud.google.com/trace/docs/migrate-to-otlp-endpoints"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/supported-products"
+  - "https://cloud.google.com/bigquery/pricing"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://aws.amazon.com/message/11201/"
+  - "https://aws.amazon.com/message/12721/"
+  - "https://aws.amazon.com/cloudwatch/pricing/"
+  - "https://aws.amazon.com/prometheus/pricing/"
+  - "https://aws.amazon.com/prometheus/faqs/"
+  - "https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sendingdata.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Transaction-Search.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-OTLPEndpoint.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html"
 ---
 
 # Observability: Cloud Monitoring, Logging, and Trace
 
 ## TL;DR
 
-- Cloud Monitoring runs on Monarch, an in-memory time-series database split into regions; it caps each time series at one point every 5 seconds and each write request at 200 time series, so you size the metric pipeline by number of series and write interval, not by raw event count (Google Cloud docs, as of 2026-10).
+- Cloud Monitoring runs on Monarch, an in-memory time-series database split into regions; it caps each time series at one point every 5 seconds and each write request at 200 time series, so you size the metric pipeline by number of series and write interval, not by raw event count (Google Cloud docs, as of 2026-11).
 - Cloud Logging is a router first and a store second: the Log Router checks every incoming LogEntry against every sink on its own, so an exclusion on `_Default` cuts your storage bill but does not stop other sinks from exporting the same entry.
 - A BigQuery log sink locks each table's schema to the first entry it receives, and later type changes get diverted into an error table, so routed logs are a schema-on-first-write contract that you have to govern.
-- Cloud Trace charges $0.20 per million spans after 2.5 million free per billing account, so the sampling policy decides the cost; tail sampling in an OpenTelemetry Collector only works if every span of a trace reaches the same collector replica (Google Cloud pricing, as of 2026-10).
-- The Telemetry API (`telemetry.googleapis.com`) accepts OTLP for traces, metrics, and logs, which lets you move the vendor boundary out of application code and into the Collector; AWS reaches the same place through ADOT and CloudWatch/X-Ray (Google Cloud docs, as of 2026-10).
+- Cloud Trace charges $0.20 per million spans after 2.5 million free per billing account, so the sampling policy decides the cost; tail sampling in an OpenTelemetry Collector only works if every span of a trace reaches the same collector replica (Google Cloud pricing, as of 2026-11).
+- The Telemetry API (`telemetry.googleapis.com`) accepts OTLP for traces, metrics, and logs, which lets you move the vendor boundary out of application code and into the Collector; AWS reaches the same place through ADOT and CloudWatch/X-Ray (Google Cloud docs, as of 2026-11).
 
 ## Mental Model
 
@@ -81,16 +108,17 @@ Clients send writes to a nearby ingestion router.
 The router picks a zone from the target's location field.
 A per-zone leaf router then forwards the write to the leaves that own the lexicographic *target range* containing that target.
 A range assigner balances those ranges across leaves, and each range is held by several leaf replicas for availability.
-Leaves keep data in memory and write recovery logs asynchronously, so losing a leaf costs a re-read of the logs, not lost acknowledged data.
+Leaves keep data in memory and do not wait for acknowledgement when writing recovery logs, because the system must keep working even when all Colossus instances are down (Monarch paper, 2020).
+The log write is therefore best effort, and availability of recent data rests mainly on the in-memory leaf replicas, not on a durable commit.
 This explains a limit that confuses many engineers.
-Cloud Monitoring accepts only one point each 5 seconds per time series, while writes to *different* series have no such rate limit (Google Cloud docs, as of 2026-10).
+Cloud Monitoring accepts only one point each 5 seconds per time series, while writes to *different* series have no such rate limit (Google Cloud docs, as of 2026-11).
 The per-series limit protects the in-memory append path of one leaf replica set, while the aggregate rate scales out across target ranges.
 
 **Collection aggregation (the mechanism getting-started guides skip).**
 Monarch can aggregate at ingestion time.
-For cumulative metrics, the leaf turns each incoming point into a delta against the previous point from the same series.
-It adds that delta into an output bucket keyed by the *reduced* label set, for example "all tasks in job X" instead of "task 1234 of job X".
-The leaf drops deltas that arrive after an admission window closes, so the bucket can be finalized and made visible for alerting.
+Aggregating cumulative values with different start times is meaningless, so collection aggregation requires the originating targets to write deltas between adjacent cumulative points, and those deltas can be pre-aggregated in the client and the leaf routers (Monarch paper, 2020).
+The leaf adds each delta into an output time bucket keyed by the *reduced* label set, for example "all tasks in job X" instead of "task 1234 of job X".
+The leaf rejects deltas older than a sliding admission window, so the bucket can be finalized once its end time leaves the window; the paper puts the delta period at 10 s and the bucket length at 1 to 60 s.
 The paper presents this as the way to store per-job aggregates without ever materializing millions of per-task series.
 The trade-off is that late or out-of-order writes are silently excluded from the aggregate.
 Two operational rules follow from this.
@@ -105,11 +133,11 @@ Monarch chooses availability over consistency: a zone outage produces partial re
 That is the right default for dashboards and a dangerous one for "absence of data" alerts, as covered in Failure Modes.
 
 **Scale snapshot.**
-The paper reports close to 950 billion stored time series using roughly 750 TB of memory, measured in 2019 (Monarch paper, 2020; figure not re-read this session, UNVERIFIED).
+The paper reports nearly 950 billion stored time series using around 750 TB of memory, and about 2.2 TB/s of ingestion, as of July 2019 (Monarch paper, 2020).
 
 **Managed Service for Prometheus (GMP).**
 GMP runs managed collectors on GKE nodes (or self-deployed Prometheus binaries), converts Prometheus samples to Monarch writes, and serves PromQL through a global query frontend.
-It is billed per sample, not per byte (Google Cloud pricing, as of 2026-10).
+It is billed per sample, not per byte (Google Cloud pricing, as of 2026-11).
 Because Monarch is global, one PromQL query can span clusters and regions without a Thanos or Cortex layer.
 The cost of that convenience is a fixed per-sample price you cannot reduce by running your own storage.
 
@@ -119,33 +147,34 @@ Every LogEntry that reaches a project, folder, organization, or billing account 
 The router does not move entries one sink after another.
 It evaluates every sink's inclusion filter and exclusion filters on its own and copies the entry to every sink that matches.
 Two system sinks exist per project: `_Required`, which captures Admin Activity, System Event, and Access Transparency audit logs and cannot be changed, and `_Default`, which captures everything else.
-`_Required` retains for 400 days and `_Default` for 30 days by default (configurable) (UNVERIFIED this session).
-Sinks are capped at 200 per project, and the same cap applies separately at folder, organization, and billing account level rather than being shared down the hierarchy (Google Cloud docs, as of 2026-10).
-A LogEntry is capped at about 256 KiB of internal size, and audit log entries at 512 KiB; neither limit can be raised (Google Cloud docs, as of 2026-10).
+`_Required` retains for a fixed 400 days, and `_Default` for 30 days by default, configurable from 1 to 3,650 days in projects but not in folders or organizations (Google Cloud docs, as of 2026-11).
+The sink quota is 200 per project, increasable to 4,000, and the same quota applies separately at folder, organization, and billing account level rather than being shared down the hierarchy (Google Cloud docs, as of 2026-11).
+A LogEntry is capped at about 256 KiB of internal size, and audit log entries at 512 KiB; neither limit can be raised (Google Cloud docs, as of 2026-11).
 
 **Aggregated sinks.**
 A sink on a folder or organization with `includeChildren=true` receives entries from every descendant project.
 This is the standard way to centralize audit logs into a security project.
-With the *intercepting* option, an aggregated sink also stops matched entries from reaching child-project sinks other than `_Required` (intercepting sink GA status UNVERIFIED this session).
+With the *intercepting* option (`--intercept-children`), an aggregated sink also stops matched entries from reaching child-project sinks other than `_Required`; the docs describe it with no Preview label (Google Cloud docs, as of 2026-11).
 
 **Destinations and their failure semantics.**
-Each destination enforces its own quota, and when a quota runs out the sink stops routing to that destination (Google Cloud docs, as of 2026-10).
-Pub/Sub sinks are limited to 60 GB/min, and overflow produces a sink error log with `topic_over_quota` (Google Cloud docs, as of 2026-10).
-BigQuery sinks are limited by the destination table's streaming insert quota, and exhaustion produces `table_resource_exhausted` (Google Cloud docs, as of 2026-10).
+Each destination enforces its own quota, and when a quota runs out the sink stops routing to that destination (Google Cloud docs, as of 2026-11).
+Pub/Sub sinks are limited to 60 GB/min, and overflow produces a sink error log with `topic_over_quota` (Google Cloud docs, as of 2026-11).
+BigQuery sinks are limited by the destination table's streaming insert quota, and exhaustion produces `table_resource_exhausted` (Google Cloud docs, as of 2026-11).
 Sink errors are themselves written as log entries under `logging.googleapis.com/sink_error` with an `error_code` label.
 This gives you a native alerting signal, and almost nobody wires it up.
 
 **BigQuery routing: schema-on-first-write.**
 Logging batches entries to BigQuery.
-The first entry received for a table fixes the column types, and BigQuery builds the table's columns from that entry's fields (Google Cloud docs, as of 2026-10).
+The first entry received for a table fixes the column types, and BigQuery builds the table's columns from that entry's fields (Google Cloud docs, as of 2026-11).
 A later entry causes a schema mismatch if it changes a field's type (the documented example is `jsonPayload.user_id` going from string to array) or if adding a new field would exceed BigQuery's column limit.
-On a mismatch, BigQuery creates an error table in the same dataset to hold the error information (Google Cloud docs, as of 2026-10).
-Columns routed from Logging are limited to 13 levels of nesting (Google Cloud docs, as of 2026-10).
+On a mismatch, the offending entries go to an error table in the same dataset, named `export_errors` for partitioned tables and `export_errors_YYYYMMDD` for date-sharded tables, with the full entry kept as a string in its `logEntry` column (Google Cloud docs, as of 2026-11).
+Columns routed from Logging are limited to 13 levels of nesting (Google Cloud docs, as of 2026-11).
 The consequence is that `jsonPayload` is a schema owned by whoever first emitted it.
 A careless deploy that changes a field type does not break the build; it quietly splits your audit or analytics data into an error table.
 With `--use-partitioned-tables`, each log goes into one time-partitioned table instead of daily `_YYYYMMDD` shards.
 Partitioned tables are cheaper to query and easier to protect with partition-expiration policies.
-The alternative to sink export is Log Analytics: you upgrade a log bucket and optionally create a linked BigQuery dataset that reads the bucket in place, which avoids duplicate storage at the cost of a read-only, Logging-defined schema (pricing and feature boundaries UNVERIFIED this session).
+The alternative to sink export is Log Analytics, which current docs call Observability Analytics: you upgrade a log bucket and optionally create a linked BigQuery dataset that gives read access to the bucket in place.
+This incurs no BigQuery ingestion or storage cost, but BigQuery analysis charges apply to SQL queries on the linked dataset, and the schema is the one Logging defines (Google Cloud docs, as of 2026-11).
 
 ### Trace data plane: context propagation
 
@@ -159,7 +188,7 @@ Google infrastructure historically used `X-Cloud-Trace-Context: TRACE_ID/SPAN_ID
 In that header, TRACE_ID is 32 hex characters, SPAN_ID is an unsigned 64-bit *decimal* integer, and `o=1` means sampled.
 The W3C `traceparent` header is `00-<32 hex trace id>-<16 hex parent id>-<2 hex flags>` ([W3C Trace Context](https://www.w3.org/TR/trace-context/)).
 A hand-written translator that copies the span ID across without converting decimal to hex produces parent IDs that point at nothing.
-The trace then splits into orphan fragments that look like a sampling problem (header format details not re-verified this session, UNVERIFIED).
+The trace then splits into orphan fragments that look like a sampling problem (header formats per [Cloud Trace docs](https://docs.cloud.google.com/trace/docs/trace-context), as of 2026-11, which also call `X-Cloud-Trace-Context` legacy and recommend `traceparent`).
 The fix is never to hand-roll it: configure the OpenTelemetry composite propagator with W3C `tracecontext` plus the Google Cloud propagator (`opentelemetry-propagator-gcp` in Python) at the ingress boundary, and emit only W3C internally.
 
 **Asynchronous hops.**
@@ -177,12 +206,15 @@ It also forces the trace-ID-affinity routing described in the Worked Example.
 ### OpenTelemetry exporters and the Telemetry API
 
 The Telemetry API implements OTLP and is meant for applications instrumented with OpenTelemetry SDKs or any OpenTelemetry Collector.
-It exposes `v1.traces`, `v1.metrics`, and `v1.logs` surfaces (Google Cloud docs, as of 2026-10).
-Google recommends exporting OTLP to a Collector, which then sends to the Telemetry API, and configuring only the root URL in the exporter (Google Cloud docs, as of 2026-10).
+It exposes `v1.traces`, `v1.metrics`, and `v1.logs` surfaces (Google Cloud docs, as of 2026-11).
+Google recommends exporting OTLP to a Collector, which then sends to the Telemetry API, and configuring only the root URL in the exporter (Google Cloud docs, as of 2026-11).
 The Google-Built OpenTelemetry Collector is Google's build of upstream components on a secure supply chain.
-It adds Google Cloud resource metadata so that application telemetry can be correlated with infrastructure telemetry (Google Cloud docs, as of 2026-10).
-The Ops Agent can also be switched to send logs, metrics, and traces through the Telemetry API instead of the proprietary Monitoring, Logging, and Trace APIs (Google Cloud docs, as of 2026-10).
-Per-signal GA versus Preview status of the Telemetry API changes often, so confirm it on the overview page before relying on it in production (UNVERIFIED this session).
+It adds Google Cloud resource metadata so that application telemetry can be correlated with infrastructure telemetry (Google Cloud docs, as of 2026-11).
+Ops Agent 2.71.0 or newer can also be switched, with `otlp_exporter: true` under `global` in its config, to send logs, metrics, and traces through the Telemetry API instead of the proprietary Monitoring, Logging, and Trace APIs (Google Cloud docs, as of 2026-11).
+The logs and metrics opt-in was labeled Preview in the May 2026 release note (UNVERIFIED: current Ops Agent docs and the 2.71.0 note state no release stage, so do not assume GA).
+Metric ingestion through the Telemetry API reached GA on 2026-08-05 and log ingestion on 2026-08-14, both after Preview periods (Google Cloud release notes, as of 2026-11).
+Google has recommended the Telemetry API for traces since 2025-03-25 (Google Cloud release notes, as of 2026-11), and the `v1.traces` reference carries no Preview label (UNVERIFIED: no explicit GA entry for traces in the release notes).
+Sending traces also requires the Cloud Trace API to be enabled, because otherwise the Telemetry API discards them (Google Cloud release notes, as of 2026-11).
 Older exporters still exist: `googlecloud` and `googlemanagedprometheus` in collector-contrib, and per-language `opentelemetry-exporter-gcp-trace` and `opentelemetry-exporter-gcp-monitoring`.
 These write to the proprietary APIs and remain valid where OTLP is not yet supported for a signal.
 
@@ -190,7 +222,7 @@ These write to the proprietary APIs and remain valid where OTLP is not yet suppo
 
 The control plane covers metric descriptors, alert policies, uptime checks, sinks, log buckets, exclusions, and log-based metric definitions.
 It changes rarely and is propagated asynchronously.
-For example, a new sink is not effective instantly, and entries written in the first moments after creation may not be routed (propagation delay UNVERIFIED this session).
+For example, sink changes might take a few minutes to apply, new sinks to Cloud Storage might take several hours to start routing because they are processed hourly, and entries received earlier are not backfilled (Google Cloud docs, as of 2026-11).
 The data plane covers point writes, log writes, and span writes, and it must keep running while the control plane is impaired.
 This is the static-stability discipline from [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
 In practice: create descriptors, sinks, and alert policies through IaC ahead of time, never lazily on the hot path.
@@ -200,44 +232,44 @@ A service that auto-creates its metric descriptor at startup takes a control-pla
 
 | Quantity | Value | Source |
 | --- | --- | --- |
-| Max write rate to one time series | 1 point each 5 seconds | (Google Cloud docs, as of 2026-10) |
-| Time series per `CreateTimeSeries` request | 200 (one point per series per request) | (Google Cloud docs, as of 2026-10) |
-| Custom metric descriptors per project | 10,000 | (Google Cloud docs, as of 2026-10) |
-| Workload, Prometheus, external metric descriptors per project | 25,000 | (Google Cloud docs, as of 2026-10) |
-| Labels per custom metric descriptor / per Prometheus descriptor | 30 / 200 | (Google Cloud docs, as of 2026-10) |
-| Label value length | 1,024 chars | (Google Cloud docs, as of 2026-10) |
-| Histogram buckets per custom distribution | 200 | (Google Cloud docs, as of 2026-10) |
-| Active custom-metric series per monitored resource | 200,000 | (Google Cloud docs, as of 2026-10) |
-| Monitoring ingestion (byte-billed) | $0.2580/MiB to 100,000 MiB; $0.1510/MiB to 250,000 MiB; $0.0610/MiB above; first 150 MiB per billing account free | (Google Cloud pricing, as of 2026-10) |
-| GMP ingestion (sample-billed) | $0.060/M samples to 50B; $0.048/M to 250B; $0.036/M to 500B; $0.024/M above | (Google Cloud pricing, as of 2026-10) |
-| Monitoring API reads | $0.50 per million time series returned; first 1M free; writes free; effective 2025-10-02 | (Google Cloud pricing, as of 2026-10) |
-| Bytes billed per scalar point | 8 bytes (distributions more) | UNVERIFIED |
-| LogEntry max size / audit entry max size | ~256 KiB / 512 KiB | (Google Cloud docs, as of 2026-10) |
-| Labels per LogEntry; label key; label value | 64; 512 B; 64 KiB | (Google Cloud docs, as of 2026-10) |
-| Sinks per project (also separately per folder, org, billing account) | 200 | (Google Cloud docs, as of 2026-10) |
-| Pub/Sub sink export rate | 60 GB/min, overflow logs `topic_over_quota` | (Google Cloud docs, as of 2026-10) |
-| BigQuery sink rate | per-table streaming insert quota, overflow logs `table_resource_exhausted` | (Google Cloud docs, as of 2026-10) |
-| Max nested depth of a routed BigQuery column | 13 levels | (Google Cloud docs, as of 2026-10) |
-| Logging ingestion price | $0.50/GiB; first 50 GiB per project per month free; 30 days storage included | (Google Cloud pricing as summarized by third parties, as of 2026-10) |
-| Logging retention beyond default | $0.01/GiB/month | UNVERIFIED |
-| `_Required` / `_Default` retention | 400 days fixed / 30 days default | UNVERIFIED |
-| Cloud Trace ingestion | $0.20 per million spans; first 2.5M spans per billing account free | (Google Cloud pricing, as of 2026-10) |
+| Max write rate to one time series | 1 point each 5 seconds | (Google Cloud docs, as of 2026-11) |
+| Time series per `CreateTimeSeries` request | 200 (one point per series per request) | (Google Cloud docs, as of 2026-11) |
+| Custom metric descriptors per project | 10,000 | (Google Cloud docs, as of 2026-11) |
+| Workload, Prometheus, external metric descriptors per project | 25,000 | (Google Cloud docs, as of 2026-11) |
+| Labels per custom metric descriptor / per Prometheus descriptor | 30 / 200 | (Google Cloud docs, as of 2026-11) |
+| Label value length | 1,024 chars | (Google Cloud docs, as of 2026-11) |
+| Histogram buckets per custom distribution | 200 | (Google Cloud docs, as of 2026-11) |
+| Active custom-metric series per monitored resource | 200,000 | (Google Cloud docs, as of 2026-11) |
+| Monitoring ingestion (byte-billed) | $0.2580/MiB to 100,000 MiB; $0.1510/MiB to 250,000 MiB; $0.0610/MiB above; first 150 MiB per billing account free | (Google Cloud pricing, as of 2026-11) |
+| GMP ingestion (sample-billed) | $0.060/M samples to 50B; $0.048/M to 250B; $0.036/M to 500B; $0.024/M above | (Google Cloud pricing, as of 2026-11) |
+| Monitoring API reads | $0.50 per million time series returned; first 1M free; writes free; effective 2025-10-02 | (Google Cloud pricing, as of 2026-11) |
+| Bytes billed per point | 8 bytes scalar; 80 bytes distribution | (Google Cloud pricing, as of 2026-11) |
+| LogEntry max size / audit entry max size | ~256 KiB / 512 KiB | (Google Cloud docs, as of 2026-11) |
+| Labels per LogEntry; label key; label value | 64; 512 B; 64 KiB | (Google Cloud docs, as of 2026-11) |
+| Sinks per project (also separately per folder, org, billing account) | 200, increasable to 4,000 | (Google Cloud docs, as of 2026-11) |
+| Pub/Sub sink export rate | 60 GB/min, overflow logs `topic_over_quota` | (Google Cloud docs, as of 2026-11) |
+| BigQuery sink rate | per-table streaming insert quota, overflow logs `table_resource_exhausted` | (Google Cloud docs, as of 2026-11) |
+| Max nested depth of a routed BigQuery column | 13 levels | (Google Cloud docs, as of 2026-11) |
+| Logging ingestion price | $0.50/GiB ($0.25/GiB for vended network logs); first 50 GiB per project per month free; 30 days storage included | (Google Cloud pricing, as of 2026-11) |
+| Logging retention beyond default | $0.01/GiB/month past 30 days | (Google Cloud pricing, as of 2026-11) |
+| `_Required` / `_Default` retention | 400 days fixed / 30 days default | (Google Cloud docs, as of 2026-11) |
+| Cloud Trace ingestion | $0.20 per million spans; first 2.5M spans per billing account free | (Google Cloud pricing, as of 2026-11) |
 | Dapper original sampling rate | ~1/1024 | (Dapper tech report, 2010) |
-| Monarch scale snapshot | ~950B series, ~750 TB RAM (2019) | UNVERIFIED |
+| Monarch scale snapshot | ~950B series, ~750 TB RAM (July 2019) | (Monarch paper, 2020) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Concern | Google Cloud | AWS | Critical difference |
 | --- | --- | --- | --- |
 | Metric store | Monarch, published architecture (VLDB 2020), global query plane | CloudWatch Metrics, no peer-reviewed architecture paper | GCP lets one query span regions; CloudWatch is regional, and cross-account views go through Observability Access Manager |
-| Metric write unit | `CreateTimeSeries`, 200 series per call, 1 point per 5 s per series | `PutMetricData`, standard and 1-second high-resolution metrics | CloudWatch bills per metric per month plus API calls (UNVERIFIED pricing); GCP bills bytes or samples and writes are free |
-| Prometheus | Managed Service for Prometheus on Monarch, billed per sample | Amazon Managed Service for Prometheus, Cortex-derived, billed per sample plus storage and query (UNVERIFIED) | GMP has no separate per-workspace storage bill |
+| Metric write unit | `CreateTimeSeries`, 200 series per call, 1 point per 5 s per series | `PutMetricData`, standard and 1-second high-resolution metrics | CloudWatch bills per metric per month plus API calls (AWS pricing, as of 2026-11); GCP bills bytes or samples and writes are free |
+| Prometheus | Managed Service for Prometheus on Monarch, billed per sample | Amazon Managed Service for Prometheus, powered by Cortex, billed per sample plus storage and query samples processed (AWS FAQ and pricing, as of 2026-11) | GMP has no separate per-workspace storage bill |
 | Structured metric from logs | Log-based metrics (counter or distribution) | CloudWatch metric filters and Embedded Metric Format | EMF turns one log write into a metric without a filter, see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_14_Observability_CloudWatch_Metrics_Logs_and_X_Ray\|CloudWatch chapter]] |
-| Log routing | Log Router, up to 200 sinks per resource, filters checked independently, aggregated org sinks | Log groups with subscription filters (small fixed number per log group, UNVERIFIED), Firehose, centralized via cross-account destinations | GCP fan-out happens at the router; AWS fan-out happens per log group |
-| Log analytics | BigQuery sink or Log Analytics linked dataset | CloudWatch Logs Insights, or Firehose to S3 plus Athena | BigQuery sink schema is frozen by the first entry; Athena on S3 is schema-on-read |
-| Trace backend | Cloud Trace, $0.20 per million spans | X-Ray, priced per trace recorded and scanned (UNVERIFIED); CloudWatch Transaction Search stores spans as logs (UNVERIFIED) | Span pricing versus trace pricing changes which sampling strategy is optimal |
-| Native trace header | `X-Cloud-Trace-Context` (decimal span ID) and W3C `traceparent` | `X-Amzn-Trace-Id: Root=1-<epoch hex>-<96-bit hex>;Parent=...;Sampled=1` | X-Ray trace IDs embed a timestamp; converting to W3C requires the X-Ray ID generator in OTel |
-| OTel distribution | Google-Built OpenTelemetry Collector, Telemetry API (OTLP) | AWS Distro for OpenTelemetry (ADOT) | GCP accepts native OTLP at a Google endpoint; check current AWS OTLP endpoint support per signal (UNVERIFIED) |
+| Log routing | Log Router, default quota of 200 sinks per resource, filters checked independently, aggregated org sinks | Log groups with subscription filters (5 per log group, not adjustable, AWS docs, as of 2026-11), Firehose, centralized via cross-account destinations | GCP fan-out happens at the router; AWS fan-out happens per log group |
+| Log analytics | BigQuery sink or Log Analytics (Observability Analytics) linked dataset | CloudWatch Logs Insights, or Firehose to S3 plus Athena | BigQuery sink schema is frozen by the first entry; Athena on S3 is schema-on-read |
+| Trace backend | Cloud Trace, $0.20 per million spans | X-Ray, priced per trace recorded, retrieved, and scanned (AWS pricing, as of 2026-11); CloudWatch Transaction Search stores spans as structured logs in the `aws/spans` log group (AWS docs, as of 2026-11) | Span pricing versus trace pricing changes which sampling strategy is optimal |
+| Native trace header | `X-Cloud-Trace-Context` (decimal span ID) and W3C `traceparent` | `X-Amzn-Trace-Id: Root=1-<epoch hex>-<96-bit hex>;Parent=...;Sampled=1` | X-Ray-generated trace IDs embed a timestamp, but X-Ray also accepts W3C trace IDs reformatted as `1-<first 8 hex>-<last 24 hex>`, with no epoch time required (AWS docs, as of 2026-11) |
+| OTel distribution | Google-Built OpenTelemetry Collector, Telemetry API (OTLP) | AWS Distro for OpenTelemetry (ADOT) | Both accept native OTLP: GCP at `telemetry.googleapis.com` with global and regional endpoints, AWS at per-region, HTTP-only endpoints for logs (`logs.`), metrics (`monitoring.`), and traces (`xray.`), with traces needing Transaction Search enabled (AWS docs, as of 2026-11) |
 | Host agent | Ops Agent (Fluent Bit for logs, OTel Collector for metrics) | CloudWatch agent | Both run with instance identity; neither should hold static keys |
 | Perimeter | VPC Service Controls around `logging`, `monitoring`, `cloudtrace` APIs | VPC interface endpoints plus endpoint policies | VPC-SC blocks API-level data exfiltration; endpoint policies constrain only traffic that goes through the endpoint |
 
@@ -246,9 +278,9 @@ A service that auto-creates its metric descriptor at startup takes a control-pla
 ### Cost estimate for the lab
 
 The lab writes about 400 series x 1 point per 10 s x 600 s = 24,000 points.
-At 8 bytes per point (UNVERIFIED) that is about 0.2 MB, far below the 150 MiB free monthly allotment, so it costs $0.
+At 8 bytes per scalar point (Google Cloud pricing, as of 2026-11) that is about 0.2 MB, far below the 150 MiB free monthly allotment, so it costs $0.
 It writes a few hundred log entries (well under 1 MiB), far below the 50 GiB per-project free tier, so it costs $0.
-BigQuery storage and query for a few KB is effectively $0, under the BigQuery free tier (UNVERIFIED this session).
+BigQuery storage and query for a few KB is effectively $0, under the BigQuery free tier of 10 GiB storage and 1 TiB of queries per month (Google Cloud pricing, as of 2026-11).
 Expected total: under $1, with a budget alarm at $10 as a guardrail.
 
 ### Step 0: budget alarm and environment
@@ -297,7 +329,7 @@ done
 gcloud logging write obs-lab '{"node":"gpu-node-99","user_id":["a","b"]}' \
   --payload-type=json --severity=WARNING
 sleep 180
-bq ls "${PROJECT_ID}:${DATASET}"   # expect obs_lab plus an error table for the mismatch
+bq ls "${PROJECT_ID}:${DATASET}"   # expect obs_lab plus export_errors for the mismatch
 bq query --use_legacy_sql=false \
   "SELECT timestamp, jsonPayload.node, jsonPayload.user_id
    FROM \`${PROJECT_ID}.${DATASET}.obs_lab\`
@@ -384,7 +416,7 @@ if __name__ == "__main__":
 ```
 
 Run it with `pip install google-cloud-monitoring && PROJECT_ID=$PROJECT_ID python3 write_metrics.py`.
-A useful exercise: drop `INTERVAL_S` to 2 and watch `create_time_series` return `INVALID_ARGUMENT` errors about writing points too frequently.
+A useful exercise: drop `INTERVAL_S` to 2 and watch `create_time_series` fail with the error documented under 400 `FAILED_PRECONDITION`, "One or more points were written more frequently than the maximum sampling period configured for the metric" (Google Cloud docs, as of 2026-11).
 Those errors are the per-series limit, not a project quota.
 
 ### Step 4: OTel Collector exporting traces over OTLP to the Telemetry API with tail sampling
@@ -443,10 +475,10 @@ Assumptions: 2,000 nodes, 500 Prometheus series per node (DCGM exporter plus nod
 A 30-day month has 2,592,000 seconds.
 
 1. Metrics through GMP at a 30 s scrape interval: 2,000 x 500 x 2,592,000 / 30 = 86.4B samples per month.
-2. GMP cost: the first 50B at $0.060/M is $3,000, and the next 36.4B at $0.048/M is $1,747.20, so the total is $4,747.20 per month (Google Cloud pricing, as of 2026-10).
+2. GMP cost: the first 50B at $0.060/M is $3,000, and the next 36.4B at $0.048/M is $1,747.20, so the total is $4,747.20 per month (Google Cloud pricing, as of 2026-11).
 3. At a 15 s interval, samples double to 172.8B and cost rises to $8,894.40; at 60 s, samples fall to 43.2B and cost falls to $2,592.00.
    Scrape interval is the strongest single lever on metrics cost.
-4. The same 1M series written as byte-billed custom metrics at 60 s would be 1M x 43,200 x 8 B, about 330 GiB, so stay on GMP for Prometheus-shaped data (8 B/point UNVERIFIED).
+4. The same 1M series written as byte-billed custom metrics at 60 s would be 1M x 43,200 x 8 B, about 322 GiB, so stay on GMP for Prometheus-shaped data (8 B per scalar point, Google Cloud pricing, as of 2026-11).
 5. Logs: 2,000 x 2 GiB x 30 = 120,000 GiB, so (120,000 - 50) x $0.50 = $59,975 per month in a single project.
 6. An exclusion that drops 70 percent of the volume (INFO and DEBUG from training loops) brings this to (36,000 - 50) x $0.50 = $17,975.
    Route the excluded volume to a Cloud Storage sink if compliance needs it.
@@ -477,7 +509,7 @@ In the [AWS Kinesis event of November 25, 2020](https://aws.amazon.com/message/1
 Metric delays then degraded systems that consumed those metrics, including autoscaling and alarm-driven automation.
 In the [AWS us-east-1 event of December 7, 2021](https://aws.amazon.com/message/12721/), congestion on the internal network impaired the monitoring data operators needed to diagnose the congestion itself.
 Google's June 12, 2025 incident was triggered by a Service Control change that crashed on a policy with blank fields.
-It shows that the shared API-admission layer in front of every Google API, including Monitoring and Logging writes, is a common dependency ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), URL not re-verified this session).
+It shows that the shared API-admission layer in front of Google APIs, including Monitoring and Logging writes, is a common dependency, and the report lists Cloud Logging and Cloud Monitoring among the affected products ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-11).
 Mitigation: keep an out-of-band meta-monitor, such as uptime checks from another provider or a dead-man's-switch heartbeat whose *absence* pages someone through a separate path.
 See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
@@ -487,18 +519,18 @@ A "metric absent for 5 minutes" policy can fire for every target in an affected 
 Pair absence alerts with a zone-health signal, and prefer SLO burn-rate alerts that need sustained evidence across multiple windows ([[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_01_SLIs_SLOs_and_Error_Budget_Engineering|SLIs, SLOs, and Error Budget Engineering]]).
 
 **Ingestion delay mistaken for an outage.**
-Many built-in Google Cloud metrics are documented with a 60 s sampling period followed by a visibility delay of up to a few minutes (exact per-metric delay UNVERIFIED this session).
+Many built-in Google Cloud metrics are documented with a 60 s sampling period followed by a visibility delay, for example up to 240 s for `compute.googleapis.com/instance/cpu/utilization`, and some metrics list up to 3,600 s (Google Cloud docs, as of 2026-11).
 An alert with a 1-minute alignment window and no retest duration flaps on that delay.
 Size `duration` and alignment to be at least the documented visibility delay of the metric.
 
 **Cardinality explosion.**
 Putting request IDs, user IDs, or pod UIDs into metric labels creates unbounded series.
-You hit the 200,000 active series per monitored resource ceiling for custom metrics, and on GMP the bill grows linearly with samples (Google Cloud docs, as of 2026-10).
+You hit the 200,000 active series per monitored resource ceiling for custom metrics, and on GMP the bill grows linearly with samples (Google Cloud docs, as of 2026-11).
 Labels must be bounded enums; unbounded identifiers belong in logs or span attributes.
 
 **Write-rate violations from naive exporters.**
 Two exporter replicas writing the same series (same resource and labels) collide on the one-point-per-5-seconds limit.
-This shows up as intermittent `INVALID_ARGUMENT` errors and gaps in the data.
+This shows up as intermittent 400 `FAILED_PRECONDITION` errors and gaps in the data (Google Cloud docs, as of 2026-11).
 The cause is usually a Deployment scaled to 2 that both scrape the same target, or a missing unique label such as `instance_id`.
 
 **Counter resets and start times.**
@@ -506,17 +538,18 @@ A cumulative metric written without a stable `start_time`, or with a start time 
 In GPU training, process restarts after each checkpoint resume are routine, so this bug is endemic in fleets that hand-roll exporters.
 
 **Silent schema split in BigQuery sinks.**
-A field type change produces an error table, not a failed write, and dashboards built on the main table under-count with no warning (Google Cloud docs, as of 2026-10).
+A field type change produces an error table, not a failed write, and dashboards built on the main table under-count with no warning (Google Cloud docs, as of 2026-11).
 Alert on the existence and growth of mismatch tables, and on `sink_error` log entries.
 
 **Sink quota exhaustion stops routing.**
-When a Pub/Sub topic or a BigQuery table hits its quota, the sink stops routing and emits `topic_over_quota` or `table_resource_exhausted` (Google Cloud docs, as of 2026-10).
+When a Pub/Sub topic or a BigQuery table hits its quota, the sink stops routing and emits `topic_over_quota` or `table_resource_exhausted` (Google Cloud docs, as of 2026-11).
 A log-volume burst during an incident can therefore blind the SIEM at the moment it matters most.
 Use partitioned tables, split hot logs into separate sinks, and alert on `sink_error`.
 
 **Exclusions that remove what metrics need.**
 Teams exclude verbose logs from `_Default` and assume log-based metrics are unaffected, or the reverse.
-Test the documented interaction between exclusions and user-defined log-based metrics before you rely on either (behavior UNVERIFIED this session).
+The documented behavior differs by metric kind: project-scoped user-defined metrics are calculated from both included and excluded logs, system log-based metrics from included logs only, and bucket-scoped metrics from the logs destined for that bucket (Google Cloud docs, as of 2026-11).
+Check which kind each alert depends on before you add an exclusion.
 
 **Broken traces at async boundaries.**
 Pub/Sub, Cloud Tasks, and batch hand-offs drop context unless it is injected into message attributes.
@@ -533,7 +566,7 @@ Enable them per service and per project, deliberately.
 
 **IAM scoping.**
 Writers need only `roles/monitoring.metricWriter`, `roles/logging.logWriter`, and `roles/cloudtrace.agent`.
-The Telemetry API may need dedicated telemetry writer roles (role names UNVERIFIED this session).
+The Telemetry API documents `roles/telemetry.writer` plus `roles/serviceusage.serviceUsageConsumer` on the quota project, and trace-only paths use `roles/telemetry.tracesWriter` (Google Cloud docs, as of 2026-11).
 Collectors should authenticate through GKE Workload Identity Federation or the instance service account, never through exported keys ([[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]]).
 Each sink gets a writer identity, a Google-managed service account.
 Grant it the narrowest destination role: `roles/bigquery.dataEditor` on the dataset, `roles/pubsub.publisher` on the topic, or `roles/storage.objectCreator` on the bucket.
@@ -541,9 +574,9 @@ Readers of logs are separated by log views on buckets, and `roles/logging.privat
 Treat it as a privileged role, because Data Access logs contain request payload metadata.
 
 **Encryption hierarchy.**
-Log buckets support CMEK, and you can set org-level default CMEK settings for the Log Router.
+Log buckets support CMEK, and you can set CMEK as a default resource setting on an organization or folder so that new log buckets are encrypted with it (Google Cloud docs, as of 2026-11).
 That puts log data under the key hierarchy described in [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_15_Security_and_Confidential_Computing_Cloud_KMS|Security and Confidential Computing: Cloud KMS]].
-The operational trade-off: if the KMS key is disabled or the Logging service agent loses `cloudkms.cryptoKeyEncrypterDecrypter`, writes to that bucket fail.
+The operational trade-off: if the KMS key is disabled or the Logging service account loses `roles/cloudkms.cryptoKeyEncrypterDecrypter`, Logging treats the key as unavailable, buffers only the most recent three hours of logs, might discard anything older, and makes all logs unavailable for query until key access is repaired (Google Cloud docs, as of 2026-11).
 You have then turned a key-management mistake into an observability outage.
 BigQuery destinations carry their own CMEK configuration, separate from the log bucket.
 
@@ -563,7 +596,7 @@ Redact in the Collector with an attributes or transform processor before export,
 4. Byte-billed custom metrics only for low-cardinality business signals.
 5. Partition expiration on BigQuery sink tables.
 6. Monitoring API read charges since 2025-10-02: $0.50 per million series returned beyond the first million.
-   This penalizes Grafana dashboards that auto-refresh wide queries, so lengthen refresh intervals and pre-aggregate (Google Cloud pricing, as of 2026-10).
+   This penalizes Grafana dashboards that auto-refresh wide queries, so lengthen refresh intervals and pre-aggregate (Google Cloud pricing, as of 2026-11).
 
 ## Interview Questions and Model Answers
 
@@ -602,7 +635,7 @@ Create one aggregated sink at the organization (or the relevant folder) with `in
 Filter on `logName:"cloudaudit.googleapis.com"` and point it at a BigQuery dataset in a dedicated security project, with `--use-partitioned-tables` so each audit log type is a single time-partitioned table.
 Grant the sink's writer identity `roles/bigquery.dataEditor` on that dataset only.
 Set a partition expiration of about 1,095 days and protect the dataset with CMEK and an org policy that blocks deletion by non-security principals.
-Use a single aggregated sink, not 300 project sinks, because the sink limit is 200 sinks per project, and because an aggregated sink lets security and compliance drift detection reason about a single immutable resource.
+Use a single aggregated sink, not 300 project sinks, because the 200-sink quota is per resource and is not the constraint here: 300 sinks mean 300 writer identities to grant and new projects left uncovered, while an aggregated sink lets security and compliance drift detection reason about a single immutable resource.
 Two failure modes matter.
 First, the table schema is fixed by the first entry, and audit `protoPayload` shapes differ by service, so watch for mismatch error tables.
 Second, the BigQuery sink is bound by the table streaming quota, so a burst of Data Access logs can produce `table_resource_exhausted` and stop routing.
@@ -629,7 +662,7 @@ The levers, in order:
 (1) Severity policy plus `_Default` exclusions for INFO and DEBUG from training loops, with a Cloud Storage sink for anything compliance needs, because exclusions affect only that bucket's ingestion and not other sinks.
 A 70 percent reduction moves $60k to about $18k.
 (2) Raise the GMP scrape interval from 15 to 30 s for non-SLO metrics and allow-list DCGM fields.
-Samples, and therefore cost, halve with the interval.
+Samples halve with the interval, and cost falls by slightly less because of the volume tiers ($8,894 to $4,747 in the sizing above).
 (3) Tail sampling for traces with error and latency policies plus a 1 percent baseline, which turns a five-figure span bill into a few hundred dollars.
 It needs trace-ID-affine load balancing across Collector replicas.
 (4) Cut dashboard read volume now that Monitoring reads are billed per series returned.
@@ -708,7 +741,7 @@ On AWS, the equivalent is regional CloudWatch and X-Ray in EU regions, with cros
 The unified on-call experience comes from federation at query time, not replication.
 Use a Grafana layer that queries GMP's PromQL endpoint and Amazon Managed Prometheus, and SLOs defined once in a declarative spec and compiled into each backend's alert policies.
 Then paging does not depend on cross-cloud data movement, which would also add egress cost and residency risk ([[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_07_Multi_Cloud_and_Hybrid_Architecture_Reality|Multi-Cloud and Hybrid Architecture Reality]]).
-Trace IDs must survive cross-cloud calls, so standardize on W3C context and configure X-Ray-compatible ID generation in the AWS SDKs, so that the same trace ID is valid in both backends.
+Trace IDs must survive cross-cloud calls, so standardize on W3C context; X-Ray accepts W3C trace IDs (reformatted to its `1-xxxxxxxx-...` layout where the X-Ray API is used) with no embedded epoch time required, so the same trace ID is valid in both backends (AWS docs, as of 2026-11).
 Key risks:
 - CMEK key disablement becomes an observability outage, so key-access alerts go through the out-of-band path.
 - BigQuery sink schemas drift, so field types are governed through a logging schema registry enforced in CI.
