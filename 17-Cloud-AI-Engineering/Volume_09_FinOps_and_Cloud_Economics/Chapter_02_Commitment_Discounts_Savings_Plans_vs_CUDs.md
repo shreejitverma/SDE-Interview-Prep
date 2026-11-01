@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html"
@@ -55,7 +55,7 @@ sources:
 5. Ladder purchases, size to a trimmed demand quantile rather than the recommendation default, buy the 3-year term only for slices with at least (1 - d3)/(1 - d1) expected survival, and measure marginal utilization instead of average utilization.
 
 Evidence note: AWS and Google Cloud figures in this chapter were checked against primary documentation (2026-11) and carry a source tag.
-The few claims still tagged UNVERIFIED are ones the public documentation does not settle, and each says why.
+Where the public documentation does not settle a point, the chapter says only what the documentation states.
 The mechanisms and formulas are derived and do not depend on those figures.
 
 ## Mental Model
@@ -190,8 +190,9 @@ This yields the following results.
 7. Every commitment is exposed to price declines, through one of two mechanisms.
    Rate-locked: AWS says the prices you pay stay the same through the plan term, and its June 2025 GPU cuts were announced for Savings Plan purchases effective after June 4, 2025 (AWS docs and [What's New notice](https://aws.amazon.com/about-aws/whats-new/2025/06/pricing-usage-model-ec2-instances-nvidia-gpus/), as of 2026-11).
    Google says future list-price changes do not affect a commitment's fee ([Google Cloud CUD docs](https://docs.cloud.google.com/docs/cuds), as of 2026-11), so a resource-based CUD keeps its unit coverage at the old price and does not get cheaper.
-   Dollar drawdown: a GCP Flexible CUD has a fixed dollar fee, so if usage prices fall by c it covers 1/(1 - c) times as many units, and for fixed unit demand a fraction of the commitment goes unused (UNVERIFIED: inferred from the fee rule, Google publishes no price-cut example).
-   How AWS treats usage whose current On-Demand rate falls below a plan's locked rate is not stated in the user guide (UNVERIFIED: check CUR after a real price change).
+   Dollar drawdown: a GCP Flexible CUD has a fixed dollar fee, and Google states you must pay the agreed monthly amount for the whole term and cannot modify the commitment after purchase ([Flexible CUD docs](https://docs.cloud.google.com/docs/cuds-flexible-savings-plans), as of 2026-11).
+   If usage prices fall by c, the same dollars cover 1/(1 - c) times as many units by arithmetic, so for fixed unit demand part of the commitment goes unused; Google publishes no price-cut example.
+   AWS says Savings Plans rates are compared with your current On-Demand rates when choosing which usage to cover, and the user guide does not describe the case where the On-Demand rate falls below a plan's locked rate ([AWS user guide](https://docs.aws.amazon.com/savingsplans/latest/userguide/sp-applying.html), as of 2026-11).
 
 The demand curve you feed this model should be a forecast, not the recommendation lookback.
 Autopilot-style resource usage studies and VM workload predictability studies (Rzadca et al., "Autopilot", EuroSys 2020; Cortez et al., "Resource Central", SOSP 2017) show that a stable long-lived baseline exists, but that the shape of the tail is the hard part.
@@ -240,7 +241,7 @@ Pull current rates with the AWS Price List API or the Cloud Billing Catalog API 
 | GPUs and accelerators | GPU and Trainium instances are EC2 usage and are generally eligible; Capacity Blocks are not eligible (AWS EC2 docs, as of 2026-10) | Flexible CUD covers GPUs only on G2 and G4; other GPUs use resource-based commitments; TPU commitments are sold only through future reservations for capacity blocks (Compute Engine CUD docs, as of 2026-11) |
 | Serverless and containers | Compute SP covers Lambda and Fargate | Flexible CUD covers GKE Standard, GKE Autopilot, and Cloud Run (Compute Engine CUD overview, as of 2026-11) |
 | Spot or preemptible usage | Not covered by Savings Plans (AWS Savings Plans user guide, as of 2026-11) | Flexible CUDs exclude Spot and preemptible VMs; resource-based CUDs exclude preemptible VMs (Compute Engine CUD docs, as of 2026-11) |
-| Price-decline risk | Plan rates stay the same through the term; cuts reach new purchases (AWS user guide and June 2025 notice) | Fee fixed at purchase list price; Flexible CUD strands dollars when usage prices fall (UNVERIFIED inference); resource-based CUD keeps units at the old price |
+| Price-decline risk | Plan rates stay the same through the term; cuts reach new purchases (AWS user guide and June 2025 notice) | Fee fixed at purchase list price; Flexible CUD has a fixed monthly dollar fee for the whole term (Flexible CUD docs, as of 2026-11); resource-based CUD keeps units at the old price |
 | Export visibility | CUR line item types and `TotalCommitmentToDate` and `UsedCommitment` columns | Export `credits` array with CUD credit types, plus commitment fee SKUs |
 | Purchase API | `savingsplans` CLI and API, us-east-1 | `gcloud compute commitments` for resource-based; Cloud Billing console for spend-based, the path Google documents, as Billing Account Administrator ([spend-based CUD docs](https://docs.cloud.google.com/docs/cuds-spend-based), as of 2026-11) |
 
@@ -482,7 +483,7 @@ GROUP BY month ORDER BY month'
 Credits are negative amounts.
 Compare fees and credits to see whether the commitment is covering usage.
 The credit types above cover both the legacy and migrated models (CUD data model, as of 2026-11), but `FEE_UTILIZATION_OFFSET` offsets a $1 fee SKU and is not a usage discount, so read the two models separately.
-The fee SKU description text and service filter are not documented for the migrated model (UNVERIFIED: not in the current docs), so inspect a sample of rows first.
+The multiprice data model page does not define the fee SKU description text or a service filter for these rows (as of 2026-11), so inspect a sample of rows first.
 
 ### Teardown
 
@@ -557,7 +558,7 @@ Report coverage as a share of total compute spend as well.
 ### Currency and contract interactions
 
 Enterprise discount arrangements and private pricing change the baseline rate to which the discount is applied.
-How these stack with Savings Plans or CUDs is set by private contract terms, so confirm with your account team before sizing against list prices (UNVERIFIED: negotiated terms are not public).
+How these stack with Savings Plans or CUDs is set by private contract terms, so confirm with your account team before sizing against list prices.
 
 ## Security and Cost Angles
 
@@ -729,7 +730,7 @@ A purchase is blocked when it would push total locked spend beyond a fixed fract
 For exit risk, I would cap locked spend per cloud so that a credible migration scenario (moving a workload to the other cloud) never strands more than a set number of months of savings.
 I would not let commitment discounts decide architecture.
 Switching costs, egress, and data gravity dominate the discount in most migrations (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]]).
-Any enterprise-level discount or private pricing changes the baseline the discount applies to, so I would confirm those terms contractually before sizing (UNVERIFIED: negotiated terms are not public).
+Any enterprise-level discount or private pricing changes the baseline the discount applies to, so I would confirm those terms contractually before sizing.
 
 #### Follow-up Interviewer Question
 

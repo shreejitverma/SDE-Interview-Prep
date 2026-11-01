@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html"
@@ -94,7 +94,7 @@ A cloud-side verifier turns that statement into a cloud credential by checking a
 The three mechanisms differ in where verification happens.
 IRSA does it in AWS STS using public keys, and STS is a per-Region service with a legacy global endpoint, `sts.amazonaws.com`, that AWS recommends avoiding ([AWS STS endpoints](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_region-endpoints.html), as of 2026-11).
 Pod Identity does it inside a regional EKS service, with the node's own IAM identity as a second factor.
-GKE does it on the node, attributing calls to pods by network source address (UNVERIFIED: Google docs do not state how the pod is attributed, see the GKE data path below).
+GKE does it on the node, in a node-local metadata server that asks the API server for a token identifying the requesting workload ([Google Cloud docs](https://cloud.google.com/kubernetes-engine/docs/concepts/workload-identity), as of 2026-11).
 Everything else in this chapter (blast radius, revocation, static stability, interview traps) follows from that choice.
 
 ## Internals
@@ -107,11 +107,11 @@ Its claims include `iss` (the cluster's issuer URL), `sub` (`system:serviceaccou
 The kubelet rotates the projected file when it is older than 80 percent of its TTL, or after 24 hours (AWS EKS best practices, as of 2026-11).
 On EKS the tokens these mechanisms project default to 86400 seconds, for IRSA through the [webhook](https://github.com/aws/amazon-eks-pod-identity-webhook) and for Pod Identity through the injected volume ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/pod-id-how-it-works.html), as of 2026-11).
 Ordinary bound service account tokens used against the Kubernetes API expire in one hour by default ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/service-accounts.html), as of 2026-11).
-The API server flag that caps token lifetime is not under your control (UNVERIFIED: secondary summary only, not stated in the AWS pages checked).
+On EKS the API server rejects tokens more than 90 days old, and that extended expiry is not under your control ([AWS EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/service-accounts.html), as of 2026-11).
 The audience is what separates the mechanisms.
 IRSA tokens use `sts.amazonaws.com`.
 Pod Identity tokens use `pods.eks.amazonaws.com` (AWS EKS docs, as of 2026-11).
-GKE tokens use an audience derived from the workload pool (UNVERIFIED: not in current Google docs).
+Google's docs do not state the audience of the GKE token (as of 2026-11).
 Audience scoping is the only reason one stolen token cannot be replayed to a different verifier.
 
 ### Online versus offline verification
@@ -187,9 +187,9 @@ Direct access does not work against every Google API, and the supported list cha
 The pool is per project, so the same namespace and service account name in two clusters of one project are the same identity to IAM unless a conditional policy separates them (Google Cloud docs, as of 2026-11).
 On nodes in `GKE_METADATA` mode, requests to the metadata server address are intercepted by a node-local `gke-metadata-server` DaemonSet.
 That server asks the API server for a service account token identifying the requesting workload and exchanges it with Google STS for a federated access token, cached for its default one-hour life (Google Cloud docs, as of 2026-11).
-It identifies the calling pod by its source IP (UNVERIFIED: Google docs omit how the pod is attributed; this comes from third-party analysis and the design of the open-source [emulator](https://www.github.com/matheuscscp/gke-metadata-server)).
+Google's docs do not state how it determines which pod is calling, only that traffic to it never leaves the VM hosting the pod (as of 2026-11).
 The pod therefore holds no credential file at all.
-The identity anchor is the node's network attribution.
+The identity anchor is the node-local metadata server.
 `hostNetwork` pods do not use the federation path, and GKE routes their metadata requests to the Compute Engine metadata server, so they get the node's identity (Google Cloud docs, as of 2026-11).
 This is the inverse trust model of Pod Identity, where the bearer token is in the pod and the node role is a second factor.
 The GKE model depends on CNI anti-spoofing and on the node being trusted to attribute honestly.
@@ -267,7 +267,7 @@ AWS entries carry the tags above.
 | Trust anchor | Cluster OIDC issuer, public JWKS, IAM OIDC provider | EKS-managed association plus service principal trust | Workload pool `PROJECT.svc.id.goog` |
 | Verification locus | AWS STS, offline | EKS Auth API, regional, node IAM role as co-factor | Node-local metadata server then Google STS |
 | Credential delivery to pod | Token file plus SDK exchange | Node agent on link-local address, token as bearer | Metadata server, no file |
-| Pod attribution | Possession of JWT | Possession of JWT plus node role | Source IP of the calling pod (UNVERIFIED: not in Google docs) |
+| Pod attribution | Possession of JWT | Possession of JWT plus node role | Node-local attribution of the calling pod (mechanism not documented by Google) |
 | Identity naming | Role ARN, mapping in trust policy `sub` | Role ARN, mapping in EKS association | Direct `principal://` on resources, or impersonated service account |
 | Attribute-based access | None from the exchange | Six session tags usable in policies | `principalSet` over namespace, direct attribute binding |
 | Mapping size limits | Trust policy 2,048 chars default (8,192 max), 100 OIDC providers default (700 max) | 5,000 associations per cluster | No trust-policy size pressure |
@@ -756,7 +756,7 @@ The exchange needs no AWS credentials, so the node role is irrelevant to the exc
 Under Pod Identity the attacker also has the pod tokens, but the exchange that mints credentials goes through the EKS Auth API with the node's IAM role as a co-factor (AWS EKS docs, as of 2026-11), which constrains where the exchange can be done from and ties the activity to the node role in CloudTrail.
 Whether it can be replayed off-node depends on EKS Auth's checks, which the API reference does not describe (as of 2026-11), so I assume the portable-token worst case when threat modeling.
 Under GKE the pod holds no file credential.
-The attacker on the node, however, can reach the node-local metadata server and can obtain tokens for any pod on that node by impersonating its network identity, and a compromise of the metadata server is a compromise of every identity on that node (UNVERIFIED: Google docs omit the attribution mechanism this relies on).
+The attacker on the node, however, can reach the node-local metadata server and can plausibly obtain tokens for other pods on that node, and a compromise of the metadata server is a compromise of every identity on that node; I assume this worst case because Google's docs do not describe the attribution mechanism (as of 2026-11).
 All three share the same truth: the blast radius equals the set of identities scheduled on the node, plus the node role.
 So the design change is scheduling isolation, not a different federation product.
 Regulated and unregulated workloads go to separate node pools with taints and tolerations, ideally separate clusters for the highest tier.

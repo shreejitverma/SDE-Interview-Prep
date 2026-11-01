@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/conference/nsdi20/presentation/agache"
@@ -115,7 +115,7 @@ An execution environment is never shared across functions or function versions, 
 | Component | Plane | Role | Failure behavior |
 |---|---|---|---|
 | Frontend Invoke | Data | Authenticates, authorizes, applies concurrency throttles, routes to an assignment partition | Stateless and horizontally scaled; scaling this fleet past a threshold no cell had reached exposed the latent defect behind the 2023-06-13 us-east-1 event |
-| Assignment Service (replaced Worker Manager, re:Invent 2022 SVS404) | Data | Tracks which warm slots exist per function version and AZ, leases a slot to each request | Partitioned, with replicated state per partition; losing a partition leader triggers failover, not cold-start storms (UNVERIFIED: only secondary write-ups of SVS404 found, no AWS primary text) |
+| Assignment Service (replaced Worker Manager, re:Invent 2022 SVS404) | Data | Tracks which warm slots exist per function version and AZ, leases a slot to each request | Partitioned, with replicated state per partition |
 | Placement Service | Control-ish, on hot path for cold starts | Picks a worker for a new slot, packing for low correlation | Degradation shows up as elevated cold-start latency and throttles, while warm traffic continues |
 | Worker + MicroManager | Data | Runs Firecracker processes, freezes and thaws slots, fetches code chunks | A worker loss kills its slots; Assignment re-routes; workers are recycled on a maximum 14-hour lease ([AWS Lambda security whitepaper, German edition](https://docs.aws.amazon.com/de_de/whitepapers/latest/security-overview-aws-lambda/lambda-executions.html), as of 2026-11) |
 | Function control plane (CreateFunction, UpdateFunctionConfiguration, PublishVersion) | Control | Validates config, optimizes image or zip into chunks, creates Hyperplane ENIs, takes SnapStart snapshots | Asynchronous, exposed through function `State` and `LastUpdateStatus`; data plane keeps serving existing versions |
@@ -175,11 +175,11 @@ SnapStart supports Java 11 and later, Python 3.12 and later, and .NET 8 and late
 With `SnapStart.ApplyOn=PublishedVersions` set on the function, `PublishVersion` makes Lambda run INIT once, at publish time.
 It then pauses the microVM and writes a Firecracker snapshot: a guest memory file, a small VM state file covering device and emulation state, and disk state (AWS docs and Firecracker docs, as of 2026-11).
 The snapshot is encrypted, kept in several copies for resiliency, and cached for low-latency retrieval (AWS docs, as of 2026-11).
-Whether it shares the code-chunk cache described above is UNVERIFIED: AWS docs do not describe the snapshot cache hierarchy.
+AWS docs do not describe the snapshot cache hierarchy (as of 2026-11).
 On a cold start, Firecracker's snapshot-load API maps the memory file into the new VMM.
 The open-source memory backend is either a file mapping or a `userfaultfd` handler, so guest pages are populated on first touch rather than copied up front (Firecracker docs, as of 2026-11).
 Restore latency is therefore paid in page faults spread over the first invocations.
-Lambda may reduce that cost by predicting memory access patterns, which Brooker's [2022 SnapStart post](https://brooker.co.za/blog/2022/11/29/snapstart.html) discusses as an option (UNVERIFIED: no AWS source confirms production prefetching).
+Brooker's [2022 SnapStart post](https://brooker.co.za/blog/2022/11/29/snapstart.html) discusses predicting memory access patterns as a design option, but no AWS source confirms it in production (as of 2026-11).
 Logs report this as `Restore Duration` and `Billed Restore Duration` in the `REPORT` line, and only the latter is charged, because time spent restoring outside the microVM is not billed (AWS docs, as of 2026-11).
 
 The cost of this design is the snapshot uniqueness problem, described in "Restoring Uniqueness in MicroVM Snapshots" (Brooker, Catangiu, Danilov, Graf, MacCarthaigh and Sandu, [arXiv 2102.12892](https://arxiv.org/abs/2102.12892), 2021).
@@ -254,8 +254,8 @@ Treat these as changes to the placement contract: they trade some of the statist
 | Isolation primitive | Firecracker microVM per execution environment on KVM | Gen1: gVisor, emulating most system calls; Gen2: microVM with full Linux compatibility; services default to whichever fits the features used (Google Cloud docs, as of 2026-11) | Lambda pays a guest kernel per environment; gVisor pays a syscall-interception tax on I/O-heavy code |
 | Requests per instance | 1 for Event Functions in on-demand mode; multiple on Managed Instances and Web Functions (AWS docs, as of 2026-11) | Configurable concurrency, default 80 in the console or 80 times vCPUs with gcloud or Terraform, max 1,000 (Google Cloud docs, as of 2026-11) | Cloud Run multiplexes I/O-bound requests onto one instance, so cold starts per RPS are far lower for I/O-bound APIs than on on-demand Event Functions |
 | Scale-out contract | 1,000 environments per 10 s per function | Instance autoscaling on concurrency and CPU, with max-instances per service | Lambda publishes a rate; Cloud Run publishes targets |
-| Cold-start mitigation | Provisioned concurrency, SnapStart memory snapshot | Min instances, startup CPU boost | No GA memory-snapshot restore on Cloud Run (UNVERIFIED: none found in Cloud Run docs, and no explicit statement either way) |
-| Code delivery | Block-level lazy chunk loading, convergent-encrypted dedupe | Image pulled from Artifact Registry with Google-side caching (UNVERIFIED: mechanism not described in the Cloud Run docs checked) | Lambda's dedupe across customers is a published design |
+| Cold-start mitigation | Provisioned concurrency, SnapStart memory snapshot | Min instances, startup CPU boost | Cloud Run execution-environment docs describe no memory-snapshot restore (Google Cloud docs, as of 2026-11) |
+| Code delivery | Block-level lazy chunk loading, convergent-encrypted dedupe | Container image deployed from a registry; Cloud Run docs do not describe the pull or caching mechanism (as of 2026-11) | Lambda's dedupe across customers is a published design |
 | Max request duration | 15 min | Default 5 min, up to 60 min for services (Google Cloud docs, as of 2026-11) | Long LLM streaming calls fit Cloud Run better |
 | Accelerators | None documented for any Lambda compute type (AWS docs and FAQ, as of 2026-11) | NVIDIA L4 GPUs on Cloud Run services, GA 2025-04-07, and RTX PRO 6000, GA 2026-04-13, both requiring instance-based billing (Google Cloud docs and release notes, as of 2026-11) | GPU serverless inference is a Cloud Run capability with no Lambda equivalent |
 | Billing granularity | Per ms of GB-s, INIT included | Request-based billing while handling requests, starting or stopping, or instance-based billing for the whole instance lifetime (Google Cloud docs, as of 2026-11) | Lambda bills per request slot; Cloud Run bills per instance time |
@@ -459,7 +459,6 @@ Use code signing configurations with AWS Signer to reject unsigned zips, as desc
 
 Environment variables are encrypted at rest with an AWS managed key by default, or with a customer managed KMS key you specify.
 Code artifacts and SnapStart snapshots are encrypted at rest, and a customer managed key can be supplied for snapshots with `--kms-key-arn` (AWS docs, as of 2026-11).
-The execution role then needs `kms:Decrypt` on that key, or restore fails (UNVERIFIED: not stated in the current SnapStart security or troubleshooting docs).
 Store secrets in Secrets Manager and fetch them through the Parameters and Secrets extension cache instead of baking them into environment variables, which are visible to anyone with `lambda:GetFunctionConfiguration`.
 See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_15_Security_and_Cryptography_KMS_and_Nitro_Enclaves|KMS and Nitro Enclaves]].
 
@@ -530,7 +529,7 @@ Describe how SnapStart works mechanically, and enumerate every class of correctn
 At `PublishVersion`, Lambda runs INIT in a Firecracker microVM, pauses it, and writes the guest memory file and VM state.
 The snapshot is encrypted, persisted, and cached for low-latency retrieval.
 On cold start, a new Firecracker process loads the VM state and maps memory through a file mapping or `userfaultfd`, so pages arrive on first touch.
-The cost moves from INIT time to page-fault time during the first invocations, possibly reduced by predicting the working set (UNVERIFIED: no AWS source confirms production prefetching).
+The cost moves from INIT time to page-fault time during the first invocations.
 Bug classes in a payment service:
 1. Duplicated entropy: a userspace PRNG seeded in INIT produces identical sequences across environments.
 That breaks idempotency keys, nonces and token generation, and can be catastrophic for some signature schemes where nonce reuse leaks the private key.

@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/"
@@ -39,7 +39,7 @@ sources:
   - "https://cloud.google.com/blog/products/containers-kubernetes/new-dns-based-endpoint-for-the-gke-control-plane"
   - "https://cloud.google.com/blog/products/containers-kubernetes/gke-autopilot-now-available-to-all-qualifying-clusters"
   - "https://kubernetes.io/releases/version-skew-policy/"
-  - "https://docs.cilium.io/en/stable/network/ebpf/maps/"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-overview"
   - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
   - "https://www.4armed.com/blog/hacking-kubelet-on-gke/"
   - "https://aws.amazon.com/eks/pricing/"
@@ -170,19 +170,19 @@ Getting-started guides compress it to "Google manages the nodes."
 4. VM creation. The MIG resizes, Compute Engine places and boots the VM on Titanium hosts ([[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_06_Compute_Engine_and_Titanium_Architecture|Compute Engine and Titanium]]), and kubelet registers with the apiserver.
 5. Bind and pull. The scheduler binds the pod, then containerd pulls the image and starts it.
    Image streaming can shorten the pull step, and it is pre-configured on Autopilot ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/resources/autopilot-standard-feature-comparison), as of 2026-11).
-Steps 3 to 5 typically cost tens of seconds to a few minutes (UNVERIFIED: no published figure found; measure it in your own region).
+Steps 3 to 5 add latency that Google does not publish as a figure, so measure it in your own region.
 That latency is the main operational difference from a pre-warmed Standard pool.
 The standard mitigation is a capacity buffer: low-priority "balloon" pods that hold headroom and are preempted the moment real pods arrive (the worked example below shows it; [GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/capacity-provisioning), as of 2026-11, which also list a managed capacity buffers feature in Preview).
 
 Billing follows the abstraction.
 General-purpose pods are billed per second on their requested vCPU, memory, and ephemeral storage, so fragmentation and system DaemonSet overhead on the node are Google's problem ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing), as of 2026-11).
 Pods that select specific hardware (accelerators, specific machine series) are billed per node, at Compute Engine prices plus an Autopilot management premium, because a GPU cannot be split across tenants the way a CPU slot can, so the fragmentation risk goes back to you ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing), as of 2026-11).
-Google's "container-optimized compute platform" is the default for Autopilot clusters and scales vertically as well as horizontally; whether that resizes running nodes in place is UNVERIFIED: neither the docs nor the launch post describe node resizing.
+Google's "container-optimized compute platform" is the default for Autopilot clusters and scales vertically as well as horizontally; the Autopilot docs say it uses nodes that "can dynamically resize while running" and can resize existing nodes during scale-up to fit more Pods, except for Arm workloads ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-overview), as of 2026-11).
 Autopilot compute classes (`autopilot`, `autopilot-spot`) can also run inside Standard clusters, announced as GA in September 2025 starting on the Rapid channel ([Google Cloud blog](https://cloud.google.com/blog/products/containers-kubernetes/gke-autopilot-now-available-to-all-qualifying-clusters)); current docs require 1.34.1-gke.1829001 or later (as of 2026-11).
 
 The name echoes Google's internal Borg vertical autoscaler, described in "Autopilot: Workload Autoscaling at Google" (EuroSys 2020).
 That system sets per-task resource limits from moving windows of historical usage and cut slack substantially at Borg scale.
-The GKE mode's tie to that paper is conceptual, not documented code lineage (UNVERIFIED: no Google source found either way).
+The GKE mode's tie to that paper is conceptual, not documented code lineage (no Google source states a lineage either way, as of 2026-11).
 The lesson carries over: per-request billing only works if requests track usage, which is why Vertical Pod Autoscaler recommendations matter more on Autopilot than on Standard.
 
 ### Networking: alias IPs, pod CIDR arithmetic, and Dataplane V2
@@ -220,11 +220,11 @@ Both paths use eBPF hash maps keyed by (VIP, port, protocol), which point to a b
 Endpoint updates become single map-element writes rather than table rewrites.
 
 Network policy uses identities instead of IP lists.
-Cilium hashes each unique set of security-relevant pod labels into a numeric security identity, stored on GKE as CRD-backed objects rather than in a separate key-value store (UNVERIFIED: GKE docs do not state where identities are stored).
+Cilium hashes each unique set of security-relevant pod labels into a numeric security identity, resolved through a key-value store or CRD-backed objects depending on Cilium configuration ([Cilium docs](https://docs.cilium.io/), as of 2026-11); the GKE Dataplane V2 docs do not say which GKE uses.
 Each endpoint gets an eBPF policy map keyed by (peer identity, port, protocol).
 Packets carry or resolve the source identity, so enforcement is one map lookup, and pod churn only updates the IP-to-identity cache, not every policy rule.
 The new limits are map sizes.
-- Conntrack and NAT maps have fixed maximum entries; upstream Cilium's static defaults are 512k TCP and 256k UDP conntrack entries per node, and a default Helm install sizes them from node memory instead ([Cilium docs](https://docs.cilium.io/en/stable/network/ebpf/maps/), as of 2026-11).
+- Conntrack and NAT maps have fixed maximum entries; upstream Cilium's static defaults are 512k TCP and 256k UDP conntrack entries per node, and a default Helm install sizes them from node memory instead ([Cilium docs](https://docs.cilium.io/), as of 2026-11).
 - Policy maps have a per-endpoint entry ceiling, 16k by default upstream (Cilium docs, as of 2026-11).
 - On GKE the service map is limited to 260,000 endpoints across all Services, and the largest maps reserve 0.25% of node memory ([Dataplane V2 docs](https://cloud.google.com/kubernetes-engine/docs/concepts/dataplane-v2), as of 2026-11).
 - High-cardinality labels can explode the identity count.
@@ -571,7 +571,7 @@ Conntrack and NAT maps have fixed capacities.
 High-connection-rate workloads, such as UDP-heavy DNS or short-lived HTTP without keep-alive, can fill them.
 When they fill, new flows drop, while established ones are fine.
 Labels with per-pod unique values (build IDs, request hashes) create one security identity per pod, which inflates policy maps and identity churn on the control plane.
-Watch `anetd` metrics and keep security-relevant labels low-cardinality (Cilium mechanism; GKE conntrack and NAT thresholds UNVERIFIED: not published in the Dataplane V2 docs).
+Watch `anetd` metrics and keep security-relevant labels low-cardinality (Cilium mechanism; the Dataplane V2 docs publish no conntrack or NAT thresholds, only a limit of 260,000 endpoints across all services for its eBPF maps, as of 2026-11).
 
 ### DNS as the hidden single point
 
