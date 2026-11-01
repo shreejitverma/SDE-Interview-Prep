@@ -650,7 +650,13 @@ printf "st=%s\n" "$?"' sh "$empty"
   [ "$status" -eq 0 ]
   case $(lab_shell_family) in
     zsh | zsh-sh)
-      [ "$output" = "st=1 out=ebadf" ]
+      # The pipeline fails with EBADF in every zsh, but the status is not stable: usually 1, yet
+      # under CPU load zsh 5.9.2 (nix, macOS) itself can crash in pipecleanfilelist (st=138, SIGBUS).
+      case $output in
+        "st=0 "* | "st= "*) false ;;
+        "st="*" out=ebadf") ;;
+        *) false ;;
+      esac
       ;;
     posh)
       # posh has no ulimit builtin
