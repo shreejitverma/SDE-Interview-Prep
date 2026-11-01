@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/system/files/osdi24-zhong-yinmin.pdf"
@@ -39,6 +39,9 @@ sources:
   - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/vllm-neuron/docs/tutorials/tutorial-di-1p1d-xpyd.html"
   - "https://dl.acm.org/doi/10.1145/3651890.3672233"
   - "https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues"
+  - "https://aws.amazon.com/ebs/general-purpose/"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa.html"
+  - "https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/the-components-of-the-nitro-system.html"
 ---
 
 # Prefill and Decode Disaggregation
@@ -211,7 +214,7 @@ Kubernetes-native stacks such as [llm-d](https://github.com/llm-d/llm-d) and the
 | Orchestration | EKS with Dynamo or llm-d; SageMaker HyperPod | GKE with Inference Gateway and llm-d | GKE gateway endpoint picking is a managed path (GKE Inference Gateway GA since September 2025) |
 | Managed abstraction | Bedrock hides P/D entirely | Vertex AI hides P/D entirely | Only self-managed serving exposes these knobs ([[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_09_Managed_Inference_Amazon_Bedrock_vs_Vertex_AI\|Managed Inference]]) |
 | Network isolation | Security group must allow all traffic to itself for EFA | Dedicated RoCE-profile VPC separate from host gVNIC VPCs (Google Cloud docs, as of 2026-10) | Firewalling is coarse on both; isolate at the subnet or VPC level |
-| Accelerator alternative | Trainium2 with Neuron; disaggregated inference is a Beta feature in NxD Inference and vLLM on Neuron, using NIXL over libfabric/EFA (Neuron docs, as of 2026-10) | TPU v6e/v7 with JetStream or vLLM TPU; disaggregation UNVERIFIED: only a 2024 JetStream PR found, no current Google Cloud docs | Do not assume GPU transfer libraries exist on non-GPU silicon |
+| Accelerator alternative | Trainium2 with Neuron; disaggregated inference is a Beta feature in NxD Inference and vLLM on Neuron, using NIXL over libfabric/EFA (Neuron docs, as of 2026-10) | TPU v6e/v7 with JetStream or vLLM TPU | Do not assume GPU transfer libraries exist on non-GPU silicon |
 
 ## Worked Example: Sizing a Llama 3.1 70B P/D Fleet and Validating the Hand-off
 
@@ -366,7 +369,7 @@ Change `prompt=1024` and run the script again: prefill time drops from 629 ms to
 
 This lab runs a TP4 prefill instance on GPUs 0-3 and a TP4 decode instance on GPUs 4-7 of one node, so the KV moves over NVLink through NIXL's UCX backend.
 It checks the protocol, the version-skew checks, and the lease behavior, but it does not exercise EFA.
-Cost estimate: about $55/hr for the instance ($55.04 on-demand in us-east-1 per third-party price trackers, as of 2026) plus about $0.08/GB-month for 500 GB of gp3 (UNVERIFIED: the AWS EBS pricing page text uses $0.08 only as an example rate), so a 2-hour session is roughly $112.
+Cost estimate: about $55/hr for the instance ($55.04 on-demand in us-east-1 per third-party price trackers, as of 2026) plus about $0.08/GB-month for 500 GB of gp3 (the starting gp3 price on the [AWS EBS General Purpose page](https://aws.amazon.com/ebs/general-purpose/), as of 2026-11; check your region), so a 2-hour session is roughly $112.
 Many accounts have no on-demand P-instance quota, so expect to request a quota increase or buy an EC2 Capacity Block.
 
 Budget alarm (create it before launching):
@@ -505,7 +508,7 @@ If weights live in S3 or GCS, put the model bucket behind VPC endpoints and endp
 ### KV is data
 
 A KV cache is a deterministic function of the prompt and should be classified with the same sensitivity as the prompt.
-Nitro-based in-transit encryption covers inter-instance traffic between supported instance types in the same or peered VPC, and P5, P5e and P5en are on the supported list ([EC2 data protection docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/data-protection.html), as of 2026-10), but whether it applies to EFA OS-bypass traffic is UNVERIFIED: the docs do not mention EFA, and RoCE payloads should be assumed unencrypted unless the provider documents otherwise.
+Nitro-based in-transit encryption covers inter-instance traffic between supported instance types in the same or peered VPC, and P5, P5e and P5en are on the supported list ([EC2 data protection docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/data-protection.html), as of 2026-10), and the [Nitro System security whitepaper](https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/the-components-of-the-nitro-system.html) describes that encryption as applying to VPC traffic, so assume EFA OS-bypass traffic and RoCE payloads are unencrypted unless the provider documents otherwise.
 A tiered KV store in DRAM or SSD (the Mooncake design) puts prompt-derived data at rest, so encrypt that tier with envelope encryption (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Envelope Encryption]]) or keep it in volatile memory only.
 Cross-tenant prefix sharing creates a timing side channel, because a cache hit visibly lowers TTFT, so salt prefix hashes per tenant whenever tenants must not learn about each other's prompts.
 

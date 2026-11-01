@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/abs/2306.05685"
@@ -25,6 +25,10 @@ sources:
   - "https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-availability-change.html"
   - "https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-byoc-constraints.html"
   - "https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-byoc-statistics.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-pre-built-container.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-model-quality.html"
+  - "https://aws.amazon.com/sagemaker/ai/pricing/"
+  - "https://docs.cloud.google.com/vertex-ai/docs/model-monitoring/set-up-model-monitoring"
   - "https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-model-monitor-feature-attribution-drift.html"
   - "https://docs.cloud.google.com/vertex-ai/docs/model-monitoring/overview"
   - "https://docs.cloud.google.com/vertex-ai/docs/model-monitoring/monitor-explainable-ai"
@@ -104,7 +108,7 @@ AWS states that SageMaker Model Monitor is no longer open to new customers: exis
 The mechanics below still apply to existing deployments, and they are the reference design that the replacements reproduce.
 A baseline job runs over the training or validation dataset and writes `statistics.json` and `constraints.json` to S3 (AWS docs, as of 2026-10, [Model Monitor FAQs](https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-faqs.html)).
 The data quality container computes per-feature constraints and statistics with Deequ, the open-source Spark-based data quality library (AWS docs, as of 2026-10, [Data quality](https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-data-quality.html)).
-A 2023 engineering write-up reported the container as Spark 3.3.0 with Deequ 2.0.2 ([Kablamo engineering blog, 2023](https://engineering.kablamo.com.au/posts/model-monitoring/)); the current versions are UNVERIFIED as of 2026-10 (not stated in AWS docs).
+The built-in `sagemaker-model-monitor-analyzer` image is based on Spark 3.3.0 and built with Deequ 2.0.2 (AWS docs, as of 2026-11, [Model Monitor prebuilt container](https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-pre-built-container.html)).
 Violations are written as a constraint violations JSON file next to the reports (AWS docs, as of 2026-10).
 Monitoring schedules use cron expressions, and the Python SDK ships `CronExpressionGenerator.hourly()`; the SDK default frequency is daily (SageMaker Python SDK docs, as of 2026-10, [Model Monitor API](https://sagemaker.readthedocs.io/en/stable/model_monitor.html)).
 Model quality monitoring runs two jobs in each execution, a ground-truth merge job and then the monitoring job, and they share the maximum runtime.
@@ -241,7 +245,7 @@ If the judge is reached through a cross-region inference profile or a global end
 | Capture tap | SageMaker `DataCaptureConfig` writes sampled request/response to S3 (AWS docs, as of 2026-10) | Vertex AI endpoint request-response logging to BigQuery with sampling rate (Google Cloud docs, as of 2026-10) | S3 capture is file-oriented and needs a query layer (Athena); BigQuery capture is immediately SQL-queryable but incurs streaming and storage costs per table |
 | Baseline statistics | Deequ on Spark, KLL quantile sketches, `statistics.json` and `constraints.json` | Model Monitoring v1 uses TensorFlow Data Validation (TFDV) for distributions and distance scores (Google Cloud docs, as of 2026-10) | Both compare sketches, not raw rows; neither calibrates thresholds to window size for you |
 | Drift distance | L-infinity distance between baseline and current CDFs (`linf_simple` or KS-based `linf_robust`), default threshold 0.1; categorical L-infinity or chi-squared (AWS docs, as of 2026-10) | JS numeric, L-infinity categorical in v1 (GA); v2 (Preview) also allows JS for categorical (Google Cloud docs, as of 2026-10) | L-infinity misses diffuse categorical shifts; JS has an n-dependent null bias |
-| Concept drift | Model quality monitor with ground-truth merge job keyed by inference ID (AWS docs, as of 2026-10) | No managed label-join equivalent verified; typically BigQuery join plus scheduled query (UNVERIFIED as of 2026-10: Vertex Model Monitoring docs describe skew, drift and attribution objectives, and no ground-truth merge was found) | On GCP the label join is usually your code, which is more flexible and also easier to break silently |
+| Concept drift | Model quality monitor with ground-truth merge job keyed by inference ID (AWS docs, as of 2026-10) | Vertex Model Monitoring objectives are skew and drift (v1, GA) and input drift, output drift and feature attribution (v2, Preview); the v2 model schema has an optional `ground_truth_fields` entry, but the setup page describes no metric computed from it (Google Cloud docs, as of 2026-11, [Model Monitoring overview](https://docs.cloud.google.com/vertex-ai/docs/model-monitoring/overview), [Set up model monitoring](https://docs.cloud.google.com/vertex-ai/docs/model-monitoring/set-up-model-monitoring)) | For label-based quality on GCP, plan to build the label join and error metrics yourself, for example a BigQuery join over the request-response log, which is more flexible and also easier to break silently |
 | Attribution drift | SageMaker Clarify feature attribution monitor on a SHAP baseline, NDCG alert below 0.90 (AWS docs, as of 2026-10) | Vertex Explainable AI feature attribution skew and drift in Model Monitoring (Google Cloud docs, as of 2026-10) | Both depend on SHAP-family baselines; cost grows with feature count times sample count |
 | Managed LLM evaluation | Amazon Bedrock Evaluations: programmatic, human, LLM-as-a-judge, RAG evaluation; LLM-as-a-judge and RAG evaluation GA since March 2025 (AWS docs and What's New, as of 2026-10) | Vertex AI Gen AI evaluation service: computation-based plus LLM rubric-based metrics; the `EvalTask` SDK module is GA but no longer actively developed, and the newer GenAI client with adaptive rubrics is Preview (Google Cloud docs, as of 2026-10) | Both bill judge tokens at model rates; neither publishes a calibration of its judge against your human labels, so you have to measure it |
 | Pipeline orchestration | SageMaker Pipelines | Vertex AI Pipelines (Kubeflow Pipelines) | See [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_04_MLOps_Pipelines_SageMaker_vs_Vertex_AI\|MLOps Pipelines]] |
@@ -447,7 +451,7 @@ sm.create_endpoint_config(
 ```
 
 If you deploy this, the teardown is `aws sagemaker delete-monitoring-schedule --monitoring-schedule-name <name>`, then `aws sagemaker delete-endpoint --endpoint-name <name>`, `aws sagemaker delete-endpoint-config --endpoint-config-name fraud-v7-capture`, and `aws s3 rm s3://my-capture-bucket/fraud-v7/ --recursive`.
-Instance-hour pricing for real-time endpoints and processing jobs is UNVERIFIED as of 2026-10 (the current rate could not be read from the SageMaker pricing page); take it from that page before you deploy.
+Take instance-hour pricing for real-time endpoints and processing jobs from the [SageMaker pricing page](https://aws.amazon.com/sagemaker/ai/pricing/) before you deploy, because its per-hour rates are shown for specific instance types in worked examples (AWS pricing page, as of 2026-11).
 
 ### Capacity and cost sizing
 

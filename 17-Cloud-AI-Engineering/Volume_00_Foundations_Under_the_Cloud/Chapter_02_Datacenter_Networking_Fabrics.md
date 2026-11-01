@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources:
   - "Jupiter Rising: A Decade of Clos Topologies and Centralized Control in Google's Datacenter Network (SIGCOMM 2015) by Singh et al."
@@ -142,7 +142,6 @@ Each burst ("flowlet") is safely routed over a different path without reordering
 | Inter-AZ Speed-of-Light RTT | N/A | No published figure; AZs within 100 km, so fiber propagation RTT is at most about 1 ms | No published SLA figure; measure with the Network Intelligence Center Performance Dashboard | AWS docs / Google Cloud docs (as of 2026-10) |
 | Host Link Speeds | 10 GbE to 25 GbE | Up to 200 Gbps ENA on network-optimized types; up to 3,200 Gbps EFA on P5 | Up to 200 Gbps per VM with Tier_1 networking; up to 3,200 Gbps GPU networking on A3 Ultra | EC2 / GCE instance specs (as of 2026-10) |
 | Bisection Bandwidth Capacity | 100 Gbps to 10 Tbps | Multi-Petabit per second | 1.3 Pbps per fabric in 2015 (Jupiter Rising); greater than 6 Petabits per second today | Google SIGCOMM 2015 / Google Cloud blog 2022 (as of 2026-10) |
-| Packet Loss Rate in Fabric | 0.1% to 1.0% | Less than 0.001% (SRD multipath) | Less than 0.001% (SDN traffic eng) | UNVERIFIED (no primary source found, as of 2026-10) |
 
 ## AWS vs GCP Mechanism Parity
 

@@ -2,7 +2,7 @@
 type: playbook
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/conference/osdi22/presentation/yu"
@@ -472,7 +472,7 @@ spec:
     group: "inference.networking.k8s.io"
 ```
 
-Cost estimate: the tutorial's GPU node pool dominates cost, roughly USD 11 per hour for a one-GPU a3-highgpu-1g node or roughly USD 88 per hour for an eight-GPU a3-highgpu-8g node in us-central1 on demand (UNVERIFIED: third-party price trackers as of 2026-10, the Compute Engine pricing page did not render for checking), so a 2-hour session costs about USD 22 on one GPU or about USD 177 on a full 8-GPU node; raise the budget below if you use the 8-GPU shape.
+Cost estimate: the tutorial's GPU node pool dominates cost, so look up the on-demand hourly rate for your chosen GPU machine type and region on the Compute Engine GPU pricing page, multiply by the planned session length, and raise the budget below if that product exceeds it.
 
 Budget alarm on GCP, created before the cluster:
 

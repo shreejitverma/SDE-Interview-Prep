@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://aws.amazon.com/builders-library/workload-isolation-using-shuffle-sharding/"
@@ -167,7 +167,8 @@ Route 53 hosted zones behave this way visibly, since you cannot change the name 
 Route 53 gives each hosted zone four name server names, one from each of four stripes (AWS Architecture Blog, as of 2026-11).
 The stripes are hosted across four top-level domains: .com, .net, .co.uk and .org (AWS Architecture Blog, as of 2026-11).
 AWS considered advertising all four stripes from every edge location and rejected it, because it gives a poor availability model (AWS Architecture Blog, as of 2026-11).
-If the 2048-name pool is split into four equal stripes of 512 (UNVERIFIED assumption: AWS publishes no per-stripe count), the number of distinct shards is 512^4 = 68.7 billion, about 10.6x fewer than the unconstrained C(2048,4) = 730.9 billion (derived, lab output).
+The AWS Architecture Blog and the Builders' Library give the 2048 total and the four stripes, but neither page gives a per-stripe split (checked 2026-11).
+As a hypothetical split into four equal stripes of 512 (the lab's assumption, not an AWS figure), the number of distinct shards is 512^4 = 68.7 billion, about 10.6x fewer than the unconstrained C(2048,4) = 730.9 billion (derived, lab output).
 The lesson: when you add a topology constraint such as one worker per zone, recompute the shard space.
 It is almost always still large enough.
 
@@ -718,7 +719,7 @@ How many tenants can Route 53-style shuffle sharding support if you require that
 Each pair of tenants may share at most 2 workers, so no triple of workers can appear in two different shards.
 Each shard contains C(4,3) = 4 triples, and there are C(2048,3) triples in total, so at most C(2048,3)/4 = 357,389,824 shards exist: the Johnson bound (derived).
 That is a ceiling for a perfect packing; a randomised assigner with a subset-hash rejection check, like the lab's, reached 200,000 shards with only 597 rejections, so it is far from saturation at realistic tenant counts.
-Striping constrains each shard to one worker per stripe, so the unconstrained count of 730.9 billion becomes 512^4 = 68.7 billion if the stripes are equal (UNVERIFIED assumption: AWS publishes no per-stripe count), a factor of about 10.6 less.
+Striping constrains each shard to one worker per stripe, so the unconstrained count of 730.9 billion becomes 512^4 = 68.7 billion if the stripes are equal (a hypothetical split used by the lab, not an AWS figure), a factor of about 10.6 less.
 The overlap-bounded ceiling shrinks too, though striping only restricts which shards are legal, and the bound is still far above any plausible tenant count.
 The point for design is that the combinatorial space is rarely the binding constraint.
 What binds is per-shard capacity, the need for fixed assignment, and the overlap-guarantee check cost.

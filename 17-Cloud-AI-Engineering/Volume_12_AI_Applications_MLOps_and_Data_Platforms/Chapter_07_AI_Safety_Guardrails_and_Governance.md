@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html"
@@ -16,11 +16,7 @@ sources:
   - "https://www.nature.com/articles/s41586-024-08025-4"
   - "https://arxiv.org/abs/2311.04378"
   - "https://c2pa.org/specifications/"
-  - "https://arxiv.org/abs/2312.06674"
   - "https://arxiv.org/abs/2407.21772"
-  - "https://arxiv.org/abs/2501.18837"
-  - "https://arxiv.org/abs/2307.15043"
-  - "https://arxiv.org/abs/2302.12173"
   - "https://www.amazon.science/publications/semantic-based-automated-reasoning-for-aws-access-policies-using-smt"
   - "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf"
   - "https://eur-lex.europa.eu/eli/reg/2024/1689/oj"
@@ -45,6 +41,10 @@ sources:
   - "https://docs.cloud.google.com/vpc-service-controls/docs/supported-products"
   - "https://docs.cloud.google.com/logging/quotas"
   - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/request-response-logging"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-canvas.html"
+  - "https://aws.amazon.com/blogs/aws/amazon-titan-image-generator-and-watermark-detection-api-are-now-available-in-amazon-bedrock"
+  - "https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai"
+  - "https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/"
 ---
 
 # AI Safety, Guardrails, and Governance
@@ -168,7 +168,9 @@ SynthID Text (Dathathri et al., Nature 2024) replaces the logit bias with tourna
 Because selection works on samples from the unmodified distribution, the scheme can be set up to be non-distortionary for individual tokens, which is why Google could deploy it in Gemini and report no measurable quality loss in a large live experiment.
 Detection power depends on entropy: a factual answer like "Paris" has almost no sampling freedom, so it carries almost no watermark signal, and short or low-entropy outputs are not detectable at any usable false positive rate.
 Paraphrasing, translation, and model-assisted rewriting lower the share of key-aligned tokens toward chance, and Zhang et al. ("Watermarks in the Sand", ICML 2024) argue that strong watermarking is impossible against an adversary with a quality oracle and a perturbation oracle.
-Image watermarks such as SynthID for Imagen and the invisible watermarks on Amazon Titan and Nova image models embed a learned signal in pixel space that survives JPEG compression, resizing, and moderate cropping, but not adversarial removal by a decoder-aware attacker; AWS states that Nova Canvas adds an invisible watermark to all generated images and that watermark detection is available for them (Amazon Nova docs, as of 2026-10) (UNVERIFIED: the detection API name, which that page does not give).
+Image watermarks such as SynthID for Imagen and the invisible watermarks on Amazon Titan and Nova image models embed a learned signal in pixel space that survives JPEG compression, resizing, and moderate cropping, but not adversarial removal by a decoder-aware attacker; AWS states that Nova Canvas adds an invisible watermark to all generated images and that watermark detection is available for them (Amazon Nova docs, as of 2026-11).
+The Nova page names no detection API, while the Titan Image Generator launch post names a `DetectGeneratedContent` API, in preview at launch, that checks for the Titan watermark (AWS News Blog, 2024-04).
+The Bedrock model card lists Nova Canvas as end of life on 2026-09-30, so treat the Nova watermark as a description of images already generated (Bedrock model card, as of 2026-11).
 C2PA Content Credentials are a different mechanism entirely: a manifest describing the asset's origin, signed with COSE using an X.509 certificate chain and bound to the asset by a hash.
 A C2PA manifest is cryptographically strong but fragile: re-encoding or a screenshot strips it, and having no manifest proves nothing.
 The defensible design layers a signed C2PA manifest (strong when present), an in-signal watermark (survives stripping, weak against active attackers), and server-side generation logs keyed by content hash (authoritative for your own outputs).
@@ -215,7 +217,7 @@ The static stability principle from [[17-Cloud-AI-Engineering/Volume_01_Cloud_Ar
 | Tokens to detect after paraphrase lowers green share to 0.30 | About 1,200 tokens for z = 4 | Derived from the z formula |
 | Benign block rate, 12 stacked filters at 1 percent FPR each | 11.4 percent if independent | Derived: 1 - 0.99^12 |
 | Block precision at 0.1 percent attack prevalence, TPR 95 percent, FPR 1 percent | 8.7 percent | Derived via Bayes |
-| EU AI Act Article 50 transparency obligations | Apply from 2026-08-02 | Regulation (EU) 2024/1689, Article 113 |
+| EU AI Act Article 50 transparency obligations | Apply from 2026-08-02; the Article 50(2) marking duty is due by 2026-12-02 for systems placed on the market before 2026-08-02 | Regulation (EU) 2024/1689, Article 113; Article 111(4) added by the Digital Omnibus on AI, as of 2026-11 |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -226,14 +228,14 @@ The static stability principle from [[17-Cloud-AI-Engineering/Volume_01_Cloud_Ar
 | Harm categories | Hate, Insults, Sexual, Violence, Misconduct, Prompt Attack | Hate speech, Harassment, Sexually explicit, Dangerous content | Vertex exposes probability and severity scores separately; Bedrock exposes confidence levels |
 | Non-removable provider filters | Provider abuse detection outside customer control | Non-configurable CSAM, prohibited content, and SPII filters surfaced as finish reasons | Vertex makes these visible per response via `finishReason` |
 | Prompt injection and jailbreak | Prompt Attack filter, input only, scoped by input tags | Model Armor prompt injection and jailbreak filter with confidence level | Bedrock scoping relies on caller-constructed tags; Model Armor scans the text it is given |
-| Custom semantic topics | Denied topics defined in natural language | No managed equivalent in Model Armor; build with a Gemini or ShieldGemma classifier | UNVERIFIED: the Model Armor overview mentions custom rules in an example but documents no custom-topic filter, as of 2026-10 |
+| Custom semantic topics | Denied topics defined in natural language | Build with a Gemini or ShieldGemma classifier in the gateway | Model Armor documents these filter types: responsible AI categories, prompt injection and jailbreak, Sensitive Data Protection, and malicious URLs (Google Cloud Model Armor docs, as of 2026-11) |
 | PII detection and transformation | Sensitive information filter: BLOCK or ANONYMIZE, plus regex | Sensitive Data Protection via Model Armor basic or advanced config | SDP supports keyed reversible tokenization and format-preserving encryption |
-| Hallucination control | Contextual grounding scores; Automated Reasoning checks with SMT | Check grounding API in Vertex AI Search / Agent Builder | No GCP equivalent of solver-backed policy verification (UNVERIFIED: a negative claim that no Google page states directly) |
+| Hallucination control | Contextual grounding scores; Automated Reasoning checks with SMT | Check grounding API in Vertex AI Search / Agent Builder | Automated Reasoning checks validate model responses against a set of logical rules, which is a different mechanism from score-based grounding (AWS Bedrock Guardrails docs, as of 2026-11) |
 | Org-wide enforcement | IAM condition key `bedrock:GuardrailIdentifier` plus SCPs | Model Armor floor settings at org, folder, project | Floor settings set minimums; the IAM key pins an exact guardrail but not tag coverage |
 | Payload logging | Model invocation logging to CloudWatch Logs and S3 | Request-response logging to BigQuery (Preview); Cloud Logging for Model Armor findings | BigQuery lands logs directly in an analytics store; S3 needs Athena or a pipeline |
 | API audit | CloudTrail management events for `InvokeModel` and `Converse`; data events for async invoke and agents | Admin Activity always on; Data Access opt-in and billable | Turning on Data Access logs for Vertex is a deliberate cost decision |
 | Tamper evidence | CloudTrail digest validation, S3 Object Lock compliance mode | Locked log bucket retention, bucket lock on Cloud Storage | Both are WORM-style; neither redacts PII for you |
-| Text watermark | No first-party text watermark on Bedrock models (UNVERIFIED: a negative claim that no AWS page states directly) | SynthID Text in Gemini; open-sourced detector in Hugging Face Transformers | Google detection requires Google-held keys for Gemini outputs |
+| Text watermark | See the Image provenance row for Amazon image-model watermarks | SynthID Text in Gemini; open-sourced detector in Hugging Face Transformers | Google detection requires Google-held keys for Gemini outputs |
 | Image provenance | Invisible watermark and C2PA credentials on Amazon image models | SynthID image watermark on Imagen, verification in Vertex AI | Both layer watermark and metadata; detectors are vendor-specific |
 | Billing unit | Text units of 1,000 characters per policy | Tokens of 4 characters excluding white space, $0.10 per 1M after 2M free per month (Google Cloud pricing, as of 2026-10) | Both meter characters, not model tokens: Bedrock rounds each evaluation up to whole 1,000-character units and bills every enabled policy separately, while Model Armor bills one token count covering all filters and excludes white space, so short, many-policy requests cost relatively more on Bedrock |
 
@@ -669,7 +671,8 @@ So I would promise that long-form text from watermarking-capable models carries 
 I would not promise that we can detect AI text in general, because post-hoc classifiers have unacceptable false positive rates on non-native writers and edited text.
 The detection threshold is a policy decision: at a one-sided false positive rate of 3.2e-5 and a billion scans a year, we would falsely flag tens of thousands of human texts, so public-facing detection uses a much stricter threshold and positive results go to human review.
 On the platform side, provenance metadata (model ID, guardrail version, watermark config, manifest hash) is written to the payload log for every generation, so the audit trail can answer questions about any output.
-I would add that hash-based records work against our own outputs only, and that the residual risk of open-weight models generating unmarked content is outside any single provider's control, which belongs in the transparency statement and should not be hidden (UNVERIFIED: any amendments or transition periods to Article 50 adopted after its original text).
+I would add that hash-based records work against our own outputs only, and that the residual risk of open-weight models generating unmarked content is outside any single provider's control, which belongs in the transparency statement and should not be hidden.
+The Digital Omnibus on AI, in force since 2026-07-27, left Article 50 itself in place and added Article 111(4): providers of generative systems placed on the market before 2026-08-02 must take the necessary steps to comply with the Article 50(2) machine-readable marking duty by 2026-12-02, while systems placed on the market from 2026-08-02 get no such period (European Commission AI Act page and Digital Omnibus text, as of 2026-11).
 
 #### Follow-up Interviewer Question
 

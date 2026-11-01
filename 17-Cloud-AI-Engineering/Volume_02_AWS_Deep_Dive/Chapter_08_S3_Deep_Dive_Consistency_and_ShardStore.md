@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.allthingsdistributed.com/2021/04/s3-strong-consistency.html"
@@ -217,7 +217,7 @@ Putting a high-cardinality token early in the key, as in `logs/<hash4>/2026/10/2
 
 A sudden traffic shift onto a cold key range is the classic 503 storm: an hourly job that writes 50,000 objects/s into a brand-new prefix at the top of the hour has no partition history to lean on.
 
-Historically, AWS Support could pre-partition buckets for known launch events (UNVERIFIED: only an anecdotal re:Post answer, not in current AWS docs, as of 2026-11).
+AWS's current guidance for a known traffic jump is to ramp request rates up gradually and retry 503 (Slow Down) responses with backoff while S3 scales ([AWS S3 design patterns](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance-design-patterns.html), as of 2026-11).
 
 ### Heat management and erasure coding
 
@@ -403,7 +403,7 @@ That last point follows from the session model and the documented 5-minute crede
 | Hot single object | Bounded by one partition's budget | 1 write/s per object name | GCS's per-object mutation cap bites lock and counter patterns much sooner |
 | Durability topology | Standard spans >= 3 AZs; One Zone classes are single-AZ | Regional, dual-region, and multi-region location types | GCS dual-region turbo replication targets a 15-minute RPO; S3 uses CRR with RTC |
 | Low-latency zonal tier | S3 Express One Zone with directory buckets (GA) | Rapid Bucket zonal buckets (formerly Rapid Storage), GA 2026-03-10 (Google Cloud release notes, as of 2026-11) | Both are GA; Rapid Bucket has a listed 1 TB per project per zone storage quota and requires hierarchical namespace (Google Cloud docs, as of 2026-11) |
-| Hierarchical namespace | Directory buckets (single-zone), unsorted LIST | Hierarchical namespace buckets with atomic folder rename (GA 2024-10-15, Google Cloud release notes, as of 2026-11) | GCS HNS is a creation-time bucket option, not a storage class (location limits UNVERIFIED: not stated in docs checked); S3 hierarchy is tied to directory buckets |
+| Hierarchical namespace | Directory buckets (single-zone), unsorted LIST | Hierarchical namespace buckets with atomic folder rename (GA 2024-10-15, Google Cloud release notes, as of 2026-11) | GCS HNS can only be enabled when the bucket is created and requires uniform bucket-level access ([Google Cloud HNS docs](https://docs.cloud.google.com/storage/docs/create-hns-bucket), as of 2026-11); S3 hierarchy is tied to directory buckets |
 | Read caching near compute | Mountpoint for S3 local cache; Express as a cache tier | Rapid Cache (Anywhere Cache until the 2026-03-24 rename), a zonal SSD cache in front of buckets, GA 2025-03-13 (Google Cloud release notes, as of 2026-11) | GCS cache is managed and transparent; on AWS you assemble the tier yourself |
 | Authentication on hot path | SigV4 per request; `CreateSession` for directory buckets | OAuth 2.0 bearer tokens, cached for token lifetime | GCS token model is already session-like; S3 general purpose evaluates per request |
 | Private access | Gateway endpoint (free) or interface endpoint (PrivateLink) | Private Google Access, Private Service Connect | S3 gateway endpoints are route-table entries, not ENIs |

@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://aws.amazon.com/message/41926/"
@@ -73,7 +73,7 @@ Source: [AWS summary of the S3 disruption](https://aws.amazon.com/message/41926/
 - The removed capacity belonged to two subsystems. The index subsystem holds metadata and location information for every object in the region and serves GET, LIST, PUT, and DELETE. The placement subsystem allocates storage for new objects and depends on the index.
 - Both subsystems had to be restarted. AWS reported that these subsystems had not been fully restarted in the largest regions for years, and that safety checks on metadata took far longer than expected.
 - Propagation: services that depend on S3 in the region (the S3 console, new EC2 instance launches, EBS volumes restored from snapshots, Lambda) degraded. The status dashboard's admin console itself depended on S3 in that region, so customers could not see accurate status.
-- Structural fixes AWS described: make the capacity-removal tool remove capacity more slowly, add a floor so capacity cannot be taken below a minimum, partition the index into smaller cells, and move the dashboard off the affected dependency.
+- Structural fixes AWS described: make the capacity-removal tool remove capacity more slowly, add a floor so capacity cannot be taken below a minimum, reprioritize the work to partition the index into smaller cells (planned, not yet complete in the summary), and change the Service Health Dashboard administration console to run across multiple AWS regions (AWS PES, as of 2026-11).
 
 The mechanism a getting-started guide never mentions is restart debt.
 Time-to-restart for a metadata service is a function of the metadata volume, which grows with customer data, not with time-to-last-restart.
@@ -125,7 +125,8 @@ Source: [Google Cloud incident 20013](https://status.cloud.google.com/incident/z
 Mechanism details were re-checked against the report.
 
 - Trigger: an automated quota-management system reduced the capacity allotted to Google's central user-identity service, so authentication requests to that service were rejected.
-- Propagation: services that authenticate users against that backend (consumer and Cloud products) failed. The impact window was under an hour, roughly 47 minutes.
+- Mechanism: during a migration to a new quota system, the old system kept reporting the service's usage as zero, and when a grace period expired the automation lowered its quota; existing safety checks did not cover zero reported load for a single service (Google Cloud status, as of 2026-11).
+- Propagation: services that authenticate users against that backend (consumer and Cloud products) failed. The impact window was under an hour, roughly 47 minutes (03:46 to 04:33 US/Pacific per the issue summary).
 - Lesson: a capacity-governance automation can be a bigger blast-radius amplifier than the fleet it governs, because it writes to every tenant's limits. Quota decreases, like config pushes, need staged rollout, a floor, and an automatic rollback on error rate.
 
 ### Case 6: Google Cloud networking, June 2019 (the repair path was the failing path)
@@ -162,7 +163,7 @@ Details were re-checked against the report.
 - A new quota-policy check had been rolled out weeks earlier without a feature flag, in a code path that no production data had yet exercised.
 - Trigger: a policy change containing blank fields was written to the regional Spanner tables that Service Control reads. Those tables replicate globally within seconds, so the bad row reached every region at once and hit an unprotected null pointer, putting binaries into a crash loop worldwide.
 - Response: SRE triaged within minutes, and the serving path was disabled with a "red button" within roughly 40 minutes. Most regions recovered within about two hours.
-- Herd effect: in us-central1, restarting Service Control tasks all hit the same Spanner infrastructure table at once, without randomized exponential backoff, which slowed recovery there. The overall impact on dependent Google Cloud products ran roughly three hours, with a longer tail for some.
+- Herd effect: in us-central1, restarting Service Control tasks all hit the same Spanner infrastructure table at once, without randomized exponential backoff, which slowed recovery there. The incident report's summary puts the overall impact on dependent Google Cloud products at roughly three hours, but the status dashboard lists a longer tail, with the last product (Vertex AI Online Prediction) recovering at 18:18 PDT (Google Cloud status, as of 2026-11).
 - Fixes Google described: modularize so failing checks fail open rather than crash, make feature flags mandatory for new policy-check code, stage global data replication, and add randomized exponential backoff.
 
 The mechanism is that a staged binary rollout protects you from a bad binary but not from bad data read by a good binary.
@@ -221,7 +222,7 @@ Re-read the linked source before quoting any of them externally.
 | Worst-case retry amplification | (1 + r)^d, 64x for d = 3, r = 3 | Arithmetic |
 | Monthly downtime budget at 99.9 percent | 43.8 minutes | Arithmetic over a 30.44-day month |
 | Monthly downtime budget at 99.99 percent | 4.38 minutes | Arithmetic over a 30.44-day month |
-| A 6.9-hour event versus a 99.99 percent monthly budget | About 94 months of budget | Arithmetic: 414 min / 4.38 min |
+| A 6.9-hour event (the Dec 2021 congestion) versus a 99.99 percent monthly budget | About 94 months of budget | Arithmetic: 414 min / 4.38 min |
 | Toy model: outage length that tips naive retries into permanent collapse | Between 2 s and 4 s when client timeout is 2 s | This chapter's script, seed 7 |
 | Toy model: attempts per operation, naive vs retry budget | 3.66x vs 1.02x | This chapter's script, seed 7 |
 

@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/abs/2210.03629"
@@ -39,6 +39,8 @@ sources:
   - "https://www.theregister.com/2025/07/22/replit_saastr_response/"
   - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/release-notes"
   - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/build/runtime"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/memory-bank"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/sandbox"
 ---
 
 # Agent Runtimes and Cloud Execution Environments
@@ -164,7 +166,7 @@ This chapter uses "Agent Engine" for continuity, and the pricing page's "Gemini 
 Both clouds split memory into a short-term event log of the conversation and long-term records extracted from it.
 The extraction is an asynchronous, model-driven pipeline: a model reads the events, writes facts or summaries, and indexes them for retrieval.
 Long-term memory is therefore eventually consistent with the conversation, with a lag set by extraction-model latency and queueing.
-AWS documents that it may take a minute or more for insights from a new conversation to become retrievable (AWS docs, as of 2026-10); Google's equivalent lag is UNVERIFIED as of 2026-10 (not stated in current docs).
+AWS documents that it may take a minute or more for insights from a new conversation to become retrievable (AWS docs, as of 2026-11); Google documents Memory Bank generation as a background process triggered at an interval or by configured batching rules (Google Cloud docs, as of 2026-11).
 The practical consequence is a read-your-writes violation across sessions.
 A user states a preference, closes the tab, opens a new session ten seconds later, and the agent does not know it yet.
 If your product needs read-your-writes for certain facts (consent, opt-outs, allergies), write them synchronously to your own store and do not rely on extracted memory.
@@ -212,7 +214,6 @@ If you need cross-region continuation, replicate the log (DynamoDB global tables
 | Vertex idle billing rule | Runtime idle time waiting for the next prompt between turns is not billed | (Google Cloud pricing, as of 2026-10) |
 | Vertex Agent Gateway | 1 Agent Compute vCPU-hour ($0.085) corresponds to 15,000 API calls, about $0.0057 per 1,000 | (Google Cloud pricing, as of 2026-10) |
 | Vertex Sessions and Memory Bank storage | $0.30 per GiB-month (Agent Storage) after 1 free GiB-month, with Sessions and Memory Bank billed on this structure from 2026-09-01 | (Google Cloud pricing, as of 2026-10) |
-| Vertex rate history | Third-party reports list an earlier $0.0864 per vCPU-hour rate and a Sessions price of $0.25 per 1,000 events | (third-party, as of 2026-10; UNVERIFIED: not on the current official pricing page, and the 2025-12-16 effective date could not be confirmed) |
 | Lambda max function timeout | 900 seconds (Lambda Managed Instances allow 5,400 s for asynchronous and event source mapping invocations) | (AWS docs, as of 2026-10) |
 | Step Functions Standard max execution | 1 year; Express 5 minutes | (AWS docs, as of 2026-10) |
 | Step Functions history limit | 25,000 events per execution (Standard; Express is unlimited) | (AWS docs, as of 2026-10) |
@@ -225,13 +226,13 @@ Pricing on both clouds changed repeatedly in 2026 (Google moved Agent Gateway bi
 | Concern | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
 | Managed orchestration loop | Bedrock Agents: action groups, AWS-owned prompt templates, `RETURN_CONTROL`, multi-agent collaboration | Conversational Agents playbooks and ADK-built agents; no direct one-to-one with Bedrock Agents | Bedrock Agents hides the loop; you cannot fence or log intermediate steps yourself beyond trace output |
-| Bring-your-own-framework runtime | AgentCore Runtime: container, per-session microVM, `runtimeSessionId` affinity | Vertex AI Agent Engine (Agent Runtime): deploy ADK, LangGraph, or custom agents | AWS documents per-session microVM isolation; Google's per-session isolation primitive is not documented to the same depth (UNVERIFIED: not described in current Agent Runtime docs) |
-| Session lifecycle | 8-hour max on microVMs, 15-minute idle default, `StopRuntimeSession` | Idle between turns not billed; long-running operations up to 7 days since 2026-04-22; max interactive session duration UNVERIFIED (not stated in current docs) | AWS bills through idle periods until termination (v2 reclaims idle memory after 120 s); Google does not bill idle time between turns |
+| Bring-your-own-framework runtime | AgentCore Runtime: container, per-session microVM, `runtimeSessionId` affinity | Vertex AI Agent Engine (Agent Runtime): deploy ADK, LangGraph, or custom agents | AWS documents per-session microVM isolation for the runtime itself; Google documents secure container sandboxing for its sandbox environments, isolated from each other and from the host (Google Cloud docs, as of 2026-11) |
+| Session lifecycle | 8-hour max on microVMs, 15-minute idle default, `StopRuntimeSession` | Idle between turns not billed; long-running operations up to 7 days since 2026-04-22 | AWS bills through idle periods until termination (v2 reclaims idle memory after 120 s); Google does not bill idle time between turns |
 | Code sandbox | AgentCore Code Interpreter, same meters as Runtime | Agent Engine Code Execution, on Agent Compute and Agent Memory meters | Network-mode semantics differ; verify egress defaults on each |
 | Browser or computer use | AgentCore Browser | Computer Use sandbox, on Agent Compute meters | Both are internet-facing by nature; isolate from session secrets |
 | Tool gateway | AgentCore Gateway: APIs and Lambda to MCP, semantic tool search | Agent Gateway (Agent-to-Anywhere), metered at 15,000 calls per vCPU-hour | AWS meters tool indexing separately; Google folds gateway into compute units |
 | Tool authorization policy | AgentCore Policy (Cedar-based, GA since 2026-03-03) | Semantic Governance Policies, natural-language constraints on tool calls, billing later in 2026 | Cedar is deterministic and analyzable; natural-language policy is model-evaluated and probabilistic |
-| Outbound identity | AgentCore Identity: OAuth token vault, user-delegated 3LO tokens | Service accounts plus Agent Identity for Agent Runtime (exact GA scope UNVERIFIED: not labeled in current docs) | Both aim to keep long-lived secrets out of agent code; audit which principal appears in downstream logs |
+| Outbound identity | AgentCore Identity: OAuth token vault, user-delegated 3LO tokens | Service accounts plus Agent Identity, which Google's release notes list as released for general availability on 2026-03-31, while the Agent Identity API (`agentidentity.googleapis.com`) has been in Preview since 2026-06-18 (Google Cloud release notes, as of 2026-11) | Both aim to keep long-lived secrets out of agent code; audit which principal appears in downstream logs |
 | Memory | AgentCore Memory: short-term events plus async long-term strategies | Agent Engine Sessions plus Memory Bank | Both are eventually consistent for long-term recall |
 | Coarse workflow and HITL | Step Functions callbacks (`.waitForTaskToken`), Lambda durable functions | Cloud Workflows callbacks | Neither should host the inner agent loop |
 | Event-log store with fencing | DynamoDB `TransactWriteItems` with `ConditionCheck` | Firestore transactions or Spanner read-write transactions | Spanner gives externally consistent multi-region fencing; DynamoDB global tables are asynchronously replicated last-writer-wins unless configured with multi-Region strong consistency |

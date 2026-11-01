@@ -111,7 +111,7 @@ Amazon S3 automatically scales in response to sustained new request rates
 The word that matters is "sustained".
 A job that goes from zero to 50,000 GET/s in one second hits a topology sized for yesterday's traffic.
 The client sees HTTP 503 Slow Down while S3 scales, and the documentation says this scaling "happens gradually and is not instantaneous" (AWS docs, as of 2026-11).
-An index-partition split as the mechanism, on a timescale of minutes, is UNVERIFIED: AWS publishes no duration and the only estimates found are third-party (see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_08_S3_Deep_Dive_Consistency_and_ShardStore|S3 Deep Dive]]).
+Plan for the 503 window as open-ended and ramp traffic rather than relying on a scaling time; see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_08_S3_Deep_Dive_Consistency_and_ShardStore|S3 Deep Dive]] for the storage side.
 DynamoDB works similarly, with per-partition throughput limits and up to five minutes (300 seconds) of retained unused capacity as burst ([AWS docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/burst-adaptive-capacity.html), as of 2026-11).
 The ceiling that adaptive capacity cannot move is a single item: one hot item is bounded by one partition, 1,000 WCU/s and 3,000 RCU/s (AWS docs, as of 2026-11).
 Cloud Storage documents an analogous ramp: buckets initially support about 1,000 object writes/s and 5,000 reads/s, and the guidance is to increase no faster than doubling the rate over 20 minutes ([Google Cloud docs](https://docs.cloud.google.com/storage/docs/request-rate), as of 2026-11).

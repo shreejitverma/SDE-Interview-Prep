@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-token-burndown.html"
@@ -43,6 +43,9 @@ sources:
   - "https://docs.cloud.google.com/vpc-service-controls/docs/supported-products"
   - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
   - "https://aws.amazon.com/message/101925/"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/api-inference-examples-claude-messages-code-examples.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_PayloadPart.html"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/prompt-caching"
 ---
 
 # Claude on Bedrock and Vertex AI
@@ -218,7 +221,7 @@ Bedrock `InvokeModelWithResponseStream` and `ConverseStream` return `application
 - the payload,
 - a 4-byte CRC32 over the whole message, for 16 bytes of fixed overhead per message ([AWS event stream encoding](https://docs.aws.amazon.com/transcribe/latest/dg/streaming-setting-up.html#streaming-event-stream), as of 2026-10).
 
-On InvokeModel streams, each payload chunk wraps one Anthropic event as JSON bytes (UNVERIFIED as of 2026-10: inferred from the SDK parsing, not stated in the pages read). Converse streams instead emit Bedrock-normalized events `messageStart`, `contentBlockStart`, `contentBlockDelta`, `contentBlockStop`, `messageStop`, and a final `metadata` event that carries usage and `latencyMs`, plus in-band exception events such as `throttlingException` and `modelStreamErrorException` ([ConverseStream API reference](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ConverseStream.html), as of 2026-10).
+On InvokeModel streams, each payload chunk wraps one Anthropic event as JSON bytes: AWS's own streaming example calls `json.loads(event["chunk"]["bytes"])` and branches on the `message_delta` and `content_block_delta` event types, and the PayloadPart reference describes the bytes as base64-encoded payload data that the SDK decodes ([AWS Claude Messages code examples](https://docs.aws.amazon.com/bedrock/latest/userguide/api-inference-examples-claude-messages-code-examples.html) and [PayloadPart](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_PayloadPart.html), as of 2026-11). Converse streams instead emit Bedrock-normalized events `messageStart`, `contentBlockStart`, `contentBlockDelta`, `contentBlockStop`, `messageStop`, and a final `metadata` event that carries usage and `latencyMs`, plus in-band exception events such as `throttlingException` and `modelStreamErrorException` ([ConverseStream API reference](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ConverseStream.html), as of 2026-10).
 Vertex `streamRawPredict` and the `bedrock-mantle` Messages endpoint return `text/event-stream` SSE with Anthropic's native event types: `message_start`, `content_block_start`, `content_block_delta`, `content_block_stop`, `message_delta`, `message_stop`, plus `ping` keepalives and `error` ([Anthropic streaming docs](https://platform.claude.com/docs/en/build-with-claude/streaming), as of 2026-10).
 
 Four engineering consequences follow.
@@ -281,7 +284,7 @@ Model lifecycle forms a third failure domain. A model ID can be retired on one s
 | Authentication | SigV4 with IAM, plus a service role and `iam:PassRole` on the new integration (Anthropic docs, as of 2026-10) | OAuth2 access token from a service account or Workload Identity | Different identity primitives, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation\|Workload Identity Federation]] |
 | Streaming framing | Binary AWS event-stream with per-message CRC32 on InvokeModel and Converse, SSE on the `bedrock-mantle` Messages endpoint (AWS docs; Anthropic docs, as of 2026-10) | SSE text frames with `ping` keepalives (Anthropic docs, as of 2026-10) | A shared gateway must parse two framings and normalize the errors |
 | Cache syntax | `cache_control` on InvokeModel and Messages shape, `cachePoint` on Converse (AWS docs, as of 2026-10) | `cache_control` as in the Anthropic API, with prompt caching listed as supported (Anthropic docs, as of 2026-10) | Same semantics, different markup on Converse |
-| Cache scope | Account and Region (AWS ML blog, as of 2026-10) | Organization-level isolation per Anthropic; per-location scope not documented (UNVERIFIED as of 2026-10) | Cross-Region routing splits the cache on AWS and probably on GCP |
+| Cache scope | Account and Region (AWS ML blog, as of 2026-10) | Organization-level isolation per Anthropic, and Google's prompt caching page says caches are unique to your Google Cloud project (Anthropic docs and Google Cloud docs, as of 2026-11) | Cross-Region routing splits the cache on AWS |
 | Quota model | `bedrock-runtime`: per-model, per-Region tokens per minute with reservation of `max_tokens` and output burndown; `bedrock-mantle`: separate input and output TPM (AWS docs, as of 2026-10) | Per-model requests and tokens per minute per regional, multi-region, or global bucket, with cache reads excluded for current models (Google Cloud docs, as of 2026-10) | AWS's output burndown makes verbose output cost 5x to 15x more quota on `bedrock-runtime` |
 | Cross-Region routing | Geographic and global inference profiles, entering through the source Region (Anthropic docs show a global profile for Haiku 4.5, as of 2026-10) | `global`, `us` or `eu` multi-region, or a single region, where single regions serve only Sonnet 4.6 and earlier (Anthropic docs, as of 2026-10) | AWS routes per request behind one ID, while GCP makes you pick the location per call |
 | Private connectivity | Interface VPC endpoints for `bedrock-runtime` and `bedrock-mantle` with endpoint policies (AWS docs, as of 2026-10) | PSC endpoint for the Google APIs bundle (`all-apis` or `vpc-sc`) (Google Cloud docs, as of 2026-10) | The AWS endpoint is per service and per Region, while GCP's PSC fronts many APIs from one IP |
@@ -591,7 +594,6 @@ Google's June 12, 2025 Service Control incident showed that a global admission a
 
 On the legacy Bedrock integration, grant `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` only on the specific inference-profile ARNs and foundation-model ARNs your workload uses, never on `*`.
 On the new integration, the documented pattern is a service role that developers pass with `iam:PassRole` (Anthropic docs, as of 2026-10). Constrain `iam:PassRole` with an `iam:PassedToService` condition so the role can only be handed to the service you name; AWS documents the key for this purpose and warns that some services do not support it ([IAM condition keys](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_iam-condition-keys.html), as of 2026-11), and `AmazonBedrockFullAccess` sets it to `bedrock.amazonaws.com` ([AWS managed policies for Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/security-iam-awsmanpol.html), as of 2026-11).
-That `bedrock.amazonaws.com` is also the right value for the `bedrock-mantle` service role is UNVERIFIED as of 2026-11: the Anthropic and AWS pages read do not name the service principal for that role, so test the condition before relying on it.
 Add an SCP that denies invocation of any model ARN outside an approved list. This is how you enforce model governance across an organization, because model access grants are made per account. See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_02_AWS_Organizations_and_Account_Governance|AWS Organizations and Account Governance]].
 On GCP, bind the narrowest predefined Vertex AI role that grants prediction, such as `roles/aiplatform.user` with `aiplatform.endpoints.predict` (Anthropic docs, as of 2026-10), or a custom role carrying only that permission, to a dedicated service account, and use Workload Identity instead of keys.
 
@@ -614,7 +616,7 @@ The zero-operator-access property is documented for the new Bedrock integration 
 3. Choosing the TTL. Use the 1-hour TTL only when the same prefix recurs at least twice per hour with gaps longer than 5 minutes; otherwise the 5-minute TTL with refresh-on-hit is cheaper.
 4. Right-sizing `max_tokens`. It costs nothing in dollars but directly buys quota headroom, which delays the need for quota increases or provisioned capacity.
 5. Output length discipline. On Bedrock's `bedrock-runtime` endpoint, each output token consumes 5x, 10x, or 15x quota (AWS docs, as of 2026-10), so instructing terse output pays twice: once in price and again in admitted concurrency.
-6. Batch interfaces for offline work. Bedrock batch inference, available only on `bedrock-runtime`, is priced at 50% of on-demand for select models including Anthropic's (AWS announcement and AWS docs, as of 2026-10), and Anthropic's own Batch API is 50% off (Anthropic pricing docs, as of 2026-10); the Vertex discount for Claude is UNVERIFIED as of 2026-11: the text of Google's Claude batch page and generative AI pricing page, as fetched, states no Claude batch discount, and only third-party guides report 50%.
+6. Batch interfaces for offline work. Bedrock batch inference, available only on `bedrock-runtime`, is priced at 50% of on-demand for select models including Anthropic's (AWS announcement and AWS docs, as of 2026-10), and Anthropic's own Batch API is 50% off (Anthropic pricing docs, as of 2026-10). Anthropic lists its Message Batches API, which carries that 50% discount, as unsupported on the Google-managed Claude surface (Anthropic docs, as of 2026-11).
 
 Cost allocation and showback for these levers belong in [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cloud_Billing_Models_and_Unit_Cost_Allocation|Cloud Billing Models and Unit Cost Allocation]].
 

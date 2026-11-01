@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/conference/osdi22/presentation/yu"
@@ -32,6 +32,8 @@ sources:
   - "https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues"
   - "https://aws.amazon.com/message/101925/"
   - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md"
+  - "https://developer.nvidia.com/blog/enabling-fast-inference-and-resilient-training-with-nccl-2-27/"
 ---
 
 # End-to-End Latency, Throughput, and Cost Modeling
@@ -127,7 +129,9 @@ This is the physical reason providers price long-context tiers higher, and why F
 Megatron-style tensor parallelism inserts two all-reduces per transformer layer: after the attention output projection and after the MLP down projection.
 For an 80-layer model that is 160 serialized collectives per decode step.
 At small batch each message is only `B * d_model * 2` bytes, so the collective is latency-bound, not bandwidth-bound.
-Assuming about 8 us per small all-reduce across 8 NVLink-connected GPUs (UNVERIFIED planning value: no primary source publishes a small-message all-reduce latency for 8x H100; measure yours with `nccl-tests all_reduce_perf`), that adds 1.28 ms per step regardless of `B`.
+NVIDIA's nccl-tests documentation treats the time at small sizes as the constant latency of the operation ([nccl-tests performance notes](https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md), as of 2026-11), and NVIDIA's NCCL 2.27 release describes up to 9x lower all-reduce latency for small messages than NCCL 2.26 on its NVL8 systems ([NVIDIA NCCL 2.27 blog](https://developer.nvidia.com/blog/enabling-fast-inference-and-resilient-training-with-nccl-2-27/), as of 2026-11), so the latency term depends on the NCCL version as well as the hardware.
+This chapter uses an assumed 8 us per small all-reduce across 8 NVLink-connected GPUs as a model parameter, not a measured or vendor-quoted figure; measure yours with `nccl-tests all_reduce_perf`.
+That assumption adds 1.28 ms per step regardless of `B`.
 At `B = 1` the model predicts `3.76 + 1.28 + 0.5 = 5.56 ms` TPOT on TP8 versus 9.35 ms on TP4. TP8 halves weight-streaming time but cannot remove the collective floor.
 This is why TP degree is a latency decision and DP replica count is a throughput decision. Once you are compute-bound, the two have the same cost per token.
 

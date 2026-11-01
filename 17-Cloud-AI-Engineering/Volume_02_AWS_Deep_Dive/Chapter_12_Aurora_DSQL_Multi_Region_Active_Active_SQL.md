@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/pdf/2607.13276"
@@ -206,7 +206,6 @@ The mechanism: a 5-minute maximum transaction age gives a hard upper bound on th
 | Indexes per table | 24 | AWS docs, quotas, as of 2026-11 |
 | Schemas per database | 10 | AWS docs, quotas, as of 2026-11 |
 | Max session duration | 1 hour (listed as maximum connection duration of 60 minutes, not adjustable) | AWS docs, quotas, as of 2026-11 |
-| Preview-era row limit (historical) | 10,000 rows per transaction (UNVERIFIED: only third-party posts, no AWS source found, and the cited awsfundamentals.com page no longer resolves) | awsfundamentals.com, 2024-12 |
 | DPU price | USD 8.00 per 1M DPU (us-east-1, us-east-2) | [AWS Database Blog, 2026-10-13](https://aws.amazon.com/blogs/database/monitor-amazon-aurora-dsql-costs-with-the-aurora-dsql-console-and-cloudwatch-alarms/); [AWS pricing](https://aws.amazon.com/rds/aurora/dsql/pricing/), as of 2026-11 |
 | Storage price | USD 0.33 per GB-month, one logical copy per Region | AWS pricing; AWS Database Blog, as of 2026-11 |
 | Multi-Region write surcharge | MultiRegionWriteDPU equal to the originating writes, billed in the originating Region, no separate data transfer charge, no DPU or storage charge for the witness Region | AWS pricing, as of 2026-11 |

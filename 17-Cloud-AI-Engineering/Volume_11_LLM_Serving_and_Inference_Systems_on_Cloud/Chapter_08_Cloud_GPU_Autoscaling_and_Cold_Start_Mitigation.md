@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/conference/fast16/technical-sessions/presentation/harter"
@@ -37,6 +37,7 @@ sources:
   - "https://aws.amazon.com/message/101925/"
   - "https://aws.amazon.com/blogs/aws/announcing-up-to-45-price-reduction-for-amazon-ec2-nvidia-gpu-accelerated-instances/"
   - "https://calculator.holori.com/aws/ec2/p5.48xlarge/us-east-1"
+  - "https://aws.amazon.com/s3/pricing/"
 ---
 
 # Cloud GPU Autoscaling and Cold-Start Mitigation
@@ -278,8 +279,9 @@ The instance terminates itself after uploading the results, and a dead-man shutd
 
 ### Cost estimate
 
-One `c6in.4xlarge`-class instance for about 1 hour, 16 GiB of S3 Standard for under a day, and a few tens of thousands of GET requests should cost under USD 2 in total (UNVERIFIED: a rough estimate, not derived from the Pricing API).
-Get the current instance price with the Pricing API before running.
+The cost has three line items: one `c6in.4xlarge`-class instance for about 1 hour, 16 GiB of S3 Standard storage for under a day, and a few tens of thousands of GET requests.
+S3 Standard GET requests are priced at USD 0.0004 per 1,000 (S3 pricing page, as of 2026-11), so the request line is a few cents at most.
+Get the current instance and storage prices with the Pricing API before running.
 
 ```bash
 aws pricing get-products --region us-east-1 --service-code AmazonEC2 \

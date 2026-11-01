@@ -2,13 +2,15 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources:
   - "NVM Express Base Specification Revision 2.0 (NVM Express Organization 2021)"
   - "The Unwritten Contract of Solid State Drives (EuroSys 2017) by He, Kannan, Arpaci-Dusseau, and Arpaci-Dusseau"
   - "Millions of Tiny Databases (NSDI 2020) by Marc Brooker, Tao Chen, and Fan Ping"
   - "Google Cloud Persistent Disk Architecture and Performance Limits (Google Cloud 2024)"
+  - "https://docs.cloud.google.com/compute/docs/disks/extreme-persistent-disk"
+  - "https://docs.cloud.google.com/compute/docs/disks/performance"
 ---
 
 # Storage Media and Block Storage Foundations
@@ -135,7 +137,7 @@ Google Cloud Persistent Disk operates entirely over Google's Andromeda SDN and C
 | Baseline Latency | Single-digit milliseconds | Under 500 us average for 16 KiB I/O | 1 to 2 milliseconds | Sub-millisecond | AWS/GCP Specs (as of 2026-10) |
 | Baseline IOPS Included | 3,000 IOPS and 125 MiB/s (free) | None (all IOPS provisioned) | 3,000 IOPS and 140 MiB/s baseline, plus 6 IOPS and 0.28 MiB/s per GiB | Provisioned separately | AWS/GCP Docs (as of 2026-10) |
 | Base Storage Price | $0.08 / GB-month | $0.125 / GB-month | $0.10 / GB-month | $0.125 / GB-month | us-east-1 / us-central1 (as of 2026-10) |
-| Additional IOPS Price | $0.005 / provisioned IOPS | Tiered from $0.065 to $0.032 | Included in disk size | $0.065 / provisioned IOPS (UNVERIFIED against Google's price page) | AWS/GCP Pricing (as of 2026-10) |
+| Additional IOPS Price | $0.005 / provisioned IOPS | Tiered from $0.065 to $0.032 | Included in disk size | Billed per provisioned IOPS (Google Cloud Extreme PD docs, as of 2026-11) | AWS/GCP Pricing (as of 2026-10) |
 | Additional Throughput Price | $0.04 / provisioned MiB/s | Included in IOPS tier | Included in disk size | Included in IOPS tier | AWS/GCP Pricing (as of 2026-10) |
 
 ## AWS vs GCP Mechanism Parity

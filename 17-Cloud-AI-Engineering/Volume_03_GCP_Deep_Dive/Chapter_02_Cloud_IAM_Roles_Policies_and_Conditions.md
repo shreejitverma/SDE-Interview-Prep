@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.cloud.google.com/iam/docs/policy-types"
@@ -154,8 +154,8 @@ Getting the polarity of the guard wrong is how teams accidentally grant a broad 
 
 The deny-side behavior is a sharp edge for availability.
 Deny conditions only recognize resource tag functions such as `resource.matchTag('<org-id>/env', 'prod')` (Google Cloud docs, as of 2026-10).
-The docs say other functions and operators are not supported in denial conditions, but not whether the API rejects them at write time (UNVERIFIED: write-time behavior not stated in current docs).
-If a deny condition on `request.time` or `resource.name` is accepted and cannot be evaluated, the rule applies, and the deny becomes unconditional for every listed principal (Google Cloud docs, as of 2026-11).
+The docs say other functions and operators are not supported in denial conditions (Google Cloud docs, as of 2026-11).
+If a deny condition cannot be evaluated, the rule applies, and the deny becomes unconditional for every listed principal (Google Cloud docs, as of 2026-11).
 In effect, a deny rule fails open toward denying, so a typo in its condition causes an outage, not an exposure.
 That is the correct security posture and the wrong availability posture, so deny rules belong behind a canary rollout like any other production change.
 

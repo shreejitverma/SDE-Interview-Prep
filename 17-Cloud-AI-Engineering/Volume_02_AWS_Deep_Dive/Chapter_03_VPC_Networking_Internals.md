@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/conference/nsdi18/presentation/dalton"
@@ -45,6 +45,7 @@ sources:
   - "https://aws.amazon.com/blogs/compute/announcing-improved-vpc-networking-for-aws-lambda-functions/"
   - "https://docs.cloud.google.com/vpc/docs/multiple-interfaces-concepts"
   - "https://docs.cloud.google.com/nat/docs/tune-nat-configuration"
+  - "https://docs.aws.amazon.com/vpc/latest/reachability/how-reachability-analyzer-works.html"
 ---
 
 # VPC Networking Internals
@@ -53,7 +54,7 @@ sources:
 
 - An Amazon VPC has no router appliance in it. The Nitro card on each host enforces security groups, tracks connections, looks up the compiled route table and wraps each packet with VPC metadata. A mapping service turns virtual addresses into physical hosts, and the receiving host checks that mapping again before it delivers the packet.
 - Route tables pick the longest matching prefix and are attached per subnet. Since 2021 you can steer traffic inside a VPC to a middlebox by adding a route more specific than the local route. Gateway route tables add ingress routing at the internet gateway and virtual private gateway.
-- NAT Gateway, Network Load Balancer, PrivateLink and Gateway Load Balancer run on Hyperplane, and Transit Gateway is reported to as well (UNVERIFIED for TGW: not stated in AWS docs, secondary sources only). Hyperplane is AWS's multi-tenant fleet that keeps per-flow state. Its limits per destination, per flow and per AZ, plus its idle timeouts, are the real capacity limits behind these products.
+- NAT Gateway, Network Load Balancer, PrivateLink and Gateway Load Balancer run on Hyperplane. Hyperplane is AWS's multi-tenant fleet that keeps per-flow state. Its limits per destination, per flow and per AZ, plus its idle timeouts, are the real capacity limits behind these products.
 - A Transit Gateway "route domain" comes from two separate actions. Association decides which TGW route table an attachment's traffic is looked up in. Propagation decides which route tables learn the attachment's prefixes. When appliance mode is off, AZ affinity silently breaks stateful inspection that crosses AZs.
 - PrivateLink is a unidirectional, source-NATed, per-AZ channel to one service. VPC Lattice is a managed layer-7 proxy fabric reached through link-local addresses, with IAM auth policies. TGW gives full layer-3 reachability. Choose by trust model, CIDR overlap and unit cost, not by habit.
 
@@ -80,7 +81,7 @@ flowchart LR
 Think of a VPC as a distributed policy database, compiled out to every Nitro card.
 The "router", "firewall" and "switch" in VPC diagrams are fictions.
 Each one is a function the sending and receiving hosts' offload hardware evaluates on every packet, using state pushed out by the control plane.
-Anything that needs shared state across many hosts runs as a Hyperplane service you reach through an ENI in your subnet. That includes address translation, load balancing, cross-VPC transit and private service exposure.
+Anything that needs shared state across many hosts runs as a Hyperplane service you reach through an ENI in your subnet. That includes address translation, load balancing and private service exposure.
 The data plane and the control plane fail differently.
 Packets already flowing keep flowing when the API is impaired, because each host holds compiled state.
 New ENIs, new routes and new instances depend on the control plane propagating state, and that propagation can lag.
@@ -159,7 +160,6 @@ Lowering the TCP established timeout on a fleet of proxies that see short-lived 
 ### Hyperplane: the shared-state fabric
 
 Colm MacCarthaigh's re:Invent 2017 talk "Another Day, Another Billion Flows" introduced Hyperplane. It is an internal, horizontally scaled, multi-tenant fleet of EC2-based nodes that does stateful flow processing for NAT Gateway, NLB, PrivateLink and EFS. AWS confirms Hyperplane for NLB, NAT Gateway and PrivateLink ([AWS Compute Blog, 2019](https://aws.amazon.com/blogs/compute/announcing-improved-vpc-networking-for-aws-lambda-functions/)) and for Gateway Load Balancer ([AWS Networking Blog](https://aws.amazon.com/blogs/networking-and-content-delivery/scaling-network-traffic-inspection-using-aws-gateway-load-balancer/)).
-Transit Gateway on Hyperplane is reported by third parties such as Aviatrix (UNVERIFIED: not stated in current AWS docs).
 Customers are isolated on it with shuffle sharding. Each customer resource maps to a small random subset of nodes, so one poison workload overlaps only a small fraction of any other tenant's shard. See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]].
 The ENI you see in your subnet for a NAT Gateway or an interface endpoint is the front door to that shard. It is not the box that processes your packets.
 This chapter does not describe how flow state is replicated across Hyperplane nodes, because the AWS docs and blog posts checked for this revision do not detail it.
@@ -440,7 +440,7 @@ resource "aws_security_group" "probe" {
   }
 }
 
-# ENIs are valid Reachability Analyzer endpoints; the unattached case is UNVERIFIED: not stated in the docs
+# Network interfaces are valid Reachability Analyzer sources and destinations (AWS Reachability Analyzer docs, as of 2026-11)
 resource "aws_network_interface" "probe" {
   for_each        = local.vpcs
   subnet_id       = aws_subnet.work[each.key].id

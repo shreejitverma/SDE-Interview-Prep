@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/conference/fast21/presentation/mohan"
@@ -209,7 +209,7 @@ MegaScale (ByteDance, NSDI 2024) uses a two-stage design, staging to host memory
 On restore, MegaScale has one rank per data-parallel group read a shard and broadcast it over the training fabric instead of all replicas hitting storage.
 That restore pattern is the general fix for read stampedes.
 On AWS, SageMaker HyperPod made managed tiered checkpointing generally available on 2025-09-08 for EKS-orchestrated clusters; it keeps frequent checkpoints in CPU memory, replicates them to neighboring nodes, periodically persists to S3, and integrates with PyTorch DCP (AWS What's New, 2025-09).
-On Google Cloud, Orbax provides an emergency-checkpointing manager that combines local and persistent tiers with cross-slice replication, and GKE Multi-Tier Checkpointing manages node-local, peer-replicated, and Cloud Storage tiers for JAX on TPU v5e, v5p, v6e, and Ironwood and for PyTorch on A3 H100 nodes, from GKE 1.32.4-gke.1415000 (GKE docs, as of 2026-10; GA status UNVERIFIED: the docs carry no Preview label, but no GA release note was found).
+On Google Cloud, Orbax provides an emergency-checkpointing manager that combines local and persistent tiers with cross-slice replication, and GKE Multi-Tier Checkpointing manages node-local, peer-replicated, and Cloud Storage tiers for JAX on TPU v5e, v5p, v6e, and Ironwood and for PyTorch on A3 H100 nodes, from GKE 1.32.4-gke.1415000 on new clusters (GKE docs, as of 2026-11).
 The physical fabric that peer replication uses is covered in [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI|Interconnect Technologies: NVLink, EFA, and TPU ICI]].
 
 ### Failure domains per tier
@@ -267,7 +267,7 @@ For AZ-isolation fundamentals, see [[17-Cloud-AI-Engineering/Volume_00_Foundatio
 | Namespace semantics | Directory buckets have real directories; listing not lexicographic (AWS docs, as of 2026-10) | HNS buckets have folders and atomic folder rename (Google Cloud docs, as of 2026-10) | Orbax rename-finalize fits HNS; manifest-commit works on both |
 | PyTorch integration | `s3torchconnector.dcp` S3StorageWriter/Reader (AWS CRT) | fsspec/gcsfs writer or local-then-upload | AWS ships a first-party DCP storage plugin |
 | JAX integration | Orbax over S3 via TensorStore or local-then-upload | Orbax over GCS via TensorStore, native | Orbax is GCS-first |
-| Managed in-memory tier | SageMaker HyperPod managed tiered checkpointing, GA 2025-09, EKS clusters only | Orbax emergency checkpointing, GKE Multi-Tier Checkpointing (GA status UNVERIFIED: no Preview label, no GA note found) | Both put host RAM and peer replication ahead of the object store |
+| Managed in-memory tier | SageMaker HyperPod managed tiered checkpointing, GA 2025-09, EKS clusters only | Orbax emergency checkpointing, GKE Multi-Tier Checkpointing (GKE 1.32.4-gke.1415000 or later, Standard clusters only; GKE docs, as of 2026-11) | Both put host RAM and peer replication ahead of the object store |
 | Read cache for restore | Mountpoint cache, FSx for Lustre | Anywhere Cache (renamed Rapid Cache in 2026-03), Cloud Storage FUSE file cache | Caches help restore and never help save |
 | Private path | Gateway VPC endpoints for S3 and S3 Express | Private Google Access, Private Service Connect | Endpoint policies on AWS; VPC Service Controls perimeter on GCP |
 | Encryption | SSE-S3 default, SSE-KMS with Bucket Keys | Google-managed default, CMEK via Cloud KMS | Per-object KMS calls at 338k objects per save is a quota hazard without bucket keys |

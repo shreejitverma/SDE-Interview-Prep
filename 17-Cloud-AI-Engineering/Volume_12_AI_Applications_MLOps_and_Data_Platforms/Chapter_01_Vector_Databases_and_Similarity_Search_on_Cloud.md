@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/abs/1603.09320"
@@ -41,6 +41,7 @@ sources:
   - "https://cloud.google.com/blog/products/databases/scann-for-alloydb-index-is-ga"
   - "https://aws.amazon.com/about-aws/whats-new/2025/04/pgvector-0-8-0-aurora-postgresql/"
   - "https://docs.cloud.google.com/bigquery/docs/vector-index"
+  - "https://docs.cloud.google.com/vertex-ai/docs/vector-search/deploy-index-public"
 ---
 
 # Vector Databases and Similarity Search on Cloud
@@ -213,7 +214,6 @@ Size for N-1 AZ capacity as described in [[17-Cloud-AI-Engineering/Volume_01_Clo
 Aurora and AlloyDB storage replicate across zones below the database engine, so the engine's failure domain is the writer instance and its cache, not the index data.
 S3 Vectors inherits S3's regional durability model.
 Vertex AI Vector Search deployed indexes scale by replicas behind an endpoint, between minReplicaCount and maxReplicaCount, and autoscaling can serve each shard with a different number of replicas; the SLA requires at least two replicas per shard (Google Cloud docs, as of 2026-10).
-Their zone placement is managed by the service and is not a documented customer-controlled parameter (UNVERIFIED: replica zone placement is not described in current docs).
 
 ## Numbers to Know
 

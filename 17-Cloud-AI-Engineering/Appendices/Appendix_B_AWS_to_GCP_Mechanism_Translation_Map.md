@@ -19,6 +19,11 @@ sources:
   - "https://www.usenix.org/conference/nsdi18/presentation/dalton"
   - "https://cloud.google.com/blog/products/storage-data-transfer/a-peek-behind-colossus-googles-file-system"
   - "https://sre.google/sre-book/table-of-contents/"
+  - "https://docs.cloud.google.com/vertex-ai/docs/pipelines/introduction"
+  - "https://docs.cloud.google.com/vertex-ai/docs/pipelines/migrate-kfp"
+  - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/configure-safety-filters"
+  - "https://docs.cloud.google.com/model-armor/overview"
+  - "https://docs.cloud.google.com/vertex-ai/docs/release-notes"
 ---
 
 # Appendix B: Comprehensive AWS to GCP Mechanism Translation Map
@@ -174,8 +179,8 @@ Columns: concern, AWS mechanism, GCP mechanism, the difference that bites when y
 | Scale-out fabric | EFA with SRD: multipath, out-of-order delivery handled in the NIC `[P]` | GPUDirect over TCPX or RoCE on GPU series, ICI plus data-center network for TPU multislice `[U]` | See ECMP collision math in Section 2.7. | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI\|Interconnects]] |
 | Resilient training clusters | SageMaker HyperPod (automated node repair) | GKE-based AI clusters, TPU multislice | | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_03_High_Performance_AI_Cluster_Architectures\|AI clusters]] |
 | Managed model APIs | Bedrock: on-demand, provisioned throughput (model units), cross-region inference profiles `[U]` | Vertex AI (renamed Gemini Enterprise Agent Platform at Google Cloud Next 2026, HPCwire, as of 2026-10): pay-as-you-go, provisioned throughput, regional and global endpoints `[U]` | Quota, burst, and throttle semantics differ. Read the per-model quota page. | [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_09_Managed_Inference_Amazon_Bedrock_vs_Vertex_AI\|Managed inference]], [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_10_Claude_on_Bedrock_and_Vertex_AI\|Claude on both]] |
-| ML pipelines | SageMaker Pipelines | Vertex AI Pipelines (Kubeflow DAGs) `UNVERIFIED` (product name after the 2026 rebrand) | | [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_04_MLOps_Pipelines_SageMaker_vs_Vertex_AI\|MLOps]] |
-| Guardrails | Bedrock Guardrails | Vertex safety filters `UNVERIFIED` (product name after the 2026 rebrand), Model Armor `[U]` | | [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_07_AI_Safety_Guardrails_and_Governance\|Guardrails]] |
+| ML pipelines | SageMaker Pipelines | Gemini Enterprise Agent Platform Pipelines, formerly Vertex AI Pipelines (Google Cloud docs page title and release-notes banner, as of 2026-11) | A migration guide from Kubeflow Pipelines exists in the same docs. | [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_04_MLOps_Pipelines_SageMaker_vs_Vertex_AI\|MLOps]] |
+| Guardrails | Bedrock Guardrails | Safety and content filters on Gemini Enterprise Agent Platform (formerly Vertex AI), and Model Armor, which screens prompts and responses for harmful content, prompt injection, and sensitive data, with an Agent Platform integration (Google Cloud docs, as of 2026-11) | | [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_07_AI_Safety_Guardrails_and_Governance\|Guardrails]] |
 
 ## 2. Mechanisms that getting-started guides skip
 

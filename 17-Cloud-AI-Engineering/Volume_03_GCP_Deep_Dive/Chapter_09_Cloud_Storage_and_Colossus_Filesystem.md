@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf"
@@ -130,7 +130,6 @@ Local Reconstruction Codes, used by Azure, and the locally repairable codes impl
 Google states that Colossus uses Reed-Solomon encodings to protect Cloud Storage shard files against disk, machine, and rack failures, but it publishes no (k, m) ([Google Cloud blog, 2026-10](https://cloud.google.com/blog/products/storage-data-transfer/enabling-end-to-end-checksums-in-cloud-storage)).
 Cloud Storage splits uploads into checksummed chunks and groups thousands of chunks into gigabyte-sized shard files, which are the unit it hands to Colossus (same source).
 Packing small objects into large append-only files, the approach S3 ShardStore documents, is the standard way to make erasure coding efficient for small objects ([Bornholt et al., SOSP 2021](https://www.amazon.science/publications/using-lightweight-formal-methods-to-validate-a-key-value-storage-node-in-amazon-s3)).
-UNVERIFIED: Google's post does not say whether chunks of different small objects share one shard file.
 
 ### The mechanism the getting-started guides skip: flash admission in Colossus
 

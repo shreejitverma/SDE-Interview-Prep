@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/abs/2304.01433"
@@ -423,8 +423,8 @@ Do not run it in a lab.
 **Cost estimate:**
 
 - Two v5e slices of topology 2x4 (8 chips, 2 hosts each) is 16 chips, about $19.20/h at the $1.20 on-demand list price in us-west4 (Google Cloud TPU pricing, as of 2026-10).
-- The GKE cluster management fee is $0.10 per cluster per hour (GKE pricing, as of 2026-10) and an e2-standard-4 system node is about $0.13/h (UNVERIFIED: e2 rate not read from the script-rendered Compute Engine pricing page).
-- One hour of lab is therefore about $20 on demand; `--spot` usually lowers this substantially but can be preempted.
+- The GKE cluster management fee is $0.10 per cluster per hour (GKE pricing, as of 2026-10), and the e2-standard-4 system node adds its Compute Engine on-demand charge.
+- One hour of lab is therefore at least $19.30 on demand, before that system-node charge; `--spot` usually lowers this substantially but can be preempted.
 
 Create a budget first:
 

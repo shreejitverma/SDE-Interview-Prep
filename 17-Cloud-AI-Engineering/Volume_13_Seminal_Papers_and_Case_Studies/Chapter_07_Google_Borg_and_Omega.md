@@ -2,7 +2,7 @@
 type: paper
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://research.google.com/pubs/archive/43438.pdf"
@@ -36,6 +36,9 @@ sources:
   - "https://status.openai.com/incidents/ctrsv3lwd797/write-up"
   - "https://www.datadoghq.com/blog/2023-03-08-multiregion-infrastructure-connectivity-issue/"
   - "https://docs.aws.amazon.com/eks/latest/eksctl/vpc-configuration.html"
+  - "https://cloud.google.com/kubernetes-engine/pricing"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-1/index.json"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEKS/current/us-east-1/index.json"
 ---
 
 # Google Borg (2015 EuroSys) and Omega (2013 EuroSys)
@@ -234,7 +237,7 @@ For the consensus background, see [[08-Distinguished-Engineering/02-Distributed-
 | Upstream Kubernetes tested limits | 5,000 nodes, 110 pods per node, 150,000 pods | (Kubernetes docs, as of 2026-11) |
 | PriorityClass user range | Up to 1,000,000,000; system classes at 2,000,000,000 and 2,000,001,000 | (Kubernetes docs, as of 2026-11) |
 | Spot reclaim notice | EC2 Spot 2 min; Compute Engine Spot VMs have a configurable notice of 0 s (default) or 120 s, followed by a best-effort shutdown of up to 30 s | (AWS and Google Cloud docs, as of 2026-11) |
-| Managed control plane fee | EKS USD 0.10 per cluster-hour on standard support, USD 0.60 on extended support; GKE cluster fee about USD 0.10 per cluster-hour | (AWS EKS pricing, as of 2026-11; GKE figure UNVERIFIED: pricing page returned no readable content) |
+| Managed control plane fee | EKS USD 0.10 per cluster-hour on standard support, USD 0.60 on extended support; GKE flat cluster management fee USD 0.10 per cluster-hour | (AWS EKS pricing and GKE pricing, as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -427,8 +430,9 @@ Segregation cost is the fourth. Applying Borg's 20-30% prod/non-prod segregation
 
 ### Part C - GKE lab: priority bands, preemption, PDB violation, quota-at-priority
 
-Estimated cost: two `e2-standard-2` nodes plus the zonal cluster fee for about one hour. That should be well under USD 1 (UNVERIFIED: GKE and e2 rates not readable from the pricing pages).
-The GKE Free Tier covers the cluster charge of one Autopilot or zonal Standard cluster per month, but not compute or networking (Google Cloud Free Tier docs, as of 2026-11).
+Estimated cost: two `e2-standard-2` nodes plus the zonal cluster fee for about one hour.
+The GKE cluster management fee is a flat USD 0.10 per cluster-hour for every mode and topology (GKE pricing page, as of 2026-11); check the `e2-standard-2` rate for your region on the Compute Engine pricing page before running.
+The GKE Free Tier gives USD 74.40 per month per billing account, which covers the cluster charge of one Autopilot or zonal Standard cluster per month, but not compute or networking (GKE pricing page and Google Cloud Free Tier docs, as of 2026-11).
 
 ```bash
 set -euo pipefail
@@ -570,7 +574,8 @@ gcloud billing budgets delete "$BUDGET_ID" --billing-account="$BILLING_ACCOUNT" 
 ### Part D - EKS parity run
 
 Estimated cost: EKS control plane plus two `t3.medium` nodes, plus the single NAT gateway that `eksctl` creates by default, for about one hour. `Single` is the eksctl NAT default (eksctl docs, as of 2026-11).
-That is roughly USD 0.30-0.50, using USD 0.10 per cluster-hour for EKS and a NAT gateway rate of USD 0.045 per hour listed for US East (Ohio) (AWS pricing, as of 2026-11; UNVERIFIED total: us-east-1 NAT and t3.medium rates not readable from the pricing pages).
+In us-east-1 the hourly rates are USD 0.10 per EKS cluster-hour, USD 0.045 per NAT gateway-hour, and USD 0.0416 per `t3.medium` Linux on-demand hour (AWS EKS pricing page, AWS VPC pricing page, and AWS Price List files for EKS and EC2, as of 2026-11).
+That sums to about USD 0.23 per hour (0.10 + 0.045 + 2 x 0.0416), before NAT data processing, EBS volumes, and public IPv4 charges, so budget roughly USD 0.25-0.50 for the run.
 
 ```bash
 set -euo pipefail
@@ -624,7 +629,6 @@ The mitigation is to treat node OS updates as deployments: canary them by cell a
 
 ### Label and selector drift during upgrades
 
-Reddit's 2023 Pi Day outage followed a Kubernetes upgrade that dropped a deprecated control-plane node label. Networking components selected nodes by that label, and cluster networking failed as a result (Reddit engineering postmortem, 2023-03, UNVERIFIED first-hand: reddit.com not reachable here, mechanism matches a secondary write-up quoting it).
 Borg's lesson that jobs should not be the only grouping mechanism is why labels exist. The cost is that labels are a loosely typed API, and any selector is a hidden dependency.
 
 ### Preemption cascades and priority inversion
@@ -803,7 +807,7 @@ The counter-argument is blast radius and control-plane physics.
 Borg kept cells around 10k machines with a single master each, and Google ran many cells rather than one.
 Both clouds' 65k-to-100k-node work required replacing the single etcd consensus log with partitioned or offloaded stores. GKE's large-cluster mode also disables network policy enforcement in Dataplane V2 scale-optimized mode (Google Cloud docs, as of 2026-11).
 That second point is a security trade, not just a scaling trade.
-Every control-plane incident class grows with cluster size: API overload from a DaemonSet (the OpenAI pattern), upgrade-time label drift (Reddit), and fleet-wide OS changes (Datadog). In one giant cluster, each of them takes out the entire organization at once.
+Every control-plane incident class grows with cluster size: API overload from a DaemonSet (the OpenAI pattern), upgrade-time label and selector drift, and fleet-wide OS changes (Datadog). In one giant cluster, each of them takes out the entire organization at once.
 My recommendation:
 - Size cells by failure-cost, not packing. A dedicated large cluster for the few workloads that genuinely need one gang across the fleet.
 - Several medium cells for inference, split by region and by tenant tier, each statically stable without the others.
