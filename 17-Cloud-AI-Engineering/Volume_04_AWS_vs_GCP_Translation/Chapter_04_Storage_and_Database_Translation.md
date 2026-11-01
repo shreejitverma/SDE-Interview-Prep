@@ -14,6 +14,37 @@ sources:
   - "https://awslabs.github.io/aurora-dsql-starter-kit/quotas-and-limits.html"
   - "https://aws.amazon.com/message/101925/"
   - "https://aws.amazon.com/message/41926/"
+  - "https://aws.amazon.com/message/65648/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/12/amazon-s3-maximum-object-size-50-tb/"
+  - "https://www.allthingsdistributed.com/2021/04/s3-strong-consistency.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication-time-control.html"
+  - "https://docs.cloud.google.com/storage/quotas"
+  - "https://docs.cloud.google.com/storage/docs/request-rate"
+  - "https://docs.cloud.google.com/storage/docs/hns-overview"
+  - "https://cloud.google.com/storage/pricing"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/provisioned-iops.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-modify-volume.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-initialize.html"
+  - "https://docs.cloud.google.com/compute/docs/disks/hyperdisks"
+  - "https://docs.cloud.google.com/compute/docs/disks/high-availability-regional-persistent-disk"
+  - "https://docs.cloud.google.com/compute/docs/disks/instant-snapshots"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/burst-adaptive-capacity.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Constraints.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_HowItWorks.html"
+  - "https://docs.cloud.google.com/bigtable/docs/performance"
+  - "https://cloud.google.com/bigtable/pricing"
+  - "https://docs.cloud.google.com/bigtable/docs/continuous-materialized-views"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_Limits.html"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html"
+  - "https://cloud.google.com/blog/products/databases/alloydb-for-postgresql-intelligent-scalable-storage"
+  - "https://cloud.google.com/alloydb/sla"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/CHAP_quotas.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-concurrency-control.html"
+  - "https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-postgresql-compatibility-unsupported-features.html"
+  - "https://docs.cloud.google.com/spanner/docs/isolation-levels"
 ---
 
 # Storage and Database Translation
@@ -56,39 +87,40 @@ This section covers only the mechanisms that decide translation outcomes, includ
 ### Object storage: where the semantics actually diverge
 
 Both services have offered strong read-after-write and list-after-write consistency for years.
-S3 moved to strong consistency in December 2020 by adding a witness-style component that lets the metadata cache know whether its view is current, so reads do not return stale index entries (AWS Builders' Library and re:Invent material, recalled, UNVERIFIED).
-GCS metadata has been described publicly as living in Spanner with data in Colossus, which is why its consistency was never relaxed (Google Cloud talks, recalled, UNVERIFIED).
-The consequence is that metadata operations in GCS inherit Spanner-style per-key serialization, and this surfaces as the documented limit of roughly one mutation per second to the same object name (GCS docs, recalled, UNVERIFIED).
+S3 moved to strong consistency in December 2020 ([AWS announcement](https://aws.amazon.com/about-aws/whats-new/2020/12/amazon-s3-now-delivers-strong-read-after-write-consistency-automatically-for-all-applications/)) by adding a witness component that acts as a read barrier and lets the metadata cache know whether its view is current, so reads do not return stale index entries ([Vogels, All Things Distributed](https://www.allthingsdistributed.com/2021/04/s3-strong-consistency.html), April 2021).
+Google describes Cloud Storage as keeping metadata about access permissions and data location in Spanner and the data in Colossus ([Google Cloud blog](https://cloud.google.com/blog/products/storage-data-transfer/a-peek-behind-colossus-googles-file-system), 2021), and the link from that design to its long-standing strong consistency is this chapter's inference.
+The consequence is that metadata operations in GCS inherit Spanner-style per-key serialization, and this surfaces as the documented limit of one write per second to the same object name, above which writes may be throttled ([GCS quotas](https://docs.cloud.google.com/storage/quotas), as of 2026-11).
 The mechanism behind that limit is inferred, not documented, so treat the explanation as a model and the limit as the contract.
-S3 has no per-object mutation limit of the same kind, but it has a per-partitioned-prefix request budget: 3,500 write-class and 5,500 read-class requests per second per prefix (AWS docs, recalled, UNVERIFIED).
+S3 has no per-object mutation limit of the same kind, but it has a per-partitioned-prefix request budget: at least 3,500 PUT/COPY/POST/DELETE and 5,500 GET/HEAD requests per second per prefix ([S3 docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html), as of 2026-11).
 S3 partitions the keyspace by observed load and splits hot ranges automatically, and a sudden spike on a cold prefix returns HTTP 503 SlowDown until the split completes.
-GCS buckets start with a baseline request rate and autoscale, and a sudden spike returns HTTP 429 or 503 until capacity catches up (GCS docs, recalled, UNVERIFIED).
+GCS buckets start at roughly 1,000 writes and 5,000 reads per second and autoscale, Google asks clients to ramp no faster than doubling the rate over 20 minutes, and clients must back off on 408, 429, and 5xx responses until capacity catches up ([GCS request rate guidelines](https://docs.cloud.google.com/storage/docs/request-rate), as of 2026-11).
 In both clouds the practical rule is the same: ramp load rather than step it, and spread keys across the lexicographic range rather than writing sequential names.
 
 Conditional writes are where application semantics move.
-S3 added `If-None-Match` for PutObject in August 2024 and `If-Match` in November 2024 (AWS announcements, recalled, UNVERIFIED).
+S3 added `If-None-Match` for PutObject in August 2024 ([AWS announcement](https://aws.amazon.com/about-aws/whats-new/2024/08/amazon-s3-conditional-writes/)) and `If-Match` in November 2024 ([AWS announcement](https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-s3-functionality-conditional-writes/)).
 GCS has had generation-match and metageneration-match preconditions (`ifGenerationMatch`, `ifGenerationMatch=0` for create-if-absent) for far longer.
 Code that uses S3 as a lock or leader-election substrate translates directly onto GCS generation preconditions, and the reverse translation is only safe if the target region's S3 implementation supports the conditional header you rely on.
 
 Namespace semantics also differ.
 Both are flat key-value stores, so "rename a directory" in a flat bucket is copy-then-delete per object and is not atomic.
-GCS offers hierarchical-namespace buckets that provide real folders and atomic folder rename, aimed at analytics and AI workloads (Google Cloud docs, recalled, UNVERIFIED as GA).
-S3 offers directory buckets in the S3 Express One Zone class, which use a hierarchical-style namespace within a single AZ, and a different request authentication model (CreateSession) to cut per-request overhead (AWS docs, recalled, UNVERIFIED).
+GCS offers hierarchical-namespace buckets that provide real folders and atomic folder rename, aimed at analytics and AI workloads, GA since October 2024, selectable only at bucket creation, and priced higher per operation ([HNS overview](https://docs.cloud.google.com/storage/docs/hns-overview), [release notes](https://docs.cloud.google.com/storage/docs/release-notes), [pricing](https://cloud.google.com/storage/pricing), as of 2026-11).
+S3 offers directory buckets in the S3 Express One Zone class, which use a hierarchical-style namespace within a single AZ, and a different request authentication model (CreateSession) to cut per-request overhead ([S3 docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/directory-bucket-high-performance.html), as of 2026-11).
 Checkpoint-heavy training is the main reason either feature matters, and it is covered in [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_06_High_Throughput_Checkpointing_to_Object_Storage|High-Throughput Checkpointing to Object Storage]].
 
 ### Block storage: failure domain and the lazy-load trap
 
 An EBS volume is replicated within one AZ and attached through a Nitro card that presents it as NVMe.
 The control plane for volume placement and replica membership is Physalia, a Paxos-based system whose cells are deliberately placed near the volumes they describe so that a network partition affects only the volumes on the isolated side ([Physalia, NSDI 2020](https://www.usenix.org/conference/nsdi20/presentation/brooker)).
-The motivating failure was the April 2011 EBS event, in which a network change pushed replication traffic onto a low-capacity path, many replicas lost their mirrors at once, and the resulting re-mirroring storm saturated the control plane ([AWS PIR](https://aws.amazon.com/message/680342/), recalled, UNVERIFIED URL).
-GCP exposes a different primitive: regional Persistent Disk and Hyperdisk Balanced High Availability synchronously replicate a volume across two zones in one region (Google Cloud docs, recalled, UNVERIFIED).
+The motivating failure was the April 2011 EBS event, in which an incorrectly executed network change shifted primary traffic onto the lower-capacity replication network, many replicas lost their mirrors at once, and the resulting re-mirroring storm caused thread starvation in the EBS control plane ([AWS PIR](https://aws.amazon.com/message/65648/)).
+GCP exposes a different primitive: regional Persistent Disk and Hyperdisk Balanced High Availability synchronously replicate a volume across two zones in one region ([Compute Engine docs](https://docs.cloud.google.com/compute/docs/disks/high-availability-regional-persistent-disk), as of 2026-11).
 There is no one-click AWS equivalent for a synchronously mirrored block device across AZs, so the AWS answer is database-level replication (Multi-AZ RDS, Aurora, or application-level) or a shared file system.
 
 The mechanism most migrations trip over is lazy loading of snapshot-restored volumes.
 Both clouds store snapshots in object storage, and a volume created from a snapshot is usable immediately while blocks are fetched on first touch.
+The AWS behavior is documented ([EBS volume initialization](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-initialize.html), as of 2026-11), Compute Engine docs place standard snapshots in Cloud Storage locations, and first-touch loading on GCP is UNVERIFIED: not stated in the Compute Engine pages read.
 The first read of each block pays an object-store round trip, so a freshly restored database sees latency that is one to two orders of magnitude worse than steady state, and a full table scan on restore benchmarks the snapshot tier rather than the volume type.
-AWS offers Fast Snapshot Restore and a provisioned volume initialization rate to bound this, at a per-AZ-hour or per-rate charge (AWS docs, recalled, UNVERIFIED).
-GCP offers instant snapshots that are zonal and local to the disk, which avoids the object-store hop for same-zone restores (Google Cloud docs, recalled, UNVERIFIED).
+AWS offers Fast Snapshot Restore ($0.75 per DSU-hour per snapshot per AZ) and a Provisioned Rate for Volume Initialization (100 to 300 MiB/s, billed per GiB of snapshot data) to bound this ([EBS docs](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-initialize.html), [EBS pricing](https://aws.amazon.com/ebs/pricing/), as of 2026-11).
+GCP offers instant snapshots stored in the same zone or region as the source disk, which Google lists as the fastest recovery option, at the cost of no off-disk redundancy and deletion along with the source disk ([Compute Engine docs](https://docs.cloud.google.com/compute/docs/disks/instant-snapshots), as of 2026-11).
 Any DR runbook that says "restore from snapshot and cut over" must include a pre-warm step and a measured time-to-steady-state.
 
 The second mechanism is that the VM, not the volume, is the bottleneck.
@@ -106,13 +138,14 @@ The partition is the unit of data movement, because the data lives on the storag
 
 Bigtable is range-partitioned by row key into tablets, and tablet servers hold memtables and serve SSTables that live in the distributed file system ([Bigtable, OSDI 2006](https://research.google/pubs/bigtable-a-distributed-storage-system-for-structured-data/)).
 Because durable state is in Colossus and not on the tablet server, rebalancing or recovering a tablet means reassigning it to another server and replaying a short tail of the commit log, not copying data.
-That is why adding Bigtable nodes rebalances load in minutes without a data copy, while the equivalent DynamoDB operation (partition split) is hidden from you but bounded by data movement.
-The cost is the data model: Bigtable gives atomic single-row mutations only, no secondary indexes, no cross-row transactions, and sorted-by-key scans.
-DynamoDB gives hash-distributed keys with sorted order only within a partition key, global and local secondary indexes, and transactions over up to 100 items (AWS docs, recalled, UNVERIFIED).
+That is why adding Bigtable nodes rebalances load without a data copy, with the full benefit taking up to 20 minutes under load ([Bigtable docs](https://docs.cloud.google.com/bigtable/docs/performance), as of 2026-11), while the equivalent DynamoDB operation (partition split) is hidden from you but bounded by data movement.
+The cost is the data model: Bigtable gives atomic single-row mutations only, no synchronous secondary indexes, no cross-row transactions, and sorted-by-key scans.
+Its nearest index primitive is the continuous materialized view, GA since April 2026, which acts as an asynchronous secondary index ([Bigtable docs](https://docs.cloud.google.com/bigtable/docs/continuous-materialized-views), [release notes](https://docs.cloud.google.com/bigtable/docs/release-notes), as of 2026-11).
+DynamoDB gives hash-distributed keys with sorted order only within a partition key, global and local secondary indexes, and transactions over up to 100 items ([DynamoDB docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Constraints.html), as of 2026-11).
 
 Hot-spot behavior is the practical difference.
 A monotonically increasing Bigtable row key (timestamp prefix) concentrates all writes on the last tablet, and the only fix is key design (salt, reverse timestamp, or field promotion).
-A DynamoDB table with a monotonically increasing sort key under a well-distributed partition key is fine, but a single hot partition key is throttled at the partition limit of roughly 1,000 WCU and 3,000 RCU regardless of table capacity (AWS docs, recalled, UNVERIFIED), and adaptive capacity and split-for-heat can only help to the extent the heat is not a single item.
+A DynamoDB table with a monotonically increasing sort key under a well-distributed partition key is fine, but a single hot partition key is throttled at the partition limit of 1,000 WCU and 3,000 RCU regardless of table capacity ([DynamoDB docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/burst-adaptive-capacity.html), as of 2026-11), and adaptive capacity and split-for-heat can only help to the extent the heat is not a single item.
 A GSI adds a second place to be hot: when a GSI cannot keep up it back-pressures writes to the base table.
 
 ### Aurora and AlloyDB: the log is the replication unit
@@ -125,10 +158,10 @@ Losing an AZ plus one more copy (the "AZ+1" case) leaves three, so reads and rep
 Because a segment is only 10 GiB, repair over a 10 Gbps path takes on the order of 10 seconds, which shrinks the window in which a second failure can hurt (Aurora paper).
 Commit is tracked by the engine as the volume durable LSN and per-segment completion LSNs, and the engine does not wait on a synchronous multi-node round trip per page write, which is the architectural reason Aurora cuts write amplification relative to mirrored MySQL.
 
-AlloyDB follows the same disaggregation thesis with a Postgres-derived engine, a regional log storage layer that takes WAL writes, a log processing service that replays WAL into blocks, and a block store that serves reads (Google Cloud engineering blog, recalled, UNVERIFIED).
-Read pool instances attach to the same storage layer, and a columnar engine keeps a vectorized in-memory copy of selected columns for analytical scans, with automatic column selection (Google Cloud docs, recalled, UNVERIFIED).
-Google has not published a segment and quorum design at the level of detail of the Aurora paper, so the equivalent of the "AZ+1" analysis is not derivable from public sources, and an interview answer should say so rather than assume a 4-of-6 quorum.
-Aurora's published billing separates per-I/O charges (Standard) from a higher flat price (I/O-Optimized), whereas AlloyDB prices vCPU, memory, and storage without per-I/O charges (vendor pricing pages, recalled, UNVERIFIED).
+AlloyDB follows the same disaggregation thesis with a Postgres-derived engine, a regional log storage layer that takes WAL writes, a log processing service that replays WAL into blocks, and a block store that serves reads, with a complete copy of the database state in each of three zones ([Google Cloud blog](https://cloud.google.com/blog/products/databases/alloydb-for-postgresql-intelligent-scalable-storage)).
+Read pool instances attach to the same storage layer, and a columnar engine keeps an in-memory copy of selected columns for analytical scans, with auto-columnarization that analyzes the workload to populate the column store ([AlloyDB docs](https://docs.cloud.google.com/alloydb/docs/columnar-engine/about), as of 2026-11).
+Google has not published a segment and write-quorum design at the level of detail of the Aurora paper, so the equivalent of the "AZ+1" analysis is not derivable from public sources, and an interview answer should say so rather than assume a 4-of-6 quorum.
+Aurora's published billing separates per-I/O charges (Standard) from a higher flat price (I/O-Optimized), whereas AlloyDB prices instance resources, storage, and networking and advertises no I/O charges ([Aurora storage docs](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html), [AlloyDB pricing](https://cloud.google.com/alloydb/pricing), as of 2026-11).
 
 ### DSQL and Spanner: two ways to avoid a global lock manager
 
@@ -138,108 +171,109 @@ TrueTime returns an interval `[earliest, latest]` rather than a point.
 A leader picks the commit timestamp `s` at least as large as `TT.now().latest`, then performs commit wait until `TT.after(s)` is true before releasing locks and acknowledging, which guarantees that any transaction that starts after the commit is acknowledged gets a later timestamp.
 This yields external consistency (strict serializability), and the paper reports average clock uncertainty of roughly 4 ms with a sawtooth between about 1 and 7 ms, so commit wait adds a few milliseconds that overlap with Paxos replication.
 Read-only transactions and stale reads take no locks and read at a timestamp, which is what makes Spanner read scaling cheap.
+Serializable is Spanner's default isolation level, and repeatable read, GA since April 2026, is an opt-in that permits write skew ([Spanner docs](https://docs.cloud.google.com/spanner/docs/isolation-levels), [release notes](https://docs.cloud.google.com/spanner/docs/release-notes), as of 2026-11), so the comparison below assumes the default.
 
 Aurora DSQL takes a different route.
 The AWS paper abstract describes a disaggregated design with stateless query processors in Firecracker microVMs, multiversion concurrency control using precision timestamps for coordination-free reads, and optimistic concurrency control for writes with coordination deferred to commit time through distributed adjudicators and the Journal replication system ([Aurora DSQL paper, arXiv](https://arxiv.org/html/2607.13276v2), as of 2026-10).
-The mechanism, as recalled from AWS engineering posts and not re-verified here, is:
+The mechanism, checked against the full paper text as of 2026-11, is:
 
 - A transaction picks a start timestamp from a precision clock, and reads from storage nodes at that snapshot with no cross-node coordination, which is why a read-only transaction never takes a lock or talks to a coordinator.
 - Writes are buffered in the query processor, so a long interactive transaction costs memory in the processor, not locks in the database.
 - At COMMIT, the write set goes to adjudicators that own key ranges, and each adjudicator checks that no committed write to those keys has a timestamp later than the transaction's start timestamp; conflict means abort.
 - Durability is a Journal write that is replicated across AZs (single-region) or across regions (multi-region), and storage nodes tail the Journal to apply committed changes.
-- There is no commit wait of the Spanner kind, because ordering is established by adjudicators and by the bounded clock error of the time source, not by waiting out an uncertainty interval before every acknowledgment.
+- The paper describes no commit wait of the Spanner kind: ordering is established by adjudicators and by the bounded clock error of the time source, and clock skew beyond those bounds is treated as a failure that can cost linearizability while preserving isolation.
 
-The isolation level follows from this design: snapshot isolation, which PostgreSQL calls REPEATABLE READ, and not serializable (AWS docs, recalled, UNVERIFIED).
-Snapshot isolation permits write skew, where two transactions read overlapping data and write disjoint rows, so DSQL applications that need serializable invariants must promote reads into the write set with `SELECT ... FOR UPDATE` or materialize the invariant in a single row (AWS docs, recalled, UNVERIFIED).
+The isolation level follows from this design: strong snapshot isolation (snapshot isolation plus linearizability), which PostgreSQL calls REPEATABLE READ, fixed and not serializable ([Aurora DSQL paper](https://arxiv.org/html/2607.13276v2); [AWS docs](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-postgresql-compatibility-unsupported-features.html), as of 2026-11).
+Snapshot isolation permits write skew, where two transactions read overlapping data and write disjoint rows, so DSQL applications that need serializable invariants must promote reads into the write set with `SELECT ... FOR UPDATE`, which DSQL adjudicates at commit as if the transaction wrote the row and takes no lock, or materialize the invariant in a single row ([AWS docs](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-concurrency-control.html), as of 2026-11).
 The failure surface is also different.
 Spanner contention appears as lock wait latency and deadlock-avoidance aborts, and DSQL contention appears as SQLSTATE 40001 serialization failures at COMMIT, so the client retry loop is part of the correctness contract (see the simulator below).
 
 ## Numbers to Know
 
-Rows tagged with a source and `as of 2026-10` were fetched during authoring on 2026-10-21.
-Rows tagged UNVERIFIED were recalled from vendor documentation and could not be re-fetched in this session, so re-check them against the current pricing and quota pages before quoting them.
+Rows tagged `as of 2026-10` were fetched during authoring on 2026-10-21, and rows tagged `as of 2026-11` were re-checked against vendor pages on 2026-11-01.
+Limits and prices move, so re-check the current pricing and quota pages before quoting them.
 All prices are USD, us-east-1 or us-central1 list prices, and exclude taxes, discounts, and committed use.
 
 ### Object storage
 
 | Item | Value | Source |
 | --- | --- | --- |
-| S3 Standard storage, first 50 TB | $0.023 per GB-month | (AWS pricing, recalled, UNVERIFIED) |
-| S3 PUT/COPY/POST/LIST, GET | $0.005 and $0.0004 per 1,000 requests | (AWS pricing, recalled, UNVERIFIED) |
-| S3 request rate per partitioned prefix | 3,500 write-class, 5,500 read-class per second | (AWS docs, recalled, UNVERIFIED) |
-| S3 Express One Zone | single-AZ directory buckets, single-digit ms first-byte target, price reduced in 2025 | (AWS docs, recalled, UNVERIFIED) |
-| GCS Standard regional storage | $0.020 per GB-month | (Google Cloud pricing, recalled, UNVERIFIED) |
-| GCS Class A and Class B operations | $0.005 and $0.0004 per 1,000 operations | (Google Cloud pricing, recalled, UNVERIFIED) |
-| GCS same-object mutation rate | about 1 write per second per object name | (Google Cloud docs, recalled, UNVERIFIED) |
-| Maximum object size | 5 TiB historically on both; S3 announced an increase in late 2025 | (vendor docs, recalled, UNVERIFIED) |
-| Cross-region replication RPO target | S3 RTC: 99.99% of objects in 15 minutes; GCS dual-region turbo replication: 15 minute RPO | (vendor docs, recalled, UNVERIFIED) |
-| Internet egress, first tier | about $0.09 per GB on AWS, about $0.12 per GB on GCP Premium tier | (vendor pricing, recalled, UNVERIFIED) |
+| S3 Standard storage, first 50 TB | $0.023 per GB-month | ([AWS pricing](https://aws.amazon.com/s3/pricing/), as of 2026-11) |
+| S3 PUT/COPY/POST/LIST, GET | $0.005 and $0.0004 per 1,000 requests | (AWS pricing, as of 2026-11) |
+| S3 request rate per partitioned prefix | at least 3,500 PUT/COPY/POST/DELETE, 5,500 GET/HEAD per second | ([AWS docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html), as of 2026-11) |
+| S3 Express One Zone | single-AZ directory buckets, single-digit ms data access, $0.11 per GB-month after the April 2025 price cut | ([AWS docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/directory-bucket-high-performance.html), [AWS blog](https://aws.amazon.com/blogs/aws/up-to-85-price-reductions-for-amazon-s3-express-one-zone/), as of 2026-11) |
+| GCS Standard regional storage | $0.020 per GiB-month in us-central1 (listed as $0.000027397 per GiB-hour) | ([Google Cloud pricing](https://cloud.google.com/storage/pricing), as of 2026-11) |
+| GCS Class A and Class B operations | $0.005 and $0.0004 per 1,000 operations on flat buckets, $0.0065 and $0.0005 on hierarchical-namespace buckets | (Google Cloud pricing, as of 2026-11) |
+| GCS same-object mutation rate | 1 write per second per object name | ([Google Cloud docs](https://docs.cloud.google.com/storage/quotas), as of 2026-11) |
+| Maximum object size | 5 TiB on GCS; 50 TB on S3 since December 2025, multipart only | ([GCS quotas](https://docs.cloud.google.com/storage/quotas), [AWS announcement](https://aws.amazon.com/about-aws/whats-new/2025/12/amazon-s3-maximum-object-size-50-tb/), as of 2026-11) |
+| Cross-region replication RPO target | S3 RTC: 99.9% of objects in 15 minutes; GCS dual-region turbo replication: 15 minute RPO | ([AWS docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication-time-control.html), [Google Cloud docs](https://docs.cloud.google.com/storage/docs/availability-durability), as of 2026-11) |
+| Internet egress, first tier | $0.09 per GB on AWS after 100 GB free, stepping down to $0.085, $0.07, and $0.05; $0.12 per GiB on GCP to North America, stepping down to $0.11 and $0.08 | ([AWS pricing](https://aws.amazon.com/ec2/pricing/on-demand/), [Google Cloud pricing](https://cloud.google.com/vpc/network-pricing), as of 2026-11) |
 
 ### Block storage
 
 | Item | Value | Source |
 | --- | --- | --- |
-| EBS gp3 baseline and ceiling | 3,000 IOPS and 125 MiB/s included, up to 16,000 IOPS and 1,000 MiB/s | (AWS docs, recalled, UNVERIFIED) |
-| EBS gp3 price | $0.08 per GB-month, $0.005 per provisioned IOPS-month above 3,000, $0.04 per MiB/s-month above 125 | (AWS pricing, recalled, UNVERIFIED) |
-| EBS io2 Block Express | up to 256,000 IOPS, 4,000 MiB/s, 64 TiB, sub-millisecond latency | (AWS docs, recalled, UNVERIFIED) |
-| EBS io1/io2 Multi-Attach | up to 16 Nitro instances in one AZ | (AWS docs, recalled, UNVERIFIED) |
-| Hyperdisk Balanced | up to about 160,000 IOPS and 2,400 MiB/s per volume | (Google Cloud docs, recalled, UNVERIFIED) |
-| Hyperdisk Extreme | up to about 350,000 IOPS | (Google Cloud docs, recalled, UNVERIFIED) |
-| Regional Persistent Disk / Hyperdisk HA | synchronous replication across two zones | (Google Cloud docs, recalled, UNVERIFIED) |
-| Volume modification cooldown (EBS) | about 6 hours between modifications of the same volume | (AWS docs, recalled, UNVERIFIED) |
+| EBS gp3 baseline and ceiling | 3,000 IOPS and 125 MiB/s included, up to 80,000 IOPS, 2,000 MiB/s, and 64 TiB (16,000 IOPS and 1,000 MiB/s on Outposts) | ([AWS docs](https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html), as of 2026-11) |
+| EBS gp3 price | $0.08 per GB-month, $0.005 per provisioned IOPS-month above 3,000, $0.04 per MiB/s-month above 125 in us-east-1 | ([AWS pricing](https://aws.amazon.com/ebs/pricing/), as of 2026-11) |
+| EBS io2 Block Express | up to 256,000 IOPS, 4,000 MiB/s, 64 TiB, average latency under 500 microseconds for 16 KiB I/O | ([AWS docs](https://docs.aws.amazon.com/ebs/latest/userguide/provisioned-iops.html), as of 2026-11) |
+| EBS io1/io2 Multi-Attach | up to 16 Nitro instances in one AZ | ([AWS docs](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volumes-multi.html), as of 2026-11) |
+| Hyperdisk Balanced | up to 160,000 IOPS and 2,400 MiB/s per volume | ([Google Cloud docs](https://docs.cloud.google.com/compute/docs/disks/hyperdisks), as of 2026-11) |
+| Hyperdisk Extreme | up to 350,000 IOPS and 5,000 MiB/s, with throughput set by the IOPS level | (Google Cloud docs, as of 2026-11) |
+| Regional Persistent Disk / Hyperdisk HA | synchronous replication across two zones; Hyperdisk Balanced HA up to 100,000 IOPS and 2,400 MiB/s | (Google Cloud docs, as of 2026-11) |
+| Volume modification limit (EBS) | up to 4 modifications in a rolling 24 hours, each only after the previous one reaches `completed` | ([AWS docs](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-modify-volume.html), as of 2026-11) |
 
 ### Key-value and wide-column
 
 | Item | Value | Source |
 | --- | --- | --- |
-| DynamoDB item size | 400 KB | (AWS docs, recalled, UNVERIFIED) |
-| DynamoDB per-partition limits | about 1,000 WCU and 3,000 RCU | (AWS docs, recalled, UNVERIFIED) |
-| DynamoDB transaction size | up to 100 items, 4 MB; transactional ops cost 2x | (AWS docs, recalled, UNVERIFIED) |
-| DynamoDB on-demand price | about $0.625 per million write request units and $0.125 per million read request units after the late-2024 price cut | (AWS pricing, recalled, UNVERIFIED) |
-| DynamoDB provisioned price | about $0.00065 per WCU-hour and $0.00013 per RCU-hour | (AWS pricing, recalled, UNVERIFIED) |
-| DynamoDB global tables | MREC (last-writer-wins) and MRSC (strongly consistent, 2025) modes | (AWS docs, recalled, UNVERIFIED) |
-| Bigtable node price | about $0.65 per node-hour | (Google Cloud pricing, recalled, UNVERIFIED) |
-| Bigtable planning throughput | on the order of 10,000 simple ops per second per SSD node; docs publish higher peaks | (Google Cloud docs, recalled, UNVERIFIED) |
-| Bigtable replication | asynchronous multi-cluster, eventually consistent; single-cluster routing gives read-your-writes | (Google Cloud docs, recalled, UNVERIFIED) |
+| DynamoDB item size | 400 KB | ([AWS docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Constraints.html), as of 2026-11) |
+| DynamoDB per-partition limits | 1,000 WCU and 3,000 RCU | ([AWS docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/burst-adaptive-capacity.html), as of 2026-11) |
+| DynamoDB transaction size | up to 100 items, 4 MB; transactional ops cost 2x | ([AWS docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis.html), as of 2026-11) |
+| DynamoDB on-demand price | $0.625 per million write request units and $0.125 per million read request units in us-east-1 | ([AWS pricing](https://aws.amazon.com/dynamodb/pricing/on-demand/) worked examples, as of 2026-11) |
+| DynamoDB provisioned price | $0.00065 per WCU-hour and $0.00013 per RCU-hour in us-east-1 | ([AWS pricing](https://aws.amazon.com/dynamodb/pricing/provisioned/) worked examples, as of 2026-11) |
+| DynamoDB global tables | MREC (last-writer-wins) and MRSC (strongly consistent, GA June 2025, exactly three Regions, no transactions) modes | ([AWS docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_HowItWorks.html), [AWS announcement](https://aws.amazon.com/about-aws/whats-new/2025/06/amazon-dynamo-db-global-tables-multi-region-strong-consistency-generally-available/), as of 2026-11) |
+| Bigtable node price | $0.65 per node-hour in us-central1 | ([Google Cloud pricing](https://cloud.google.com/bigtable/pricing), as of 2026-11) |
+| Bigtable planning throughput | typical SSD node: up to 14,000 writes or 17,000 reads per second at 1 KB rows, 220 MBps scans, which docs say not to use for exact sizing; this chapter plans at 10,000 | ([Google Cloud docs](https://docs.cloud.google.com/bigtable/docs/performance), as of 2026-11) |
+| Bigtable replication | asynchronous multi-cluster, eventually consistent, latest server-side time wins; single-cluster routing gives read-your-writes | ([Google Cloud docs](https://docs.cloud.google.com/bigtable/docs/replication-overview), as of 2026-11) |
 
 ### Relational and distributed SQL
 
 | Item | Value | Source |
 | --- | --- | --- |
-| Aurora storage | 6 copies across 3 AZs, 4/6 write quorum, 3/6 read quorum, 10 GiB protection groups, up to 128 TiB | (Aurora SIGMOD 2017; AWS docs, recalled, UNVERIFIED for 128 TiB) |
-| Aurora Standard vs I/O-Optimized | per-I/O charge vs flat higher storage and instance price; I/O-Optimized wins when I/O exceeds about 25% of spend | (AWS docs, recalled, UNVERIFIED) |
-| AlloyDB availability SLA | 99.99% including maintenance | (Google Cloud docs, recalled, UNVERIFIED) |
-| DSQL DPU price | $8.00 per million DPU | ([AWS database blog](https://aws.amazon.com/blogs/database/monitor-amazon-aurora-dsql-costs-with-the-aurora-dsql-console-and-cloudwatch-alarms/), as of 2026-10; [pricing summary](https://securityboulevard.com/2026/06/amazon-aurora-dsql-pricing-the-complete-2026-guide/), as of 2026-06) |
-| DSQL storage price | $0.33 per GB-month, one logical copy per region | ([pricing summary](https://securityboulevard.com/2026/06/amazon-aurora-dsql-pricing-the-complete-2026-guide/), as of 2026-06) |
+| Aurora storage | 6 copies across 3 AZs, 4/6 write quorum, 3/6 read quorum, 10 GiB protection groups, up to 256 TiB on recent engine versions (Aurora PostgreSQL 15.13, 16.9, 17.5 and higher; Aurora MySQL 3.10 and higher) and 128 TiB on earlier ones | (Aurora SIGMOD 2017; [AWS docs](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_Limits.html), as of 2026-11) |
+| Aurora Standard vs I/O-Optimized | per-I/O charge vs no I/O charge at higher storage and instance prices; I/O-Optimized wins when I/O is 25% or more of Aurora spend | ([AWS docs](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html), as of 2026-11) |
+| AlloyDB availability SLA | 99.99% with HA enabled, inclusive of maintenance per Google's API reference; 99.95% in Stockholm | ([AlloyDB SLA](https://cloud.google.com/alloydb/sla), [AlloyDB API reference](https://docs.cloud.google.com/alloydb/docs/reference/rest), as of 2026-11) |
+| DSQL DPU price | $8.00 per million DPU, first 100,000 DPU per month free | ([AWS pricing](https://aws.amazon.com/rds/aurora/dsql/pricing/), [AWS database blog](https://aws.amazon.com/blogs/database/monitor-amazon-aurora-dsql-costs-with-the-aurora-dsql-console-and-cloudwatch-alarms/), as of 2026-11) |
+| DSQL storage price | $0.33 per GB-month, one logical copy per region, witness Region free | ([AWS pricing](https://aws.amazon.com/rds/aurora/dsql/pricing/), as of 2026-11) |
 | DSQL multi-region write cost | replicated writes incur DPU charges equal to the originating writes, shown as MultiRegionWriteDPU, with no separate transfer charge | (AWS database blog, as of 2026-10) |
-| DSQL transaction limits | 10 MiB modified data, 3,000 rows modified, 5 minutes | ([AWS quotas page](https://awslabs.github.io/aurora-dsql-starter-kit/quotas-and-limits.html), as of 2026-10; [DEV track summary](https://dev.to/aws/dev-track-spotlight-build-modern-applications-with-amazon-aurora-dsql-dev308-4g5o), as of 2026-10) |
+| DSQL transaction limits | 10 MiB modified data, 3,000 rows modified, 5 minutes | ([AWS quotas page](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/CHAP_quotas.html), as of 2026-11; [DEV track summary](https://dev.to/aws/dev-track-spotlight-build-modern-applications-with-amazon-aurora-dsql-dev308-4g5o), as of 2026-10) |
 | DSQL connection limits | 10,000 connections per cluster, 100 new connections per second, 1,000 burst, 60 minute maximum duration | (AWS quotas page, as of 2026-10) |
 | DSQL row and key limits | row 2 MiB, column 1 MiB, primary key or index key 1 KiB, 255 columns, 8 key columns | (AWS quotas page, as of 2026-10) |
 | DSQL storage per cluster | 10 TiB default, up to 256 TiB with approved increase | (AWS quotas page, as of 2026-10) |
-| DSQL availability SLA | 99.99% single-region, 99.999% multi-region | (AWS docs, recalled, UNVERIFIED) |
-| Spanner availability SLA | 99.99% regional, 99.999% multi-region | (Google Cloud SLA, recalled, UNVERIFIED) |
+| DSQL availability SLA | 99.99% single-region, 99.999% multi-region | ([AWS SLA](https://aws.amazon.com/rds/aurora/dsql/sla/), as of 2026-11) |
+| Spanner availability SLA | 99.99% regional, 99.999% dual-region and multi-region | ([Google Cloud SLA](https://cloud.google.com/spanner/sla), as of 2026-11) |
 | Spanner clock uncertainty | average about 4 ms, sawtooth 1 to 7 ms in the paper's deployment | (Spanner OSDI 2012) |
-| Spanner pricing | per node or per 100 processing units, varies by edition and region | (Google Cloud pricing, UNVERIFIED - not quoted) |
+| Spanner pricing | compute capacity in nodes or processing units (1 node = 1,000 processing units), varies by edition and region, rate not quoted here | ([Google Cloud pricing](https://cloud.google.com/spanner/pricing), as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | AWS | GCP | Translation note |
 | --- | --- | --- | --- |
 | Object consistency | Strong read-after-write and list since Dec 2020 | Strong for object and list operations | Equivalent for application logic |
-| Hot-object behavior | No per-object mutation cap, per-prefix request budget | About one mutation per second per object name | Pattern "append by overwriting one key" breaks on GCS; use unique keys or compose |
-| Scale-out on spike | Prefix partition splits, 503 SlowDown | Bucket autoscaling, 429 or 503 | Ramp both; pre-split by key design |
+| Hot-object behavior | No per-object mutation cap, per-prefix request budget | One write per second per object name | Pattern "append by overwriting one key" breaks on GCS; use unique keys or compose |
+| Scale-out on spike | Prefix partition splits, 503 SlowDown | Bucket autoscaling, retry on 408, 429, 5xx | Ramp both; pre-split by key design |
 | Conditional write | If-None-Match, If-Match on PUT | ifGenerationMatch, ifMetagenerationMatch | Generation numbers are the longer-standing primitive |
 | Directory semantics | Flat keys; Express One Zone directory buckets | Flat buckets plus hierarchical-namespace buckets with atomic folder rename | Rename-heavy jobs (Spark committers) behave differently |
 | Block volume failure domain | Replicated within one AZ | Zonal, or synchronous two-zone regional/HA disks | AWS needs DB-level cross-AZ replication |
 | Block provisioning model | Provision IOPS and throughput on gp3, io2 | Provision IOPS and throughput on Hyperdisk | Both capped by VM type |
-| Snapshot restore | Lazy load from S3; FSR or init rate to pre-warm | Snapshots in Cloud Storage; instant snapshots zonal | Both need pre-warm in DR runbooks |
+| Snapshot restore | Lazy load from S3; FSR or init rate to pre-warm | Standard snapshots in Cloud Storage locations; instant snapshots local to the disk's zone or region | Both need pre-warm in DR runbooks |
 | KV partitioning | Hash of partition key, Paxos group per partition, data on local SSD | Row-key range tablets, data in Colossus | Hash gives spread, range gives scans; different hot-key failure |
-| KV transactions | Up to 100 items | Single-row atomic only | Cross-row invariants must move to Spanner or app logic |
+| KV transactions | Up to 100 items, not supported on MRSC global tables | Single-row atomic only | Cross-row invariants must move to Spanner or app logic |
 | KV multi-region | Global tables, MREC last-writer-wins or MRSC | Bigtable multi-cluster async replication, app profiles | Conflict resolution differs; Bigtable is last-write by timestamp per cell |
 | Pricing shape | Per request (on-demand) or per capacity unit | Per node-hour plus storage | Cost crosses over at high sustained utilization |
 | Relational log design | Redo-log shipping, 4/6 quorum storage fleet | WAL to regional log layer, log processing service, block store | Aurora quorum math is public; AlloyDB's is not |
 | Replica reads | Up to 15 Aurora replicas share storage | Read pool instances share storage | Replica lag is bounded by log apply, both sub-second typical |
-| Distributed SQL concurrency | Snapshot isolation, OCC, adjudicators | Strict serializability, pessimistic locks, 2PC over Paxos | Abort-and-retry vs queue-and-wait |
+| Distributed SQL concurrency | Snapshot isolation, OCC, adjudicators | Strict serializability by default (repeatable read opt-in), pessimistic locks, 2PC over Paxos | Abort-and-retry vs queue-and-wait |
 | Time source | Precision clock (Amazon Time Sync), no commit wait | TrueTime interval, commit wait | Clock-bound correctness vs clock-bound latency |
 | Multi-region topology | Linked regional clusters plus witness region | Multi-region configs with read-write, read-only, and witness replicas | Both pay a cross-region quorum round trip per write commit |
 | Auth to database | IAM-signed token as password for DSQL | IAM database roles and IAM authentication | Short-lived tokens; pooler must refresh |
@@ -251,7 +285,7 @@ This lab has three artifacts.
 The first is a stdlib Python model that shows how a lock queue (Spanner-style) and an optimistic commit (DSQL-style) behave on one hot row as offered load approaches the contention ceiling.
 The second is a cost and capacity model that makes the unit economics of each storage choice explicit.
 The third is a minimal Terraform stack and retry harness to confirm the OCC behavior on a real DSQL cluster.
-The simulator and cost model were executed in the authoring sandbox, and the Terraform and harness were not, because the sandbox has no cloud access (listed in the UNVERIFIED block).
+The simulator and cost model were executed in the authoring sandbox and re-run with identical output on 2026-11-01, and the Terraform and harness were not executed, because neither environment had cloud access, so treat those two as untested.
 
 ### Step 1 - Contention model
 
@@ -333,7 +367,7 @@ Reading the table, which is the part to internalize:
 
 ```python
 """Back-of-envelope cost and capacity model. Prices are inputs, not facts: re-verify before use.
-Sources: DSQL rates from AWS blog/pricing as of 2026-10; all others recalled, UNVERIFIED."""
+Sources: AWS and Google Cloud pricing pages as of 2026-11. Egress is the flat first-tier rate."""
 GB_TB = 1000.0
 
 P = dict(
@@ -376,16 +410,17 @@ Sandbox output and the arithmetic behind each line:
   The conclusion is that for request-heavy workloads the request line, not the GB line, drives the bill, and the two clouds are within a few percent.
 - A 2 TB gp3 volume provisioned at 12,000 IOPS and 500 MiB/s costs $160 + $45 + $15 = $220 per month.
   The instance cap must be checked before buying the IOPS.
-- A one-time 100 TB copy out of AWS at $0.09 per GB costs $9,000, and the same bytes copied weekly cost $468,000 per year, which is the number that ends most "active dual-cloud replication" proposals (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]]).
+- A one-time 100 TB copy out of AWS at a flat $0.09 per GB costs $9,000, and the same bytes copied weekly cost $468,000 per year.
+  AWS volume tiers ($0.09 for the first 10 TB, $0.085 for the next 40 TB, $0.07 for the next 100 TB, $0.05 above that) lower these to about $7,800 for the one-time copy and about $306,000 per year for roughly 433 TB per month, which is still the number that ends most "active dual-cloud replication" proposals (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]]).
 - DSQL cost is dominated by DPU per transaction, which the model refuses to guess: at 300 transactions per second each 1 DPU per transaction costs about $6,221 per month, so 1, 5, and 25 DPU per transaction give $6,386, $31,269, and $155,685 per month for one region.
   A second region adds the replicated-write DPUs (30% write fraction assumed) plus a second copy of storage.
   Measure DPU per transaction on a representative workload from the DSQL CloudWatch metrics before sizing anything.
 
-DynamoDB against Bigtable at a sustained 200,000 writes per second of 1 KB items shows the pricing-shape difference (list prices recalled, UNVERIFIED):
+DynamoDB against Bigtable at a sustained 200,000 writes per second of 1 KB items shows the pricing-shape difference (AWS and Google Cloud list prices, as of 2026-11):
 
 - On-demand: 200,000 x 2,628,000 seconds per month = 525.6 billion writes, at $0.625 per million = about $328,500 per month.
 - Provisioned: 200,000 WCU x $0.00065 x 730 hours = about $94,900 per month.
-- Bigtable: at a conservative 10,000 writes per second per node with 2x headroom, 40 nodes x $0.65 x 730 = about $19,000 per month before storage and before a second replicating cluster.
+- Bigtable: at a conservative planning assumption of 10,000 writes per second per node (docs give a typical figure of up to 14,000 per SSD node and warn against exact sizing from it) with 2x headroom, 40 nodes x $0.65 x 730 = about $19,000 per month before storage and before a second replicating cluster.
 - The break-even for on-demand against provisioned DynamoDB is at about 29% sustained utilization of the provisioned capacity, which is where the 3.5x on-demand premium at full utilization (328.5 / 94.9) comes from.
 - The lesson is that per-request pricing is cheap for spiky and low-utilization traffic and expensive for flat, high-volume traffic, and that Bigtable's per-node pricing inverts this.
   GSIs and transactional writes multiply WCU consumption on DynamoDB, which widens the gap further.
@@ -508,14 +543,14 @@ Reconnect before each long run, because a DSQL connection lives at most 60 minut
 ### Public post-incident reviews that bear on storage translation
 
 - **DynamoDB regional DNS failure, October 2025.**
-  AWS's post-event summary for us-east-1 attributes the DynamoDB endpoint outage to a latent race condition in the automated DNS management system, where a delayed worker applied a stale plan and a cleanup step then removed the active record, leaving the regional endpoint with an empty DNS answer ([AWS post-event summary](https://aws.amazon.com/message/101925/), recalled, UNVERIFIED URL and details).
+  AWS's post-event summary for us-east-1 attributes the DynamoDB endpoint outage to a latent race condition in the automated DNS management system, where a delayed worker applied a stale plan and a cleanup step then removed the active record, leaving the regional endpoint with an empty DNS answer ([AWS post-event summary](https://aws.amazon.com/message/101925/), October 19-20, 2025).
   The lesson for translation is that the data plane of a managed store depends on a regional name-resolution and control path that you cannot see, and the downstream cascade hit services that used DynamoDB as an internal dependency.
   Any design that calls the regional endpoint on the hot path of its own recovery (leader election, config fetch, credential refresh) has a static stability hole, as covered in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]].
 - **Google Cloud Service Control incident, June 2025.**
-  A policy change containing blank fields crashed a global control-path binary, and because the policy metadata is replicated globally within seconds, the failure was not contained to a region; many APIs, including storage and database APIs, returned errors (Google Cloud incident report, recalled, UNVERIFIED).
+  A policy change containing blank fields crashed a global control-path binary, and because the policy metadata is replicated globally within seconds, the failure was not contained to a region; many APIs, including storage and database APIs, returned errors ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), June 12, 2025).
   The lesson is the mirror image of the AWS case: strongly consistent, globally replicated metadata gives you correctness and also a global blast radius for a bad write.
 - **S3 us-east-1, February 2017.**
-  An operator command removed more servers than intended from the index and placement subsystems, and the restart of those subsystems took far longer than expected because they had not been fully restarted at that scale in years ([AWS PIR](https://aws.amazon.com/message/41926/), recalled, UNVERIFIED URL).
+  An operator command removed more servers than intended from the index and placement subsystems, and the restart of those subsystems took far longer than expected because they had not been fully restarted at that scale in years ([AWS PIR](https://aws.amazon.com/message/41926/), February 28, 2017).
   The lesson is that recovery-time behavior of metadata tiers is the least rehearsed code path in any storage system.
 - **EBS re-mirroring storm, April 2011.**
   Covered above; it is the reason replica-set membership changes in modern block systems are rate-limited and cell-partitioned.
@@ -527,7 +562,7 @@ Reconnect before each long run, because a DSQL connection lives at most 60 minut
   Turning on a 50,000 request-per-second job against an idle S3 prefix or GCS bucket produces 503 and 429 responses until the service splits; clients without exponential backoff with jitter amplify it.
   Ramp over tens of minutes, and spread keys.
 - **GCS single-object write loops.**
-  Code that updates a status or manifest object at more than about one write per second per name gets 429; the pattern works on S3 at modest rates, so it passes in AWS and fails after migration.
+  Code that updates a status or manifest object at more than one write per second per name can be throttled; the pattern works on S3 at modest rates, so it passes in AWS and fails after migration.
 - **Restoring from a snapshot and benchmarking immediately.**
   First-touch lazy loading makes the restored volume look 10x to 100x slower than it will be after warm-up; DR tests that skip pre-warm report RTOs that are too optimistic for the first minutes and too pessimistic for steady state.
 - **Provisioned IOPS above the instance cap.**
@@ -541,15 +576,15 @@ Reconnect before each long run, because a DSQL connection lives at most 60 minut
 - **DSQL transactions exceeding limits.**
   Bulk updates beyond 3,000 rows, 10 MiB of modified data, or 5 minutes fail by design, and the fix is batching in the application (AWS quotas page, as of 2026-10).
 - **DSQL migration surprises.**
-  Applications relying on foreign keys, sequences, triggers, and large bulk updates need rework, per AWS's own session material ([DEV track summary](https://dev.to/aws/dev-track-spotlight-build-modern-applications-with-amazon-aurora-dsql-dev308-4g5o), as of 2026-10), and the current state of each should be re-checked against the documentation.
+  AWS's earlier session material listed foreign keys and sequences as gaps ([DEV track summary](https://dev.to/aws/dev-track-spotlight-build-modern-applications-with-amazon-aurora-dsql-dev308-4g5o), as of 2026-10), but current docs support both, so the rework now centers on triggers, temporary tables, PL/pgSQL, and large bulk updates ([migration guide](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-postgresql-compatibility-unsupported-features.html), as of 2026-11).
 - **DSQL connection storms.**
   Opening more than 100 connections per second, or holding connections past 60 minutes, causes connection errors at cluster scale; use a pool that refreshes tokens and rotates connections (AWS quotas page, as of 2026-10).
 - **OCC retry storms.**
   Retrying 40001 failures without jitter or a budget shrinks the effective hot-row ceiling, as the simulator above shows.
 - **Write skew under snapshot isolation.**
-  A check-then-write invariant over two rows passes in DSQL's default isolation and fails to hold under concurrency, where it would have held on Spanner.
+  A check-then-write invariant over two rows passes in DSQL's fixed isolation level and fails to hold under concurrency, where it would have held on Spanner at its default serializable level.
 - **Aurora I/O bill shock.**
-  The per-I/O charge scales with cache-miss rate, so a buffer pool that is slightly too small can double the bill; evaluate I/O-Optimized when I/O exceeds about 25% of spend (AWS docs, recalled, UNVERIFIED).
+  The per-I/O charge scales with cache-miss rate, so a buffer pool that is slightly too small can double the bill; evaluate I/O-Optimized when I/O reaches 25% of Aurora spend (AWS docs, as of 2026-11).
 - **Aurora failover with connection pools.**
   DNS cached by the pool keeps targeting the old writer; use the cluster endpoint with short TTL handling or a proxy.
 - **Noisy neighbors.**
@@ -560,7 +595,7 @@ Reconnect before each long run, because a DSQL connection lives at most 60 minut
 ### Encryption hierarchy
 
 Both clouds use envelope encryption: a per-object or per-chunk data key encrypted by a key-encryption key held in the KMS.
-S3 applies SSE-S3 by default, and SSE-KMS adds a KMS call per object operation, which S3 Bucket Keys reduce by deriving per-bucket data keys (AWS docs, recalled, UNVERIFIED).
+S3 applies SSE-S3 by default, and SSE-KMS adds a KMS call per object operation, which S3 Bucket Keys reduce, by up to 99 percent of KMS request cost, through a short-lived bucket-level key that creates data keys ([S3 docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html), as of 2026-11).
 GCS encrypts by default with Google-managed keys and supports customer-managed keys in Cloud KMS, which makes every object read depend on KMS availability and quota.
 EBS encryption uses KMS-protected data keys and can be enforced as an account-level default per Region, and Persistent Disk and Hyperdisk encrypt at rest by default with CMEK as an option.
 The operational angle is that CMEK and SSE-KMS turn a KMS outage or quota exhaustion into a storage outage, so request-rate planning for the KMS is part of storage capacity planning.
@@ -568,7 +603,7 @@ Details are in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Dat
 
 ### Identity and network boundaries
 
-- DSQL uses IAM-signed, short-lived tokens in place of a database password, so there is no static credential to rotate, and the pooler must refresh tokens (AWS docs, recalled, UNVERIFIED).
+- DSQL uses IAM-signed, short-lived tokens in place of a database password, so there is no static credential to rotate, and the pooler must refresh tokens, which expire after 15 minutes by default although an established connection outlives its token ([DSQL docs](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/SECTION_authentication-token.html), as of 2026-11).
 - S3 and DynamoDB gateway endpoints keep traffic off the internet at no endpoint charge, and endpoint policies plus bucket policies using `aws:SourceVpce` and organization conditions form the perimeter, per [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
 - The GCP equivalent is Private Google Access or Private Service Connect for the API path plus VPC Service Controls, which blocks exfiltration by the API caller's identity and network context and not only by the data path ([[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]]).
 - Public-access prevention should be enforced at the organization level on both sides (S3 Block Public Access, GCS public access prevention).
@@ -577,15 +612,16 @@ Details are in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Dat
 ### Unit-economics levers
 
 - **Object storage tiering.**
-  S3 Intelligent-Tiering and GCS Autoclass automate movement between classes, but both have minimum storage durations on cold classes (for example 30, 90, and 365 days on GCS Nearline, Coldline, and Archive), so early deletion is billed (vendor docs, recalled, UNVERIFIED).
+  S3 Intelligent-Tiering and GCS Autoclass automate movement between classes, with Intelligent-Tiering charging a monitoring fee and leaving objects under 128 KB untiered, and Autoclass charging no early deletion or retrieval fees except as part of enablement charges ([S3 docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/intelligent-tiering-overview.html), [GCS docs](https://docs.cloud.google.com/storage/docs/autoclass), as of 2026-11).
+  Manually selected GCS classes do carry minimum storage durations of 30, 90, and 365 days on Nearline, Coldline, and Archive ([GCS docs](https://docs.cloud.google.com/storage/docs/storage-classes), as of 2026-11).
 - **Request consolidation.**
   Small-object workloads are request-bound, as the 50 TB model above shows; batching to larger objects cuts request spend roughly linearly.
 - **Egress.**
   Place compute in the same region as the data; cross-cloud reads are priced per GB at roughly the internet rate and dominate any dual-cloud design.
 - **DynamoDB capacity mode.**
-  Use provisioned with autoscaling when utilization is above about 29% sustained, on-demand below that, and reserved capacity for the flat floor (prices recalled, UNVERIFIED).
+  Use provisioned with autoscaling when utilization is above about 29% sustained, on-demand below that, and reserved capacity for the flat floor (AWS pricing, as of 2026-11).
 - **Bigtable node count.**
-  Autoscale on CPU utilization with a target well under 70%, because tablet moves during scaling add transient latency.
+  Autoscale on CPU utilization with a target of about 60% when optimizing for latency (up to 90% when optimizing for throughput, per [Bigtable docs](https://docs.cloud.google.com/bigtable/docs/performance), as of 2026-11), because tablet moves during scaling add transient latency.
 - **Aurora.**
   Choose I/O-Optimized when I/O is more than about a quarter of the bill, and use Serverless v2 for spiky dev and test workloads.
 - **DSQL.**
@@ -604,10 +640,11 @@ A team is moving a Spark-based data lake of 80 TB of Parquet from S3 to GCS. Bot
 Consistency is not the issue, because both services give read-after-write and list-after-write consistency, so the classic "eventual listing" workarounds are not needed on either side.
 The first real difference is the commit protocol of the Spark job.
 Output committers that write to a temporary prefix and rename to the final prefix perform copy-then-delete per object on a flat bucket, so a rename of a directory with 100,000 files is 100,000 server-side copies and a window where the output is partially visible.
-On GCS you can use a hierarchical-namespace bucket, which provides atomic folder rename, if it is available in the target region and GA for the workload (verify), or use a committer designed for object stores that writes directly to the final location and commits through a manifest.
-The second difference is the per-object mutation limit on GCS of roughly one write per second per object name, which breaks patterns that overwrite a single "_SUCCESS" or manifest or status object at high frequency, and works on S3 at modest rates.
+On GCS you can create a new hierarchical-namespace bucket, which is GA since October 2024 and provides atomic folder rename (the setting cannot be changed after creation, and operations cost more), or use a committer designed for object stores that writes directly to the final location and commits through a manifest.
+The second difference is the per-object mutation limit on GCS of one write per second per object name, which breaks patterns that overwrite a single "_SUCCESS" or manifest or status object at high frequency, and works on S3 at modest rates.
 The third is request scaling: both need ramping and key spread, but the failure codes and splitting behavior differ, so job retry logic must treat 429 and 503 as backoff signals with jitter.
-The fourth is cost shape: for 80 TB the storage line is about $1,840 per month on S3 Standard against $1,600 on GCS Standard (recalled prices, UNVERIFIED), which is small next to the one-time egress of 80,000 GB x $0.09 = $7,200 and the request charges of a scan-heavy workload.
+The fourth is cost shape: for 80 TB the storage line is about $1,840 per month on S3 Standard against $1,600 on GCS Standard (list prices, as of 2026-11), which is small next to the one-time egress of 80,000 GB x $0.09 = $7,200 at the flat first-tier rate (about $6,400 with AWS volume tiers) and the request charges of a scan-heavy workload.
+AWS also waives egress on request for customers moving data off AWS, subject to conditions and a Support request ([AWS blog](https://aws.amazon.com/blogs/aws/free-data-transfer-out-to-internet-when-moving-out-of-aws/), as of 2026-11), so I would ask before budgeting that line.
 I would pilot with a representative table, measure list latency, rename time, and request counts, and only then size the migration, using a transfer service with checksums and a dual-read validation window.
 
 #### Follow-up Interviewer Question
@@ -640,11 +677,11 @@ A product team runs a sustained 200,000 writes per second of 1 KB items into Dyn
 #### Model Answer
 
 The cost claim is probably right in direction, and the migration is still not a drop-in, so I would separate pricing shape from data model.
-On pricing: DynamoDB on-demand at the recalled rate of $0.625 per million writes costs about $328,500 per month at that rate, and provisioned capacity about $94,900, before GSIs, transactions, and global-table replication multiply the WCU count (prices recalled, UNVERIFIED, to be re-checked).
-Bigtable is priced per node, and at a planning figure of 10,000 writes per second per node with headroom, 40 nodes is about $19,000 per month plus storage and a second cluster if replicated.
+On pricing: DynamoDB on-demand at the list rate of $0.625 per million writes costs about $328,500 per month at that rate, and provisioned capacity about $94,900, before GSIs, transactions, and global-table replication multiply the WCU count (AWS pricing, as of 2026-11).
+Bigtable is priced per node at $0.65 per node-hour, and at a conservative planning figure of 10,000 writes per second per node with 2x headroom, 40 nodes is about $19,000 per month plus storage and a second cluster if replicated.
 The 5x to 17x difference exists because per-request pricing penalizes flat, high-utilization traffic, and the first fix is not a migration: move to provisioned with autoscaling, buy reserved capacity for the floor, and remove unnecessary GSIs.
-On data model: Bigtable is range-partitioned with single-row atomicity and no secondary indexes or cross-row transactions, so I need to inventory every access pattern.
-If the table uses GSIs for lookups, those become either separate Bigtable tables maintained by the application (with its own consistency problems) or a move to a different store such as Spanner.
+On data model: Bigtable is range-partitioned with single-row atomicity and no synchronous secondary indexes or cross-row transactions, so I need to inventory every access pattern.
+If the table uses GSIs for lookups, those become continuous materialized views acting as asynchronous indexes (GA since April 2026), separate Bigtable tables maintained by the application (with its own consistency problems), or a move to a different store such as Spanner.
 If it uses TransactWriteItems across items, the invariant has to be redesigned around single-row mutations or moved to Spanner.
 On hot spots: DynamoDB's hash partitioning masks sequential key choices, but Bigtable punishes them, so the row key must be redesigned (salted prefix or reversed timestamp), and I must size for hot-tablet behavior, not average load.
 On consistency and availability: Bigtable multi-cluster replication is asynchronous and eventually consistent, so I need to decide between single-cluster routing for read-your-writes and multi-cluster routing for availability.
@@ -665,7 +702,7 @@ Aurora's design is public in detail: six copies in three AZs, a 4-of-6 write quo
 I can derive from it that losing an AZ keeps writes available, losing an AZ plus one more copy keeps reads and repair but blocks writes, and the repair window is on the order of ten seconds for a segment, which is the quantity that bounds the double-failure risk.
 For AlloyDB, public documentation describes regional log storage, a log processing service, and a block store, and a columnar engine for analytical queries, but not a segment-level quorum design, so I cannot derive a failure analysis equivalent to the AZ+1 case and I would ask for the documented SLA and failure behavior in writing.
 For the reporting load, AlloyDB's columnar engine can accelerate scans in-memory on the same instance family, whereas on Aurora I would either offload to read replicas, use a zero-ETL path to a warehouse, or accept the replica load, so the workload mix decides.
-For cost, Aurora Standard charges per I/O, and a 20 TB database with a modest buffer pool can make I/O the largest line, so I would model Standard against I/O-Optimized (break-even about when I/O exceeds a quarter of spend), while AlloyDB's pricing has no per-I/O dimension, which makes cost more predictable and less sensitive to cache misses (prices recalled, UNVERIFIED).
+For cost, Aurora Standard charges per I/O, and a 20 TB database with a modest buffer pool can make I/O the largest line, so I would model Standard against I/O-Optimized (break-even about when I/O reaches a quarter of spend), while AlloyDB's pricing has no per-I/O dimension, which makes cost more predictable and less sensitive to cache misses (vendor docs and pricing pages, as of 2026-11).
 For the 99.99% target, I would test failover with real connection pools: DNS caching and pool behavior commonly dominate the observed failover time more than the engine's promotion time.
 My decision would come from a replay of production queries on both, measuring p99, replica lag under write bursts, failover time as seen by the application, and monthly cost with real I/O counts.
 
@@ -681,13 +718,13 @@ Design the ledger for a payments system that must be active-active across two re
 
 Both give synchronous cross-region durability, so RPO zero holds, and both pay at least one cross-region round trip per write commit to reach a quorum, so write latency has a floor set by geography, not by the database.
 The difference is the concurrency control.
-Spanner takes locks at the Paxos leaders, uses two-phase commit across splits, and uses TrueTime commit wait to give strict serializability, so the write-skew bug cannot occur, and contention appears as lock wait time that grows with the queue.
+Spanner takes locks at the Paxos leaders, uses two-phase commit across splits, and uses TrueTime commit wait to give strict serializability at its default isolation level, so the write-skew bug cannot occur unless a transaction opts into repeatable read, and contention appears as lock wait time that grows with the queue.
 DSQL runs transactions at snapshot isolation using precision-timestamp MVCC for reads and optimistic adjudication at commit, so reads never block, contention appears as commit-time 40001 failures, and write skew is possible.
 For a ledger the invariant is "balance never goes negative" or "debits equal credits", and the standard bug is two concurrent transactions each reading the balance, each seeing sufficient funds, and each inserting a different debit row, which commits under snapshot isolation because they wrote different keys.
-On DSQL I must fix this by making both transactions write a common row (a per-account balance row updated by every debit, so the adjudicator sees the conflict) or by locking the read with SELECT FOR UPDATE, and by testing it with concurrent clients, not by reasoning.
+On DSQL I must fix this by making both transactions write a common row (a per-account balance row updated by every debit, so the adjudicator sees the conflict) or by reading with SELECT FOR UPDATE, which takes no lock in DSQL but makes the adjudicator treat the row as written at commit, and by testing it with concurrent clients, not by reasoning.
 The cost of that fix is hot-row throughput: a single account row has a ceiling of about 1/d commits per second where d is the transaction window, so with a 20 ms window that is about 50 per second per account, and the same ceiling applies on Spanner with lock hold time, which includes commit wait and Paxos latency.
 My simulator-style analysis shows the two diverge under overload: Spanner queues and latency explodes without admission control, DSQL sheds with retry and wasted compute, so I need client retry budgets, jittered backoff, and a limit on in-flight transactions per account on either system.
-Operationally I would also check the DSQL limits (3,000 rows and 10 MiB per transaction, 5 minute duration) against batch settlement jobs, which must be chunked, and the missing features (foreign keys, per AWS material) against the schema.
+Operationally I would also check the DSQL limits (3,000 rows and 10 MiB per transaction, 5 minute duration) against batch settlement jobs, which must be chunked, and the remaining feature gaps (triggers, temporary tables, PL/pgSQL, per AWS docs as of 2026-11; foreign keys and sequences are now supported) against the schema.
 I would choose Spanner when strict serializability must be guaranteed by the database and the team lacks capacity to prove application-level invariants, and DSQL when the workload is read-heavy with low per-key contention, the team is on AWS, and the application can own retries and write-skew prevention.
 
 #### Follow-up Interviewer Question
@@ -702,7 +739,7 @@ The CTO wants "no single-cloud dependency" for the system of record of a custome
 
 I would reframe it as a set of numbers before it becomes an architecture.
 First, consensus across clouds: any strongly consistent write replicated synchronously between a region in each cloud pays a wide-area round trip, typically tens of milliseconds between the closest metros and more across a continent, plus the variance of the public or interconnect path, and neither DSQL nor Spanner spans clouds, so I would be building and operating my own consensus layer, with a majority that must live on one side or a third site as witness.
-Second, egress: replicating 1 TB per day out of AWS at about $0.09 per GB is about $90 per day or $33,000 per year for the bytes alone, a full 100 TB re-seed is $9,000, and these are recalled list prices, so the cost is real but small compared with the engineering cost of running two stacks.
+Second, egress: replicating 1 TB per day out of AWS at about $0.09 per GB is about $90 per day or $33,000 per year for the bytes alone, a full 100 TB re-seed is $9,000, and these use the flat first-tier list price (AWS pricing, as of 2026-11) that volume tiers lower by about 4 percent and 13 percent respectively, so the cost is real but small compared with the engineering cost of running two stacks.
 Third, correctness: two different databases with different isolation levels (snapshot against strict serializable), different retry semantics, and different SQL dialect limits mean the application must be written to the lowest common denominator or the semantics will diverge under failover.
 Fourth, failure modes: a shared control-plane or identity dependency (DNS, certificate issuance, CI/CD, secrets) is usually the true single point of failure, and the October 2025 DynamoDB and June 2025 Google Cloud incidents were both control-path failures that a data-plane replica in the other cloud would not have mitigated unless the failover path itself was independent.
 My proposal would be tiered.
@@ -743,8 +780,8 @@ Your platform's hot path calls Parameter Store, a regional KMS, and a DynamoDB t
 - [Amazon DynamoDB: A Scalable, Predictably Performant, and Fully Managed NoSQL Database Service (USENIX ATC 2022)](https://www.usenix.org/conference/atc22/presentation/elhemali) - request routers, Paxos partitions, log replicas, and the two-level admission control.
 - [Millions of Tiny Databases (Physalia, NSDI 2020)](https://www.usenix.org/conference/nsdi20/presentation/brooker) - why block-storage control planes are partitioned into cells placed near the data they describe.
 - [Aurora DSQL: Scalable, Multi-Region OLTP (arXiv)](https://arxiv.org/html/2607.13276v2) - the primary description of query processors, adjudicators, and the Journal; read it for the commit path.
-- [Aurora DSQL quotas and limits](https://awslabs.github.io/aurora-dsql-starter-kit/quotas-and-limits.html) - the authoritative list of transaction, row, key, and connection limits that decide whether a workload fits.
-- [AWS post-event summary, DynamoDB us-east-1, October 2025](https://aws.amazon.com/message/101925/) - a case study in a control-path race condition cascading through dependent services (URL recalled, verify).
-- [AWS S3 service disruption summary, February 2017](https://aws.amazon.com/message/41926/) - why metadata-tier restart paths need rehearsal (URL recalled, verify).
+- [Aurora DSQL quotas and limits](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/CHAP_quotas.html) - the authoritative list of transaction, row, key, and connection limits that decide whether a workload fits.
+- [AWS post-event summary, DynamoDB us-east-1, October 2025](https://aws.amazon.com/message/101925/) - a case study in a control-path race condition cascading through dependent services.
+- [AWS S3 service disruption summary, February 2017](https://aws.amazon.com/message/41926/) - why metadata-tier restart paths need rehearsal.
 - [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_06_Google_Spanner|Google Spanner (2012 OSDI)]] and [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_02_Amazon_Aurora|Amazon Aurora (2017 SIGMOD)]] - this curriculum's paper-level chapters for the two systems compared most heavily here.
 - [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_05_Messaging_Streaming_and_Analytics_Translation|Messaging, Streaming, and Analytics Translation]] - the next chapter, which covers how this state leaves the database through CDC and streams.

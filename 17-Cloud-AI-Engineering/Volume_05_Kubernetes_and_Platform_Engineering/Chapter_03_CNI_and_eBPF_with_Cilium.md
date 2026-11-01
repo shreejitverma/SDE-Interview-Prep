@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.cni.dev/docs/spec/"
@@ -17,6 +17,34 @@ sources:
   - "https://aws.amazon.com/blogs/containers/amazon-vpc-cni-increases-pods-per-node-limits"
   - "https://docs.aws.amazon.com/eks/latest/best-practices/ip-opt.html"
   - "https://discuss.google.dev/t/gke-dataplane-v2-scaling-cilium-identities-with-labels-and-annotations/366708"
+  - "https://docs.aws.amazon.com/eks/latest/best-practices/prefix-mode-linux.html"
+  - "https://docs.aws.amazon.com/eks/latest/best-practices/prefix-mode-win.html"
+  - "https://github.com/aws/amazon-vpc-cni-k8s/blob/master/misc/eni-max-pods.txt"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/cni-network-policy.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/cni-iam-role.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa.html"
+  - "https://docs.cilium.io/en/stable/helm-reference/"
+  - "https://docs.cilium.io/en/stable/cmdref/cilium-agent/"
+  - "https://github.com/cilium/cilium/blob/v1.20.4/pkg/option/config.go"
+  - "https://github.com/cilium/cilium/blob/v1.20.4/install/kubernetes/cilium/templates/cilium-configmap.yaml"
+  - "https://github.com/cilium/cilium/blob/main/bpf/bpf_overlay.c"
+  - "https://github.com/cilium/cilium/blob/main/bpf/lib/fib.h"
+  - "https://github.com/cilium/cilium/blob/main/bpf/lib/local_delivery.h"
+  - "https://docs.cilium.io/en/stable/network/clustermesh/setup/"
+  - "https://docs.cilium.io/en/stable/operations/system_requirements/"
+  - "https://docs.cilium.io/en/stable/operations/performance/scalability/identity-relevant-labels/"
+  - "https://docs.cilium.io/en/stable/security/policy/intro/"
+  - "https://docs.cilium.io/en/stable/security/policy/deny/"
+  - "https://docs.cilium.io/en/stable/security/network/proxy/envoy/"
+  - "https://docs.cilium.io/en/stable/security/dns/"
+  - "https://docs.cilium.io/en/stable/security/network/encryption-wireguard/"
+  - "https://man7.org/linux/man-pages/man7/bpf-helpers.7.html"
+  - "https://www.datadoghq.com/blog/2023-03-08-multiregion-infrastructure-connectivity-issue/"
+  - "https://github.com/kubernetes/kubernetes/issues/56903"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/flexible-pod-cidr"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/dataplane-v2"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/multi-pod-cidr"
+  - "https://endoflife.date/cilium"
 ---
 
 # Container Networking Interface and eBPF with Cilium
@@ -26,8 +54,8 @@ sources:
 - CNI is a fork/exec contract of six verbs (ADD, DEL, CHECK, STATUS, GC, VERSION). The runtime calls it once per pod sandbox, so pod start latency and IP leaks are properties of your IPAM, not of Kubernetes (CNI spec 1.1.0, as of 2026-10).
 - Pod IP supply is the first scaling limit. On AWS VPC CNI the density cap is `ENIs * (IPs per ENI - 1) + 2` (29 pods on m5.large), and prefix mode trades a larger per-node IP footprint for density (AWS docs, as of 2026-10).
 - Cilium replaces the kube-proxy service path with cgroup `connect4/sendmsg4/recvmsg4` socket hooks. The ClusterIP is rewritten to a backend IP before a packet exists, so there is no DNAT conntrack entry and `ss` on the client shows the backend address (Cilium docs, as of 2026-10).
-- Policy is identity-based. Labels map to a numeric identity, the datapath matches `(identity, port, proto)` in per-endpoint BPF maps, and cluster-local identities are capped near 65,535, so label cardinality is a capacity input (Cilium docs, as of 2026-10).
-- Every eBPF map has a fixed capacity: 512k TCP and 256k other conntrack entries per node, 512k NAT, 64k service LB, 16k policy entries per endpoint (Cilium docs, as of 2026-10). Size them like any other resource, because exhaustion shows up as resets and drops that look like application bugs.
+- Policy is identity-based. Labels map to a numeric identity, the datapath matches `(identity, port, proto)` in per-endpoint BPF maps, and cluster-local identities are capped near 65,535 (32,767 if ClusterMesh is configured for 511 clusters), so label cardinality is a capacity input (Cilium docs, as of 2026-11).
+- Every eBPF map has a fixed capacity: the static defaults are 512k TCP and 256k other conntrack entries per node, 512k NAT, 64k service LB, 16k policy entries per endpoint, but the default `bpf.mapDynamicSizeRatio=0.0025` derives conntrack and NAT sizes from node memory instead (Cilium docs and chart, as of 2026-11). Size them like any other resource, because exhaustion shows up as resets and drops that look like application bugs.
 
 ## Mental Model
 
@@ -117,9 +145,12 @@ Prefix mode wins on density, not on IP frugality at low density.
 A classic pod attaches through a veth pair: one end in the pod netns, the other in the host netns.
 Cilium attaches BPF to the host-side device and, by default, packets still traverse parts of the host stack, including iptables hooks, unless eBPF host routing is active ([Cilium tuning guide](https://docs.cilium.io/en/stable/operations/performance/tuning/), as of 2026-10).
 eBPF host routing, introduced in Cilium 1.9, bypasses iptables and the upper host stack, and gives a faster network namespace switch than regular veth operation (same source and a [third-party walkthrough](https://e-whisper.com/posts/56721/) that cites a kernel 5.10 floor, as of 2026-10).
-The mechanism behind the fast switch is the kernel `bpf_redirect_peer()` and `bpf_redirect_neigh()` helpers, which jump straight into the peer namespace or fill the L2 header from the neighbor table without a trip through the per-CPU backlog queue (UNVERIFIED in this pass, taken from Cilium talks).
+The mechanism behind the fast switch is two kernel helpers.
+`bpf_redirect_peer()` switches into the peer device's namespace from ingress to ingress without going through the CPU's backlog queue, and `bpf_redirect_neigh()` redirects to another device and fills in L2 addresses from the neighbor subsystem ([bpf-helpers(7)](https://man7.org/linux/man-pages/man7/bpf-helpers.7.html), as of 2026-11).
+Cilium's datapath calls both ([local_delivery.h](https://github.com/cilium/cilium/blob/main/bpf/lib/local_delivery.h), [fib.h](https://github.com/cilium/cilium/blob/main/bpf/lib/fib.h), as of 2026-11).
 
 netkit goes one step further.
+The tuning guide labels it a beta feature, and it needs kernel 6.8 or later ([Cilium tuning guide](https://docs.cilium.io/en/stable/operations/performance/tuning/), as of 2026-11).
 It replaces the veth pair with a BPF-programmable device pair, and Cilium attaches the pod-specific BPF programs inside the netkit peer device so they can only be managed from the host namespace through Cilium.
 If no program is attached, Cilium configures the peer to blackhole traffic ([Cilium tuning guide](https://docs.cilium.io/en/stable/operations/performance/tuning/), as of 2026-10).
 netkit requires eBPF host routing and uses tcx for attachments to non-netkit devices.
@@ -139,7 +170,7 @@ The mechanism is more specific.
 What this changes that docs rarely spell out:
 
 - **No DNAT conntrack entry exists for east-west service traffic.**
-  The conntrack-insertion race that makes parallel UDP DNS lookups hit 5 s resolver timeouts under iptables DNAT cannot occur on this path (the race is UNVERIFIED in this pass, from the public Weave Works analysis).
+  The conntrack-insertion race that makes parallel UDP DNS lookups hit 5 s resolver timeouts under iptables DNAT cannot occur on this path ([kubernetes/kubernetes#56903](https://github.com/kubernetes/kubernetes/issues/56903) and the [NodeLocal DNSCache docs](https://kubernetes.io/docs/tasks/administer-cluster/nodelocaldns/) describe the race, as of 2026-11; the original Weave Works post the issue cites is offline).
 - **Observability inverts.**
   `ss -tn` and `tcpdump` inside the pod show the backend pod IP, not the ClusterIP.
   Anything that expects to see the ClusterIP on the wire breaks, which is why Cilium offers a bypass: `socketLB.hostNamespaceOnly=true` skips the socket rewrite in pod namespaces and falls back to the per-packet tc load balancer.
@@ -165,13 +196,13 @@ Identities are stored as uint32, and the current ranges are ([Cilium security id
 | --- | --- |
 | 1 to 255 | Reserved identities |
 | 256 to 65535 | Cluster-local identities |
-| 65536 to 2^24 - 1 | Identities for remote ClusterMesh clusters (8 bits of cluster-id) |
+| 65536 to 2^24 - 1 | Identities for remote ClusterMesh clusters (8 bits of cluster-id at the default 255-cluster setting) |
 | 2^24 to 2^25 - 1 | CIDR identities, node-local |
 | 2^25 to 2^25 + 2^24 - 1 | Remote-node identities, local |
 
 Two details follow from this table.
 
-- Cluster-local identities are limited to 65535 regardless of whether ClusterMesh is used ([ClusterMesh setup](https://docs.cilium.io/en/stable/network/clustermesh/setup/), as of 2026-10).
+- Cluster-local identities are limited to 65535 at the default `maxConnectedClusters=255`, and setting it to 511 at install time lowers the cap to 32767 ([ClusterMesh setup](https://docs.cilium.io/en/stable/network/clustermesh/setup/), as of 2026-11).
   GKE Dataplane V2, which is Cilium-based, inherits the same cap, and Google's guidance is to put high-cardinality metadata in annotations rather than labels ([Google Cloud community post](https://discuss.google.dev/t/gke-dataplane-v2-scaling-cilium-identities-with-labels-and-annotations/366708), as of 2026-10).
 - FQDN and CIDR policy mint node-local identities from a separate range.
   Each node allocates them independently, so they are not comparable across nodes.
@@ -182,9 +213,9 @@ An identity of 0 in the datapath means "any identity", which is how wildcard all
 
 The enforcement path:
 
-1. The source identity is established either from the tunnel header (VXLAN VNI carries it in tunnel mode) or from an IP-to-identity lookup in the `ipcache` map on the node (UNVERIFIED in this pass, from Cilium architecture docs).
+1. The source identity is established either from the tunnel header (VXLAN VNI carries it in tunnel mode) or from an IP-to-identity lookup in the `ipcache` map on the node ([bpf_overlay.c](https://github.com/cilium/cilium/blob/main/bpf/bpf_overlay.c), [routing docs](https://docs.cilium.io/en/stable/network/concepts/routing/), [ipcache command reference](https://docs.cilium.io/en/stable/cmdref/cilium-dbg_bpf_ipcache/), as of 2026-11).
 2. The destination endpoint's policy map is consulted with `(identity, dport, proto, direction)`.
-3. L7 rules (HTTP, DNS) redirect to a node-local Envoy or DNS proxy instead of being decided in BPF (UNVERIFIED in this pass).
+3. L7 rules (HTTP, DNS) redirect to a node-local Envoy or DNS proxy instead of being decided in BPF ([Cilium Envoy docs](https://docs.cilium.io/en/stable/security/network/proxy/envoy/), [Cilium DNS docs](https://docs.cilium.io/en/stable/security/dns/), as of 2026-11).
 
 The per-endpoint policy map defaults to 16k entries, i.e. "16k allowed identity + port + protocol pairs for a specific endpoint" ([Cilium eBPF maps](https://docs.cilium.io/en/stable/network/ebpf/maps/), as of 2026-10).
 A policy that is expressed as thousands of CIDR rules can overflow it even when the YAML looks small.
@@ -192,8 +223,9 @@ A policy that is expressed as thousands of CIDR rules can overflow it even when 
 ### Control plane versus data plane
 
 The agent, the operator and Hubble are control and observability components.
-The programs and maps they install are pinned in the BPF filesystem and keep executing when the agent is down (UNVERIFIED in this pass, standard Cilium operating knowledge).
-Stopping the agent therefore freezes policy and identity updates, but does not by itself drop traffic.
+The programs and maps they install persist in the BPF filesystem so the datapath keeps operating while the agent restarts or upgrades ([Cilium system requirements](https://docs.cilium.io/en/stable/operations/system_requirements/), as of 2026-11).
+Stopping the agent therefore freezes policy and identity updates, but does not by itself drop L3/L4 traffic.
+L7 is the exception: with embedded Envoy, L7 traffic depends on the agent pod, and the default DNS proxy runs inside the agent ([Cilium Envoy docs](https://docs.cilium.io/en/stable/security/network/proxy/envoy/), [Cilium DNS docs](https://docs.cilium.io/en/stable/security/dns/), as of 2026-11).
 The inverse failure is worse: a datapath that has no program attached (for netkit, a blackhole device) fails closed immediately.
 This is the same separation described in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
 Related foundations: [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_01_Kubernetes_Control_Loop_Internals|Kubernetes Control Loop Internals]] for how `CiliumNode` and `CiliumIdentity` objects are reconciled, and [[15-Technical-Whitepapers/01-Systems-Performance-and-Tracing/Linux-Tracing-and-Instrumentation|Linux Tracing and Instrumentation]] for the underlying BPF tooling.
@@ -210,35 +242,35 @@ This is why a rollout plan for the CNI should use cells, as described in [[17-Cl
 | Item | Value | Source |
 | --- | --- | --- |
 | CNI spec version | 1.1.0; verbs ADD, DEL, CHECK, STATUS, GC, VERSION | (CNI spec, as of 2026-10) |
-| Cilium release train | 1.20 released 2026-07-29; 1.19 on 2026-02-03; 1.18 and later supported, 1.17 ended 2026-07-29 | (endoflife.date, as of 2026-09-17) |
-| Cilium docs "stable" | Documents 1.20.3 | (Cilium docs, as of 2026-10) |
-| Cluster-local identities | Range 256 to 65535, cap 65535 with or without ClusterMesh | (Cilium docs, as of 2026-10) |
-| ClusterMesh default MaxConnectedClusters | 255 | (Cilium docs, as of 2026-10) |
-| Conntrack default | 512k TCP, 256k UDP and other, per node | (Cilium eBPF maps docs, as of 2026-10) |
-| NAT map default | 512k; must not exceed 2/3 of combined CT size when CT is set explicitly | (Cilium eBPF maps docs, as of 2026-10) |
+| Cilium release train | 1.20 released 2026-07-29; 1.19 on 2026-02-03; 1.18 and later supported, 1.17 ended 2026-07-29; latest patches 1.20.4, 1.19.10, 1.18.16 on 2026-10-23 | (endoflife.date, as of 2026-11) |
+| Cilium docs "stable" | Documents 1.20.4 | (Cilium docs, as of 2026-11) |
+| Cluster-local identities | Range 256 to 65535, cap 65535 with or without ClusterMesh at the default setting; cap 32767 at `maxConnectedClusters=511` | (Cilium docs, as of 2026-11) |
+| ClusterMesh default MaxConnectedClusters | 255; 511 is the only other supported value and cannot be changed after install | (Cilium docs, as of 2026-11) |
+| Conntrack default | Static flag defaults 512k TCP, 256k UDP and other, per node; the Helm chart instead leaves them unset and sizes by memory, with floors of 128Ki TCP and 64Ki other | (Cilium eBPF maps docs and 1.20.4 chart and `config.go`, as of 2026-11) |
+| NAT map default | 512k static; floor 128Ki under dynamic sizing; must not exceed 2/3 of combined CT size when CT is set explicitly | (Cilium eBPF maps docs and 1.20.4 `config.go`, as of 2026-11) |
 | Neighbor map, IP cache | 512k each | (Cilium eBPF maps docs, as of 2026-10) |
 | Endpoints map | 64k local endpoints plus host IPs per node | (Cilium eBPF maps docs, as of 2026-10) |
 | Service LB map, backends map | 64k each; about 3k Services across all clusters | (Cilium eBPF maps docs, as of 2026-10) |
 | Policy map | 16k entries per endpoint | (Cilium eBPF maps docs, as of 2026-10) |
 | LB map entries per Service | `endpoints * port/protocol pairs` | (Cilium eBPF maps docs, as of 2026-10) |
 | kube-proxy conntrack sizing | 32768 per core, floor 131072 | (Cilium eBPF maps docs, as of 2026-10) |
-| Cilium dynamic CT sizing example | 8 vCPU, 30 GiB, ratio 0.0025: 284,560 entries versus 262,144 for kube-proxy | (Cilium eBPF maps docs, as of 2026-10) |
-| VPC CNI max pods, secondary IP mode | `ENIs * (IPs per ENI - 1) + 2`; m5.large (3 ENIs, 10 IPs) gives 29 | (aws-vpc-cni README and AWS community docs, as of 2026-10) |
+| Cilium dynamic CT sizing example | 8 vCPU, 30 GiB, ratio 0.0025 (the default): 284,560 entries versus 262,144 for kube-proxy | (Cilium eBPF maps docs and Helm reference, as of 2026-11) |
+| VPC CNI max pods, secondary IP mode | `ENIs * (IPs per ENI - 1) + 2`; m5.large (3 ENIs, 10 IPs) gives 29 | (aws-vpc-cni README and `eni-max-pods.txt`, as of 2026-11) |
 | VPC CNI prefix | /28 = 16 IPv4 addresses per slot; VPC CNI 1.9.0 or later; Nitro only; /80 IPv6 prefixes | (AWS docs, as of 2026-10) |
-| Windows prefix capacity | `(IPs per interface - 1) * 16` | (AWS Containers blog, as of 2026-10) |
-| Prices and p99 latencies | Not asserted in this chapter; no primary source was re-verified in this pass. Use [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization\|Network Egress Economics]] | UNVERIFIED |
+| Windows prefix capacity | `(IPs per interface - 1) * 16` on the single supported ENI; default `max-pods` is 110 | (EKS best practices for Windows, as of 2026-11; the 2021 AWS Containers blog predates this and says Windows is unsupported) |
+| Prices and p99 latencies | Not asserted in this chapter. Use [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization\|Network Egress Economics]] | Not applicable |
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | AWS (EKS) | GCP (GKE) |
 | --- | --- | --- |
-| Default pod network | VPC CNI: pods get VPC addresses from ENI slots, daemon `aws-node` runs IPAMD plus the plugin (AWS blog, as of 2026-10) | VPC-native clusters with alias IP ranges, Andromeda SDN underneath (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_04_Global_VPC_Andromeda_SDN_and_Network_Tiers\|Global VPC and Andromeda]]); per-node range sizing details UNVERIFIED |
-| Cilium-based option | Cilium in ENI IPAM mode (direct routing only) or cluster-pool overlay, replacing or chaining with VPC CNI (Cilium IPAM docs, as of 2026-10) | Dataplane V2 is Cilium-powered and managed (Google Cloud community post, as of 2026-10) |
-| Density limit | ENI times IP slot arithmetic; prefix mode raises it (AWS docs, as of 2026-10) | Per-node alias range and max-pods setting (UNVERIFIED specifics) |
-| IP exhaustion mitigation | Larger subnets, prefix mode, custom networking, IPv6 (EKS best practices, as of 2026-10) | Additional secondary ranges, multi-pool style designs (UNVERIFIED specifics) |
-| Policy engine | Network policy via a separate agent or Cilium; choice is yours | Dataplane V2 enforces Kubernetes NetworkPolicy using Cilium |
-| Identity cap | None in VPC CNI itself; enforcement agent specifics UNVERIFIED | 65,535 cluster-local identities in Dataplane V2 (Google Cloud community post, as of 2026-10) |
-| Control of the CNI | Customer-managed add-on; upgrade cadence is yours | Managed; Cilium version is Google-chosen and not directly tunable |
+| Default pod network | VPC CNI: pods get VPC addresses from ENI slots, daemon `aws-node` runs IPAMD plus the plugin (AWS blog, as of 2026-10) | VPC-native clusters with alias IP ranges, Andromeda SDN underneath (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_04_Global_VPC_Andromeda_SDN_and_Network_Tiers\|Global VPC and Andromeda]]); the default 110 max pods per node takes a /24 per node (GKE docs, as of 2026-11) |
+| Cilium-based option | Cilium in ENI IPAM mode (direct routing only) or cluster-pool overlay, replacing or chaining with VPC CNI (Cilium IPAM docs, as of 2026-10) | Dataplane V2 is implemented with Cilium and managed (GKE docs, as of 2026-11) |
+| Density limit | ENI times IP slot arithmetic; prefix mode raises it (AWS docs, as of 2026-10) | Per-node range set by max pods: 8 pods /28 up to 257-512 pods /22 on Standard, and Autopilot picks 8 to 256 (GKE docs, as of 2026-11) |
+| IP exhaustion mitigation | Larger subnets, prefix mode, custom networking, IPv6 (EKS best practices, as of 2026-10) | Discontiguous multi-Pod CIDR: additional Pod ranges per node pool through `--additional-pod-ipv4-ranges` or `--pod-ipv4-range` (GKE docs, as of 2026-11) |
+| Policy engine | Network policy built into the VPC CNI (1.21.0 or later for standard and admin policies, EC2 Linux nodes only; EKS docs, as of 2026-11) or Cilium; choice is yours | Kubernetes NetworkPolicy is always on in Dataplane V2 and enforced using Cilium (GKE docs, as of 2026-11) |
+| Identity cap | No label-identity scheme documented for the VPC CNI: selectors resolve to CIDRs, limited to 24 port and protocol combinations per CIDR (EKS docs, as of 2026-11) | 65,535 cluster-local identities in Dataplane V2 (Google Cloud community post, as of 2026-11) |
+| Control of the CNI | Customer-managed add-on; upgrade cadence is yours | Managed; Dataplane V2 can only be enabled at cluster creation, and custom eBPF programs on its nodes are unsupported (GKE docs, as of 2026-11); Cilium version is Google-chosen |
 | Routing mode with Cilium | Direct only in ENI mode; overlay or native in cluster-pool | Direct only in GKE IPAM mode (Cilium IPAM docs, as of 2026-10) |
 | Consensus or state | No consensus in the data plane; state is Kubernetes objects plus EC2 API | Same; state is Kubernetes objects plus managed control plane |
 | Key difference | You operate the IPAM daemon and its EC2 API dependency | You inherit Google's choices, including the identity cap and limited tuning |
@@ -359,15 +391,15 @@ nodes = 200
 enis_per_node = 3            # m5.large: 3 ENIs
 ips_per_eni = 10             # m5.large: 10 IPv4 addresses per ENI
 prefix_len_ips = 16          # a /28 prefix holds 16 addresses
-warm_prefix_target = 1       # assumed ipamd default; verify in your add-on version
+warm_prefix_target = 1       # install manifest default per EKS docs; README treats unset as 0
 target_pods_per_node = 29
 
 conns_per_pod = 1500         # steady concurrent TCP connections per pod
 ct_entries_per_conn = 2      # conservative: forward + service/reverse state
 new_conn_rate_per_node = 4000  # new connections per second per node
 closed_residency_s = 10      # seconds a closed flow lingers before GC (assumed)
-ct_tcp_max = 512 * 1024      # Cilium default, docs.cilium.io eBPF maps, 2026-10
-nat_max = 512 * 1024
+ct_tcp_max = 512 * 1024      # static flag default; set bpf.ctTcpMax to get it, else memory-sized
+nat_max = 512 * 1024         # static flag default; set bpf.natMax to get it, else memory-sized
 
 services = 1500
 avg_endpoints = 20
@@ -441,6 +473,9 @@ Reading the output:
 - Connection churn, not steady state, is the larger conntrack consumer: 80,000 of 167,000 entries come from flows that have already closed but not yet been garbage collected.
   Doubling the new-connection rate to 8,000 per second raises the total to 247,000, about 47 percent of the default, so a 3x traffic spike is the headroom limit.
   The `closed_residency_s` and `ct_entries_per_conn` inputs are assumptions, not documented constants.
+  The 524,288 denominator holds only if `bpf.ctTcpMax` is set, because the Helm chart otherwise sizes the map from node memory at ratio 0.0025 with a 128Ki floor ([chart](https://github.com/cilium/cilium/blob/v1.20.4/install/kubernetes/cilium/templates/cilium-configmap.yaml), [config.go](https://github.com/cilium/cilium/blob/v1.20.4/pkg/option/config.go), as of 2026-11).
+  On the documented 30 GiB example of 284,560 entries, the same 167,000 is 59 percent and 247,000 is 87 percent.
+  Scaling that example linearly, an 8 GiB m5.large lands on the 131,072 floor, below the 167,000 modeled here, so set the map size explicitly on small nodes.
 - The service LB map is the tightest ceiling: 1,500 Services of 20 endpoints each already use 55 percent, and the same shape tops out near 2,730 Services, which matches the documented "about 3k Services" figure.
 - The identity budget looks comfortable (4.1 percent) until a per-run label is added, which is the point of the identity-cardinality term.
 
@@ -459,7 +494,7 @@ Pods stall in ContainerCreating when the node has no free slot or the subnet has
 The VPC CNI README recommends setting `--max-pods` to the slot arithmetic so the scheduler never places a pod the node cannot address ([README](https://github.com/aws/amazon-vpc-cni-k8s/blob/master/README.md), as of 2026-10).
 Changing prefix mode on an existing node does not update the kubelet value, which needs a restart or node recycle, per the same README.
 The EKS best practices guide recommends sizing VPCs and subnets with growth in mind and calls IPv6 a way to avoid the problem from the start ([EKS best practices](https://docs.aws.amazon.com/eks/latest/best-practices/ip-opt.html), as of 2026-10).
-A prefix needs a contiguous free /28, so a fragmented subnet can fail prefix allocation while still showing free addresses (UNVERIFIED in this pass; check the AWS prefix delegation guidance and use subnet CIDR reservations).
+A prefix needs a contiguous free /28, so a fragmented subnet can fail prefix allocation with `InsufficientCidrBlocks` while still showing free addresses, and AWS recommends a new subnet or subnet CIDR reservations ([EKS best practices](https://docs.aws.amazon.com/eks/latest/best-practices/prefix-mode-linux.html), as of 2026-11).
 
 ### Map exhaustion that looks like application flakiness
 
@@ -474,10 +509,11 @@ Resizing a pinned map means the old map has to be replaced on agent restart, so 
 
 ### Identity explosion
 
-Any label that is unique per run, per job, or per pod revision creates a new identity.
+Any custom label that is unique per run, per job, or per pod revision creates a new identity.
+Standard per-pod keys such as `pod-template-hash`, `controller-revision-hash` and `batch.kubernetes.io/controller-uid` are excluded by default ([Cilium identity-relevant labels](https://docs.cilium.io/en/stable/operations/performance/scalability/identity-relevant-labels/), as of 2026-11).
 Training and batch platforms are the main offenders: a launcher that stamps `run-id` or a hash label on every pod generates one identity per run.
 With the cluster-local cap at 65535, the operator's identity garbage collection lag becomes your real limit, and allocation failure leaves new pods without a valid identity.
-Put high-cardinality metadata in annotations, per the Google guidance, and restrict which labels are identity-relevant (the exact agent flag name is UNVERIFIED in this pass; check the Cilium identity-relevant labels documentation).
+Put high-cardinality metadata in annotations, per the Google guidance, and restrict which labels are identity-relevant with the Helm value `labels` or the agent's `label-prefix-file` flag ([Cilium identity-relevant labels](https://docs.cilium.io/en/stable/operations/performance/scalability/identity-relevant-labels/), as of 2026-11).
 Alert on `cilium-dbg identity list | wc -l` or the equivalent metric at 50 percent of the range.
 
 ### Migration traps
@@ -489,7 +525,7 @@ Alert on `cilium-dbg identity list | wc -l` or the equivalent metric at 50 perce
 ### External actors that rewrite routes
 
 A host network manager that "helpfully" reconciles routes and policy rules can delete what the CNI installed.
-Datadog's public post-incident review of the 2023-03-08 outage describes a systemd-networkd restart that removed routing state on nodes (UNVERIFIED in this pass; retrieve the report and confirm the Cilium interaction before promoting this note).
+Datadog's public post-incident review of the 2023-03-08 outage describes an automatic systemd security update whose systemd-networkd restart deleted the routes managed by the CNI plugin, which was Cilium, taking the affected nodes offline ([Datadog PIR](https://www.datadoghq.com/blog/2023-03-08-multiregion-infrastructure-connectivity-issue/), as of 2026-11).
 The general lesson is to give exactly one component ownership of node routing, and to canary OS and network-manager updates by cell.
 See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]] for the class of failures where a routine change races a control loop.
 
@@ -502,7 +538,7 @@ Audit that your runtime version actually calls GC and that `disableGC` is not se
 
 ### Kernel-bypass traffic is not policed
 
-RDMA and OS-bypass fabrics such as EFA do not traverse the tc, netkit or socket hooks that Cilium uses, so pod-level Cilium policy does not apply to that traffic (UNVERIFIED in this pass; derived from the OS-bypass design, see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI|Interconnect Technologies]]).
+RDMA and OS-bypass fabrics such as EFA do not traverse the tc, netkit or socket hooks that Cilium uses, so pod-level Cilium policy does not apply to that traffic (an inference: AWS states the Libfabric API bypasses the kernel and talks directly to the EFA device, [EFA docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa.html), as of 2026-11, and Cilium's hooks are in the kernel, but no Cilium doc says this directly; see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI|Interconnect Technologies]]).
 Compensating controls are security groups, subnet and placement isolation, and dedicated node pools.
 
 ### SNAT port exhaustion
@@ -515,11 +551,11 @@ Inference gateways calling a small number of upstream model endpoints are expose
 ### Policy architecture
 
 - Start every namespace from a default-deny policy and allow by identity, not by CIDR.
-  Policy selecting an endpoint makes that direction default-deny for it, and explicit deny rules take precedence over allows (UNVERIFIED in this pass; standard Cilium policy semantics, confirm against the policy docs).
+  Policy selecting an endpoint makes that direction default-deny for it, and explicit deny rules take precedence over allows ([Cilium policy intro](https://docs.cilium.io/en/stable/security/policy/intro/), [deny policies](https://docs.cilium.io/en/stable/security/policy/deny/), as of 2026-11).
 - Use FQDN egress rules for model API endpoints rather than IP lists, since the DNS proxy learns resolved addresses.
   FQDN rules mint node-local identities (security identities docs), and long-lived connections can outlive a DNS TTL.
 - Prefer an L3/L4 policy plus a mesh or gateway for L7.
-  L7 policy redirects through a node-local Envoy, which is a throughput and failure-domain cost on the node (UNVERIFIED in this pass).
+  L7 policy redirects through a node-local Envoy, which is a throughput and failure-domain cost on the node: embedded Envoy ties L7 traffic to the agent pod, and the `cilium-envoy` DaemonSet exists to separate their lifecycles ([Cilium Envoy docs](https://docs.cilium.io/en/stable/security/network/proxy/envoy/), as of 2026-11).
 - Export flow logs through Hubble to your audit pipeline.
   See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]] for how pod-level policy fits with SCPs, VPC endpoint policies and VPC Service Controls.
 
@@ -527,14 +563,15 @@ Inference gateways calling a small number of upstream model endpoints are expose
 
 The VPC CNI daemon and the Cilium operator in ENI mode need EC2 network interface permissions (create, attach, assign addresses, describe subnets).
 Scope these to the cluster's subnets and tags, and bind them to the daemon with pod identity rather than the node role, otherwise every pod on the node can reach those permissions through instance metadata.
-The AWS-managed policy name commonly used is `AmazonEKS_CNI_Policy`, whose exact contents were not re-verified in this pass.
+The AWS-managed policy for IPv4 clusters is `AmazonEKS_CNI_Policy`, IPv6 clusters need a customer-created policy, and AWS recommends a separate role over the node role, through IRSA or EKS Pod Identity ([EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/cni-iam-role.html), as of 2026-11).
 Mechanics are in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]].
 On Dataplane V2 this surface is Google-managed.
 
 ### Encryption in transit
 
 Pod-to-pod encryption is a datapath feature (WireGuard or IPsec in Cilium) and carries a per-packet CPU cost and an MTU reduction.
-The Cilium 1.12-era docs stated that kube-proxy replacement could not be combined with transparent encryption ([1.12 docs](https://docs.cilium.io/en/v1.12/gettingstarted/kubeproxy-free/), as of 2026-10); that limitation is old and current support was not re-verified in this pass.
+The Cilium 1.12-era docs stated that kube-proxy replacement could not be combined with transparent encryption ([1.12 docs](https://docs.cilium.io/en/v1.12/gettingstarted/kubeproxy-free/), as of 2026-11); the current kube-proxy-free page no longer lists it, and the current [WireGuard page](https://docs.cilium.io/en/stable/security/network/encryption-wireguard/) documents encryption coverage per service path, including socket LB and kube-proxy replacement (as of 2026-11).
+Gaps remain: north-south load-balancer traffic redirected through an intermediate node is not encrypted with XDP acceleration, or with DSR in non-Geneve dispatch mode, per the same page.
 Check compatibility of your exact version before assuming both are on.
 
 ### Unit economics levers
@@ -544,7 +581,7 @@ Check compatibility of your exact version before assuming both are on.
 - Overlay networking (cluster-pool with tunnel) decouples pod IPs from the VPC at the price of encapsulation overhead, while ENI and GKE IPAM modes support direct routing only (Cilium IPAM docs, as of 2026-10).
 - Cross-zone pod-to-pod traffic is metered, so combine topology-aware routing from [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_02_Advanced_Scheduling_and_Topology_Aware_Placement|Advanced Scheduling and Topology-Aware Placement]] with the pricing model in [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]].
   List prices are not asserted here.
-- Dropping kube-proxy removes per-node iptables rule churn and its CPU cost, which matters most at thousands of Services, and Cilium's dynamic map sizing (`bpf.mapDynamicSizeRatio`, a documented tuning value) avoids overprovisioning kernel memory.
+- Dropping kube-proxy removes per-node iptables rule churn and its CPU cost, which matters most at thousands of Services, and Cilium's dynamic map sizing (`bpf.mapDynamicSizeRatio`, default 0.0025) avoids overprovisioning kernel memory.
 - Autoscaling interacts directly with IPAM because new nodes need warm pools.
   Plan this with [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_04_Autoscaling_at_Scale_HPA_KEDA_and_Karpenter|Autoscaling at Scale: HPA, KEDA, and Karpenter]].
 
@@ -621,14 +658,15 @@ After a 3x traffic increase, a Cilium cluster shows random connection resets and
 #### Model Answer
 
 Cilium does not use the netfilter table for its own service and policy paths.
-It uses BPF LRU hash maps for conntrack and NAT, with defaults of 512k TCP and 256k other conntrack entries and 512k NAT entries per node ([Cilium eBPF maps docs](https://docs.cilium.io/en/stable/network/ebpf/maps/), as of 2026-10).
+It uses BPF LRU hash maps for conntrack and NAT, with static defaults of 512k TCP and 256k other conntrack entries and 512k NAT entries per node ([Cilium eBPF maps docs](https://docs.cilium.io/en/stable/network/ebpf/maps/), as of 2026-10).
+A default Helm install does not use those static values: it sizes these maps from node memory at ratio 0.0025, so a small node can have far less, with a floor of 128Ki TCP entries ([1.20.4 config.go](https://github.com/cilium/cilium/blob/v1.20.4/pkg/option/config.go), as of 2026-11).
 So the netfilter counters are the wrong instrument.
 My hypothesis is map pressure: when the map is full, the LRU evicts entries that may belong to live but idle flows.
 The next packet of such a flow is evaluated as new, so it can hit a policy lookup it should not need, or lose its service backend selection and get reset by a different backend.
 Churn matters as much as steady state, because closed flows linger until garbage collection.
 In the sizing model, 80,000 of 167,000 entries came from closed-but-uncollected flows.
 Evidence to collect: Cilium drop reasons and map pressure metrics, `cilium-dbg bpf ct list global | wc -l` per node against the configured maximum, NAT map usage, and whether resets correlate with nodes that carry the highest connection counts.
-Remediation in order: reduce churn (connection pooling and keep-alive in the offending clients), raise `bpf-ct-global-tcp-max` and `bpf-ct-global-any-max` (keeping NAT at or below 2/3 of combined CT, which Cilium sets automatically unless overridden), or use dynamic sizing by memory.
+Remediation in order: reduce churn (connection pooling and keep-alive in the offending clients), raise `bpf-ct-global-tcp-max` and `bpf-ct-global-any-max` (keeping NAT at or below 2/3 of combined CT, which Cilium sets automatically unless overridden), or raise the dynamic sizing ratio.
 Resizing replaces a pinned map on agent restart, so roll it by node pool and accept brief flow disruption.
 The permanent fix is to alert at 60 percent of each map, since the failure is abrupt.
 
@@ -643,7 +681,7 @@ Design network policy for a multi-tenant ML platform where each training run lau
 #### Model Answer
 
 Cilium derives identity from labels, one identity per distinct label set, so a unique run-ID label creates one identity per run.
-Cluster-local identities are capped at 65535 (ClusterMesh docs, as of 2026-10), with 255 reserved, and stale identities are removed by operator garbage collection, so the effective limit is concurrent-plus-lagging identities, not live ones.
+Cluster-local identities are capped at 65535, or 32767 at `maxConnectedClusters=511` (ClusterMesh docs, as of 2026-11), with 255 reserved, and stale identities are removed by operator garbage collection, so the effective limit is concurrent-plus-lagging identities, not live ones.
 At 500 concurrent runs and a GC lag factor of 3 the model uses 1,500 identities, which is small, but a platform that labels every pod with a revision or batch hash can reach tens of thousands, and allocation failure is a hard failure for new pods.
 Prevention: put run metadata in annotations rather than labels, as Google's Dataplane V2 guidance recommends, restrict identity-relevant labels to a stable set (tenant, role, app), and select policies on those labels only.
 Policy shape: default-deny per tenant namespace, allow by identity between roles, FQDN egress for model and package registries, and an explicit rule for the DNS proxy path.
@@ -686,8 +724,8 @@ Argue for or against replacing the managed VPC CNI with Cilium on EKS for a plat
 #### Model Answer
 
 The honest answer is conditional.
-The case for Cilium: identity-based policy that scales with label sets rather than IP rules, a kube-proxy replacement that removes iptables churn and the DNAT conntrack path, Hubble flow visibility, and a datapath tuning ladder (eBPF host routing, netkit, BIG TCP) that has measurable per-packet savings ([Cilium tuning guide](https://docs.cilium.io/en/stable/operations/performance/tuning/), as of 2026-10).
-The case against with a small team: you now own the CNI as a safety-critical component, with a six-month release cadence and three supported minors (1.18 to 1.20 as of 2026-10, per endoflife.date), a map-sizing surface, an identity budget, and kernel-version coupling.
+The case for Cilium: identity-based policy that scales with label sets rather than IP rules, a kube-proxy replacement that removes iptables churn and the DNAT conntrack path, Hubble flow visibility, and a datapath tuning ladder (eBPF host routing, netkit in beta, BIG TCP) that has measurable per-packet savings ([Cilium tuning guide](https://docs.cilium.io/en/stable/operations/performance/tuning/), as of 2026-10).
+The case against with a small team: you now own the CNI as a safety-critical component, with a six-month release cadence and three supported minors (1.18 to 1.20 as of 2026-11, per endoflife.date), a map-sizing surface, an identity budget, and kernel-version coupling.
 ENI mode gives direct routing only, so you keep the VPC IP constraint, and the operator and agent need EC2 permissions that must be scoped to the cell.
 Latency SLOs argue for Cilium only if you can show the CNI is on your critical path; for many services the iptables cost is below the noise floor, and the dominant latency sources are elsewhere.
 My decision rule: stay on VPC CNI plus an enforcement agent until one of three triggers fires: Service count or churn makes kube-proxy a measured bottleneck, you need identity or FQDN policy the current agent cannot express, or you need flow-level observability for audit.

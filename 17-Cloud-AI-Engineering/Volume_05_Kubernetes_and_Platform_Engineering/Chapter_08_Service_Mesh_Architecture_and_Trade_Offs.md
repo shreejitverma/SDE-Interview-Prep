@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://istio.io/latest/blog/2024/ambient-reaches-ga/"
@@ -13,6 +13,38 @@ sources:
   - "https://sre.google/sre-book/addressing-cascading-failures/"
   - "https://v1-33.docs.kubernetes.io/docs/tutorials/configuration/pod-sidecar-containers/"
   - "https://docs.aws.amazon.com/app-mesh/latest/userguide/meshes.html"
+  - "https://istio.io/latest/docs/ops/deployment/performance-and-scalability/"
+  - "https://istio.io/latest/docs/reference/commands/pilot-discovery/"
+  - "https://istio.io/latest/docs/reference/commands/pilot-agent/"
+  - "https://istio.io/latest/docs/ops/deployment/application-requirements/"
+  - "https://istio.io/latest/docs/ambient/architecture/hbone/"
+  - "https://istio.io/latest/docs/ambient/architecture/data-plane/"
+  - "https://istio.io/latest/docs/reference/config/networking/destination-rule/"
+  - "https://istio.io/latest/docs/concepts/traffic-management/"
+  - "https://istio.io/latest/docs/reference/config/istio.mesh.v1alpha1/"
+  - "https://istio.io/latest/docs/releases/supported-releases/"
+  - "https://istio.io/latest/news/support/announcing-1.29-eol-final/"
+  - "https://istio.io/latest/blog/2021/proxyless-grpc/"
+  - "https://istio.io/latest/docs/setup/additional-setup/pod-security-admission/"
+  - "https://raw.githubusercontent.com/istio/istio/master/manifests/charts/ztunnel/templates/daemonset.yaml"
+  - "https://raw.githubusercontent.com/istio/istio/master/pilot/pkg/networking/core/listener_builder.go"
+  - "https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/outlier_detection.proto"
+  - "https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/panic_threshold"
+  - "https://www.envoyproxy.io/docs/envoy/latest/faq/configuration/timeouts"
+  - "https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/substitution_formatter"
+  - "https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/"
+  - "https://aws.amazon.com/message/12721/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://aws.amazon.com/blogs/containers/migrating-from-aws-app-mesh-to-amazon-ecs-service-connect/"
+  - "https://docs.aws.amazon.com/vpc-lattice/latest/ug/auth-policies.html"
+  - "https://docs.cloud.google.com/service-mesh/docs/overview"
+  - "https://docs.cloud.google.com/service-mesh/docs/security/security-overview"
+  - "https://docs.cloud.google.com/service-mesh/docs/release-notes"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/release-notes-new-features"
+  - "https://cert-manager.io/docs/configuration/issuers/"
+  - "https://foci.uw.edu/papers/socc23-meshinsight.pdf"
+  - "https://cs.stanford.edu/~keithw/sigcomm2024/sigcomm24-final57-acmpaginated.pdf"
+  - "https://research.google/pubs/design-patterns-for-container-based-distributed-systems/"
 ---
 
 # Service Mesh Architecture and Trade-Offs
@@ -73,7 +105,7 @@ The CNI-plugin route avoids granting `NET_ADMIN` to every application pod, which
 The rules do two things.
 Outbound TCP from the application is redirected to the Envoy outbound listener, and the original destination is recovered with `SO_ORIGINAL_DST`, so Envoy knows where the application "meant" to connect.
 Inbound TCP is redirected to the Envoy inbound listener before it reaches the application port.
-Traffic originating from the proxy's own UID is exempted, otherwise the proxy would loop on itself (Istio uses UID 1337 for this, UNVERIFIED in this pass).
+Traffic originating from the proxy's own UID is exempted, otherwise the proxy would loop on itself (Istio reserves UID 1337 for the sidecar proxy, [Istio application requirements](https://istio.io/latest/docs/ops/deployment/application-requirements/), as of 2026-11).
 
 The resulting request path for a call from A to B is:
 
@@ -85,11 +117,8 @@ The resulting request path for a call from A to B is:
 
 Compared with a direct connection, each direction gains four extra socket read or write operations (two per proxy) and two extra passes through the local TCP stack.
 This is the structural source of sidecar latency and CPU, independent of how fast Envoy is.
-The Istio docs state that 
-
-a sidecar proxy consumes about 0.5 vCPU per 1000 requests per second
-
- (Istio 1.22 performance docs, [istio.io/v1.23](https://istio.io/v1.23/docs/ops/deployment/performance-and-scalability/), as of 2026-10), and that memory depends on the total configuration the proxy holds.
+The current Istio docs report that a sidecar with 2 worker threads consumes about 0.20 vCPU and 60 MB at 1000 HTTP requests per second with 1 KB payloads in their Istio 1.24 lab test, and that memory depends on the total configuration the proxy holds ([Istio performance docs](https://istio.io/latest/docs/ops/deployment/performance-and-scalability/), as of 2026-11).
+The older 1.23 docs page gave about 0.5 vCPU per 1000 rps for Istio 1.22 ([istio.io/v1.23](https://istio.io/v1.23/docs/ops/deployment/performance-and-scalability/), as of 2026-11), so treat either figure as a lab result and measure your own workload.
 That second clause is the one that bites at scale and is covered below.
 
 ### Startup and shutdown ordering is a data-plane problem
@@ -103,11 +132,11 @@ released April 23, 2025
 
 ; [Kubernetes docs](https://v1-33.docs.kubernetes.io/docs/tutorials/configuration/pod-sidecar-containers/), as of 2026-10).
 Native sidecars start before and stop after regular containers and no longer prevent Jobs from completing.
-Check whether your mesh release uses them by default; do not assume.
+Check whether your mesh release uses them by default; do not assume (current istiod lists `ENABLE_NATIVE_SIDECARS` with default `auto`, meaning enabled for supported scenarios, [pilot-discovery reference](https://istio.io/latest/docs/reference/commands/pilot-discovery/), as of 2026-11).
 
 Shutdown has the mirror problem.
 On termination Kubernetes signals every container, and the proxy must keep serving the application's in-flight and outbound drain traffic.
-Envoy's drain duration is a real tunable (`terminationDrainDuration` in the Istio proxy config).
+Envoy's drain duration is a real tunable (`terminationDrainDuration` in the Istio proxy config, default 5 s, [Istio ProxyConfig reference](https://istio.io/latest/docs/reference/config/istio.mesh.v1alpha1/), as of 2026-11).
 For the full lifecycle model see [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_01_Kubernetes_Control_Loop_Internals|Kubernetes Control Loop Internals]] and [[04-System-Design/07-Infrastructure-and-Orchestration/Kubernetes-Architecture]].
 
 ### xDS: how configuration actually reaches the proxies
@@ -115,7 +144,7 @@ For the full lifecycle model see [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_
 Envoy is configured through the xDS family of gRPC APIs: listeners (LDS), routes (RDS), clusters (CDS), endpoints (EDS), and secrets (SDS), defined in the [xDS protocol spec](https://www.envoyproxy.io/docs/envoy/latest/api-docs/xds_protocol).
 Istio multiplexes them over one Aggregated Discovery Service (ADS) stream per proxy.
 ADS exists for ordering: to change a route to a new cluster without dropping traffic, the server must deliver the cluster (CDS) and its endpoints (EDS) before the route (RDS) that references them, which is the "make before break" sequence.
-Without it, a route can reference a cluster Envoy does not yet have, and requests get a 503 with the `NR` or `UH` response flag.
+Without it, a route can reference a cluster Envoy does not yet have, and requests get a 503 with the `NC` (upstream cluster not found) response flag, or `UH` when the cluster exists but has no healthy hosts; `NR` means no route matched and carries a 404 ([Envoy response flags](https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/substitution_formatter), as of 2026-11).
 
 Two properties matter at scale, and neither is in a getting-started guide.
 
@@ -127,10 +156,10 @@ Declaring dependencies with the Istio `Sidecar` resource (egress `hosts`) or `di
 With 15 dependencies per service the same fleet holds 30,000 cluster objects, a 100x reduction (derived, see the model in the worked example).
 
 Second, convergence is asynchronous and unbounded by Kubernetes.
-When a pod is deleted, the EndpointSlice update, the control plane's debounce window (Istio coalesces events; the defaults are 100 ms quiet and 10 s max, UNVERIFIED in this pass), the push, and each proxy's apply are sequential steps.
+When a pod is deleted, the EndpointSlice update, the control plane's debounce window (Istio coalesces events; `PILOT_DEBOUNCE_AFTER` defaults to 100 ms and `PILOT_DEBOUNCE_MAX` to 10 s, [pilot-discovery reference](https://istio.io/latest/docs/reference/commands/pilot-discovery/), as of 2026-11), the push, and each proxy's apply are sequential steps.
 Meanwhile the kubelet is already sending SIGTERM.
 So for some interval after termination begins, many client proxies still route to an endpoint that is going away.
-The same race exists on scale-up: a pod can pass readiness and receive traffic from the Service VIP path before every client proxy has the new endpoint, which is merely suboptimal, but a route or cluster change can produce transient `NR`/`UH` errors.
+The same race exists on scale-up: a pod can pass readiness and receive traffic from the Service VIP path before every client proxy has the new endpoint, which is merely suboptimal, but a route or cluster change can produce transient `NC`/`UH` errors.
 `istioctl proxy-status` exposes per-proxy sync state, and a stale proxy is a diagnosable thing rather than a mystery.
 The mitigation is to make the pod outlive the propagation tail: a `preStop` sleep longer than the p99 push-to-apply latency plus debounce, and a drain duration longer than your longest request.
 
@@ -147,7 +176,7 @@ See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter
 In sidecar mode the sequence is:
 
 1. `pilot-agent` generates a private key inside the pod and sends a CSR to the istiod CA, authenticating with the pod's projected ServiceAccount token, which istiod validates through the Kubernetes API.
-2. istiod signs a short-lived workload certificate (24 h is the commonly cited default, UNVERIFIED in this pass).
+2. istiod signs a short-lived workload certificate (`DEFAULT_WORKLOAD_CERT_TTL` is 24 h, [pilot-discovery reference](https://istio.io/latest/docs/reference/commands/pilot-discovery/), and the agent starts rotation at a 0.5 grace-period ratio, [pilot-agent reference](https://istio.io/latest/docs/reference/commands/pilot-agent/), as of 2026-11).
 3. `pilot-agent` serves the key and chain to Envoy over a Unix domain socket using SDS, and rotates before expiry without restarting Envoy.
 4. Peers perform mutual TLS 1.3, validate the chain against the mesh trust bundle, and extract the SPIFFE ID as the principal for authorization.
 
@@ -162,12 +191,12 @@ Decompose the per-request cost of mTLS into three terms:
 cpu_per_request = H / n + c_req + c_aead * bytes
 ```
 
-- `H` is the cost of a full TLS 1.3 handshake on both ends: ECDHE key agreement, a signature and a chain verification each way. It is on the order of hundreds of microseconds of CPU per connection, and you should measure it on your own instance type with `openssl speed ecdsap256 ecdhx25519` (UNVERIFIED as a general number).
+- `H` is the cost of a full TLS 1.3 handshake at each proxy: ECDHE key agreement, a signature and a chain verification each way. It is on the order of hundreds of microseconds of CPU per connection. Primitive timings from `openssl speed rsa2048 ecdsap256 ecdhx25519` on one Apple M3 Pro core (OpenSSL 4.1.0, measured 2026-11, primitives only, assuming two X25519 operations, one signature, and two verifications per end) give about 145 microseconds per end with ECDSA P-256 and about 500 with RSA-2048, and RSA-2048 is Istio's default workload key size unless an ECC algorithm is selected ([pilot-agent reference](https://istio.io/latest/docs/reference/commands/pilot-agent/), as of 2026-11). This is a single-host estimate, not a cloud-instance figure, so measure it on your own instance type.
 - `n` is requests per connection. Mesh proxies pool upstream connections, so `n` is large for HTTP/2 and keep-alive HTTP/1.1 and collapses to 1 for clients that close after every request.
-- `c_req` is parsing, routing, authorization, retries, and telemetry in the proxy, and it dominates in practice. The 0.5 vCPU per 1000 rps figure (500 microseconds per request per proxy) is overwhelmingly this term.
-- `c_aead` is AES-GCM or ChaCha20-Poly1305 per byte. With AES-NI or ARMv8 crypto extensions it runs at several GB/s per core (UNVERIFIED; check with `openssl speed -evp aes-128-gcm`), so for 2 KB RPC payloads it is single-digit microseconds.
+- `c_req` is parsing, routing, authorization, retries, and telemetry in the proxy, and it dominates in practice. The 0.20 vCPU per 1000 rps figure (200 microseconds per request per proxy) is overwhelmingly this term.
+- `c_aead` is AES-GCM or ChaCha20-Poly1305 per byte. With AES-NI or ARMv8 crypto extensions it runs at several GB/s per core (`openssl speed -evp aes-128-gcm` on one Apple M3 Pro core measured about 5 GB/s at 1 KB and 9.8 GB/s at 16 KB, and ChaCha20-Poly1305 about 2 GB/s, 2026-11; re-measure on your instance type), so for 2 KB RPC payloads it is single-digit microseconds or less.
 
-Illustration with an assumed `H` of 300 microseconds: at `n = 1`, handshake adds 300 microseconds per request on top of a 500 microsecond baseline, a 60 percent CPU increase at both ends. At `n = 100` it adds 3 microseconds.
+Illustration with an assumed per-proxy `H` of 300 microseconds: at `n = 1`, handshake adds 300 microseconds per request on top of a 200 microsecond baseline, a 150 percent CPU increase at each proxy. At `n = 100` it adds 3 microseconds.
 The operational conclusion is that mTLS overhead is a connection-reuse problem, not a cipher problem.
 A fleet that "gets slow with mTLS" almost always has a client library defeating pooling or a proxy restart storm forcing mass re-handshake.
 
@@ -192,26 +221,29 @@ HTTP/2 CONNECT tunneled over mTLS on port 15008
 
 Four mechanisms follow from this design and shape the trade-offs.
 
-1. **Identity custody moves from the pod to the node.** A sidecar holds exactly one workload identity, so compromising it yields one identity. A ztunnel must hold the certificates of every pod on its node to terminate and originate mTLS on their behalf. The control plane mitigates this by issuing a ztunnel only identities for workloads scheduled on its own node, but a node-level compromise still exposes all identities on that node. This is a real regression in blast radius relative to sidecars for multi-tenant nodes, and it is why node isolation (dedicated node pools for sensitive tenants) matters more under ambient.
-2. **HBONE multiplexes many application flows over few TCP connections.** That reduces handshake count and connection-table pressure, which helps the `H / n` term. It also couples flows: one lost packet stalls every stream sharing the underlying TCP connection (TCP-level head-of-line blocking), and HTTP/2 flow-control windows bound per-stream throughput at approximately window divided by RTT. Large bulk flows such as checkpoint or weight transfers should be measured through HBONE or exempted.
+1. **Identity custody moves from the pod to the node.** A sidecar holds exactly one workload identity, so compromising it yields one identity. A ztunnel must hold the certificates of every pod on its node to terminate and originate mTLS on their behalf. The control plane mitigates this by issuing a ztunnel only identities for workloads scheduled on its own node ([Istio ambient data plane docs](https://istio.io/latest/docs/ambient/architecture/data-plane/), as of 2026-11), but a node-level compromise still exposes all identities on that node. This is a real regression in blast radius relative to sidecars for multi-tenant nodes, and it is why node isolation (dedicated node pools for sensitive tenants) matters more under ambient.
+2. **HBONE multiplexes many application flows over few TCP connections**, pooled per source and destination identity ([Istio HBONE docs](https://istio.io/latest/docs/ambient/architecture/hbone/), as of 2026-11). That reduces handshake count and connection-table pressure, which helps the `H / n` term. It also couples flows: one lost packet stalls every stream sharing the underlying TCP connection (TCP-level head-of-line blocking), and HTTP/2 flow-control windows bound per-stream throughput at approximately window divided by RTT. Large bulk flows such as checkpoint or weight transfers should be measured through HBONE or exempted.
 3. **The failure domain is the node.** A ztunnel crash or upgrade affects every pod on that node simultaneously, while a sidecar failure affects one pod. Sidecar upgrades require pod restarts, which is the other half of the trade-off.
 4. **L7 is a per-destination decision, not universal.** If a service has no waypoint, L7 rules attached to it are not evaluated by ztunnel, because ztunnel does not parse HTTP. Policy must be attached to the waypoint, which creates a class of silent-policy-gap bugs where an L7 AuthorizationPolicy exists but is enforced nowhere. Verify enforcement with a negative test, not by reading YAML.
 
-The paper literature on why sidecars cost what they do is "Dissecting Overheads of Service Mesh Sidecars" (Zhu et al., ACM SoCC 2023), which attributes the cost mostly to per-request proxy work and extra kernel crossings rather than encryption. Sidecar-free multi-tenant designs are explored in "Canal Mesh" (Alibaba, SIGCOMM 2024, venue UNVERIFIED in this pass).
+The paper literature on why sidecars cost what they do is ["Dissecting Overheads of Service Mesh Sidecars"](https://foci.uw.edu/papers/socc23-meshinsight.pdf) (Zhu et al., ACM SoCC 2023), which finds protocol parsing alone is 63-77 percent of overhead for an HTTP or gRPC proxy, and IPC and socket writes dominate for a TCP proxy.
+Sidecar-free multi-tenant designs are explored in ["Canal Mesh"](https://cs.stanford.edu/~keithw/sigcomm2024/sigcomm24-final57-acmpaginated.pdf) (Song et al., Alibaba Cloud, ACM SIGCOMM 2024), which moves mesh functions to a centralized cloud gateway and keeps a minimal-feature on-node proxy.
 
 ### Proxyless gRPC and library meshes
 
 gRPC can speak xDS directly: the client bootstrap file points at an xDS server, a target of `xds:///service` triggers in-process service discovery and load balancing, and certificate providers supply mTLS credentials.
 There is no extra hop and no iptables, so latency and CPU overhead nearly vanish.
 The cost is coupling: policy features exist only to the extent the library version implements them, every language needs a conforming client, non-gRPC traffic is not covered, and rollout of mesh features becomes an application dependency upgrade.
-Istio supports proxyless gRPC as a data-plane flavor, and Google Cloud's managed mesh offering has been documented as supporting it (UNVERIFIED in this pass).
+Istio added proxyless gRPC as an experimental data-plane flavor in 1.11 ([Istio blog, 2021](https://istio.io/latest/blog/2021/proxyless-grpc/)), and it has no entry on the current [feature status page](https://istio.io/latest/docs/releases/feature-stages/) (as of 2026-11), so do not treat it as Stable.
+Google Cloud Service Mesh documents proxyless gRPC for Go, C++, Java, and Python ([Cloud Service Mesh overview](https://docs.cloud.google.com/service-mesh/docs/overview), as of 2026-11).
 Use it where a few high-volume gRPC services dominate cost and you control the client stack.
 
 ### Resilience primitives: what the proxy really does
 
 Envoy's "circuit breaker" is a concurrency limiter per cluster and priority (maximum connections, pending requests, requests, retries), not a stateful breaker with half-open probing.
-Outlier detection ejects individual endpoints after consecutive errors for a time that grows with repeated ejections, but is capped by a maximum ejection percentage (10 percent by default in Envoy, UNVERIFIED in this pass) so a systemic failure cannot eject the whole pool.
-Separately, when the healthy fraction of a priority level falls below the panic threshold (50 percent by default, UNVERIFIED in this pass), Envoy ignores health status and spreads load across all hosts, trading correctness for availability.
+Outlier detection ejects individual endpoints after consecutive errors for a time that grows with repeated ejections, but is capped by a maximum ejection percentage (10 percent by default in Envoy, [Envoy outlier detection](https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/outlier_detection.proto), and in Istio `maxEjectionPercent`, as of 2026-11) so a systemic failure cannot eject the whole pool.
+Separately, when the healthy fraction of a priority level falls below the panic threshold (50 percent by default, [Envoy panic threshold](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/panic_threshold), as of 2026-11), Envoy ignores health status and spreads load across all hosts, trading correctness for availability.
+Istio's equivalent, `minHealthPercent`, defaults to 0 percent ([DestinationRule reference](https://istio.io/latest/docs/reference/config/networking/destination-rule/), as of 2026-11), so check the generated config rather than assuming the Envoy default applies.
 Retries multiply across tiers: if each hop retries `r` times and the call chain is `d` deep, the worst-case attempts at the leaf are `(1 + r)^d`, which is 27 for `r = 2` and `d = 3`.
 The mesh makes this easy to get wrong because every sidecar retries by policy and the application may also retry.
 Pair mesh retries with retry budgets, per-try timeouts, and deadline propagation as covered in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Resilient Communication: Retries, Jitter, and Circuit Breakers]] and [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control|Load Shedding, Backpressure, and Admission Control]].
@@ -222,15 +254,19 @@ A mesh balances per request across endpoints, which is often the first measurabl
 
 | Item | Value | Source and date | Why it matters |
 | --- | --- | --- | --- |
-| Istio sidecar CPU | about 0.5 vCPU per 1000 rps per proxy | [Istio 1.22/1.23 performance docs](https://istio.io/v1.23/docs/ops/deployment/performance-and-scalability/), as of 2026-10 (newest-release page not re-checked) | Basis for sizing; two proxies traverse each request |
-| Sidecar memory | depends on total config held | Istio performance docs, as of 2026-10 | Scope config with `Sidecar` or discovery selectors |
-| Ambient GA | Istio 1.24, 2024-11-07; ztunnel, waypoints, APIs Stable | [Istio 1.24 announcement](https://istio.io/latest/news/releases/1.24.x/announcing-1.24/), as of 2026-10 | Production-supportable sidecar-free option |
-| HBONE port | 15008 (HTTP/2 CONNECT over mTLS) | Red Hat OSSM 3.2 docs, as of 2026-10 | Must be allowed in network policies and firewalls |
-| Istio support policy | minor releases supported until six weeks after the N+2 release | [Istio 1.28 EOL notice](https://istio.io/latest/news/support/announcing-1.28-eol/), as of 2026-10 | Forces an upgrade cadence of roughly every few quarters |
-| Istio 1.28 EOL | 2026-06-28 | Istio EOL notice, as of 2026-10 | Example of the treadmill |
-| Istio 1.29 EOL | 2026-10-12, confirmed ended 2026-10-16; recommended upgrade target 1.31.2 | [Istio 1.29 EOL notice](https://istio.io/latest/news/support/announcing-1.29-eol-final/), as of 2026-10 | Anyone on 1.29 today has no security backports |
-| Kubernetes native sidecars | stable in v1.33 (released 2025-04-23) | [Kubernetes v1.33 docs](https://v1-33.docs.kubernetes.io/docs/tutorials/configuration/pod-sidecar-containers/), as of 2026-10 | Fixes start/stop ordering and Job completion |
-| AWS App Mesh | support ends 2026-09-30; console and resources inaccessible afterwards | [AWS App Mesh docs](https://docs.aws.amazon.com/app-mesh/latest/userguide/meshes.html), as of 2026-10 | Already past end of support; migration target named by AWS is ECS Service Connect |
+| Istio sidecar CPU | about 0.20 vCPU per 1000 rps per proxy (2 workers, 1 KB HTTP, Istio 1.24 lab test) | [Istio performance docs](https://istio.io/latest/docs/ops/deployment/performance-and-scalability/), as of 2026-11; the [1.23 docs](https://istio.io/v1.23/docs/ops/deployment/performance-and-scalability/) gave about 0.5 for Istio 1.22 | Basis for sizing; two proxies traverse each request |
+| Sidecar memory | about 60 MB in that test; depends on total config held | Istio performance docs, as of 2026-11 | Scope config with `Sidecar` or discovery selectors |
+| Waypoint CPU and memory | about 0.25 vCPU and 60 MB per 1000 rps (2 workers, same test) | Istio performance docs, as of 2026-11 | L7 cost in ambient is paid only where a waypoint is deployed |
+| ztunnel CPU and memory | about 0.06 vCPU and 12 MB per 1000 rps (same test) | Istio performance docs, as of 2026-11 | L4 cost in ambient; lab figure, not a guarantee for your traffic |
+| Ambient GA | Istio 1.24, 2024-11-07; ztunnel, waypoints, APIs Stable | [Istio 1.24 announcement](https://istio.io/latest/news/releases/1.24.x/announcing-1.24/), as of 2026-11 | Production-supportable sidecar-free option |
+| HBONE port | 15008 (HTTP/2 CONNECT over mTLS) | [Istio HBONE docs](https://istio.io/latest/docs/ambient/architecture/hbone/), as of 2026-11 | Must be allowed in network policies and firewalls |
+| Istio xDS debounce | 100 ms after, 10 s max | [pilot-discovery reference](https://istio.io/latest/docs/reference/commands/pilot-discovery/), as of 2026-11 | Lower bound on the convergence tail |
+| Workload certificate TTL | 24 h default | pilot-discovery reference, as of 2026-11 | Sets the control-plane outage budget |
+| Istio support policy | minor releases about quarterly, supported until six weeks after the N+2 release | [Istio supported releases](https://istio.io/latest/docs/releases/supported-releases/), as of 2026-11 | Forces an upgrade cadence of roughly every two to three quarters |
+| Istio 1.28 EOL | 2026-06-28 | [Istio 1.28 EOL notice](https://istio.io/latest/news/support/announcing-1.28-eol/), as of 2026-11 | Example of the treadmill |
+| Istio 1.29 EOL | 2026-10-12 per the EOL notice dated 2026-10-16 (the supported-releases table shows Oct 15); recommended upgrade target 1.31.3 | [Istio 1.29 EOL notice](https://istio.io/latest/news/support/announcing-1.29-eol-final/), as of 2026-11 | Anyone on 1.29 today has no security backports |
+| Kubernetes native sidecars | stable in v1.33 (released 2025-04-23) | [Kubernetes sidecar docs](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/), as of 2026-11 | Fixes start/stop ordering and Job completion |
+| AWS App Mesh | support ends 2026-09-30; console and resources inaccessible afterwards | [AWS App Mesh docs](https://docs.aws.amazon.com/app-mesh/latest/userguide/meshes.html), as of 2026-11 | Already past end of support; migration targets named by AWS are ECS Service Connect for ECS and VPC Lattice for EKS |
 | Retry amplification | `(1 + r)^d`; 27x for r=2, d=3 | Derived | Why retries need budgets |
 | Fleet cluster objects | 2,000 pods x 1,500 services = 3.0M; scoped to 15 deps = 30k | Derived (worked example) | 100x config reduction from scoping |
 | Handshake amortization | `H / n`; 300 us assumed `H` gives 300 us at n=1, 3 us at n=100 | Derived, `H` is an assumption to measure | mTLS cost is connection reuse |
@@ -238,25 +274,25 @@ A mesh balances per request across endpoints, which is often the first measurabl
 
 ## AWS vs GCP Mechanism Parity
 
-Rows marked UNVERIFIED were not re-checked against current vendor documentation in this pass and must be confirmed before use in a design review.
+Rows were checked against vendor documentation as of 2026-11; managed-mesh packaging is moving quickly, so re-confirm before use in a design review.
 
 | Dimension | AWS | GCP |
 | --- | --- | --- |
-| Managed Envoy mesh product | AWS App Mesh is past end of support (2026-09-30, AWS docs as of 2026-10); do not start new work on it | Cloud Service Mesh, a managed Istio-based offering with a Google-run control plane (UNVERIFIED current packaging and GA status of ambient support) |
-| Recommended AWS-native replacement | ECS Service Connect for ECS workloads (named as migration target in AWS App Mesh docs, as of 2026-10); VPC Lattice as a regional service-networking layer with IAM-based auth (UNVERIFIED feature and pricing details) | Not applicable |
-| Kubernetes mesh on managed K8s | Self-operated Istio, Linkerd, or Cilium on EKS; you own the control plane and upgrades | Managed Istio via Cloud Service Mesh on GKE (UNVERIFIED); self-operated Istio also possible |
-| Sidecar-free option | Istio ambient on EKS (self-operated; GA upstream since 1.24) | Istio ambient upstream; managed support level UNVERIFIED |
-| Proxyless | Istio proxyless gRPC (self-operated) | Documented proxyless gRPC support in Google's managed mesh (UNVERIFIED) |
-| Identity root | cert-manager `istio-csr` or istiod plug-in CA backed by AWS Private CA (operator-assembled) | Google-managed CA in the managed offering, or plug-in CA backed by Certificate Authority Service (UNVERIFIED) |
+| Managed Envoy mesh product | AWS App Mesh is past end of support (2026-09-30, AWS docs as of 2026-11); do not start new work on it | Cloud Service Mesh: Google-run control plane with Istio APIs and Envoy proxies on GKE; managed mesh with Istio APIs is transitioning to the `TRAFFIC_DIRECTOR` control plane, and `ISTIOD` on GKE is deprecated as of 2026-09-28 with support ending 2028-03-01 ([release notes](https://docs.cloud.google.com/service-mesh/docs/release-notes), as of 2026-11) |
+| Recommended AWS-native replacement | ECS Service Connect for ECS workloads (named as migration target in AWS App Mesh docs, as of 2026-11), and VPC Lattice for EKS ([AWS migration blog](https://aws.amazon.com/blogs/containers/migrating-from-aws-app-mesh-to-amazon-ecs-service-connect/), as of 2026-11); Lattice auth policies are IAM documents and require SigV4-signed requests when authentication is enforced ([AWS docs](https://docs.aws.amazon.com/vpc-lattice/latest/ug/auth-policies.html)), and it bills per service-hour, per GB, and per request ([AWS pricing](https://aws.amazon.com/vpc/lattice/pricing/), as of 2026-11) | Not applicable |
+| Kubernetes mesh on managed K8s | Self-operated Istio, Linkerd, or Cilium on EKS; you own the control plane and upgrades | Managed control plane via Cloud Service Mesh on GKE ([overview](https://docs.cloud.google.com/service-mesh/docs/overview), as of 2026-11); self-operated upstream Istio also possible |
+| Sidecar-free option | Istio ambient on EKS (self-operated; GA upstream since 1.24) | Self-operated Istio ambient upstream; GKE ambient networking is Preview through an allowlist, single-cluster and L4 only, built on Dataplane V2 node-level components ([GKE release notes](https://docs.cloud.google.com/kubernetes-engine/docs/release-notes-new-features), 2026-09-24, as of 2026-11) |
+| Proxyless | Istio proxyless gRPC (self-operated; experimental upstream) | Proxyless gRPC documented for Go, C++, Java, and Python in Cloud Service Mesh (overview, as of 2026-11) |
+| Identity root | cert-manager `istio-csr` with the `aws-privateca-issuer` external issuer ([cert-manager issuers](https://cert-manager.io/docs/configuration/issuers/), as of 2026-11; the issuer must allow arbitrary SANs, so test this pairing), or an istiod plug-in CA (operator-assembled) | Cloud Service Mesh certificate authority (Google-run) or Certificate Authority Service for HSM-backed keys or enterprise-root chaining ([security overview](https://docs.cloud.google.com/service-mesh/docs/security/security-overview), as of 2026-11) |
 | Control-plane failure domain | In-cluster `istiod` pods; your SLO | Google-run in managed mode; shared fate with the vendor |
 | Network layer under the mesh | VPC CNI pod IPs; HBONE 15008 must pass security groups and NetworkPolicy | GKE Dataplane V2 or VPC-native; HBONE 15008 must pass firewall rules and NetworkPolicy |
-| Cross-cluster trust | Shared root or federated trust bundles; you build the distribution | Fleet-level trust in managed mode (UNVERIFIED); otherwise the same as AWS |
+| Cross-cluster trust | Shared root or federated trust bundles; you build the distribution | Cloud Service Mesh certificate authority gives a single root across clusters, with workload identity pools as the isolation boundary, and identity-aware cross-cluster policy is limited to one Google Cloud project (security overview, as of 2026-11); otherwise the same as AWS |
 | Consensus | None in the mesh itself; state comes from the Kubernetes API (etcd, Raft) | Same |
 
 The structural difference is not capability but operating model.
 On AWS you assemble and run the mesh control plane or choose a narrower managed substitute.
 On GCP you can buy the control plane as a managed service, at the cost of vendor-defined version and feature cadence.
-Either way, the data-plane mechanics (iptables or ztunnel redirect, SPIFFE identity, xDS convergence) are the same Istio and Envoy mechanics.
+Either way, the data-plane mechanics (iptables or ztunnel redirect, SPIFFE identity, xDS convergence) are the same Istio and Envoy mechanics, with the exception of the GKE ambient networking Preview, whose node-level components are built into Dataplane V2.
 For the broader cross-cloud map see [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_02_Networking_and_Load_Balancing_Translation|Networking and Load Balancing Translation]] and [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_03_VPC_Networking_Internals|VPC Networking Internals]].
 
 ## Worked Example: Sizing Sidecar vs Ambient and Proving Config Scope
@@ -285,10 +321,11 @@ def main():
     p.add_argument("--rps-per-pod", type=float, default=50.0, help="inbound requests per second per pod")
     p.add_argument("--sidecar-cpu-req", type=float, default=0.10, help="vCPU request per sidecar (operator choice)")
     p.add_argument("--sidecar-mem-mib", type=float, default=128.0)
-    p.add_argument("--vcpu-per-krps", type=float, default=0.5, help="Istio docs: ~0.5 vCPU per 1000 rps per sidecar (1.22 docs)")
+    p.add_argument("--vcpu-per-krps", type=float, default=0.20, help="Istio docs: ~0.20 vCPU per 1000 rps per sidecar (Istio 1.24 lab test)")
     p.add_argument("--ztunnel-cpu-req", type=float, default=0.20, help="ASSUMPTION per-node ztunnel request")
     p.add_argument("--ztunnel-mem-mib", type=float, default=512.0, help="ASSUMPTION per-node ztunnel request")
-    p.add_argument("--ztunnel-vcpu-per-krps", type=float, default=0.20, help="ASSUMPTION - measure it")
+    p.add_argument("--ztunnel-vcpu-per-krps", type=float, default=0.06, help="Istio docs: ~0.06 vCPU per 1000 rps per ztunnel (Istio 1.24 lab test) - measure it")
+    p.add_argument("--waypoint-vcpu-per-krps", type=float, default=0.25, help="Istio docs: ~0.25 vCPU per 1000 rps per waypoint (Istio 1.24 lab test) - measure it")
     p.add_argument("--l7-fraction", type=float, default=0.20, help="share of traffic routed via a waypoint")
     p.add_argument("--waypoint-replicas", type=int, default=6)
     p.add_argument("--waypoint-cpu-req", type=float, default=1.0)
@@ -319,7 +356,7 @@ def main():
     print("monthly cost of provisioned CPU + reserved memory: $%.0f" % usd(sc_prov, sc_res_mem))
 
     # Ambient: two ztunnel traversals per request, plus one waypoint traversal for the L7 fraction.
-    am_use = 2 * total_krps * a.ztunnel_vcpu_per_krps + a.l7_fraction * total_krps * a.vcpu_per_krps
+    am_use = 2 * total_krps * a.ztunnel_vcpu_per_krps + a.l7_fraction * total_krps * a.waypoint_vcpu_per_krps
     am_res_cpu = a.nodes * a.ztunnel_cpu_req + a.waypoint_replicas * a.waypoint_cpu_req
     am_res_mem = a.nodes * a.ztunnel_mem_mib + a.waypoint_replicas * a.waypoint_mem_mib
     print("== Ambient mode ==")
@@ -348,11 +385,11 @@ if __name__ == "__main__":
 
 Running `python3 mesh_model.py` with the defaults prints these results:
 
-- Mesh load is 100,000 rps. Sidecar steady CPU is 2 x 100 krps x 0.5 = 100 vCPU, but the 2,000 x 100m requests reserve 200 vCPU and 250 GiB. The scheduler and your bill follow the reservation, not the usage.
+- Mesh load is 100,000 rps. Sidecar steady CPU is 2 x 100 krps x 0.20 = 40 vCPU, but the 2,000 x 100m requests reserve 200 vCPU and 250 GiB. The scheduler and your bill follow the reservation, not the usage.
 - Sidecar monthly cost with the placeholder prices is about $6,752 (200 vCPU x $0.04 x 730 plus 250 GiB x $0.005 x 730).
-- Ambient under the stated assumptions uses 2 x 100 x 0.2 + 0.2 x 100 x 0.5 = 50 vCPU. The per-node reservation of 26 vCPU is below usage, so at a 60 percent target utilization you must provision 83.3 vCPU. That is the reason the model takes the maximum of reservation and usage over target; an under-requested ztunnel is CPU-throttled and becomes a node-wide latency source.
-- Ambient monthly cost is about $2,638, roughly 2.6x lower under these assumptions.
-- The ambient ratio depends entirely on `--ztunnel-vcpu-per-krps`, which is an assumption. Measure it with a load test on your workload before using the result in a business case.
+- Ambient under the stated assumptions uses 2 x 100 x 0.06 + 0.2 x 100 x 0.25 = 17 vCPU. The per-node reservation of 26 vCPU is below usage over target, so at a 60 percent target utilization you must provision 28.3 vCPU. That is the reason the model takes the maximum of reservation and usage over target; an under-requested ztunnel is CPU-throttled and becomes a node-wide latency source.
+- Ambient monthly cost is about $1,032, roughly 6.5x lower under these assumptions.
+- The ambient ratio depends on `--ztunnel-vcpu-per-krps` and `--waypoint-vcpu-per-krps`, which come from one Istio lab test, and on the assumed ztunnel and waypoint reservations. Measure them with a load test on your workload before using the result in a business case.
 - xDS scope: 3,000,000 cluster objects at full visibility versus 30,000 when scoped to 15 dependencies.
 - Retry amplification: 27 worst-case attempts at the leaf for 2 retries at depth 3.
 
@@ -387,7 +424,7 @@ spec:
     - "payments/payments.payments.svc.cluster.local"
 ```
 
-To observe the rollout race, run a client loop against a Service while executing `kubectl rollout restart` on the backend with and without a `preStop` sleep, and count 503s with Envoy response flags `UH`, `UF`, and `NR` in the access log.
+To observe the rollout race, run a client loop against a Service while executing `kubectl rollout restart` on the backend with and without a `preStop` sleep, and count 503s with Envoy response flags `UH`, `UF`, and `NC` in the access log.
 
 ### Step 4: Cost, budget, teardown
 
@@ -399,7 +436,7 @@ To observe the rollout race, run a client loop against a Service while executing
 
 ### Rollout 503s from config convergence
 
-Symptom: a burst of 503s with `UH`, `UF`, or `NR` flags during deploys, scale-down, or route changes, though every pod was healthy.
+Symptom: a burst of 503s with `UH`, `UF`, or `NC` flags during deploys, scale-down, or route changes, though every pod was healthy.
 Mechanism: SIGTERM and endpoint removal race with debounced xDS propagation (see Internals).
 Fix: `preStop` sleep above p99 push-to-apply latency, drain duration above your longest request, readiness gates, and alerting on `istioctl proxy-status` staleness or the equivalent control-plane push-time metrics.
 
@@ -424,9 +461,8 @@ Fix: plug-in CA from an offline root with per-cluster intermediates, monitoring 
 
 ### Retry storms and metastable overload
 
-Mesh retries default on, application retries exist too, and each tier multiplies.
-Public examples of the pattern include the AWS us-east-1 event of 2021-12-07, where client behavior inside the internal network amplified congestion, and the Google Cloud global incident of 2025-06-12, where recovering tasks lacked randomized backoff and overloaded a dependency.
-Both are recalled from the public post-incident write-ups and were not re-verified in this pass (UNVERIFIED).
+Mesh retries default on (Istio retries HTTP requests twice by default, [Istio traffic management docs](https://istio.io/latest/docs/concepts/traffic-management/), as of 2026-11), application retries exist too, and each tier multiplies.
+Public examples of the pattern include the [AWS us-east-1 event of 2021-12-07](https://aws.amazon.com/message/12721/), where a latent issue kept internal clients from backing off and their retries sustained congestion, and the [Google Cloud global incident of 2025-06-12](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), where restarting Service Control tasks lacked randomized exponential backoff and overloaded the underlying Spanner table.
 Primary references for the mechanism are the AWS Builders' Library article [Timeouts, retries, and backoff with jitter](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/) and the SRE book chapter [Addressing Cascading Failures](https://sre.google/sre-book/addressing-cascading-failures/).
 Fix: retry at one layer only, set a retry budget as a percentage of active requests, use per-try timeouts shorter than the overall deadline, and shed load at the server.
 
@@ -454,15 +490,15 @@ Set requests honestly and avoid CPU limits on the proxy, or size limits above pe
 
 ### Upgrade treadmill and vendor risk
 
-Istio supports a minor release only until six weeks after the N+2 release (Istio EOL notice, as of 2026-10), and 1.29 reached end of life on 2026-10-12.
-Every mesh is therefore a standing commitment to roughly one or two minor upgrades per year per cluster, each touching every pod in sidecar mode.
-Vendor risk is real: AWS App Mesh ended support on 2026-09-30 (AWS docs, as of 2026-10), and teams that bet on it were forced into a migration to ECS Service Connect or a self-run mesh.
+Istio supports a minor release only until six weeks after the N+2 release (Istio EOL notice, as of 2026-11), and 1.29, released 2026-02-16, reached end of life on 2026-10-12, about eight months later.
+Every mesh is therefore a standing commitment to roughly two minor upgrades per year per cluster, each touching every pod in sidecar mode.
+Vendor risk is real: AWS App Mesh ended support on 2026-09-30 (AWS docs, as of 2026-11), and teams that bet on it were forced into a migration to ECS Service Connect, VPC Lattice, or a self-run mesh.
 Roll mesh configuration and upgrades through the delivery pipeline described in [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_07_GitOps_Delivery_Argo_CD_and_Flux|GitOps Delivery: Argo CD and Flux]], and include the mesh in disaster-recovery drills.
 
 ### AI workload specifics
 
 - Kernel-bypass traffic (RDMA, EFA collectives) never touches iptables or ztunnel, so a mesh cannot see or protect it. Exempt those interfaces and address ranges explicitly (annotations such as `traffic.sidecar.istio.io/excludeOutboundPorts` and `excludeOutboundIPRanges` exist for sidecars). See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI|Interconnect Technologies: NVLink, EFA, and TPU ICI]].
-- Streaming token responses hold connections for tens of seconds or minutes. Envoy's stream idle timeout (5 minutes by default, UNVERIFIED in this pass) and route timeouts can cut long silent prefill phases; set them per route for inference services.
+- Streaming token responses hold connections for tens of seconds or minutes. Envoy's stream idle timeout (5 minutes by default) and route timeout (15 seconds by default) ([Envoy timeouts FAQ](https://www.envoyproxy.io/docs/envoy/latest/faq/configuration/timeouts), as of 2026-11) can cut long silent prefill phases; set them per route for inference services. Istio changes both defaults: it disables the HTTP route timeout ([Istio docs](https://istio.io/latest/docs/concepts/traffic-management/), as of 2026-11) and its [listener builder](https://raw.githubusercontent.com/istio/istio/master/pilot/pkg/networking/core/listener_builder.go) sets the stream idle timeout to 0, so inspect the generated config rather than assuming either value.
 - GPU nodes often have few vCPUs per GPU, and a sidecar on every inference pod consumes cores that tokenization, sampling, and data loading need. Prefer ambient or no mesh on GPU pools.
 - Large model-weight and KV-cache transfers over HBONE inherit HTTP/2 flow-control and TCP head-of-line characteristics; measure before routing them through the mesh.
 
@@ -470,7 +506,7 @@ Roll mesh configuration and upgrades through the delivery pipeline described in 
 
 ### Identity and key hierarchy
 
-Use a plug-in CA: an offline root, a per-cluster intermediate stored in a secret or backed by a cloud CA (AWS Private CA or Google Certificate Authority Service, commonly via cert-manager and `istio-csr`; integration details UNVERIFIED in this pass), and short-lived leaf certificates.
+Use a plug-in CA: an offline root, a per-cluster intermediate stored in a secret or backed by a cloud CA (AWS Private CA or Google Certificate Authority Service, via cert-manager and `istio-csr` with the `aws-privateca-issuer` or `google-cas-issuer` external issuers, [cert-manager docs](https://cert-manager.io/docs/configuration/issuers/), as of 2026-11; `istio-csr` needs an issuer that allows arbitrary SANs, so test the pairing), and short-lived leaf certificates.
 Short lifetimes are your revocation mechanism, since CRL and OCSP are not used in the data path.
 The trade-off is the control-plane outage budget described above: shorter TTL means smaller blast radius for a leaked key and a tighter dependence on istiod availability.
 For multi-cluster or multi-cloud trust, exchange trust bundles from per-cluster intermediates under a common root, or federate trust domains, and keep the root offline.
@@ -480,13 +516,13 @@ For multi-cluster or multi-cloud trust, exchange trust bundles from per-cluster 
 Default-deny with explicit `ALLOW` policies keyed on SPIFFE principals gives least privilege between workloads.
 Identity-based L4 policy is enforceable in both sidecar and ambient modes.
 L7 policy (paths, methods, JWT claims) requires a sidecar or waypoint.
-istiod needs broad read access to cluster objects and TokenReview permissions, and ztunnel and the CNI agent are privileged node components, so they cannot live in namespaces with the restricted Pod Security profile.
+istiod needs broad read access to cluster objects and TokenReview permissions, and ztunnel and the CNI agent are highly privileged node components, so they cannot live in namespaces with the restricted Pod Security profile: the CNI namespace must enforce the `privileged` policy ([Istio docs](https://istio.io/latest/docs/setup/additional-setup/pod-security-admission/), as of 2026-11), and ztunnel runs as root with `NET_ADMIN`, `SYS_ADMIN`, and `NET_RAW` though `privileged: false` ([Istio ztunnel chart](https://raw.githubusercontent.com/istio/istio/master/manifests/charts/ztunnel/templates/daemonset.yaml), as of 2026-11).
 Mesh mTLS secures pod-to-pod traffic inside a trust domain.
 It does not replace cloud-level perimeters such as VPC endpoints policies or VPC Service Controls (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_01_Zero_Trust_Architecture_in_Hyperscale_Clouds|Zero Trust Architecture in Hyperscale Clouds]]).
 
 ### Unit economics
 
-- Sidecar cost is driven by requests, not usage. In the worked example 200 vCPU are reserved against 100 vCPU used. Right-size proxy requests from measured p95 usage.
+- Sidecar cost is driven by requests, not usage. In the worked example 200 vCPU are reserved against 40 vCPU used. Right-size proxy requests from measured p95 usage.
 - Ambient cost shifts to per-node ztunnel plus a pay-for-what-you-use waypoint fleet; the ratio depends on L7 share and must be measured.
 - Telemetry cardinality is a hidden cost: per-request metrics with high-cardinality labels and full access logs can exceed the proxy compute cost in managed monitoring bills. Sample access logs and drop unused labels.
 - Cross-AZ traffic: locality-aware load balancing keeps requests in-zone and avoids inter-AZ transfer charges; it needs enough replicas per zone to avoid overload (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]]).
@@ -528,7 +564,7 @@ You see a 40 percent CPU increase in a caller after enabling the mesh, but paylo
 
 ### Question 2 (L5 - Senior)
 
-After adopting the mesh, every rolling deploy produces a few seconds of 503s with `UH` and `NR` flags. The pods are healthy. Why, and how do you fix it?
+After adopting the mesh, every rolling deploy produces a few seconds of 503s with `UH` and `NC` flags. The pods are healthy. Why, and how do you fix it?
 
 #### Model Answer
 
@@ -567,9 +603,9 @@ Quantify the cost of mTLS in the mesh. A skeptical VP says "encryption is not fr
 
 Split the cost into handshake, per-request proxy work, and bulk encryption.
 Bulk AEAD on AES-NI or ARM crypto runs at GB/s per core, so for KB-sized RPCs it is microseconds.
-Handshake cost is `H / n`: hundreds of microseconds of CPU per connection (to be measured on the target instance type), and negligible when pooling gives `n` in the hundreds, but a 60 percent overhead at `n = 1` with an assumed 300 microseconds on a 500 microsecond baseline.
-The dominant term is per-request proxy work, which Istio documents as roughly 0.5 vCPU per 1000 rps per sidecar, and every request crosses two proxies.
-So the honest statement is that the cost is real but is the cost of the proxy, not of encryption, and it is bounded and measurable: at 100,000 rps it is about 100 vCPU of usage and 200 vCPU of reservation in my model.
+Handshake cost is `H / n`: hundreds of microseconds of CPU per connection (to be measured on the target instance type), and negligible when pooling gives `n` in the hundreds, but a 150 percent overhead at `n = 1` with an assumed 300 microseconds on a 200 microsecond baseline.
+The dominant term with pooling is per-request proxy work, which Istio's lab test puts at roughly 0.20 vCPU per 1000 rps per sidecar, and every request crosses two proxies.
+So the honest statement is that the cost is real but is mostly the cost of the proxy, not of encryption, and it is bounded and measurable: at 100,000 rps it is about 40 vCPU of usage and 200 vCPU of reservation in my model.
 Whether it is worth it depends on whether you would otherwise have to build identity, mTLS, retries, and authorization into every service in every language.
 If the answer is no, then do not run a mesh.
 
@@ -586,7 +622,7 @@ istiod becomes unavailable for 90 minutes. What breaks, what does not, and how d
 Existing proxies keep their last-good xDS config and continue to forward and enforce policy, which is static stability.
 What breaks is anything needing a new decision: pods that start during the outage cannot fetch config or a certificate and may never become ready; certificates that reach expiry without renewal begin failing mTLS; and route, policy, and endpoint changes do not propagate, so scale-down leaves clients pointing at dead pods.
 The exposure window is therefore min(workload certificate lifetime, time to first new-pod requirement).
-With a 24-hour certificate (assumed default) a 90-minute outage is survivable for steady state but not for an autoscaling event or a rollout during that period.
+With the default 24-hour certificate a 90-minute outage is survivable for steady state but not for an autoscaling event or a rollout during that period.
 I would prove it with a game day: scale istiod to zero in a staging cell, run a deploy and a scale-up, watch certificate expiry metrics, and record the first failure.
 Mitigations: multiple istiod replicas across zones with PDBs, freezing deploys and autoscaling during control-plane incidents, a certificate lifetime chosen against the control-plane SLO, and alerts on certificate time-to-expiry.
 
@@ -602,7 +638,7 @@ Latency doubled in a three-tier call chain after enabling default mesh retries, 
 
 With `r` retries per hop and depth `d`, worst-case attempts at the leaf are `(1 + r)^d`; with `r = 2` and `d = 3` that is 27 attempts for one user request.
 During a brownout, timeouts trigger retries, retries add load to an already slow backend, which causes more timeouts: a metastable overload that persists after the trigger is gone.
-Envoy's outlier detection will not save you because ejection is capped by a maximum ejection percentage, and once the healthy fraction drops below the panic threshold Envoy sprays traffic across all hosts, including bad ones.
+Envoy's outlier detection will not save you because ejection is capped by a maximum ejection percentage, and once the healthy fraction drops below the panic threshold (if one is in effect; Istio's `minHealthPercent` defaults to 0 percent) Envoy sprays traffic across all hosts, including bad ones.
 Fix by retrying at exactly one layer (usually the edge or the caller closest to the user), adding a retry budget as a percentage of in-flight requests, shortening per-try timeouts so the sum fits within the overall deadline, propagating deadlines so deep tiers drop work that nobody is waiting for, and adding server-side admission control.
 Add a game day that injects slowness (not just errors) into the leaf.
 
@@ -650,12 +686,12 @@ An intermediate CA key may have been exposed in a CI log. You have 30 minutes. W
 ## Further Reading
 
 - [Istio 1.24 announcement and ambient GA blog](https://istio.io/latest/blog/2024/ambient-reaches-ga/) - the primary statement of what is Stable in ambient and the design rationale for ztunnel and waypoints.
-- [Istio performance and scalability docs](https://istio.io/v1.23/docs/ops/deployment/performance-and-scalability/) - the vendor's own sidecar CPU and memory figures and the config-size dependence; read the page for your release before sizing.
+- [Istio performance and scalability docs](https://istio.io/latest/docs/ops/deployment/performance-and-scalability/) - the vendor's own sidecar CPU and memory figures and the config-size dependence; read the page for your release before sizing.
 - [Envoy xDS protocol specification](https://www.envoyproxy.io/docs/envoy/latest/api-docs/xds_protocol) - authoritative description of ADS ordering, state-of-the-world versus incremental updates, and ACK/NACK semantics, which underpin every convergence failure in this chapter.
 - [SPIFFE concepts](https://spiffe.io/docs/latest/spiffe-about/spiffe-concepts/) - the identity standard behind mesh certificates and trust bundles.
 - Burns and Oppenheimer, "Design patterns for container-based distributed systems" (HotCloud 2016) - where the sidecar pattern was articulated.
-- Zhu et al., "Dissecting Overheads of Service Mesh Sidecars" (ACM SoCC 2023) - measurement-driven attribution of sidecar cost to proxy work and kernel crossings.
-- "Canal Mesh" (Alibaba, SIGCOMM 2024; venue UNVERIFIED in this pass) - a sidecar-free, multi-tenant mesh design for comparison with ambient.
+- Zhu et al., ["Dissecting Overheads of Service Mesh Sidecars"](https://foci.uw.edu/papers/socc23-meshinsight.pdf) (ACM SoCC 2023) - measurement-driven attribution of sidecar cost to protocol parsing, IPC, and socket writes.
+- Song et al., ["Canal Mesh: A Cloud-Scale Sidecar-Free Multi-Tenant Service Mesh Architecture"](https://cs.stanford.edu/~keithw/sigcomm2024/sigcomm24-final57-acmpaginated.pdf) (Alibaba Cloud, ACM SIGCOMM 2024) - a sidecar-free, multi-tenant mesh design for comparison with ambient.
 - [AWS Builders' Library: Timeouts, retries, and backoff with jitter](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/) - the clearest treatment of retry amplification and why mesh-level retries need budgets.
 - [Google SRE book: Addressing Cascading Failures](https://sre.google/sre-book/addressing-cascading-failures/) - the failure-mode vocabulary (retry amplification, load shedding, deadline propagation) that applies directly to mesh policy.
 - [Kubernetes native sidecar containers](https://v1-33.docs.kubernetes.io/docs/tutorials/configuration/pod-sidecar-containers/) - the platform-level fix for sidecar start and stop ordering.

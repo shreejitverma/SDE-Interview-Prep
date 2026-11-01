@@ -19,6 +19,32 @@ sources:
   - "https://kueue.sigs.k8s.io/"
   - "https://github.com/kubernetes-sigs/hierarchical-namespaces"
   - "https://k8s.af/"
+  - "https://docs.aws.amazon.com/eks/latest/best-practices/tenant-isolation.html"
+  - "https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/admission/plugin/resourcequota/controller.go"
+  - "https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/admission/plugin/resourcequota/resource_access.go"
+  - "https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/admission/plugin/webhook/mutating/dispatcher.go"
+  - "https://github.com/kubernetes/kubernetes/blob/master/pkg/kubeapiserver/options/plugins.go"
+  - "https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/core/v1/defaults.go"
+  - "https://github.com/kubernetes/kubernetes/blob/master/pkg/quota/v1/evaluator/core/pods.go"
+  - "https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/apis/flowcontrol/bootstrap/default.go"
+  - "https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/"
+  - "https://kubernetes.io/blog/2026/01/30/new-cgroup-v1-to-v2-cpu-conversion-formula/"
+  - "https://etcd.io/docs/v3.6/dev-guide/limit/"
+  - "https://status.openai.com/incidents/ctrsv3lwd797"
+  - "https://aws.amazon.com/eks/pricing/"
+  - "https://cloud.google.com/kubernetes-engine/pricing"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/pod-id-abac.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/platform-versions.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/fargate.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/envelope-encryption.html"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/workload-identity"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/sandbox-pods"
+  - "https://docs.cloud.google.com/kubernetes-engine/config-sync/docs/concepts/hierarchical-repo"
+  - "https://docs.nvidia.com/datacenter/tesla/mig-user-guide/latest/supported-gpus.html"
+  - "https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/gpu-sharing.html"
+  - "https://projectcapsule.dev/docs/tenants/quotas/"
+  - "https://github.com/projectcapsule/capsule/blob/main/internal/controllers/tenant/resourcequotas.go"
+  - "https://github.com/kubernetes-retired/hierarchical-namespaces"
 ---
 
 # Multi-Tenancy, Isolation, and Resource Quotas
@@ -55,9 +81,9 @@ Where the tenants are not mutually trusted, you push the boundary outward (node 
 
 ## Internals
 
-Disclosure on verification: the web research budget for this authoring pass was exhausted after a handful of queries, so the admission-chain and kubelet mechanics below were read from kubernetes/kubernetes source and documentation in earlier work and were not re-fetched on 2026-10-21.
-Statements checked in this pass carry a dated source tag.
-Everything else is listed in the batch report as UNVERIFIED and should be re-checked against the release you run.
+Disclosure on verification: the admission-chain, kubelet, and APF mechanics below were checked on 2026-11-01 against kubernetes/kubernetes source on `master` and the kubernetes.io documentation.
+Statements checked this way carry a dated source tag.
+Source-derived behavior can shift between releases, so re-check it against the release you run, and anything that could not be confirmed stays tagged UNVERIFIED with the reason.
 
 ### Threat model before mechanism
 
@@ -94,16 +120,17 @@ This is the first-order reason tenants who need CRDs or cluster-scoped operators
 
 The design of the quota plugin has not changed in spirit since the original proposal.
 The original design records that usage is updated atomically at admission, which is why a controller creating a pod past the limit is refused, and that a separate controller recomputes observed usage and posts a status update when it differs from the recorded value (Kubernetes ResourceQuota admission design doc and PR #3796, accessed 2026-10-21).
-Reading the implementation gives the rest of the mechanism (source-read, UNVERIFIED this pass).
+Reading the implementation gives the rest of the mechanism (`controller.go` and `resource_access.go` in the quota admission plugin, Kubernetes source, as of 2026-11).
 
 **Position in the chain.**
-`ResourceQuota` is ordered last among the built-in plugins, after mutating webhooks, ValidatingAdmissionPolicy, and validating webhooks.
+`ResourceQuota` is ordered last among the built-in plugins, after mutating webhooks, ValidatingAdmissionPolicy, and validating webhooks, with only the off-by-default `AlwaysDeny` after it (`AllOrderedPlugins`, Kubernetes source, as of 2026-11).
 That placement is deliberate: a request rejected by Gatekeeper, Kyverno, or PodSecurity never consumes quota, and the quota plugin sees the final mutated object.
 
 **Reserve, then persist.**
 For each matching quota in the namespace, the plugin computes `used + delta`, compares it against `hard`, and writes the new `status.used` to the ResourceQuota object using the resourceVersion it read.
 Because quota status is an ordinary etcd object, the write is a compare-and-swap, and a conflicting writer (another kube-apiserver replica or another request in the same namespace) gets a conflict error.
-The plugin then retries after a live lookup of the quota (bypassing the informer cache) and re-evaluates, so exactly one of two simultaneous creates at the last free slot wins and the other receives a 403 `exceeded quota`.
+The plugin then retries up to 3 times and re-evaluates, re-reading quotas through the informer lister merged with that apiserver's own LRU of recent status writes, and a live LIST happens only when the lister is empty and unsynced, so the retry is not a guaranteed fresh read (Kubernetes source, as of 2026-11).
+Exactly one of two simultaneous creates at the last free slot wins, and the other receives a 403 `exceeded quota` once its informer has caught up, or the raw conflict error if its retries run out first.
 The plugin batches queued admission requests per namespace so that many creates share one status write, which matters for the hot-namespace case below.
 
 **The reservation precedes the persistence of the object.**
@@ -112,13 +139,13 @@ The quota controller's recompute repairs this, so `status.used` can transiently 
 
 **Release is asynchronous and controller-driven.**
 Deleting a pod does not decrement usage in the delete request path.
-The quota controller observes the delete through informers (replenishment) and recomputes usage from the live objects, with a periodic full resync as a backstop (kube-controller-manager defaults: `--resource-quota-sync-period` 5m and `--concurrent-resource-quota-syncs` 5, UNVERIFIED).
+The quota controller observes the delete through informers (replenishment) and recomputes usage from the live objects, with a periodic full resync as a backstop (kube-controller-manager defaults: `--resource-quota-sync-period` 5m and `--concurrent-resource-quota-syncs` 5, Kubernetes docs, as of 2026-11).
 The consequence is that creation is synchronous and release is eventually consistent, so a rolling update that deletes old pods and creates new ones at the ceiling sees spurious rejections until the controller catches up.
 
 **What a pod costs.**
-For compute quota, the pod's charge is the effective request or limit: the larger of the sum of regular containers (including native sidecars) and the largest init container, plus RuntimeClass pod overhead if declared.
+For compute quota, the pod's charge is the effective request or limit: the larger of the sum of regular containers (including native sidecars) and the largest init container (counted with any native sidecars started before it), plus RuntimeClass pod overhead if declared (`PodUsageFunc` and `PodRequests`, Kubernetes source, as of 2026-11).
 Pods in a terminal phase (Succeeded or Failed) do not count.
-A pod with a deletion timestamp stops counting once its deletion grace period has elapsed, even if the kubelet never confirmed the container is gone.
+A pod with a deletion timestamp stops counting once its deletion grace period has elapsed, even if the kubelet never confirmed the container is gone (`QuotaV1Pod`, Kubernetes source, as of 2026-11).
 This is the quiet failure in the other direction: on a partitioned node, quota is released while the container may still be consuming the node, so quota can under-count real node usage.
 
 **What it never does.**
@@ -131,43 +158,45 @@ The documentation frames `count/<resource>` quotas as protection against exhaust
 It applies to API-server-backed resources and CRD-backed custom resources, but not to aggregated APIs, where the extension API server must enforce quota itself (Kubernetes docs v1.33, as of 2026-10).
 
 **Scopes and `limitedResources`.**
-Scopes narrow which objects a quota counts: Terminating, NotTerminating, BestEffort, NotBestEffort, PriorityClass, and CrossNamespacePodAffinity.
+Scopes narrow which objects a quota counts: Terminating, NotTerminating, BestEffort, NotBestEffort, PriorityClass, CrossNamespacePodAffinity, and, for PersistentVolumeClaims, VolumeAttributesClass (Kubernetes docs, as of 2026-11).
 A PriorityClass-scoped quota is how a platform gives each tenant a budget of high-priority pods rather than letting the tenant choose priority freely (Kubernetes docs, resource-quotas page on `main`, as of 2026-10).
 The less well-known half is the kube-apiserver admission configuration `limitedResources`, which turns the presence of a matching quota into a permission.
 The documentation example restricts cross-namespace pod affinity (`namespaces` and `namespaceSelector` in affinity terms) to namespaces that hold a quota with the CrossNamespacePodAffinity scope (Kubernetes docs, resource-quotas page on `main`, as of 2026-10).
-Managed control planes (EKS, GKE) generally do not let you set the apiserver admission configuration, so on those platforms the same policy has to be expressed as ValidatingAdmissionPolicy or an external policy engine (UNVERIFIED).
+EKS fixes the enabled admission plugins per platform version (EKS docs, as of 2026-11), and neither EKS nor GKE documents a way to supply the apiserver admission configuration, so on those platforms the same policy has to be expressed as ValidatingAdmissionPolicy or an external policy engine (UNVERIFIED: inferred from absence, no provider statement found).
 
 **Extended resources.**
-Quota for extended resources such as `nvidia.com/gpu` uses only the `requests.` prefix, because extended resources cannot be overcommitted and request must equal limit (UNVERIFIED).
+Quota for extended resources such as `nvidia.com/gpu` uses only the `requests.` prefix, because extended resources cannot be overcommitted and request must equal limit (Kubernetes docs, as of 2026-11).
 A quota entry of `requests.nvidia.com/gpu: "0"` is an explicit deny, whereas the absence of an entry is unlimited, so a platform that wants non-GPU tenants kept off GPU nodes writes the zero explicitly.
-Dynamic Resource Allocation moves devices behind ResourceClaims, and quota there is expressed against claim counts and per-device-class device counts, with exact key names that you must check against the release you run (UNVERIFIED).
+Dynamic Resource Allocation moves devices behind ResourceClaims, and quota there is expressed against claim counts with the generic `count/resourceclaims.resource.k8s.io` form and against per-device-class device counts as `<class>.deviceclass.resource.k8s.io/devices`, with `requests.<extended-resource>` and `requests.deviceclass.resource.kubernetes.io/<class>` as the matching keys when extended-resource allocation by DRA is enabled (Kubernetes docs, as of 2026-11).
 
 ### LimitRange, the other half
 
 LimitRange is two things in one object: defaulting and validation of containers, pods, and PVCs in a namespace.
-Quota requires every pod to declare a value for each tracked compute resource, otherwise the pod is rejected, so a quota without a LimitRange is a quota that rejects every pod that omits requests.
+A quota on `cpu` or `memory` requires every new pod to declare a request or limit for that resource, otherwise the pod is rejected, while other resources such as ephemeral storage simply ignore pods that omit them, so a CPU or memory quota without a LimitRange is a quota that rejects every pod that omits requests (Kubernetes docs, as of 2026-11).
+Pods that set pod-level `spec.resources` skip the per-container check where that feature is enabled (`Constraints` in `pods.go`, Kubernetes source, as of 2026-11).
 
-Mechanics worth knowing cold (source-read, UNVERIFIED this pass):
+Mechanics worth knowing cold (Kubernetes docs, plus `SetDefaults_LimitRangeItem` and the LimitRanger plugin source, as of 2026-11):
 
 - Defaulting is at admission and not retroactive, so existing pods are unchanged when you edit the LimitRange.
 - If a container sets a limit and no request, API defaulting sets request equal to limit before admission, so `defaultRequest` only fires when neither is set.
 - If a container sets only a request that is larger than the LimitRange default limit, the pod is rejected as request greater than limit.
-- API defaulting of the LimitRange object copies `max` into the default limit when `default` is absent, and copies `min` into `defaultRequest` when that is absent.
-  The practical result is that a LimitRange with `max.cpu: 8` and no `default.cpu` gives every container without a CPU limit a CPU limit of 8, and a pod can therefore receive a CPU limit nobody wrote.
+- API defaulting of the LimitRange object copies `max` into the default limit when `default` is absent, then copies the default limit into `defaultRequest` when that is absent, and falls back to `min` for `defaultRequest` only when neither supplied a value.
+  The practical result is that a LimitRange with `max.cpu: 8` and no `default.cpu` gives every container without a CPU limit a CPU limit of 8, and, unless `defaultRequest.cpu` is also set, a CPU request of 8 as well, so a pod can receive values nobody wrote.
 - `maxLimitRequestRatio` bounds burst: with ratio 4, a container with a 64Mi request and the 512Mi default limit has ratio 8 and is rejected.
 - Pod-type limits apply to the sum of containers, and container-type limits apply per container including init containers.
 
-In the default plugin order, `LimitRanger` runs before the mutating-webhook plugin.
-Containers injected by a mutating webhook (a service mesh sidecar, a logging agent) therefore do not receive LimitRange defaults unless the webhook sets resources itself or reinvocation covers it in your version, and under a requests quota that pod is rejected at the quota step (UNVERIFIED, test on your cluster).
-This is why mesh sidecars in quota-controlled namespaces need explicit resource annotations; see [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_08_Service_Mesh_Architecture_and_Trade_Offs|Service Mesh Architecture and Trade-Offs]].
+In the default plugin order, `LimitRanger` runs before the mutating-webhook plugin, but that does not leave injected containers undefaulted.
+When a mutating webhook changes the object, the apiserver re-runs all in-tree mutating plugins once, whatever the webhook's `reinvocationPolicy`, so a container injected by a webhook (a service mesh sidecar, a logging agent) in the first pass does receive LimitRange defaults (Kubernetes docs and `reinvocation.go` and `dispatcher.go` source, as of 2026-11).
+The gaps are narrower: a container added during the single reinvocation round gets no further LimitRanger pass, and a resource the LimitRange does not default still fails the per-container check under a CPU or memory quota.
+This is why mesh sidecars in quota-controlled namespaces need explicit resource annotations, because the namespace default is rarely the right size for a proxy and every injected default consumes quota; see [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_08_Service_Mesh_Architecture_and_Trade_Offs|Service Mesh Architecture and Trade-Offs]].
 
 ### From request to cgroup: where isolation actually happens
 
 Quota constrains what you may declare, and the kernel enforces what you may use, so you need the translation.
 
 **CPU.**
-A CPU request becomes a relative weight (`cpu.weight` on cgroup v2, derived from the legacy shares value of 1024 per core; the conversion formula has been revised in newer runtimes, UNVERIFIED), which matters only under contention.
-A CPU limit becomes a CFS bandwidth quota (`cpu.max`) over a period that defaults to 100 ms.
+A CPU request becomes a relative weight (`cpu.weight` on cgroup v2, derived from the legacy shares value of 1024 per core; the conversion formula was revised from runc 1.3.2 and crun 1.23, [Kubernetes blog](https://kubernetes.io/blog/2026/01/30/new-cgroup-v1-to-v2-cpu-conversion-formula/), as of 2026-11), which matters only under contention.
+A CPU limit becomes a CFS bandwidth quota (`cpu.max`) over a period that defaults to 100 ms (kubelet `CPUCFSQuotaPeriod` default, Kubernetes source, as of 2026-11).
 The failure mechanism is arithmetic.
 A container limited to 2 CPUs has 200 ms of CPU time per 100 ms period.
 If it runs 16 runnable threads in parallel it burns that 200 ms in 12.5 ms of wall time and is then throttled for the remaining 87.5 ms, so a request that needs 5 ms of CPU can see up to 87.5 ms of added latency while average utilization looks like 30 percent.
@@ -178,47 +207,49 @@ A memory limit becomes `memory.max`, and exceeding it triggers the cgroup OOM ki
 Memory requests drive scheduling and eviction ordering, not a hard reservation.
 
 **QoS and eviction.**
-Pod QoS class (Guaranteed, Burstable, BestEffort) sets `oom_score_adj`: -997 for Guaranteed, 1000 for BestEffort, and for Burstable roughly `1000 - 1000 * memory_request / node_capacity`, clamped (UNVERIFIED).
+Pod QoS class (Guaranteed, Burstable, BestEffort) sets `oom_score_adj`: -997 for Guaranteed, 1000 for BestEffort, and for Burstable `min(max(2, 1000 - 1000 * memory_request / node_capacity), 999)` (Kubernetes docs, as of 2026-11).
 A Burstable pod requesting 256Mi on a 64Gi node lands near 996, which is almost as killable as BestEffort.
-Under node memory pressure, the kubelet ranks eviction candidates first by whether usage exceeds requests, then by priority, then by the size of the excess.
+Under node memory pressure, the kubelet ranks eviction candidates first by whether usage exceeds requests, then by priority, then by the size of the excess (Kubernetes docs, as of 2026-11).
 The tenant-level lesson is that a request is the tenant's protection from its neighbors, so a tenant that sets small requests and large limits is both the first evicted and the most disruptive to others before eviction, which is why a quota on `limits.memory` and a `maxLimitRequestRatio` exist.
 
 **Shared node resources with no default cap.**
-PIDs (`podPidsLimit` is unlimited by default upstream, UNVERIFIED), ephemeral storage and inodes, the conntrack table, and cluster DNS QPS are all shared.
+PIDs (`podPidsLimit` defaults to -1, meaning unlimited, in the upstream kubelet, Kubernetes source, as of 2026-11), ephemeral storage and inodes, the conntrack table, and cluster DNS QPS are all shared.
 Quota on `requests.ephemeral-storage` bounds declared use, and the kubelet evicts on actual overuse, but a fork bomb or a conntrack flood is bounded only if you configured the node for it.
 
 ### Control-plane isolation: APF is shuffle sharding
 
-API Priority and Fairness (GA since Kubernetes 1.29, UNVERIFIED) is the mechanism that keeps one tenant's controller from monopolizing the API server.
+API Priority and Fairness (GA since Kubernetes 1.29, Kubernetes docs, as of 2026-11) is the mechanism that keeps one tenant's controller from monopolizing the API server.
 Requests are classified by FlowSchema into a PriorityLevel, and each PriorityLevel has a number of queues, a hand size, and a queue length limit.
 A flow (for example, one namespace or one user, selected by the FlowSchema's distinguisher method) is hashed to a hand of queues and its request is enqueued in the shortest queue of that hand.
 This is shuffle sharding in exactly the sense of the Builders' Library article on workload isolation: two flows interfere fully only if their hands overlap entirely.
-With the default `workload-low` shape of 128 queues and hand size 6 (UNVERIFIED), the number of distinct hands is C(128,6) = 5,423,611,200, so the chance that two given flows share an identical hand is about 1.8e-10.
+With the default `workload-low` shape of 128 queues and hand size 6 (APF bootstrap config, Kubernetes source, as of 2026-11), the number of distinct hands is C(128,6) = 5,423,611,200, so the chance that two given flows share an identical hand is about 1.8e-10.
 With 64 queues and hand size 6 it is C(64,6) = 74,974,368.
 Requests carry a seat cost, and a LIST of a large collection is charged more seats than a GET, which is the right behavior because a list scan is what actually hurts.
 See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]] for the combinatorics and the cell-level generalization.
 
-The tenancy-relevant point is that the default FlowSchemas distinguish service-account traffic coarsely.
+The tenancy-relevant point is that the suggested `service-accounts` FlowSchema sends service accounts outside kube-system to the shared `workload-low` level with a ByUser distinguisher, so each service account is its own flow but no tenant has its own concurrency budget (APF bootstrap config, Kubernetes source, as of 2026-11).
 A per-tenant FlowSchema keyed on the group `system:serviceaccounts:<namespace>` with a ByNamespace distinguisher and its own PriorityLevel gives a tenant a bounded share and a bounded blast radius.
-APF protects API server concurrency, but it does not protect etcd's storage budget (default quota 2 GiB, suggested maximum 8 GiB, UNVERIFIED), and that is the job of `count/*` quota.
+APF protects API server concurrency, but it does not protect etcd's storage budget (default quota 2 GiB, suggested maximum 8 GiB, etcd docs v3.6, as of 2026-11), and that is the job of `count/*` quota.
 
 ### Hierarchy: why native quota is flat and what fills the gap
 
 A ResourceQuota is evaluated independently per namespace, so there is no native object that says "team A may use 100 vCPU in total across its 12 namespaces".
 The Hierarchical Namespace Controller proposal (HNC, a SIG Multitenancy project) was designed to add parent-child relationships between namespaces with policy object inheritance and tenant-administrator-created subnamespaces, as the EKS guide's "future directions" section summarizes (AWS EKS Best Practices Guide, as of 2026-10).
-Its mechanism, as I know it (UNVERIFIED): a `HierarchyConfiguration` named `hierarchy` in each namespace sets the parent, a `SubnamespaceAnchor` created in the parent causes HNC to create the child (so a tenant needs rights only in its own namespace and not cluster-scoped `create namespace`), configured object types such as Roles and RoleBindings are copied down the tree, and every namespace in a tree is labeled with `<ancestor>.tree.hnc.x-k8s.io/depth` so that selectors can target a whole subtree.
-Check the upstream repository's maintenance status before adopting HNC, because I could not confirm it in this pass (UNVERIFIED).
-GKE's Config Sync offers a hierarchy-by-repository-layout alternative with abstract namespaces, and Capsule and similar operators implement a Tenant CRD that owns several namespaces (UNVERIFIED).
+Its mechanism, per the HNC docs (as of 2026-11): a `HierarchyConfiguration` named `hierarchy` in each namespace sets the parent, a `SubnamespaceAnchor` created in the parent causes HNC to create the child (so a tenant needs rights only in its own namespace and not cluster-scoped `create namespace`), configured object types such as Roles and RoleBindings are copied down the tree, and every namespace in a tree is labeled with `<ancestor>.tree.hnc.x-k8s.io/depth` so that selectors can target a whole subtree.
+HNC is retired: the repository moved to `kubernetes-retired/hierarchical-namespaces` and is archived, with its last push in 2025-04, so do not adopt it for a new platform ([GitHub](https://github.com/kubernetes-retired/hierarchical-namespaces), as of 2026-11).
+GKE's Config Sync offers a hierarchy-by-repository-layout alternative with abstract namespaces, although Google now recommends the unstructured source-of-truth format, and Capsule implements a Tenant CRD that owns several namespaces (Google Cloud and Capsule docs, as of 2026-11).
 
 Hierarchical quota is the hard part, and any implementation picks one of two designs:
 
 1. **Admission-time subtree accounting** in a webhook gives tighter limits but adds latency to every pod create and makes the webhook a single point of failure for the namespace.
+   HNC's HierarchicalResourceQuota was a variant: a singleton ResourceQuota in each namespace carried the strictest ancestor limit, and a webhook on quota status updates denied usage that breached an ancestor, and that webhook fails open (HNC docs and `rqstatusvalidator.go` source, as of 2026-11).
 2. **Dynamic rewriting of per-namespace quotas** (set each child `hard` to its current usage plus a share of the tenant's remaining budget) uses only native enforcement but is eventually consistent, so a burst across namespaces within one reconcile interval can overshoot by up to the sum of the children's headroom.
-   Capsule's tenant-scoped quota is reported to work this way (UNVERIFIED).
+   Capsule's tenant-scoped quota works this way with the share set to the whole remaining budget: each namespace's `hard` is the tenant hard minus the other namespaces' usage, and `hard` is pinned to `used` once the tenant reaches its limit (`resourcequotas.go`, Capsule source, as of 2026-11).
+   Capsule's docs mark this feature for deprecation in favor of Rules Quota (Capsule docs, as of 2026-11).
 
 For batch and GPU workloads, the right primitive is not quota at all but queueing.
 Kueue (a Kubernetes SIG project) holds Jobs suspended until a ClusterQueue has quota, then unsuspends them, so no pods exist, and none are charged, until admission succeeds.
-ClusterQueues share through cohorts with per-resource nominal quota, borrowing limits, and lending limits, and it supports preemption to reclaim lent quota and fair-sharing between queues (Kueue docs, UNVERIFIED this pass; check the version for hierarchical cohorts).
+ClusterQueues share through cohorts with per-resource nominal quota, borrowing limits, and lending limits, and it supports preemption to reclaim lent quota, fair-sharing between queues, and hierarchical cohorts (Kueue docs, as of 2026-11).
 This is gang admission by design: a 64-GPU training job is admitted whole or not at all, which native quota cannot express because it counts pods individually.
 
 ### The isolation ladder
@@ -235,11 +266,11 @@ This is gang admission by design: a 64-GPU training job is admitted whole or not
 Notes on the rungs.
 
 - **Rung 2 on managed clusters.**
-  The `PodNodeSelector` and `PodTolerationRestriction` admission plugins are not configurable on EKS or GKE (UNVERIFIED), so node-pool pinning is enforced with Kyverno, Gatekeeper, or a ValidatingAdmissionPolicy that rejects pods lacking the tenant's node selector and toleration.
+  The `PodNodeSelector` and `PodTolerationRestriction` admission plugins are not in the enabled set on EKS (EKS docs, as of 2026-11) and are not documented as configurable on GKE (UNVERIFIED for GKE: no provider statement found), so node-pool pinning is enforced with Kyverno, Gatekeeper, or a ValidatingAdmissionPolicy that rejects pods lacking the tenant's node selector and toleration.
 - **Karpenter and node pools.**
   A per-tenant Karpenter NodePool with a taint and `limits` caps tenant node capacity at the cloud layer, which is a second, independent cap beneath namespace quota.
 - **Rung 3.**
-  GKE Sandbox runs pods under gVisor via a RuntimeClass on a sandbox-enabled node pool, and AWS Fargate runs each pod in its own Firecracker-based microVM, while Kata on EKS is self-managed (UNVERIFIED for all three).
+  GKE Sandbox runs pods under gVisor or a microVM selected by RuntimeClass (`gvisor` or `microvm`), on nodes enabled through a ComputeClass or node pool, and AWS Fargate gives each pod its own compute boundary with no shared kernel and is built on Firecracker, while Kata on EKS is self-managed on bare-metal nodes (Google Cloud docs, EKS docs, Firecracker README, and AWS Containers blog, as of 2026-11).
   See [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_01_Hypervisors_MicroVMs_and_Sandboxing|Hypervisors, MicroVMs, and Sandboxing]] and [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_04_Firecracker_MicroVM|Firecracker]], and the Firecracker NSDI 2020 paper for the design that made per-tenant microVMs economical.
   Sandboxes narrow the kernel attack surface at a cost in syscall-heavy performance and compatibility, and they do not protect the control plane.
 - **Rung 4.**
@@ -247,12 +278,12 @@ Notes on the rungs.
   The tenant can have CRDs, ClusterRoles, and cluster-admin in its virtual cluster, yet its pods are ordinary host pods sharing the host kernel and bound by host-namespace quota.
   Virtual control planes isolate the control plane and are not a data-plane boundary unless the nodes are dedicated.
 - **GPU sharing.**
-  Multi-Instance GPU (MIG) partitions an A100 or H100 into as many as seven hardware-isolated instances with dedicated memory and cache (NVIDIA docs, UNVERIFIED).
-  Time-slicing shares a GPU with no memory isolation and no fault isolation, and MPS shares SMs with weaker isolation than MIG, so only MIG is acceptable across mutually untrusting tenants.
+  Multi-Instance GPU (MIG) partitions an A100 or H100 into as many as seven hardware-isolated instances with dedicated memory and cache (NVIDIA MIG docs, as of 2026-11).
+  Time-slicing shares a GPU with no memory isolation and no fault isolation, and MPS partitions memory and compute through a control daemon that enforces per-workload limits rather than through MIG's hardware paths, so only MIG is acceptable across mutually untrusting tenants (NVIDIA GPU Operator and device plugin docs, as of 2026-11).
 
 ## Numbers to Know
 
-Search access was exhausted before these could be re-verified, so each row carries either a dated verified source or the tag UNVERIFIED.
+Each row carries a dated source, and the table was re-checked on 2026-11-01.
 Derived rows are arithmetic from the stated inputs.
 
 | Quantity | Value | Source and status |
@@ -260,45 +291,45 @@ Derived rows are arithmetic from the stated inputs.
 | Cluster as strong security boundary | The cluster is the only construct giving a strong boundary; namespaces, quotas, LimitRanges are logical separation | (AWS EKS Best Practices Guide, as of 2026-10) |
 | `count/*` quota purpose | Protects control plane storage; does not cover aggregated APIs | (Kubernetes docs v1.33, as of 2026-10) |
 | Quota usage update | Atomic at admission, controller recomputes drift | (Kubernetes quota admission design doc, accessed 2026-10-21) |
-| Upstream scalability thresholds | 5,000 nodes, 150,000 pods, 300,000 containers, 110 pods per node | UNVERIFIED (Kubernetes large-cluster docs, recalled) |
-| etcd storage quota | 2 GiB default, 8 GiB suggested maximum | UNVERIFIED (etcd docs, recalled) |
-| etcd max request size | 1.5 MiB default | UNVERIFIED (etcd docs, recalled) |
-| Quota controller | Resync period 5 min, 5 concurrent syncs | UNVERIFIED (kube-controller-manager reference, recalled) |
-| CFS bandwidth period | 100 ms default | UNVERIFIED (kubelet and kernel docs, recalled) |
+| Upstream scalability thresholds | 5,000 nodes, 150,000 pods, 300,000 containers, 110 pods per node | (Kubernetes large-cluster docs, as of 2026-11) |
+| etcd storage quota | 2 GiB default, 8 GiB suggested maximum | (etcd docs v3.6, as of 2026-11) |
+| etcd max request size | 1.5 MiB default | (etcd docs v3.6, as of 2026-11) |
+| Quota controller | Resync period 5 min, 5 concurrent syncs | (kube-controller-manager reference, as of 2026-11) |
+| CFS bandwidth period | 100 ms default | (kubelet `CPUCFSQuotaPeriod` default, Kubernetes source, as of 2026-11) |
 | Throttle example | 2 CPU limit, 16 busy threads: quota burned in 12.5 ms, throttled 87.5 ms per period | Derived (200,000 us quota, 100,000 us period) |
-| `oom_score_adj` | Guaranteed -997, BestEffort 1000, Burstable about 1000 - 1000 x request / capacity | UNVERIFIED (kubelet source, recalled) |
+| `oom_score_adj` | Guaranteed -997, BestEffort 1000, Burstable min(max(2, 1000 - 1000 x request / capacity), 999) | (Kubernetes docs, as of 2026-11) |
 | Burstable example | 256Mi request on 64Gi node gives about 996 | Derived from the formula above |
-| APF default shape | `workload-low`: 128 queues, hand size 6, queue length 50 | UNVERIFIED (Kubernetes flow-control docs, recalled) |
+| APF default shape | `workload-low`: 128 queues, hand size 6, queue length 50 | (APF bootstrap config, Kubernetes source, as of 2026-11) |
 | Distinct APF hands | C(128,6) = 5,423,611,200; C(64,6) = 74,974,368 | Derived |
-| MIG partitions | Up to 7 instances per A100 or H100 | UNVERIFIED (NVIDIA MIG docs, recalled) |
-| EKS pods per node (VPC CNI) | Bounded by ENIs x (IPs per ENI - 1) + 2; higher with prefix delegation | UNVERIFIED (EKS docs, recalled) |
-| GKE pods per node | 110 default with a /24 pod range per node | UNVERIFIED (GKE docs, recalled) |
-| EKS control plane price | $0.10 per cluster-hour on standard support, about $73 per month | UNVERIFIED (AWS EKS pricing, recalled) |
-| GKE management fee | $0.10 per cluster-hour with a monthly free-tier credit | UNVERIFIED (GKE pricing, recalled) |
-| Feature maturity | PodSecurity admission GA 1.25, APF GA 1.29, ValidatingAdmissionPolicy GA 1.30, native sidecars GA 1.33, DRA GA 1.34 | UNVERIFIED (Kubernetes release notes, recalled) |
+| MIG partitions | Up to 7 instances per A100 or H100 | (NVIDIA MIG docs, as of 2026-11) |
+| EKS pods per node (VPC CNI) | Bounded by ENIs x (IPs per ENI - 1) + 2; managed node groups cap at 110 below 30 vCPUs and 250 above; higher with prefix delegation | (EKS docs, as of 2026-11) |
+| GKE pods per node | 110 default with a /24 pod range per node (Standard) | (GKE docs, as of 2026-11) |
+| EKS control plane price | $0.10 per cluster-hour on standard support, about $73 per month; $0.60 per cluster-hour on extended support | (AWS EKS pricing, as of 2026-11) |
+| GKE management fee | $0.10 per cluster-hour with a $74.40 monthly free-tier credit per billing account, for zonal and Autopilot clusters | (GKE pricing, as of 2026-11) |
+| Feature maturity | PodSecurity admission GA 1.25, APF GA 1.29, ValidatingAdmissionPolicy GA 1.30, native sidecars GA 1.33, DRA GA 1.34 | (Kubernetes feature gate docs, as of 2026-11) |
 | Lab zone-loss budget | 24 nodes, 15.0 vCPU and 56 GiB allocatable, 0.5 vCPU and 0.7 GiB DaemonSets per node: 232 vCPU and 885 GiB commitable across 3 zones | Derived from stated assumptions |
-| Cluster-per-team control-plane fee | 200 clusters x $0.10 x 730 h = $14,600 per month, $175,200 per year | Derived from the UNVERIFIED $0.10 rate |
+| Cluster-per-team control-plane fee | 200 clusters x $0.10 x 730 h = $14,600 per month, $175,200 per year | Derived from the $0.10 rate above |
 
 ## AWS vs GCP Mechanism Parity
 
 The Kubernetes mechanisms (quota, LimitRange, APF, PodSecurity) are upstream and identical on EKS and GKE, so the differences are in the managed layer around them.
-Rows are tagged UNVERIFIED where the cloud-specific claim was not re-checked in this pass.
+Rows carry their source, and UNVERIFIED remains only where a claim is a provider negative that no document states outright.
 
 | Concern | AWS (EKS) | Google Cloud (GKE) | Critical difference | Status |
 |---|---|---|---|---|
 | Quota and LimitRange semantics | Upstream | Upstream | None; identical admission behavior | Upstream docs |
-| Apiserver admission configuration (`limitedResources`, extra plugins) | Not user-configurable | Not user-configurable beyond provider defaults | Express quota-as-permission with VAP or policy engines on both | UNVERIFIED |
-| Namespace-scoped human access | Access entries with namespace-scoped access policies | Kubernetes RBAC bound to Google identities, plus IAM roles | EKS maps IAM to RBAC groups via access entries, GKE uses Google identities directly | UNVERIFIED |
-| Namespace-scoped workload identity | Pod Identity associations per (cluster, namespace, service account); IRSA trust policies on `sub` | Workload Identity Federation for GKE with `principal://` per service account and `principalSet://` per namespace | GCP can grant IAM to a whole namespace in one binding, AWS binds role per service account | UNVERIFIED |
-| Namespace as an ABAC attribute | Pod Identity session tags include the namespace and service account | Namespace is part of the principal identifier | Both allow tenant-prefixed storage policies without per-tenant roles | UNVERIFIED |
-| Network policy enforcement | VPC CNI network policy (eBPF) or Calico or Cilium | Dataplane V2 (Cilium) or Calico | Enforcement is a CNI choice on EKS and a cluster mode on GKE | UNVERIFIED |
-| Sandboxed pods | Fargate (microVM per pod); Kata self-managed | GKE Sandbox (gVisor) via RuntimeClass | Fargate is a different compute model with its own limitations (no DaemonSets, no GPUs) | UNVERIFIED |
-| Per-tenant node capacity | Karpenter NodePool with taints and `limits` | Node pools or ComputeClasses, node auto-provisioning limits | Karpenter limits are a native cloud-layer cap | UNVERIFIED |
-| Fleet and team management | No native fleet-team object; use accounts, GitOps projects, operators | Fleet teams and scopes | GKE has a first-party multi-team construct | UNVERIFIED |
-| Hierarchical config | HNC, Capsule, GitOps | Config Sync hierarchy mode, HNC, Capsule | Config Sync is the supported route on GKE | UNVERIFIED |
-| Cost allocation by namespace | Split cost allocation data for EKS, OpenCost | GKE cost allocation exports namespace and labels to billing export | Both need opt-in and tagging discipline | UNVERIFIED |
+| Apiserver admission configuration (`limitedResources`, extra plugins) | Not user-configurable | Not user-configurable beyond provider defaults | Express quota-as-permission with VAP or policy engines on both | EKS plugin set fixed (EKS docs, as of 2026-11); UNVERIFIED: both negatives inferred from absence in docs |
+| Namespace-scoped human access | Access entries with namespace-scoped access policies | Kubernetes RBAC bound to Google identities, plus IAM roles | EKS maps IAM to RBAC groups via access entries, GKE uses Google identities directly | (EKS and GKE docs, as of 2026-11) |
+| Namespace-scoped workload identity | Pod Identity associations per (cluster, namespace, service account); IRSA trust policies on `sub` | Workload Identity Federation for GKE with `principal://` per service account and `principalSet://` per namespace | GCP can grant IAM to a whole namespace in one binding, AWS binds role per service account | (EKS and GKE docs, as of 2026-11) |
+| Namespace as an ABAC attribute | Pod Identity session tags include the namespace and service account | Namespace is part of the principal identifier | Both allow tenant-prefixed storage policies without per-tenant roles | (EKS and GKE docs, as of 2026-11) |
+| Network policy enforcement | VPC CNI network policy (eBPF) or Calico or Cilium | Dataplane V2 (Cilium) or legacy Calico enforcement | Enforcement is a CNI choice on EKS and a cluster mode on GKE | (EKS and GKE docs, as of 2026-11) |
+| Sandboxed pods | Fargate (compute boundary per pod, built on Firecracker); Kata self-managed on bare metal | GKE Sandbox (gVisor or microVM) via RuntimeClass | Fargate is a different compute model with its own limitations (no DaemonSets, no GPUs, no privileged containers) | (EKS and GKE docs, as of 2026-11) |
+| Per-tenant node capacity | Karpenter NodePool with taints and `limits` | Node pools or ComputeClasses, node auto-provisioning limits | Karpenter limits are a native cloud-layer cap | (Karpenter and GKE docs, as of 2026-11) |
+| Fleet and team management | No native fleet-team object; use accounts, GitOps projects, operators | Fleet teams and scopes | GKE has a first-party multi-team construct | GKE side (GKE docs, as of 2026-11); UNVERIFIED: AWS negative, no such EKS object found in docs reviewed |
+| Hierarchical config | Capsule, GitOps; HNC is retired | Config Sync hierarchical format (Google recommends unstructured), Capsule; HNC is retired | Config Sync is the first-party route on GKE | (Google Cloud and Capsule docs, GitHub, as of 2026-11) |
+| Cost allocation by namespace | Split cost allocation data for EKS, OpenCost | GKE cost allocation exports namespace and labels to billing export | Both need opt-in and tagging discipline | (AWS CUR and GKE docs, as of 2026-11) |
 | Hard-isolation unit | AWS account, enforced with SCPs and RCPs | Project, enforced with Org Policy and VPC Service Controls | Same idea, different hierarchy, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter\|Data Perimeter]] | Design level |
-| Cloud-level quotas shared by tenants | Per-account and per-region EC2 and API limits | Per-project regional quotas and API limits | Cluster quota never caps these; they are the real shared pool | UNVERIFIED |
+| Cloud-level quotas shared by tenants | Per-account and per-region EC2 and API limits | Per-project regional quotas and API limits | Cluster quota never caps these; they are the real shared pool | (EC2 and Compute Engine quota docs, as of 2026-11) |
 
 ## Worked Example: Stamping Tenant Guardrails and Proving Them on a Local Cluster
 
@@ -499,7 +530,7 @@ I ran the generator for all four tenants in this pass and it emitted valid JSON 
 ### Cost, budget alarm, and teardown
 
 The kind path costs $0 in cloud spend because it uses local compute.
-If you run the same steps on a managed cluster, a 2-hour lab on a control plane at the UNVERIFIED $0.10 per hour plus 3 nodes at an ILLUSTRATIVE $0.17 per hour is (0.10 + 3 x 0.17) x 2 = $1.22.
+If you run the same steps on a managed cluster, a 2-hour lab on a control plane at $0.10 per hour (AWS and GKE pricing, as of 2026-11) plus 3 nodes at an ILLUSTRATIVE $0.17 per hour is (0.10 + 3 x 0.17) x 2 = $1.22.
 Set a budget alarm before creating anything billable.
 
 ```bash
@@ -589,7 +620,7 @@ kubectl auth can-i create deployments -n team-a --as=dev --as-group=tenant-team-
 ```
 
 Expected: no, no, yes.
-Using the built-in `edit` ClusterRole here instead would answer yes to the first question, because `edit` can write NetworkPolicies (UNVERIFIED), which is why the Role is custom.
+Using the built-in `edit` ClusterRole here instead would answer yes to the first question, because `edit` can write NetworkPolicies (RBAC bootstrap policy, Kubernetes source, as of 2026-11), which is why the Role is custom.
 NetworkPolicy enforcement itself depends on your CNI, so test it separately and do not assume kind's default CNI enforces it.
 
 **Teardown.**
@@ -605,7 +636,7 @@ rm -f budget.json notif.json
 
 Quota rejections happen when a controller creates pods, so the Deployment, StatefulSet, or Job is accepted and the failure appears only as events and a `ReplicaFailure` condition on the child ReplicaSet.
 An HPA then reports a desired replica count far above current, and an autoscaler such as Karpenter provisions nothing because no Pending pods exist.
-Alert on `kube_resourcequota` used-to-hard ratios from kube-state-metrics (UNVERIFIED metric name) and on ReplicaSet `FailedCreate` events, and not only on node capacity.
+Alert on `kube_resourcequota` used-to-hard ratios from kube-state-metrics (kube-state-metrics docs, as of 2026-11) and on ReplicaSet `FailedCreate` events, and not only on node capacity.
 
 ### Rolling updates at the ceiling
 
@@ -621,7 +652,7 @@ Do not use `status.used` as a billing source of truth, and reconcile chargeback 
 ### Hot-namespace admission serialization
 
 All pod creates in one namespace converge on one ResourceQuota object's status in etcd, so a Spark driver launching thousands of executors or a Job with huge parallelism serializes on that key and spends retries on conflicts.
-Watch `apiserver_admission_controller_admission_duration_seconds` for the ResourceQuota plugin (UNVERIFIED metric name), spread bursty tenants across namespaces, and gate batch work with Kueue so pods are created only after admission.
+Watch `apiserver_admission_controller_admission_duration_seconds` for the ResourceQuota plugin (Kubernetes metrics reference, as of 2026-11), spread bursty tenants across namespaces, and gate batch work with Kueue so pods are created only after admission.
 
 ### Object counts that surprise you
 
@@ -634,7 +665,7 @@ Completed Jobs and their pods linger, so `count/jobs.batch` needs `ttlSecondsAft
 An edited LimitRange does not change existing pods, so a tightened `max` produces a cluster that passes today and fails on the next restart.
 A `max` without a `default` injects a limit, as shown in Proof 2.
 A `maxLimitRequestRatio` rejects pods that set a small request and rely on the default limit.
-Webhook-injected sidecars bypass LimitRange defaults and fail under a requests quota, as covered in Internals.
+Webhook-injected sidecars receive LimitRange defaults through the reinvocation pass, so they silently consume quota at the namespace default size, and a container added during that reinvocation round is not defaulted, as covered in Internals.
 
 ### CPU throttling as a noisy-neighbor symptom
 
@@ -649,9 +680,9 @@ Set `podPidsLimit`, quota ephemeral storage, and cap logs at the runtime, becaus
 
 ### Control-plane blast radius
 
-On 2024-12-11, OpenAI published a post-incident review describing how a newly deployed telemetry service generated expensive Kubernetes API load across its clusters, overwhelming the API servers and taking out DNS-based service discovery that depended on the control plane (OpenAI status page incident, URL recalled, UNVERIFIED).
+On 2024-12-11, a newly deployed OpenAI telemetry service generated expensive Kubernetes API load across its clusters, overwhelming the API servers and taking out DNS-based service discovery that depended on the control plane, as OpenAI's post-mortem describes ([OpenAI status page](https://status.openai.com/incidents/ctrsv3lwd797), as of 2026-11).
 The multi-tenancy lesson is that APF per-tenant flows, `count/*` quota, and a cell boundary between tenants are the controls that bound this class of failure, and that the data plane must not depend on the control plane at runtime, which is the point of [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
-Namespace deletion has a related shared-fate bug: the namespace controller relies on API discovery across all groups, so one unavailable APIService (for example a dead metrics server) can leave every namespace stuck in Terminating (UNVERIFIED).
+Namespace deletion has a related shared-fate bug: the namespace controller relies on API discovery across all groups, so one unavailable APIService (for example a dead metrics server) can leave every namespace under deletion stuck in Terminating, because the deleter removes what it can but does not finalize the namespace while discovery returns an error (`namespaced_resources_deleter.go`, Kubernetes source, as of 2026-11).
 
 ### Cross-tenant paths through shared components
 
@@ -674,7 +705,7 @@ Granting tenants `create namespace` (cluster-scoped) bypasses every per-namespac
 ### Hierarchy controller risks
 
 A hierarchy controller with a validating webhook sits on the path of writes in every managed namespace, and `failurePolicy: Fail` makes its outage a tenant outage.
-Projects in this space change maintenance status, so verify the repository's activity and your upgrade path before making one a platform dependency (UNVERIFIED).
+Projects in this space change maintenance status, as HNC's retirement to an archived repository shows (GitHub, as of 2026-11), so verify the repository's activity and your upgrade path before making one a platform dependency.
 
 ### GPU sharing failure
 
@@ -690,20 +721,20 @@ A tenant scaling aggressively can exhaust the account's pool, and every other te
 
 ### IAM and identity scoping
 
-- Give humans namespace-scoped access: on EKS, access entries with namespace-scoped access policies, and on GKE, RBAC bindings to groups plus narrowly scoped IAM roles (UNVERIFIED for both).
+- Give humans namespace-scoped access: on EKS, access entries with namespace-scoped access policies, and on GKE, RBAC bindings to groups plus narrowly scoped IAM roles (EKS and GKE docs, as of 2026-11).
 - Give workloads namespace-scoped cloud identity without static keys, using EKS Pod Identity or IRSA with exact `sub` conditions on AWS and Workload Identity Federation for GKE on GCP, as detailed in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]].
-- Use the namespace as an attribute: on AWS, Pod Identity session tags (including the namespace) allow one role to serve every tenant with a policy condition on `aws:PrincipalTag` for tenant-prefixed S3 paths, and on GCP, a `principalSet` for the namespace can be granted a bucket role directly (UNVERIFIED for both).
+- Use the namespace as an attribute: on AWS, Pod Identity session tags (including the namespace) allow one role to serve every tenant with a policy condition on `aws:PrincipalTag` for tenant-prefixed S3 paths, and on GCP, a `principalSet` for the namespace can be granted a bucket role directly (EKS and GKE docs, as of 2026-11).
 - Remove the tenant's ability to edit its own guardrails: custom Roles without NetworkPolicy, ResourceQuota, LimitRange, Role, and RoleBinding write access, as in the lab.
 
 ### Encryption key hierarchy
 
-Secrets in etcd should be envelope-encrypted with a KMS-held key (EKS with a KMS key you control, GKE application-layer secrets encryption with Cloud KMS, UNVERIFIED), and tenant application data should use per-tenant data keys wrapped by per-tenant KMS keys so that offboarding is key deletion.
+Secrets in etcd should be envelope-encrypted with a KMS-held key (EKS encrypts all Kubernetes API data by default on 1.28 and higher with an AWS-owned key, with a customer managed key as the option you should choose for tenant control, and GKE offers application-layer secrets encryption with Cloud KMS; EKS and GKE docs, as of 2026-11), and tenant application data should use per-tenant data keys wrapped by per-tenant KMS keys so that offboarding is key deletion.
 A shared cluster key means a control-plane compromise exposes every tenant's secrets, so for regulated tenants the encryption boundary is the account or project, not the namespace.
 See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 
 ### Private network boundaries
 
-Default-deny NetworkPolicy per namespace, enforced by a CNI that implements it (VPC CNI network policy, Calico, or Cilium on EKS, Dataplane V2 on GKE, UNVERIFIED), is the in-cluster boundary.
+Default-deny NetworkPolicy per namespace, enforced by a CNI that implements it (VPC CNI network policy, Calico, or Cilium on EKS, Dataplane V2 on GKE; EKS and GKE docs, as of 2026-11), is the in-cluster boundary.
 Egress policy should block the instance metadata endpoint for tenant pods unless identity requires it.
 For the cloud boundary, use VPC endpoints with endpoint policies on AWS and VPC Service Controls perimeters on GCP, with one perimeter or account per regulated tenant, as in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
 
@@ -716,8 +747,8 @@ Run new policies in audit or warn mode first, because an enforce-mode policy on 
 
 - Treat quota as a budget and not a reservation: committed requests across tenants should sit near the zone-loss budget (81 percent of it in the lab), and the gap between requests and actual usage is the slack you pay for.
 - Chargeback on `max(request, usage)` per tenant rather than usage alone, because requests are what the scheduler reserved and what neighbors could not use.
-- Enable per-pod cost allocation (EKS split cost allocation data, GKE cost allocation, or OpenCost, UNVERIFIED) and label namespaces with a cost center, as the generator does; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cloud_Billing_Models_and_Unit_Cost_Allocation|Cloud Billing Models and Unit Cost Allocation]].
-- Compare the fixed cost of the cluster boundary: 200 clusters at the UNVERIFIED $0.10 per hour is $14,600 per month in control-plane fees alone, before each cluster's system node pool, add-ons, and the DaemonSet tax of roughly 0.5 vCPU per node in the lab model.
+- Enable per-pod cost allocation (EKS split cost allocation data, GKE cost allocation, or OpenCost; AWS and GKE docs, as of 2026-11) and label namespaces with a cost center, as the generator does; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cloud_Billing_Models_and_Unit_Cost_Allocation|Cloud Billing Models and Unit Cost Allocation]].
+- Compare the fixed cost of the cluster boundary: 200 clusters at $0.10 per hour (AWS and GKE pricing, as of 2026-11) is $14,600 per month in control-plane fees alone, before each cluster's system node pool, add-ons, and the DaemonSet tax of roughly 0.5 vCPU per node in the lab model.
 - For GPUs, MIG and Kueue cohort borrowing raise utilization of expensive accelerators, and the economics are in [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics|GPU and TPU Unit Economics]].
 
 ## Interview Questions and Model Answers
@@ -771,7 +802,7 @@ Where can quota accounting go wrong?
 The ResourceQuota admission plugin is last in the chain, so both requests have already passed mutating webhooks and validation and carry final resource values.
 Each evaluator reads the namespace's quota from its informer cache, computes `used + delta`, and finds it fits, because both see the same pre-update state.
 Each then writes the new `status.used` with the resourceVersion it read, and the write is a compare-and-swap in etcd, so exactly one succeeds.
-The loser gets a conflict, does a live lookup that bypasses the cache, re-evaluates against the updated usage, and is rejected with a 403 `exceeded quota`.
+The loser gets a conflict and retries up to 3 times against its informer view plus its record of its own recent writes, not a guaranteed live read, so it is rejected with a 403 `exceeded quota` once that view shows the updated usage, or it fails with the conflict error if retries run out first.
 The quota object is the serialization point, which is why the plugin batches queued requests per namespace.
 The accounting errors come from three places.
 First, the reservation is made before the object is persisted, so a request that fails afterwards (conflict, collision, storage error) leaves usage overstated until the controller recomputes.
@@ -796,7 +827,7 @@ For the 40 internal teams, trust is high and the dominant risk is accidental har
 Teams that need CRDs, cluster-scoped operators, or privileged DaemonSets do not fit in a namespace, so I give them a virtual cluster or a dedicated cluster, because cluster-scoped objects are platform-administrator rights.
 For the external customers, the shared kernel is the problem, so namespaces are insufficient by the cloud providers' own guidance that the cluster is the strong boundary.
 I would give each its own account or project and cluster, so the IAM, KMS, VPC, and API-quota boundaries are also separate, and I would use a sandbox runtime where they run arbitrary code (gVisor on GKE, Fargate microVMs on AWS) for defense in depth.
-The cost argument is explicit: the cluster boundary costs a control-plane fee per cluster (about $73 per month at the UNVERIFIED $0.10 per hour) plus a system node pool and add-ons, which is negligible for 3 customers and prohibitive for 40 teams, so the line between the two classes is drawn by trust and not by convenience.
+The cost argument is explicit: the cluster boundary costs a control-plane fee per cluster (about $73 per month at $0.10 per hour, AWS and GKE pricing, as of 2026-11) plus a system node pool and add-ons, which is negligible for 3 customers and prohibitive for 40 teams, so the line between the two classes is drawn by trust and not by convenience.
 I would put the 40 teams on a small number of shared clusters organized as cells so a bad control-plane event hits a fraction of teams, as in the cell-based chapter.
 The failure of this design that I would plan for is policy drift between clusters, so tenant stamping is code, as in the lab generator, applied by GitOps, with drift alerts.
 
@@ -814,13 +845,13 @@ What are your options and what are their failure modes?
 #### Model Answer
 
 Native quota is evaluated per namespace, so the aggregate cap needs another mechanism, and every option is a trade between precision and dependency.
-Option one is a hierarchical quota controller (HNC's hierarchical quota or a Capsule tenant-scoped quota) that rewrites each namespace's quota as its usage plus a share of the remaining tenant budget.
+Option one is a quota-rewriting controller (a Capsule tenant-scoped quota, which Capsule's docs mark for deprecation in favor of Rules Quota as of 2026-11) that rewrites each namespace's quota as its usage plus the remaining tenant budget.
 It uses native enforcement at the pod create, so there is no webhook latency, but it is eventually consistent, and a burst across namespaces inside one reconcile interval can overshoot by up to the sum of the namespaces' headroom, so I would cap per-namespace headroom to bound the overshoot.
 Option two is an admission webhook that sums the subtree's usage, which is tighter but adds latency to every pod create and is a single point of failure, so it needs careful `failurePolicy`, replicas, and timeouts.
 Option three, for batch and GPU, is Kueue: team namespaces get LocalQueues pointing at one ClusterQueue with a nominal quota of 100 vCPU, so the cap is enforced before pods exist and applies to whole jobs.
 Option four is cloud-layer: a dedicated node pool or Karpenter NodePool with `limits` at 100 vCPU, which caps real capacity and ignores accounting subtleties but leaves tenant pods Pending and not rejected.
 I would layer namespace quota (per-namespace safety), Kueue or a controller (the aggregate), and a NodePool cap (the hard stop), because each fails differently.
-The documented caveat is that I could not verify the current maintenance state of HNC in this pass, so I would check that before choosing it over Capsule or Kueue.
+The documented caveat is that HNC is retired and its repository archived (GitHub, as of 2026-11), and its hierarchical quota relied on a fail-open webhook on quota status updates, so I would choose Capsule or Kueue over it on a new platform.
 
 #### Follow-up Interviewer Question
 
@@ -863,7 +894,7 @@ For storage, `count/*` quota bounds object counts (Secrets, ConfigMaps, Jobs, CR
 For client behavior, I require informers with `resourceVersion` semantics that read from the watch cache and not repeated quorum LISTs, which I enforce in the operator SDK defaults and review checklists and cannot enforce at admission.
 For blast radius, I split tenants into cells, so the worst case is a cell and not the fleet, which is the shuffle-sharding argument applied at cluster granularity.
 What I cannot contain with in-cluster controls: a bug in a shared controller I operate (policy engine, CNI, DNS) that is on every tenant's data path, an etcd-wide event, and anything in the control plane that the managed provider owns.
-The public lesson is the OpenAI December 2024 review (UNVERIFIED URL), in which a new telemetry service's API load overwhelmed control planes and took down DNS-based discovery, so I also require that the data plane keeps working with a dead control plane.
+The public lesson is the OpenAI December 2024 [post-mortem](https://status.openai.com/incidents/ctrsv3lwd797), in which a new telemetry service's API load overwhelmed control planes and took down DNS-based discovery, so I also require that the data plane keeps working with a dead control plane.
 
 #### Follow-up Interviewer Question
 
@@ -884,7 +915,7 @@ GPU capacity is managed by queueing rather than namespace quota: Kueue ClusterQu
 Preemption must be paired with checkpoint cadence, because the price of borrowing is lost work, and the lending limit is the knob that trades fleet utilization against lender latency.
 For GPUs shared across untrusting tenants I use MIG partitions, and time-slicing only inside a trust domain, because time-slicing has no memory or fault isolation.
 For chargeback I allocate on `max(request, usage)` per namespace, with cost-center labels and per-pod cost allocation data, plus an explicit idle-capacity line so teams do not game requests low.
-For the cost defense, the control-plane fee of cluster-per-team (200 clusters is about $14,600 per month at the UNVERIFIED $0.10 per hour, before system pools and add-ons) is why I use clusters for regulated tenants and cells for everyone else, and I would present the break-even as a spreadsheet with the fleet's real instance prices and not my illustrative ones.
+For the cost defense, the control-plane fee of cluster-per-team (200 clusters is about $14,600 per month at $0.10 per hour, AWS and GKE pricing as of 2026-11, before system pools and add-ons) is why I use clusters for regulated tenants and cells for everyone else, and I would present the break-even as a spreadsheet with the fleet's real instance prices and not my illustrative ones.
 The risks I would call out are policy drift across clusters, shared cloud-level quotas (regional vCPU limits and API rates) that no cluster-level control caps, and the dependence of the borrowing model on checkpointing discipline.
 
 #### Follow-up Interviewer Question
@@ -906,7 +937,7 @@ What do you change in the quota model, and what do you tell the borrower's team?
 - [Dominant Resource Fairness (NSDI 2011)](https://www.usenix.org/conference/nsdi11/dominant-resource-fairness-fair-allocation-multiple-resource-types) - the fairness definition behind multi-resource sharing across queues.
 - [Firecracker: Lightweight Virtualization for Serverless Applications (NSDI 2020)](https://www.usenix.org/conference/nsdi20/presentation/agache) - how per-tenant microVMs were made cheap enough to be a default isolation unit.
 - [Kueue documentation](https://kueue.sigs.k8s.io/) - ClusterQueues, cohorts, borrowing and lending limits, and preemption for batch and GPU tenancy.
-- [Hierarchical Namespace Controller repository](https://github.com/kubernetes-sigs/hierarchical-namespaces) - the HNC design and docs; check its maintenance status before adopting.
+- [Hierarchical Namespace Controller repository](https://github.com/kubernetes-retired/hierarchical-namespaces) - the HNC design and docs, useful as a design reference; the project is retired and the repository archived (as of 2026-11).
 - [Kubernetes Failure Stories](https://k8s.af/) - a curated list of public Kubernetes post-incident reports for the failure patterns in this chapter.
 - [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_02_Advanced_Scheduling_and_Topology_Aware_Placement|Advanced Scheduling and Topology-Aware Placement]] - the scheduler-side half of tenant placement, which quota does not touch.
 - [[04-System-Design/07-Infrastructure-and-Orchestration/Kubernetes-Architecture|Kubernetes Architecture]] - the vault's baseline note on the control-plane components this chapter assumes.

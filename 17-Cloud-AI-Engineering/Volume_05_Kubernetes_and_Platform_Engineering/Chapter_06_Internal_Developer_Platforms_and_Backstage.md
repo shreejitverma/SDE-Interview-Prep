@@ -2,20 +2,48 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://backstage.io/docs/features/software-catalog/life-of-an-entity/"
   - "https://github.com/backstage/backstage/blob/master/docs/features/software-catalog/configuration.md"
   - "https://www.cncf.io/projects/backstage/"
   - "https://www.cncf.io/blog/2022/03/15/backstage-project-joins-the-cncf-incubator/"
-  - "https://backstage.io/docs/reference/plugin-catalog-backend.catalogprocessingengine/"
+  - "https://github.com/backstage/backstage/blob/master/plugins/catalog-backend/src/processing/types.ts"
   - "https://tag-app-delivery.cncf.io/whitepapers/platforms/"
   - "https://tag-app-delivery.cncf.io/whitepapers/platform-eng-maturity-model/"
   - "https://dora.dev/research/"
   - "https://docs.crossplane.io/"
   - "https://github.com/kro-run/kro"
   - "https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api"
+  - "https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api"
+  - "https://backstage.io/docs/features/software-catalog/configuration/"
+  - "https://backstage.io/docs/features/software-templates/writing-templates/"
+  - "https://backstage.io/docs/overview/versioning-policy/"
+  - "https://backstage.io/docs/permissions/concepts/"
+  - "https://backstage.io/docs/features/techdocs/using-cloud-storage/"
+  - "https://github.com/backstage/backstage/blob/master/docs/features/software-templates/configuration.md"
+  - "https://github.com/backstage/backstage/blob/master/plugins/catalog-backend/CHANGELOG.md"
+  - "https://github.com/backstage/backstage/blob/master/plugins/catalog-backend/src/service/CatalogBuilder.ts"
+  - "https://github.com/backstage/backstage/blob/master/plugins/catalog-backend/src/database/DefaultProcessingDatabase.ts"
+  - "https://github.com/backstage/backstage/blob/master/plugins/catalog-backend/src/database/DefaultProviderDatabase.ts"
+  - "https://github.com/backstage/backstage/blob/master/plugins/catalog-backend/src/processors/UrlReaderProcessor.ts"
+  - "https://github.com/backstage/backstage/blob/master/plugins/catalog-backend-module-gcp/src/providers/GkeEntityProvider.ts"
+  - "https://github.com/backstage/backstage/blob/master/plugins/catalog-backend-module-aws/src/processors/AwsEKSClusterProcessor.ts"
+  - "https://github.com/backstage/backstage/blob/master/plugins/scaffolder-backend/src/scaffolder/tasks/NunjucksWorkflowRunner.ts"
+  - "https://github.com/backstage/backstage/blob/master/plugins/scaffolder-backend-module-github/src/actions/githubPullRequest.ts"
+  - "https://github.com/gr2m/octokit-plugin-create-pull-request/blob/main/src/compose-create-pull-request.ts"
+  - "https://github.com/kubernetes-sigs/kro"
+  - "https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/"
+  - "https://etcd.io/docs/v3.5/dev-guide/limit/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://docs.aws.amazon.com/proton/latest/userguide/proton-end-of-support.html"
+  - "https://docs.cloud.google.com/infrastructure-manager/docs/release-notes"
+  - "https://docs.cloud.google.com/config-connector/docs/overview"
+  - "https://aws-controllers-k8s.github.io/community/docs/community/overview/"
+  - "https://services.google.com/fh/files/misc/2024_final_dora_report.pdf"
+  - "https://thehackernews.com/2022/11/critical-rce-flaw-reported-in-spotifys.html"
 ---
 
 # Internal Developer Platforms and Backstage
@@ -23,8 +51,8 @@ sources:
 ## TL;DR
 
 An internal developer platform (IDP) is a product with an API and an optional portal. The portal is a thin UI over that API, and a portal with no API behind it is ClickOps with a nicer theme.
-The Backstage software catalog is a derived index, not a source of truth: every entity is re-fetched and re-processed on a jittered loop, and an entity is re-stitched only when its result hash changes (Backstage docs, as of 2026-10). Any nondeterminism you inject into processing (timestamps, unsorted arrays) turns an O(changes) system into an O(entities) one.
-The Scaffolder is a workflow runner with no distributed transaction semantics: steps have side effects, there is no compensation, and a retry re-executes the steps. Make templates idempotent and minimal, and make the last step "open a pull request that adds a declarative claim", not "call the cloud".
+The Backstage software catalog is a derived index, not a source of truth: every entity is re-processed on a jittered loop, and an entity is re-stitched only when its result hash changes (Backstage docs, as of 2026-10). Any nondeterminism you inject into processing (timestamps, unsorted arrays) turns an O(changes) system into an O(entities) one.
+The Scaffolder is a workflow runner with no distributed transaction semantics: steps have side effects, there is no compensation, and an action can run more than once when a task is recovered or retried (Backstage docs, as of 2026-11). Make templates idempotent and minimal, and make the last step "open a pull request that adds a declarative claim", not "call the cloud".
 Real self-service comes from a declarative platform API (CRDs plus admission policy plus reconcilers such as ACK, Config Connector, Crossplane or kro) driven by GitOps. The identity the reconciler runs as is the blast radius of every claim.
 The portal and scaffolder are control plane and must be off the critical path of deploy and serve (static stability). Success is measured by adoption and by lead time, not by plugin count.
 
@@ -73,12 +101,12 @@ Static `Location` entities with URL targets are expanded by a processor that rea
 The full-mutation semantics are the dangerous part: absence is interpreted as deletion, so a provider that returns an empty list because an upstream API call failed silently can delete everything it owns. This is covered in Failure Modes.
 
 **Processing.**
-Each unprocessed entity is held in a database table (`refresh_state` in the schema, UNVERIFIED this session) with a `next_update_at` timestamp.
+Each unprocessed entity is held in a database table (`refresh_state` in the schema, Backstage source, as of 2026-11) with a `next_update_at` timestamp.
 A processing loop claims due rows, runs the processor chain in registration order (read location, validate, enrich, emit child entities and relations), and records the result and any errors.
-Claiming is done in the database so that many backend replicas can run the loop concurrently without a leader. The mechanism is a row-lock style claim (`FOR UPDATE SKIP LOCKED` semantics, UNVERIFIED this session), and because it is coordination-free it scales by adding replicas until the database is the bottleneck.
-After each pass the entity is rescheduled with a randomized delay, which the source sets to roughly 100 to 150 seconds by default (Backstage source, UNVERIFIED this session).
-This is a constant-work design in the sense of [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_05_Constant_Work_and_Workload_Smoothing|Constant Work and Workload Smoothing]]: every entity is re-read on every cycle whether or not it changed, which makes load a function of catalog size and not of change rate, and the jitter prevents synchronized waves.
-The price is that the SCM read rate is also a function of catalog size, which interacts with API rate limits (see the worked example).
+Claiming is done in the database so that many backend replicas can run the loop concurrently without a leader. The mechanism is a row-lock style claim (`forUpdate().skipLocked()` in the query builder, Backstage source, as of 2026-11), and because it is coordination-free it scales by adding replicas until the database is the bottleneck.
+After each pass the entity is rescheduled with a randomized delay, which the source sets to 100 to 150 seconds by default, or to between N and 1.5N seconds when `catalog.processingInterval` is set to N (Backstage source, as of 2026-11).
+This is a constant-work design in the sense of [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_05_Constant_Work_and_Workload_Smoothing|Constant Work and Workload Smoothing]]: every entity is re-processed on every cycle whether or not it changed, which makes load a function of catalog size and not of change rate, and the jitter prevents synchronized waves.
+The price is that the SCM read rate is also a function of catalog size, because each URL `Location` target is re-read every cycle, with an ETag when one is cached (`UrlReaderProcessor`, Backstage source, as of 2026-11), which interacts with API rate limits (see the worked example).
 
 **Stitching.**
 Stitching assembles the processed output, relations and errors into the "final entity" that the catalog API serves, and refreshes the search table (Backstage docs, as of 2026-10).
@@ -86,18 +114,21 @@ Whether an entity is re-stitched depends on a hash computed from the entity body
 The docs call out a consequence that matters operationally: a change in array order, for example `metadata.tags`, changes the hash (Backstage docs, as of 2026-10). The same page also advises monitoring the stitched entity count because it can cause performance problems when it gets high.
 Stitching is a fixed process that cannot be extended, so all customization has to happen in ingestion or processing (Backstage docs, as of 2026-10).
 The hash short-circuit is the entire reason steady state is cheap: an unchanged entity costs one claim, one fetch and one hash compare. Anything that makes the processed output differ between passes defeats it.
-A deferred stitching mode exists that decouples stitching from the processing transaction and runs it from a polling loop (`catalog.stitchingStrategy.mode: deferred`, UNVERIFIED this session). It trades read-after-write freshness for smoother database load during bulk changes.
+Stitching is always deferred in current releases: a worker queue decouples it from the processing transaction and runs it from a polling loop, tuned by `catalog.stitchingStrategy.pollingInterval` and `stitchTimeout` (defaults one second and a one-minute lease; Backstage docs, as of 2026-11).
+Deferred became the default in `@backstage/plugin-catalog-backend` 3.0.0, immediate mode was removed in 3.8.0, and the `mode` key itself was removed as a breaking change in 4.0.0 (Backstage changelog, as of 2026-11).
+It trades read-after-write freshness for smoother database load during bulk changes.
 
 **Ownership, conflicts, orphans.**
-Entities have a location key identifying which provider or location owns them. If two sources emit the same entity reference (`kind:namespace/name`), the later one is rejected with a conflict error and the first writer keeps the entity (UNVERIFIED this session).
-When a parent location or provider stops emitting an entity, the child becomes an orphan. It is marked with an orphan annotation and either kept or deleted depending on `catalog.orphanStrategy` (default `keep`, UNVERIFIED this session).
+Entities have a location key identifying which provider or location owns them. If two sources emit the same entity reference (`kind:namespace/name`), the later write does not take effect: the catalog logs a conflict warning and, on the processing path, publishes a conflict event, and the first writer keeps the entity (Backstage source, as of 2026-11).
+When a parent location or provider stops emitting an entity, the child becomes an orphan. It is marked with the `backstage.io/orphan` annotation and either kept or deleted depending on `catalog.orphanStrategy`, whose default is `delete` (Backstage docs, as of 2026-11).
+That setting does not cover a full mutation that omits an entity: the provider path removes the entity directly and eagerly prunes the children that would otherwise be orphaned (`deleteWithEagerPruningOfChildren`, Backstage source, as of 2026-11).
 
 **Splitting the read path from the write path.**
-The `CatalogProcessingEngine` interface documents that some backend instances may choose not to call `start` if they focus only on API interactions (Backstage API reference, as of 2026-10).
+The `CatalogProcessingEngine` interface documents that some backend instances may choose not to call `start` if they focus only on API interactions (Backstage source, as of 2026-11).
 That is the supported seam for running a pool of API-only replicas that serve reads and a smaller pool that runs the processing and stitching loops, so that a stitch storm cannot starve interactive reads.
 
 **Permissions are pushed into the query.**
-The permission framework lets a policy return a conditional decision (for example "allow read if the entity's owner is one of the caller's groups"). The catalog turns conditions into a filter applied in the database query, not a post-filter in memory (UNVERIFIED this session).
+The permission framework lets a policy return a conditional decision (for example "allow read if the entity's owner is one of the caller's groups"). The catalog turns conditions into a filter applied in the database query, not a post-filter in memory (Backstage docs and `AuthorizedEntitiesCatalog` source, as of 2026-11).
 This is why per-team catalog visibility is feasible at 10^4 entities and pagination stays correct. It also means rules must be expressible as indexed filters, and a policy that cannot be expressed that way forces a slow path.
 
 **Backing store.**
@@ -107,26 +138,26 @@ The catalog is derived data. Disaster recovery means re-ingesting from Git and t
 ### The Scaffolder: workflow without durability
 
 A software template (`apiVersion: scaffolder.backstage.io/v1beta3`, `kind: Template`) declares `parameters` (JSON Schema rendered as a form), `steps` (each an action with `input`), and `output` (links).
-Values are interpolated with the `${{ ... }}` template syntax (UNVERIFIED this session).
-A submitted form becomes a task row in the backend database. A worker in some replica claims it, creates a local workspace directory, and executes steps sequentially, appending log events that the UI streams (UNVERIFIED this session).
+Values are interpolated with the `${{ ... }}` template syntax (Backstage docs, as of 2026-11).
+A submitted form becomes a task row in the backend database. A worker in some replica claims it, creates a local workspace directory, and executes steps sequentially, appending log events that the UI streams (Backstage source, as of 2026-11).
 Four properties follow from that design and are not in the tutorials.
 
 1. There is no saga. If step 3 fails after step 2 created a repository, nothing rolls step 2 back, and re-running the template hits "repository already exists".
-2. The workspace is local disk. A replica restart mid-task loses the workspace and the task is either failed or, with the experimental recovery features, resumed (UNVERIFIED this session). Do not assume resumability without testing it.
+2. The workspace is local disk by default, so a replica restart mid-task loses it. Task recovery is now a stable, opt-in feature (`scaffolder.taskRecovery.enabled`) that returns stale `processing` tasks to `open`, skips completed steps and restores their outputs, but the workspace survives only if you also configure a `workspaceProvider` (`database`, 50 MB limit and not recommended for production, or `gcpBucket`), and actions must be idempotent because they can run more than once (Backstage docs, as of 2026-11). Do not assume resumability without testing it.
 3. Actions run with the backend's credentials (or a token the user supplied), so a template author has the privileges of the actions they can invoke. The template repository is therefore a privileged code path and needs review controls like production code.
 4. Templates are create-time only. The generated repository diverges from the template the moment it is created, and there is no update path.
 
-The design response is to make the Scaffolder do as little as possible: render a small set of files and open one pull request (an idempotent operation if the branch name is deterministic). Everything with side effects in the cloud happens in a reconciler after review.
+The design response is to make the Scaffolder do as little as possible: render a small set of files and open one pull request (idempotent only if the branch name is deterministic and the action sets `update: true`, since without it a retry fails with "Pull request already exists"; plugin source, as of 2026-11). Everything with side effects in the cloud happens in a reconciler after review.
 
 ### The platform API: Kubernetes machinery as the product surface
 
 A durable self-service API is a CRD plus admission policy plus a reconciler.
-A CRD defines the schema. CEL validation rules (`x-kubernetes-validations`) evaluate in the API server at admission without a webhook, and rules that reference `oldSelf` act as transition rules, which gives you immutability for free (Kubernetes docs, UNVERIFIED this session on GA version, believed 1.29).
+A CRD defines the schema. CEL validation rules (`x-kubernetes-validations`) evaluate in the API server at admission without a webhook, and rules that reference `oldSelf` act as transition rules, which gives you immutability for free (Kubernetes docs, stable since v1.29, as of 2026-11).
 Reconcilers consume the claim.
 
 - AWS Controllers for Kubernetes (ACK) and Google Config Connector map Kubernetes objects one to one to cloud resources.
 - Crossplane composes lower-level managed resources into a higher-level API using composition functions.
-- kro (Kube Resource Orchestrator) defines a new API from a `ResourceGraphDefinition` and builds a dependency graph from expressions between resources, and it is pre-1.0 (UNVERIFIED this session).
+- kro (Kube Resource Orchestrator) defines a new API from a `ResourceGraphDefinition` and builds a dependency graph from expressions between resources, and it is pre-1.0 (API `v1alpha1`, latest release v0.9.4, kubernetes-sigs/kro, as of 2026-11).
 
 Two properties decide whether this works. First, the API shape you publish is a contract you will support for years, so keep it small (cloud, data class, owner, retention) and let the composition choose the implementation. Second, each reconciler runs under a cloud identity, and that identity must be scoped per tenant namespace, not per cluster (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]]). The multi-tenancy primitives that make that scoping enforceable are in [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_05_Multi_Tenancy_Isolation_and_Resource_Quotas|Multi-Tenancy, Isolation, and Resource Quotas]].
 Claims are delivered by GitOps, covered next in [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_07_GitOps_Delivery_Argo_CD_and_Flux|GitOps Delivery: Argo CD and Flux]].
@@ -143,17 +174,17 @@ Design so that losing the first three degrades creation and discovery but not de
 | Backstage CNCF acceptance / incubation | 2020-09-08 / 2022-03-15 | CNCF project page, as of 2026-10 |
 | Re-stitch trigger | Hash over body, relations, errors, referred entities, parents | Backstage docs, as of 2026-10 |
 | Array reorder (for example `metadata.tags`) | Changes the hash, forces a re-stitch | Backstage docs, as of 2026-10 |
-| Default per-entity refresh interval | About 100 to 150 s, randomized | Backstage source, UNVERIFIED |
-| GitHub REST primary limit, authenticated user | 5,000 requests per hour | GitHub docs, UNVERIFIED |
-| GitHub App installation limit | 5,000 per hour base, scales with repos and users; 15,000 on Enterprise Cloud orgs | GitHub docs, UNVERIFIED |
-| Conditional GET returning 304 | Does not count against the primary limit when authenticated | GitHub docs, UNVERIFIED |
-| Backstage mainline release cadence | Monthly | Backstage project, UNVERIFIED |
-| etcd default max request size | About 1.5 MiB | etcd docs, UNVERIFIED |
-| etcd default backend quota | 2 GiB | etcd docs, UNVERIFIED |
+| Default per-entity refresh interval | 100 to 150 s, randomized | Backstage source, as of 2026-11 |
+| GitHub REST primary limit, authenticated user | 5,000 requests per hour | GitHub docs, as of 2026-11 |
+| GitHub App installation limit | 5,000 per hour base, plus 50 per repo above 20 and 50 per org user above 20, capped at 12,500; 15,000 on Enterprise Cloud orgs | GitHub docs, as of 2026-11 |
+| Conditional GET returning 304 | Does not count against the primary limit when authenticated | GitHub docs, as of 2026-11 |
+| Backstage mainline release cadence | Monthly (Tuesday before the third Wednesday) | Backstage versioning policy, as of 2026-11 |
+| etcd default max request size | 1.5 MiB | etcd docs, as of 2026-11 |
+| etcd default backend quota | 2 GiB | etcd docs, as of 2026-11 |
 | Model: 12,000 entities at 125 s mean | 96 processing cycles per second | Derived in the worked example |
 | Model: 3,000 SCM files per cycle, no ETag | 86,400 reads per hour, 17.3x a 5,000 per hour budget | Derived in the worked example |
 | Model: 40,000-entity full re-stitch at 30 ms, 4 workers | 300 s drain | Derived, assumptions stated |
-| DORA 2024 finding on platform engineering | Individual productivity up, throughput and stability down for some teams | DORA 2024 report, UNVERIFIED figures |
+| DORA 2024 finding on platform engineering | Platform users: individual productivity +8%, team performance +10%, throughput about -8%, change stability -14% | DORA 2024 report, as of 2026-11 |
 | Managed Postgres list prices (RDS, Cloud SQL) | Omitted: not verified this session | n/a |
 
 Every derived number depends on an assumption you must replace with a measurement from your own catalog.
@@ -162,14 +193,14 @@ Every derived number depends on an assumption you must replace with a measuremen
 
 | Concern | AWS | GCP | Critical difference |
 |---|---|---|---|
-| Portal hosting | EKS or ECS Fargate behind an ALB (see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_07_Amazon_EKS_Control_Plane_and_Networking\|EKS]]) | GKE or Cloud Run behind Cloud Load Balancing (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_07_GKE_Deep_Dive_Standard_vs_Autopilot\|GKE]]) | Backstage keeps task workspaces on local disk, so serverless instances that scale to zero lose in-flight scaffolder tasks |
+| Portal hosting | EKS or ECS Fargate behind an ALB (see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_07_Amazon_EKS_Control_Plane_and_Networking\|EKS]]) | GKE or Cloud Run behind Cloud Load Balancing (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_07_GKE_Deep_Dive_Standard_vs_Autopilot\|GKE]]) | Backstage keeps task workspaces on local disk by default, so serverless instances that scale to zero lose in-flight scaffolder tasks |
 | Catalog database | RDS or Aurora PostgreSQL | Cloud SQL or AlloyDB PostgreSQL | Both are single-writer Postgres; the catalog write rate (about 2 statements per entity per cycle in the model) is the sizing driver, not storage |
-| TechDocs publish store | S3 | Cloud Storage | Both are supported publishers (UNVERIFIED); build docs in CI and publish, do not build in the portal at request time |
-| Cloud inventory feed | AWS Organizations, AWS Config, Resource Explorer | Cloud Asset Inventory | Community providers exist for EKS and GKE discovery (UNVERIFIED); model them as full-mutation providers and guard against empty results |
-| K8s-native cloud resource API | ACK, per-service controllers with varying maturity | Config Connector | Config Connector is one distribution covering many resources, while ACK is a family of per-service controllers installed separately (UNVERIFIED) |
+| TechDocs publish store | S3 | Cloud Storage | Both are supported publishers, `awsS3` and `googleGcs` (Backstage docs, as of 2026-11); build docs in CI and publish, do not build in the portal at request time |
+| Cloud inventory feed | AWS Organizations, AWS Config, Resource Explorer | Cloud Asset Inventory | Upstream Backstage modules cover discovery: `AwsEKSClusterProcessor` (a processor) and `GkeEntityProvider` (a full-mutation provider) (Backstage source, as of 2026-11); guard any full-mutation provider against empty results |
+| K8s-native cloud resource API | ACK, per-service controllers with varying maturity | Config Connector | Config Connector is one distribution covering many resources, while ACK is a family of per-service controllers installed separately (Google Cloud and ACK docs, as of 2026-11) |
 | Reconciler cloud identity | IRSA or EKS Pod Identity | GKE Workload Identity Federation | Scope per namespace; a cluster-wide role makes every claim author an admin |
 | Preventive guardrails | SCPs, permission boundaries (see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine\|IAM Policy Evaluation Engine]]) | Org Policy, IAM deny (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions\|Cloud IAM]]) | Guardrails must sit below the reconciler identity so a bad claim fails at the cloud, not only at admission |
-| Managed template-of-infrastructure product | AWS Service Catalog; AWS Proton has an announced end of support (date UNVERIFIED) | Infrastructure Manager (Terraform based, GA status UNVERIFIED) | Do not build a new platform on a service with an announced end of support |
+| Managed template-of-infrastructure product | AWS Service Catalog; AWS Proton reached end of support on 2026-10-07 (AWS docs, as of 2026-11) | Infrastructure Manager (Terraform based, GA since 2023-08-21, Google Cloud release notes, as of 2026-11) | Do not build a new platform on a discontinued service |
 | Cost attribution | Cost allocation tags | Labels plus billing export to BigQuery | Propagate `owner` from the claim into tags or labels in the composition, not by developer convention |
 
 ## Worked Example: Catalog Capacity Model and a Claim-Based Golden Path
@@ -375,6 +406,7 @@ spec:
         title: "Add BucketClaim ${{ parameters.name }}"
         description: "Requested via Backstage by ${{ user.entity.metadata.name }}"
         targetPath: claims/${{ (parameters.owner | parseEntityRef).name }}
+        update: true
   output:
     links:
       - title: Pull request
@@ -402,7 +434,7 @@ spec:
 
 Why this shape:
 
-- The branch name is deterministic (`claim-<name>`), so a retry after a partial failure converges instead of creating a second artifact.
+- The branch name is deterministic (`claim-<name>`) and `update: true` is set, so a retry after a partial failure converges on the existing pull request instead of failing or creating a second artifact.
 - There is exactly one side-effecting step, so there is nothing to compensate.
 - Validation is duplicated on purpose: the form schema gives fast feedback, and the CRD plus CEL rules are the authoritative check that cannot be bypassed by committing to Git directly.
 - Ownership flows from the catalog (`OwnerPicker`) into the namespace and the label, which the composition later turns into cloud tags and labels for cost attribution.
@@ -429,7 +461,7 @@ spec:
     - resource:default/orders-db
 ```
 
-Run Postgres locally with `docker run -d --name idp-pg -e POSTGRES_PASSWORD=dev -p 5432:5432 postgres:16`, point `backend.database` at it with `client: pg`, and set `catalog.orphanStrategy: keep`. If you want to rehearse a bulk-change storm, try `catalog.stitchingStrategy.mode: deferred` (key names UNVERIFIED this session, check the installed version's config schema).
+Run Postgres locally with `docker run -d --name idp-pg -e POSTGRES_PASSWORD=dev -p 5432:5432 postgres:16`, point `backend.database` at it with `client: pg`, and set `catalog.orphanStrategy: keep`. If you want to rehearse a bulk-change storm, tune `catalog.stitchingStrategy.pollingInterval` and `stitchTimeout`; do not set `catalog.stitchingStrategy.mode`, which was removed in `@backstage/plugin-catalog-backend` 4.0.0 (Backstage changelog, as of 2026-11).
 Create the app with the standard `@backstage/create-app` generator, and import the template via a `Location` entry.
 
 ### Step 5: Exercise the failure mode
@@ -442,14 +474,14 @@ Add a tiny custom processor that writes `metadata.annotations["acme.io/seen"] = 
 
 A full-mutation provider treats absence as deletion. If the upstream call returns a successful but empty page (pagination bug, permission change, SCM outage behind a 200), the provider emits an empty set and the catalog removes every entity it owned.
 Downstream consumers that resolve ownership or on-call routing from the catalog then fail at the worst moment.
-The public analogue at much larger scale is the October 2025 AWS us-east-1 incident, in which automation applied an empty DNS record for a regional DynamoDB endpoint (AWS post-event summary, details UNVERIFIED this session). The lesson transfers directly: automation that treats "nothing" as a valid desired state needs a refuse-to-apply threshold.
-Mitigations: refuse a mutation that removes more than a configured fraction (for example 10 percent) of a provider's entities, keep `orphanStrategy: keep`, snapshot the catalog's source files, and have consumers cache last-known-good ownership.
+The public analogue at much larger scale is the October 2025 AWS us-east-1 incident, in which a race between DynamoDB's redundant DNS Enactors left the regional endpoint with an empty DNS record that automation did not repair (AWS post-event summary, as of 2026-11). The lesson transfers directly: automation that treats "nothing" as a valid desired state needs a refuse-to-apply threshold.
+Mitigations: refuse a mutation that removes more than a configured fraction (for example 10 percent) of a provider's entities (a guard you must build, since `orphanStrategy: keep` does not stop a full mutation from removing what it omits, Backstage source, as of 2026-11), set `orphanStrategy: keep` to disable the default orphan deletion, snapshot the catalog's source files, and have consumers cache last-known-good ownership.
 
 ### Hash instability and stitch storms
 
 Any processor that injects a timestamp, a random value, or an unsorted collection defeats the hash short-circuit, and a bulk change to a shared annotation re-stitches the whole catalog (Backstage docs on hash inputs, as of 2026-10).
 Symptoms: steady high write rate with no commits, rising `stitched entities` counts, API latency during bulk edits.
-Mitigations: deterministic processors, rolling bulk changes in batches, deferred stitching, and separating API-only replicas from the processing replicas.
+Mitigations: deterministic processors, rolling bulk changes in batches, tuning the deferred stitching queue, and separating API-only replicas from the processing replicas.
 
 ### SCM rate-limit exhaustion and shared fate
 
@@ -470,7 +502,7 @@ The opposite failure is a golden path so rigid that teams fork around it. Keep e
 ### The portal on the critical path
 
 If deployment, rollback, or on-call tooling requires the portal, then a portal outage becomes a delivery outage.
-Public control-plane incidents show the pattern at hyperscale: a globally replicated configuration or policy change is crash-looped by every consumer at once (Google Cloud incident of 2025-06-12 in the Service Control path, details UNVERIFIED this session).
+Public control-plane incidents show the pattern at hyperscale: a globally replicated configuration or policy change is crash-looped by every consumer at once (Google Cloud incident of 2025-06-12, in which a policy change with unintended blank fields replicated globally within seconds and hit an unhandled null pointer in Service Control; Google Cloud incident report, as of 2026-11).
 Keep the portal as a lens and an initiator, with all execution paths available through Git and the Kubernetes API, and test them with the portal turned off.
 
 ### Platform API pitfalls
@@ -483,12 +515,12 @@ Keep the portal as a lens and an initiator, with all execution paths available t
 
 ### Adoption failure
 
-A platform nobody chooses is a cost center. The DORA 2024 research reported that platform engineering was associated with higher individual productivity but not uniformly better delivery throughput and stability (figures UNVERIFIED this session), which is consistent with platforms that add a layer without removing toil.
+A platform nobody chooses is a cost center. The DORA 2024 research reported that internal developer platform users had 8% higher individual productivity and 10% higher team performance, but about 8% lower throughput and 14% lower change stability (DORA 2024 report, as of 2026-11), which is consistent with platforms that add a layer without removing toil.
 Measure adoption, time to first deploy, and ticket volume deflected, not plugin count.
 
 ### Upgrade treadmill
 
-Backstage ships frequently (monthly mainline, UNVERIFIED) and has gone through backend and frontend system migrations. A heavily customized fork pays a recurring integration cost.
+Backstage ships frequently (monthly main line, weekly next line; Backstage versioning policy, as of 2026-11) and has gone through backend and frontend system migrations. A heavily customized fork pays a recurring integration cost.
 Prefer upstream extension points, keep custom code in plugins and modules, and budget a standing upgrade rotation.
 
 ## Security and Cost Angles
@@ -496,7 +528,7 @@ Prefer upstream extension points, keep custom code in plugins and modules, and b
 ### Identity and permissions
 
 - Treat the Scaffolder as a privileged deployment pipeline. Use a least-privilege GitHub App for repository creation, prefer user-delegated tokens for actions that should be attributable to the requester, and pass them as secrets so they do not appear in logs.
-- Protect the template repository with CODEOWNERS and required review, since a template step is code that runs with backend credentials. Sandbox-escape class issues in template engines have occurred in the ecosystem (specifics UNVERIFIED), so keep the backend patched and its network egress restricted.
+- Protect the template repository with CODEOWNERS and required review, since a template step is code that runs with backend credentials. Sandbox-escape class issues have hit the Scaffolder itself: a vm2 escape (CVE-2022-36067) reachable through templates was reported by Oxeye and fixed in Backstage 1.5.1 ([The Hacker News, 2022-11](https://thehackernews.com/2022/11/critical-rce-flaw-reported-in-spotifys.html)), so keep the backend patched and its network egress restricted.
 - Use the permission framework with conditional decisions for per-team visibility and for gating sensitive actions. Test policies with deny-by-default.
 - The Kubernetes plugin should use read-only service accounts per cluster, and per-user OIDC identity where supported. Never use a local kubectl proxy mode in production.
 
@@ -528,7 +560,7 @@ A team merges a corrected `catalog-info.yaml` but the portal shows the old owner
 #### Model Answer
 
 The file is read by a processor via the SCM integration when the owning `Location` entity is next processed.
-Each entity has a scheduled next-update time with random jitter (roughly 100 to 150 seconds by default, UNVERIFIED), so the worst-case staleness is about one refresh interval plus processing queue delay, and several minutes means either a longer configured interval or a backlog.
+Each entity has a scheduled next-update time with random jitter (100 to 150 seconds by default, Backstage source, as of 2026-11), so the worst-case staleness is about one refresh interval plus processing queue delay, and several minutes means either a longer configured interval or a backlog.
 After processing, the result is hashed. If the hash differs from the previous pass the entity is stitched into the final entity and the search table is refreshed (Backstage docs, as of 2026-10), and only then does the catalog API serve the new owner.
 To speed it up safely, prefer an event-driven provider (SCM webhooks) so changes are pushed, or call the catalog refresh endpoint for the specific entity from CI after merge, instead of shortening the global interval.
 Shortening the interval globally multiplies SCM reads and database writes for the whole catalog, which can exhaust rate limits.
@@ -565,8 +597,8 @@ Stitching rewrites the final entity, relation and search rows and is much heavie
 My model: 40,000 entities at 30 ms of database time across 4 workers is 300 seconds, and real stitch cost is typically higher, which matches a 10 minute degradation.
 Diagnosis: check stitched entity counts and processing throughput, correlate the database's write and lock waits with the commit that landed, and confirm that read latency rose from contention and not from the application.
 Prevention in layers.
-First, separate API-only replicas from processing replicas using the supported option of not starting the processing engine on read instances (Backstage API reference, as of 2026-10), so reads are not scheduled behind stitch work.
-Second, enable deferred stitching if the version supports it (UNVERIFIED) to smooth load.
+First, separate API-only replicas from processing replicas using the supported option of not starting the processing engine on read instances (Backstage source, as of 2026-11), so reads are not scheduled behind stitch work.
+Second, tune the deferred stitching queue, which is the only stitching mode in current releases (`pollingInterval` and `stitchTimeout`; Backstage docs, as of 2026-11), to smooth load.
 Third, make bulk changes safe by rolling them in batches or by dual-writing the old and new annotation during a migration window.
 Fourth, add a pre-merge check that estimates blast radius (number of entities affected) for changes to shared files.
 Fifth, size the database for the storm and watch autovacuum, since large rewrites cause bloat.
@@ -614,10 +646,10 @@ A provider bug caused the catalog to drop 8,000 entities for 40 minutes. On-call
 
 #### Model Answer
 
-Root cause category: a full-mutation provider interpreted an empty upstream response as an empty desired state, a pattern that mirrors other public incidents where automation applied an empty record (for example the October 2025 AWS regional DNS event, details UNVERIFIED). The deeper cause is that critical systems treated a rebuildable index as the system of record.
+Root cause category: a full-mutation provider interpreted an empty upstream response as an empty desired state, a pattern that mirrors other public incidents where automation left an empty record in place (for example the October 2025 AWS regional DNS event, where a race between DNS Enactors emptied the DynamoDB endpoint record; AWS post-event summary, as of 2026-11). The deeper cause is that critical systems treated a rebuildable index as the system of record.
 Contributing factors: no safety threshold on mutation size, consumers calling the catalog synchronously on the critical path, no last-known-good cache, and recovery time bounded by processing throughput (entities divided by cycle rate, about 96 per second in my model for 12,000 entities, so catalog size over cycle rate is the floor).
 Design changes.
-Prevent: a provider guardrail that refuses a mutation removing more than a set fraction of its entities and pages a human, plus `orphanStrategy: keep` so removal is not destructive by default.
+Prevent: a provider guardrail that refuses a mutation removing more than a set fraction of its entities and pages a human, because the catalog has no such check and `orphanStrategy: keep` (the default is `delete`) only stops orphan cleanup, not a provider's own full-mutation removal (Backstage docs and source, as of 2026-11).
 Contain: consumers read ownership from an exported snapshot (a versioned file in object storage written on each healthy sync), so paging and deploy gating survive a catalog outage. Static stability applies to the control plane's dependents.
 Recover: a documented rebuild path from Git, and a pre-computed estimate of rebuild time, rehearsed in a game day.
 Detect: alert on entity count deltas by kind, not only on API availability, because the API was healthy while serving the wrong answer.
@@ -650,7 +682,7 @@ Argue against building a Scaffolder-based provisioning workflow for cloud infras
 
 #### Model Answer
 
-The Scaffolder has no durability, retry or compensation semantics. Steps are executed once per task by a worker holding a local workspace, side effects are not transactional, and recovery after a restart is limited (UNVERIFIED on the experimental recovery features). Using it to provision a database, network and IAM roles produces partially built stacks and unrecoverable half states.
+The Scaffolder has no compensation semantics, and by default no durable workspace or automatic recovery. Steps are executed by a worker holding a local workspace, side effects are not transactional, and recovery after a restart is opt-in, keeps the workspace only with a separately configured provider, and can re-run actions, so they must be idempotent (Backstage docs, as of 2026-11). Using it to provision a database, network and IAM roles produces partially built stacks and unrecoverable half states.
 It also holds powerful credentials and is invoked synchronously from a UI, so every provisioning request is exposed to portal availability, SCM rate limits and the user's browser session.
 A reconciler gives level-triggered convergence, drift repair, deletion handling and status, none of which a one-shot workflow offers.
 It is the right choice for create-time work that is naturally one-shot and reversible: stamping a repository, opening a pull request, registering a component, or filing a claim.
@@ -666,13 +698,13 @@ Product wants the portal to show live provisioning progress. Where does that sta
 - [Backstage catalog configuration](https://github.com/backstage/backstage/blob/master/docs/features/software-catalog/configuration.md) - processors, providers and the knobs that change catalog load.
 - [Backstage project page at the CNCF](https://www.cncf.io/projects/backstage/) - authoritative maturity and acceptance dates.
 - [CNCF announcement: Backstage joins the Incubator](https://www.cncf.io/blog/2022/03/15/backstage-project-joins-the-cncf-incubator/) - context for the project's governance move.
-- [CatalogProcessingEngine reference](https://backstage.io/docs/reference/plugin-catalog-backend.catalogprocessingengine/) - documents running API-only instances that do not start the processing loop.
-- [CNCF Platforms whitepaper](https://tag-app-delivery.cncf.io/whitepapers/platforms/) - the vendor-neutral definition of platform capabilities and platform-as-product (link not re-fetched this session).
-- [CNCF Platform Engineering Maturity Model](https://tag-app-delivery.cncf.io/whitepapers/platform-eng-maturity-model/) - a framework for staging investment and measuring outcomes (link not re-fetched this session).
-- [DORA research program](https://dora.dev/research/) - empirical evidence on platform engineering and delivery performance (link not re-fetched this session).
-- [Crossplane documentation](https://docs.crossplane.io/) - composition and function model for building higher-level APIs (link not re-fetched this session).
-- [kro project](https://github.com/kro-run/kro) - the graph-of-resources approach to defining platform APIs, a pre-1.0 project (link not re-fetched this session).
-- [GitHub REST API rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api) - the quota and conditional request rules that bound catalog polling (link not re-fetched this session).
+- [CatalogProcessingEngine source](https://github.com/backstage/backstage/blob/master/plugins/catalog-backend/src/processing/types.ts) - documents running API-only instances that do not start the processing loop.
+- [CNCF Platforms whitepaper](https://tag-app-delivery.cncf.io/whitepapers/platforms/) - the vendor-neutral definition of platform capabilities and platform-as-product.
+- [CNCF Platform Engineering Maturity Model](https://tag-app-delivery.cncf.io/whitepapers/platform-eng-maturity-model/) - a framework for staging investment and measuring outcomes.
+- [DORA research program](https://dora.dev/research/) - empirical evidence on platform engineering and delivery performance.
+- [Crossplane documentation](https://docs.crossplane.io/) - composition and function model for building higher-level APIs.
+- [kro project](https://github.com/kubernetes-sigs/kro) - the graph-of-resources approach to defining platform APIs, a pre-1.0 project.
+- [GitHub REST API rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api) - the quota and conditional request rules that bound catalog polling.
 - Team Topologies (Skelton and Pais, 2019) - the organizational model behind platform teams and cognitive load.
 - [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]] - the architectural rule that keeps the portal off the critical path.
 - [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_01_Kubernetes_Control_Loop_Internals|Kubernetes Control Loop Internals]] - the reconciliation mechanics that every platform API depends on.
