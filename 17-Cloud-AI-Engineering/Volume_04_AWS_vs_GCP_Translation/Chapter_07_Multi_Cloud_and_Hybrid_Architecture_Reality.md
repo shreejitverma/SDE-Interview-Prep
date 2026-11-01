@@ -204,7 +204,7 @@ For Kubernetes-level federation see [[04-System-Design/07-Infrastructure-and-Orc
 
 ## Numbers to Know
 
-### Verified this session
+### Verified figures
 
 | Item | Value | Source |
 |---|---|---|
@@ -225,7 +225,7 @@ For Kubernetes-level federation see [[04-System-Design/07-Infrastructure-and-Orc
 | Raft timing guidance | Election timeout 150 to 300 ms; broadcast time much less than election timeout | Raft paper, USENIX ATC 2014 |
 | Spanner TrueTime uncertainty | About 1 to 7 ms; leader leases 10 s by default | Spanner paper, OSDI 2012 |
 
-### Recalled figures, since re-verified against primary sources
+### Further figures verified against primary sources
 
 | Item | Value | Status |
 |---|---|---|

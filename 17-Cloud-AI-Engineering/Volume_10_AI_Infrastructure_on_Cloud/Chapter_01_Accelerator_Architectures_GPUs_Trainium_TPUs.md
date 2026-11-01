@@ -162,7 +162,7 @@ One or more matrix-multiply units (MXUs) are systolic arrays of BF16 multipliers
 The lineage begins with TPU v1, whose matrix unit was a weight-stationary systolic array: weights were loaded into the array and double-buffered while activations streamed through ([Jouppi et al., ISCA 2017](https://arxiv.org/abs/1704.04760)).
 In the cloud generations:
 - TPU v4 has two TensorCores and introduced optical circuit switches (OCSes) that let a 4,096-chip supercomputer reconfigure around unavailable hosts, plus SparseCores that accelerate embedding-heavy models 5x to 7x for about 5% of die area and power ([Jouppi et al., ISCA 2023](https://arxiv.org/abs/2304.01433)).
-- TPU v5p has two TensorCores with four MXUs each, 95 GB of HBM at 2,765 GB/s, and scales to 8,960 chips in a 3D torus ([Google Cloud TPU v5p docs](https://docs.cloud.google.com/tpu/docs/v5p), as of 2026-10).
+- TPU v5p has two TensorCores with four MXUs each, 95 GiB of HBM at 2,765 GB/s, and scales to 8,960 chips in a 3D torus ([Google Cloud TPU v5p docs](https://docs.cloud.google.com/tpu/docs/v5p), as of 2026-10).
 - TPU v6e (Trillium) has one TensorCore with two MXUs, a vector unit, and a scalar unit, delivering 918 BF16 TFLOP/s with 32 GB of HBM at 1,638 GBps per chip ([Google Cloud TPU v6e docs](https://docs.cloud.google.com/tpu/docs/v6e), as of 2026-10).
 
 The mechanism that matters operationally is static scheduling.

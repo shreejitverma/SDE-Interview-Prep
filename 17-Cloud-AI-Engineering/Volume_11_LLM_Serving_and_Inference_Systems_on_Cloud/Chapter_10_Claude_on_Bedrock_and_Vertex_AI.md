@@ -122,7 +122,7 @@ GCP's June 12, 2025 global incident is the cautionary case. A policy change with
 
 AWS documents a three-stage token accounting model for `bedrock-runtime` (AWS docs and AWS ML blog, as of 2026-10):
 
-1. At admission, the request is debited its total input tokens plus `max_tokens`.
+1. At admission, the request is debited its uncached input and cache-write tokens plus `max_tokens`.
 2. While it runs, the debit is adjusted periodically to reflect the output tokens actually generated.
 3. At completion, the final charge is `InputTokenCount + CacheWriteInputTokens + OutputTokenCount x burndown_rate`, and unused reservation is returned.
 
@@ -134,7 +134,7 @@ Quotas are per model and per Region and count input and output together. Some mo
 Three mechanisms follow from this, and none of them appears in a getting-started guide.
 
 First, burst admission is limited by reservation, while steady-state throughput is limited by settlement.
-With a per-minute bucket Q, a burst that arrives before any refunds can admit about `floor(Q / (I + M))` requests, where I is input tokens and M is `max_tokens`.
+With a per-minute bucket Q, a burst that arrives before any refunds can admit about `floor(Q / (I + M))` requests, where I is uncached input plus cache-write tokens and M is `max_tokens`.
 Sustained throughput instead approaches `Q / (I_uncached + C_w + b x O)` requests per minute, where O is actual output tokens and b is the burndown rate.
 Take a hypothetical Q of 2,000,000 tokens per minute, 8,000 input tokens, `max_tokens` of 32,000, and 1,000 actual output tokens at 5x. Burst admission is 50 requests, while settled cost is 13,000 tokens per request, about 153 requests per minute sustained.
 Cutting `max_tokens` to 2,000 raises the burst ceiling to 200 without changing the bill at all, because `max_tokens` affects quota, not cost.
@@ -608,7 +608,7 @@ The zero-operator-access property is documented for the new Bedrock integration 
 3. Choosing the TTL. Use the 1-hour TTL only when the same prefix recurs at least twice per hour with gaps longer than 5 minutes; otherwise the 5-minute TTL with refresh-on-hit is cheaper.
 4. Right-sizing `max_tokens`. It costs nothing in dollars but directly buys quota headroom, which delays the need for quota increases or provisioned capacity.
 5. Output length discipline. On Bedrock's `bedrock-runtime` endpoint, each output token consumes 5x, 10x, or 15x quota (AWS docs, as of 2026-10), so instructing terse output pays twice: once in price and again in admitted concurrency.
-6. Batch interfaces for offline work. Bedrock batch inference, available only on `bedrock-runtime`, is priced at 50% of on-demand for select models including Anthropic's (AWS announcement and AWS docs, as of 2026-10), and Anthropic's own Batch API is 50% off (Anthropic pricing docs, as of 2026-10); the Vertex discount for Claude is UNVERIFIED as of 2026-10.
+6. Batch interfaces for offline work. Bedrock batch inference, available only on `bedrock-runtime`, is priced at 50% of on-demand for select models including Anthropic's (AWS announcement and AWS docs, as of 2026-10), and Anthropic's own Batch API is 50% off (Anthropic pricing docs, as of 2026-10); the Vertex discount for Claude is UNVERIFIED as of 2026-11: the text of Google's Claude batch page and generative AI pricing page, as fetched, states no Claude batch discount, and only third-party guides report 50%.
 
 Cost allocation and showback for these levers belong in [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cloud_Billing_Models_and_Unit_Cost_Allocation|Cloud Billing Models and Unit Cost Allocation]].
 
@@ -620,7 +620,7 @@ Your Bedrock application returns `ThrottlingException` at 30% of its tokens-per-
 
 #### Model Answer
 
-CloudWatch shows settled consumption, but admission is decided on reservation. Bedrock debits input tokens plus `max_tokens` when a request starts and settles later at input plus cache writes plus output times the burndown rate (AWS docs, as of 2026-10).
+CloudWatch shows settled consumption, but admission is decided on reservation. Bedrock debits uncached input and cache-write tokens plus `max_tokens` when a request starts and settles later at input plus cache writes plus output times the burndown rate (AWS docs, as of 2026-10).
 If the code sets `max_tokens` to something like 32,000 while typical output is 500 tokens, each request reserves about 64 times what it actually uses for output, so a burst exhausts the bucket while settled usage looks low.
 I would first confirm this by logging input tokens, `max_tokens`, output tokens, and stop reason per request, then computing peak in-flight reservation with Little's law (arrival rate times duration times reservation per request).
 The same-day fix is to set `max_tokens` per route from a high percentile of observed output, plus a small margin, and to treat a max-tokens stop reason as a signal to re-issue with a larger limit only for that request.

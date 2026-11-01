@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: solid
+status: draft
 last_reviewed:
 sources: 
   - "https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf"
@@ -197,7 +197,7 @@ Each title and year below was confirmed on 2026-11-01 from AWS-hosted session ma
 
 | Talk | Venue | What to extract |
 | --- | --- | --- |
-| A Day in the Life of a Billion Packets (Eric Brandwine; sequel "Another Day, Another Billion Packets", 2015) | AWS re:Invent 2013 | How Nitro and the VPC data path move a packet and what state lives on the host. |
+| A Day in the Life of a Billion Packets (Eric Brandwine; sequel "Another Day, Another Billion Packets", 2015) | AWS re:Invent 2013 | How the VPC data path and mapping service move a packet and what state lives on the host. |
 | Powering next-gen Amazon EC2: Deep dive on the Nitro System | AWS re:Invent, 2018 through 2021 with small title changes | Offload card roles and the hypervisor's reduced scope. |
 | A serverless journey: AWS Lambda under the hood | AWS re:Invent 2018 and 2019 | Worker placement, microVM reuse, and cold-start composition. |
 | Amazon Aurora storage demystified | AWS re:Invent 2019 (subtitled "How it all works") and 2020 | Segment repair, quorum membership, and cache warming on failover. |

@@ -203,7 +203,7 @@ See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fa
 | Reliability philosophy | Static stability, cells, constant work, fail-static (Builders' Library) | SRE: SLIs, SLOs, error budgets, graceful degradation, postmortems |
 | Failure-domain vocabulary | Region, Availability Zone, cell | Region, zone, multi-region services with global control planes |
 | Cost vocabulary | Cloud financial management, consumption model | Align spending with value, cost culture, continuous optimization |
-| AI guidance | Lens-based, lifecycle phases, training excluded from the Gen AI Lens | Perspective-based, includes MLOps, data governance and training infrastructure |
+| AI guidance | Lens-based, lifecycle phases, pre-training from scratch excluded from the Gen AI Lens | Perspective-based, includes MLOps, data governance and training infrastructure |
 | Governance evidence sources | Config, Security Hub, Trusted Advisor, CloudTrail | Cloud Asset Inventory, Security Command Center, Recommender, audit logs |
 
 The practical difference is where state lives.
@@ -554,7 +554,7 @@ I keep the pillars but extend what counts as a hard dependency and as an SLI.
 Reliability gets a quality SLI alongside availability and latency: an offline and online eval pass rate with a budget, because a model update can fail without a single error.
 That aligns with the AWS Generative AI Lens lifecycle, where model selection, model customization and continuous improvement are explicit phases, and with Google's AI/ML reliability principles around MLOps automation and data and model governance.
 Capacity is the dominant risk: I enumerate provider quotas and accelerator reservations as dependencies with their own failure modes, and I design degraded modes such as routing to a smaller model, queue-and-defer for batch tiers, and per-tenant admission control with priority classes.
-Training is outside the AWS Generative AI Lens, so I add a custom lens for checkpoint cadence, straggler handling and silent-data-corruption detection, referencing [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fault_Tolerance_and_Fleet_Resiliency_at_Scale|Fault Tolerance and Fleet Resiliency at Scale]].
+Pre-training foundation models from scratch is outside the AWS Generative AI Lens, so I add a custom lens for checkpoint cadence, straggler handling and silent-data-corruption detection, referencing [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fault_Tolerance_and_Fleet_Resiliency_at_Scale|Fault Tolerance and Fleet Resiliency at Scale]].
 For security I add prompt-injection and tool-credential boundaries to the data-perimeter review.
 For cost I require cost per request or per token with an owner, because average utilization hides tail-driven overprovisioning.
 Triggers for out-of-cycle review include a model swap, a context-length change, a new tool with side effects, and a provider quota change.

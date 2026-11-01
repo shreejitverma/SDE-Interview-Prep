@@ -436,7 +436,7 @@ if __name__ == "__main__":
     main()
 ```
 
-Run it with `python3 /tmp/physalia/blast_radius_sim.py`. It completes in a few seconds on one core (about 2 seconds when re-run for this check, as of 2026-11).
+Run it with `python3 /tmp/physalia/blast_radius_sim.py`. It completes in a few seconds on one core (about 2 seconds when re-run, as of 2026-11).
 
 Verified output with the default seed:
 

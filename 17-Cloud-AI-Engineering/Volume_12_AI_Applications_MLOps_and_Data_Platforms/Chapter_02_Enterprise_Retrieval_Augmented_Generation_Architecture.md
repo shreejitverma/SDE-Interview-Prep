@@ -227,7 +227,7 @@ Place the highest-scoring reranked chunk first, deduplicate near-identical chunk
 | Agent Search free trial queries | 10,000 queries per account per month | (Google Cloud pricing, as of 2026-10) |
 | Agent Search configurable pricing recommended above | 15M queries per month, QPM subscription | (Google Cloud pricing, as of 2026-10) |
 | Agent Search website data store storage accounting | 500 KiB per indexed page | (Google Cloud pricing, as of 2026-10) |
-| Agent Search Ranking API | $1.00 per 1,000 requests, one request = up to 100 records | (Google Cloud pricing, as of 2026-10) |
+| Agent Search Ranking API | $1.00 per 1,000 queries; one billed query covers up to 100 records, and each further 100 bills as another query | (Google Cloud pricing, as of 2026-10) |
 | Cohere Rerank 3.5 on Bedrock | $2.00 per 1,000 queries | (AWS Bedrock pricing, as of 2026-10) |
 | Amazon Titan Text Embeddings V2 | 8,192 input tokens, 256/512/1024 dims, $0.02 per 1M tokens | (AWS docs for specs; AWS ML launch blog, 2024, for price) |
 | RRF constant | k = 60 | (Cormack et al., SIGIR 2009) |
@@ -472,7 +472,7 @@ curl -s -X POST \
                   {"id":"7","content":"Part number PN-88213 is the replacement thermal fuse for XR-series pumps."}]}'
 ```
 
-The `semantic-ranker-default@latest` alias points to the latest default ranker, currently `semantic-ranker-default-005`, and one request can carry up to 1,000 records ([Google Cloud docs](https://docs.cloud.google.com/generative-ai-app-builder/docs/ranking), as of 2026-10).
+The `semantic-ranker-default@latest` alias points to the latest default ranker, currently `semantic-ranker-default-005`, and the API accepts up to 1,000 records per request, which pricing bills in units of 100 records ([Google Cloud docs](https://docs.cloud.google.com/generative-ai-app-builder/docs/ranking), as of 2026-10).
 
 ### Step 4 - budget alarms
 
@@ -745,7 +745,7 @@ Would you build on Bedrock Managed Knowledge Base and Agent Search, or build a c
 I decide on four axes: quality controllability, unit economics at scale, isolation and data residency, and organizational cost to operate.
 At 30M queries, Bedrock Managed KB standard retrieval is about $30,000 per month with reranking and embeddings included, rising to about $60,000 if a fifth of traffic goes agentic, while Agent Search Standard is about $45,000 and Enterprise about $120,000 at general pricing, with a QPM subscription that must be quoted at this volume.
 A custom stack pays for vector and lexical serving, a reranker fleet, and a team; a hosted third-party reranker alone at $2 per 1,000 queries would be $60,000 per month, while a self-hosted cross-encoder at N = 50 needs only a handful of H100-class GPUs at peak, so the custom stack can win on unit cost but only if it is staffed.
-The storage line is the hidden variable, since both vendors charge $5 per GB-month on raw source bytes rather than extracted text, so a 2 TB PDF estate costs about ten thousand dollars a month where its extracted text alone would cost a few hundred, and I require a 1 percent pilot ingestion with billing export before any commitment.
+The storage line is the hidden variable, since both vendors charge $5 per GB-month on raw source bytes rather than extracted text, so a 2 TB PDF estate costs about ten thousand dollars a month where its extracted text alone would cost about $100 to $160, and I require a 1 percent pilot ingestion with billing export before any commitment.
 On quality, managed services do not publish fusion or reranking internals, so when a query class regresses after a silent model update, I cannot fix it, only route around it; I mitigate by owning the evaluation harness, a judged set per class and per application, and running it continuously against whichever backend serves traffic.
 My recommendation is a platform contract, not a backend: a retrieval API owned by the platform team with tenancy, ACL, provenance, evaluation, and cost attribution built in, with managed backends as the default for the long tail of applications and a custom hybrid stack for the few high-volume or high-precision applications where the economics or controllability justify it.
 That keeps the switching cost at the platform boundary instead of inside 200 applications, and it lets me move an application between backends based on its own evaluation and cost data.

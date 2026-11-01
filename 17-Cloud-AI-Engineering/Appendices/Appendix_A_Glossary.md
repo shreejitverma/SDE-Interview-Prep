@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: solid
+status: draft
 last_reviewed:
 sources: 
   - "https://docs.cloud.google.com/tpu/docs/tpu7x"
@@ -50,9 +50,9 @@ Definitions are mechanism-first: each one says what physically happens, not only
 Section 8 works six mechanisms through to numbers, and Section 11 has eight interview questions with L5, L6, and L7 model answers.
 
 Verification posture for this edition, dated 2026-11-01:
-- Vendor numbers in this appendix are limited to the Google Cloud TPU figures I checked against official documentation (Section 9).
+- Vendor numbers in this appendix are limited to the Google Cloud TPU figures I checked against official documentation (Section 9) and the few other facts attributed inline.
 - Architectural figures that come from peer-reviewed papers are tagged with the paper and year.
-- I could not re-verify GPU and Trainium specifications, instance bandwidths, storage IOPS limits, or list prices during this edition. I omitted them rather than guess. Volume 14 carries the full numbers sheet.
+- Apart from those inline attributions, I omitted GPU and Trainium specifications, instance bandwidths, storage IOPS limits, and list prices rather than guess. Volume 14 carries the full numbers sheet.
 - Numbers, names, dates, and venues were re-checked against primary sources, and claims that could not be confirmed were reworded to what the source states, so no open-verification marker remains.
 - Plain mechanism definitions that carry no citation were read for accuracy but were not each traced to a source.
 
@@ -407,7 +407,7 @@ Primary chapter pointers by domain:
 | Workload identity | IAM role via instance profile, IRSA, Pod Identity | Attached service account, Workload Identity | Prefer short-lived federated credentials over exported keys on both clouds. |
 | Offload hardware | Nitro | Titanium | Both remove the hypervisor from the I/O path, but they are different products with different guest-visible devices. |
 | HPC and AI fabric | EFA over SRD | RDMA/RoCE-based stacks on GPU VMs, ICI on TPU | Do not assume one transport model. Collectives libraries are tuned per transport. |
-| Zone naming | AZ code can vary per account in the oldest Regions for accounts created before November 2025, AZ ID is stable (AWS docs, as of 2026-11) | Zone names are stable | Cross-account AZ affinity on AWS requires AZ IDs. |
+| Zone naming | AZ code can vary per account in the oldest Regions for accounts created before November 2025, AZ ID is stable (AWS docs, as of 2026-11) | Zones are logical abstractions, and the docs do not state a per-project mapping (Google Cloud docs, as of 2026-11) | Cross-account AZ affinity on AWS requires AZ IDs. |
 
 ---
 
@@ -498,7 +498,7 @@ ZeRO-3 across 64 ranks divides it to `1.12e12 / 64 = 17.5e9` bytes per rank befo
 | Spec | v5p | v6e (Trillium) | TPU7x (Ironwood) |
 | --- | --- | --- | --- |
 | Chips per pod | 8960 | 256 | 9216 |
-| HBM per chip (GiB) | 95 | 32 | 192 |
+| HBM per chip, as listed | 95 GiB after reserved memory (96 physical) | 32 GB nominal (31.25 GiB usable) | 192 GiB |
 | HBM bandwidth per chip (GBps) | 2765 | 1638 | 7380 |
 | Bidirectional ICI per chip (GBps) | 1200 | 800 | 1200 |
 | DCN per chip (Gbps) | 50 | 100 | 100 |

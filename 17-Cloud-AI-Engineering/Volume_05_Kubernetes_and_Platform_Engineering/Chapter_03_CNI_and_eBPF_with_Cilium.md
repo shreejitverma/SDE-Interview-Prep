@@ -543,7 +543,7 @@ Compensating controls are security groups, subnet and placement isolation, and d
 
 ### SNAT port exhaustion
 
-Masquerading many pods to one node address towards one destination tuple exhausts the ephemeral port range for that tuple, and the NAT map has a hard limit on top (512k default, Cilium docs, as of 2026-10).
+Masquerading many pods to one node address towards one destination tuple exhausts the ephemeral port range for that tuple, and the NAT map has a hard limit on top (512k as the static default; a default Helm install sizes it from node memory with a 128Ki floor, Cilium docs and chart, as of 2026-11).
 Inference gateways calling a small number of upstream model endpoints are exposed to this, so prefer VPC endpoints or private service connectivity and pod-IP-routable egress.
 
 ## Security and Cost Angles

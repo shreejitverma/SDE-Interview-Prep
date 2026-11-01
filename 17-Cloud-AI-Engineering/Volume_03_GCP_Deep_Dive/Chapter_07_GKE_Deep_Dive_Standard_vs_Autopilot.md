@@ -224,7 +224,7 @@ Cilium hashes each unique set of security-relevant pod labels into a numeric sec
 Each endpoint gets an eBPF policy map keyed by (peer identity, port, protocol).
 Packets carry or resolve the source identity, so enforcement is one map lookup, and pod churn only updates the IP-to-identity cache, not every policy rule.
 The new limits are map sizes.
-- Conntrack and NAT maps have fixed maximum entries; upstream Cilium defaults conntrack to 512k TCP and 256k UDP entries per node ([Cilium docs](https://docs.cilium.io/en/stable/network/ebpf/maps/), as of 2026-11).
+- Conntrack and NAT maps have fixed maximum entries; upstream Cilium's static defaults are 512k TCP and 256k UDP conntrack entries per node, and a default Helm install sizes them from node memory instead ([Cilium docs](https://docs.cilium.io/en/stable/network/ebpf/maps/), as of 2026-11).
 - Policy maps have a per-endpoint entry ceiling, 16k by default upstream (Cilium docs, as of 2026-11).
 - On GKE the service map is limited to 260,000 endpoints across all Services, and the largest maps reserve 0.25% of node memory ([Dataplane V2 docs](https://cloud.google.com/kubernetes-engine/docs/concepts/dataplane-v2), as of 2026-11).
 - High-cardinality labels can explode the identity count.

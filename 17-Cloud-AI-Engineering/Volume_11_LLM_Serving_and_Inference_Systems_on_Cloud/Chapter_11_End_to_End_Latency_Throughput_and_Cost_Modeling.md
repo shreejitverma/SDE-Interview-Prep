@@ -395,7 +395,7 @@ Capacity math for the p5 fleet:
 - Little's check: `B = lambda_r * S_out * TPOT = 19.97 * 400 * 0.050 = 399`.
 - Fleet concurrency at peak: `R = 50 * (0.05 + 400 * 0.05) = ~1,003` sequences. Square-root staffing with `beta = 2` needs about 1,066 slots, or 2.67 replicas.
 - Add the 70% utilization ceiling and N+1 and you get 4 replicas (32 H100), which happens to equal the headroom-only answer here.
-- Monthly cost at 730 hours: on-demand $160,717, 1-yr Compute Savings Plan $126,564, 3-yr EC2 Instance Savings Plan $69,430, using the aggregator rates above.
+- Monthly cost at 730 hours: on-demand $160,717, 1-yr Compute Savings Plan $126,564, 3-yr EC2 Instance Savings Plan $69,430, using the AWS price-list rates above.
 - Realized cost at a 20 req/s mean is `220.16 / (3600 * 20 * 400) * 1e6 = $7.64` per million output tokens, 4x the saturated figure.
 - Blended across input and output tokens at saturation: `55.04 / 3600 / (7,986 + 39,931) * 1e6 = $0.32` per million tokens.
 
@@ -568,7 +568,7 @@ In multi-tenant engines, include the tenant identifier in the prefix-cache block
 ### Unit-economics levers, ranked by typical impact
 
 1. Realized utilization: soak troughs with offline or batch work, commit only to baseload, and overflow peaks to managed APIs. The swing is 2-5x in $/token.
-2. Commitment coverage: the 3-yr EC2 Instance Savings Plan on p5 is 57% below on-demand at the aggregator rates above. The June 2025 cut of up to 45% shows that list prices themselves fall, so long commitments carry price risk as well as utilization risk.
+2. Commitment coverage: the 3-yr EC2 Instance Savings Plan on p5 is 57% below on-demand at the AWS price-list rates above. The June 2025 cut of up to 45% shows that list prices themselves fall, so long commitments carry price risk as well as utilization risk.
 3. Bytes per token: FP8 weights halve the weight-streaming floor, and FP8 KV halves the KV floor and doubles session capacity. Validate quality on your own evals; see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_06_Model_Quantization_and_Compression|Model Quantization and Compression]].
 4. Prefix caching: each cached prompt token avoids `2P` FLOPs of prefill, which matters most in compute-bound chat and agent workloads with long shared system prompts.
 5. Matching SLO to regime: loosen TPOT only where the workload is memory-bound (Mechanism 4). In compute-bound regimes it saves almost nothing.
@@ -622,7 +622,7 @@ Size a self-hosted fleet for a 70B FP8 chat product: 2,000 tokens in and 400 out
 First classify the regime. With chunked prefill each step carries five prefill tokens per decode token, so at any useful batch size the step is compute-bound. That rules out paying for H200 bandwidth.
 Next solve for the largest `B` with `T_step(B) <= 50 ms`. With FP8 at MFU 0.45, each token in the step costs `2P` FLOPs plus prefill attention. That gives about 399 decode slots per TP8 H100 replica and about 20 req/s by Little's law (`399 / (400 * 0.05)`).
 Fleet concurrency at peak is about 1,003 sequences. Square-root staffing needs about 2.7 replicas. A 70% utilization ceiling plus N+1 gives 4 p5.48xlarge, which is 32 H100.
-Monthly: about $161K on-demand, about $127K on a 1-yr Compute Savings Plan, about $69K on a 3-yr Instance Savings Plan, at the aggregator rates as of 2026-10.
+Monthly: about $161K on-demand, about $127K on a 1-yr Compute Savings Plan, about $69K on a 3-yr Instance Savings Plan, at the AWS price-list rates as of 2026-10.
 Realized cost at a 20 req/s mean is about $7.6 per million output tokens, against $1.9 at saturation. That 4x gap tells me the commitment should cover only the trough (about 2 replicas), with the peak on on-demand or managed-API overflow.
 Before committing I would verify three things.
 First, `eta` and `MFU`, measured on a one-node validation run with production prompts. Every downstream number scales with them.

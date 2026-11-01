@@ -145,7 +145,7 @@ Mitigations are fully qualified names with a trailing dot, lowering `ndots`, Nod
 ### 1.6 LLM token quotas: reservation at admission, settlement afterward
 
 Managed LLM endpoints meter tokens per minute (TPM) as well as requests per minute (RPM).
-The Bedrock documentation states that the deduction at the start of a request is total input tokens plus the requested `max_tokens`, because output length is unknown ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-token-burndown.html), as of 2026-11).
+The Bedrock documentation states that the deduction at the start of a request is total input tokens plus the requested `max_tokens`, because output length is unknown, and its worked example counts uncached input and cache writes, not cache reads ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-token-burndown.html), as of 2026-11).
 At completion, the quota is settled as `InputTokenCount + CacheWriteInputTokenCount + OutputTokenCount x burndown`, and unused tokens are replenished (AWS docs, as of 2026-11).
 Burndown is model-specific on the `bedrock-runtime` endpoint: 5x for Anthropic models version 4.7 and below, 15x for Claude version 4.8, 10x for Claude Opus 5.5, Sonnet 5, Opus 5, and Fable 5.1, and 1x by default for other models (AWS docs, as of 2026-11).
 The documented start-of-request formula has no burndown multiplier, and the calculator in section 5 follows it.

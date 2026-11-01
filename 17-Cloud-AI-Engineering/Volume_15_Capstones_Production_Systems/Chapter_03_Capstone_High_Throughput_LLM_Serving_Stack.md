@@ -924,7 +924,7 @@ Give hypotheses in order of likelihood and how you would test each.
 My first hypothesis is cache locality loss.
 Adding replicas reshuffles routing, hit rate drops, and more prompts pay full prefill.
 Vertex AI's move from 35% to 70% prefix hit rate shows how large this swing is.
-I would test by plotting `prefix_cache_hits / prefix_cache_queries` per replica around the event.
+I would test by plotting `vllm:prefix_cache_hits_total / vllm:prefix_cache_queries_total` per replica around the event.
 New replicas start with empty caches and the router also shifts existing prefixes onto them.
 
 Second, new pods receive traffic before they are warm.

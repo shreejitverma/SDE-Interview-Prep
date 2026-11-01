@@ -500,7 +500,7 @@ Classify these operations as control plane or data plane, and say which should s
 #### Model Answer
 
 Control plane operations create, modify, or delete resources and propagate the change: `RunInstances`, Route 53 record edits, and attaching an EBS volume.
-Data plane operations are the primary function of an existing resource: S3 object reads, a running EC2 instance (including rebooting), and Route 53 answering DNS queries and performing health checks (AWS whitepaper, as of 2026-10).
+Data plane operations are the primary function of an existing resource: S3 object reads, a running EC2 instance, and Route 53 answering DNS queries and performing health checks (AWS whitepaper, as of 2026-10).
 The whitepaper names the running instance as the EC2 data plane without classifying reboots, so this is my inference: an OS-level reboot belongs in the data plane because configuration for existing instances is held in the data plane as a read-only copy of control plane information (AWS whitepaper, as of 2026-11), whereas the `RebootInstances` API call itself goes through the EC2 API, so I would not put it in a recovery path without checking.
 `AssumeRole` is the interesting one: the IAM data plane provides authentication and authorization in each Region and the whitepaper names `AssumeRole` against a regional STS endpoint as a recovery-path option, but creating or editing roles is control plane, so a runbook can call `AssumeRole` during an event, with failover to STS in another Region, but should not depend on creating a new role (AWS whitepaper, as of 2026-11).
 So during a control plane impairment, I expect S3 reads, running instances, DNS answers, and use of existing roles to work, and I expect launches, record edits, and attachments to be unreliable.

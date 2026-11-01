@@ -525,7 +525,7 @@ if __name__ == "__main__":
     main()
 ```
 
-I ran the generator for all four tenants in this pass and it emitted valid JSON with the committed totals above (the cluster steps below were not run, because the authoring sandbox has no container runtime).
+I ran the generator for all four tenants and it emitted valid JSON with the committed totals above (the cluster steps below were not run, because the authoring sandbox has no container runtime).
 
 ### Cost, budget alarm, and teardown
 

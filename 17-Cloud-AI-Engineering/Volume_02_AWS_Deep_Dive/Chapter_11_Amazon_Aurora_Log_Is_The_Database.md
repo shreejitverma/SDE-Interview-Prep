@@ -485,7 +485,7 @@ Never use a minimum of 0 for latency-sensitive production traffic. Keep a floor 
 ### Post-incident reviews
 
 AWS publishes multi-service post-event summaries at the [AWS Post-Event Summaries](https://aws.amazon.com/premiumsupport/technology/pes/) page. Read them for the control-plane dependency patterns that affect RDS and Aurora failover, scaling and endpoint updates during regional events.
-This pass did not verify an Aurora-specific public post-incident review, so none is cited here.
+No Aurora-specific public post-incident review is cited here.
 A cross-provider analysis is in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
 ## Security and Cost Angles

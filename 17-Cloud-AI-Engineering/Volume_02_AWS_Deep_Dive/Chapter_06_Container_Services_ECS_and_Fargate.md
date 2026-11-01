@@ -238,7 +238,7 @@ Both are documented in the current ECS developer guide, but check the Region and
 | Spot | `FARGATE_SPOT` capacity provider; no automatic fallback to On-Demand | GKE Spot VMs and Spot Pods on Autopilot; Cloud Run has no Spot tier | Fallback has to be engineered on both clouds. |
 | Workload credentials | Task role served at `169.254.170.2` by the agent, delivered through ACS | GKE Workload Identity Federation and Cloud Run service identity via the metadata server | AWS separates the execution role (agent: pull, logs, secrets) from the task role (application). |
 | Image start acceleration | SOCI lazy loading | GKE image streaming; Cloud Run image handling | Fargate never reuses a host cache, so lazy loading is the main lever. |
-| Accelerators | GPU and Neuron only on EC2 capacity; none on Fargate | GPUs on GKE node pools; NVIDIA GPUs on Cloud Run services are GA (L4 since 2025-06, RTX PRO 6000 Blackwell since 2026-04; [Google Cloud Run release notes](https://docs.cloud.google.com/run/docs/release-notes), as of 2026-11) | On AWS, serverless GPU containers mean SageMaker or Bedrock rather than Fargate. |
+| Accelerators | GPU and Neuron only on EC2 capacity; none on Fargate | GPUs on GKE node pools; NVIDIA GPUs on Cloud Run services are GA (L4 since 2025-04-07, RTX PRO 6000 Blackwell since 2026-04-13; [Google Cloud Run release notes](https://docs.cloud.google.com/run/docs/release-notes), as of 2026-11) | On AWS, serverless GPU containers mean SageMaker or Bedrock rather than Fargate. |
 
 ## Worked Example: Fargate service with Spot mix, launch-phase timing, and budget guard
 

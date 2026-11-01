@@ -243,7 +243,7 @@ Treat every price as an input to be refreshed from the pricing page, not as a fa
 | Node autoscaler | Karpenter, Cluster Autoscaler on ASG | cluster autoscaler, node auto-provisioning, compute classes | Karpenter issues direct fleet calls; GKE scales node pools |
 | Pod networking | VPC CNI, pods get ENI IPs | VPC-native alias IPs | Failure mode is subnet or ENI exhaustion vs pod range exhaustion |
 | Function runtime | Lambda | Cloud Run functions (on Cloud Run) | Lambda Event Functions on default compute are single-request-per-environment |
-| Serverless container | Fargate (not scale-to-zero), ECS Express Mode (on Fargate), App Runner (closed to new customers, AWS docs, as of 2026-11) | Cloud Run | Cloud Run is the only scale-to-zero multi-request container service of the three; Lambda Web Functions scale to zero but deploy .zip packages, not containers |
+| Serverless container | Fargate (not scale-to-zero), ECS Express Mode (on Fargate), App Runner (closed to new customers, AWS docs, as of 2026-11) | Cloud Run | Cloud Run is the only scale-to-zero multi-request container service of these; Lambda Web Functions scale to zero but deploy .zip packages, not containers |
 | Request concurrency per unit | 1 on default Lambda; multiple on Managed Instances and Web Functions (default 64, max 128) | default 80 or 80 x vCPUs, max 1000 | Primary cost driver for I/O-bound services |
 | Scale-out rate | 1,000 environments per function per 10 s | instance-based autoscaler, request buffering | Lambda scale rate is a published hard slope |
 | Max sync duration | 15 minutes | up to 60 minutes request timeout | Cloud Run fits longer streaming; Lambda needs async or step orchestration |

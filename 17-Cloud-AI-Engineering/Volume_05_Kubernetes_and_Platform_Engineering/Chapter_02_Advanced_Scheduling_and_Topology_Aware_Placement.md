@@ -284,7 +284,7 @@ DRA has been GA since v1.34, and its gate is locked on from v1.35 ([feature gate
 | Zone-loss headroom for N replicas over Z zones | Z/(Z-1): 1.5x for 3 zones, 1.33x for 4, 1.2x for 6 | derived, exact before node rounding |
 | Eviction rate per zone | 0.1 nodes/s normal, including a fully failed zone; 0.01 nodes/s when at least 55 percent unhealthy; 0 in that case if the cluster has 50 or fewer nodes | kube-controller-manager reference and Kubernetes node docs, as of 2026-11 |
 
-Apart from the Google Cloud inter-zone rate in the parity table, I did not verify any current cloud list prices for this chapter.
+Apart from the Google Cloud inter-zone rate in the parity table, this chapter quotes no current cloud list prices.
 Cost arithmetic below therefore uses named variables instead of price figures.
 
 ## AWS vs GCP Mechanism Parity

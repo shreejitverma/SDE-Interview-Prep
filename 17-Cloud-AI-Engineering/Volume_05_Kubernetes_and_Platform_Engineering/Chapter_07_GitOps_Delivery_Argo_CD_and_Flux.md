@@ -607,7 +607,7 @@ Cost levers, in order of typical impact:
 4. **Audit log volume:** list and watch traffic from controllers can dominate audit logs on a managed control plane (UNVERIFIED: no published measurement of the magnitude found). Tune the audit policy and log retention.
 5. **Per-cluster controllers versus a hub:** per-cluster Flux or Argo costs a few hundred MiB of memory per cluster in exchange for a smaller blast radius. A hub saves that and spends it on a bigger credential store. Decide on risk, then size.
 
-Platform cost per cluster is approximately `(controller memory GiB x memory price + render cores x CPU price + egress GiB x egress price) / clusters`, with prices from the current pricing pages (not verified here).
+Platform cost per cluster is approximately `(controller memory GiB x memory price + render cores x CPU price + egress GiB x egress price) / clusters`, with prices from the current pricing pages.
 
 ## Interview Questions and Model Answers
 

@@ -566,7 +566,7 @@ The docs say `c4d-standard-96` is "1 shared" NUMA domain and `c4d-standard-192` 
 Before deciding, I would prove the mechanism.
 If spikes line up with a rising LLC miss rate and memory stall cycles while request mix and instructions per request stay flat, the cause is outside the VM. Collecting that needs the guest PMU, which the docs list only for A4X, C4A, C4 and M4 and not C4D (Google Cloud docs, as of 2026-11), so on C4D I would rely on the canary below and on latency correlation.
 If the spikes line up instead with GC pauses, compaction or network retransmits, the move does not help.
-If the cause is confirmed, the 192 isolated shape removes cross-tenant cache contention entirely. You get the same total vCPU and memory at the same list price, because `c4d-standard-192` at 9.07 USD/hour is exactly twice `c4d-standard-96` at 4.54 USD/hour in us-central1 (Google Cloud pricing page, as of 2026-11).
+If the cause is confirmed, the 192 isolated shape removes cross-tenant cache contention entirely. You get the same total vCPU and memory at effectively the same list price, because `c4d-standard-192` at 9.07 USD/hour is about twice `c4d-standard-96` at 4.54 USD/hour in us-central1 (Google Cloud pricing page, as of 2026-11).
 The trade-offs:
 - Each node failure now removes 10% of capacity instead of 5%, so the per-node failure headroom (N+1 at the node level) roughly doubles in absolute terms.
 - Each node's cache warmup doubles in size.

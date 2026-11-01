@@ -627,7 +627,7 @@ Design the write path for a wallet balance service serving US and EU users with 
 Balances need an invariant (no negative balance) and RPO 0, which rules out LWW multi-writer and async single-writer replication for the ledger.
 I would use a quorum store and anchor each user's ledger in a quorum near the user's home geography: a US-anchored Spanner instance or DSQL cluster and an EU-anchored one, with users partitioned by residency.
 A single global quorum would make EU writes cross the Atlantic to reach a majority.
-Commit cost is the nearest-majority RTT; the DSQL paper measured about 30 ms p99 for a US East pair with a US West witness, versus 7.4 ms single-region (Brooker, arXiv 2607.13276, 2026).
+Commit cost tracks the nearest-majority RTT, at about 2x that RTT for DSQL; the DSQL paper measured about 30 ms p99 for a US East pair with a US West witness, versus 7.4 ms single-region (Brooker, arXiv 2607.13276, 2026).
 That leaves budget for edge RTT and app time under 200 ms in steady state.
 I would place the witness or third voter so the degraded state, with the near active region lost, still fits the SLO, and verify that with a game day, not a spreadsheet.
 Writes are an append-only ledger with an idempotency key per client operation, enforced by a unique key in the same transaction, so anycast reroutes and client retries cannot double-debit.

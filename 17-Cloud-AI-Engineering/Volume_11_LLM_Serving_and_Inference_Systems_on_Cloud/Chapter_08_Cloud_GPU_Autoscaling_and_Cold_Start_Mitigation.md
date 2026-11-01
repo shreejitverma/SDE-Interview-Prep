@@ -248,7 +248,7 @@ A fleet scheduler can do the same thing by preferring nodes whose NVMe already h
 | GKE secondary boot disk minimum version | COS 1.30.1-gke.1329000, Ubuntu 1.35.0-gke.1403000 | [GKE docs, as of 2026-10](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/data-container-image-preloading) |
 | HPA default sync period and scale-down stabilization | 15 s and 300 s | Kubernetes upstream defaults (stable) |
 | S3 request rate per partitioned prefix | at least 5,500 GET/HEAD per second (3,500 PUT/COPY/POST/DELETE) | [S3 docs, as of 2026-10](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html) |
-| p5.48xlarge On-Demand, us-east-1, Linux | about USD 55.04 per hour, after AWS's June 2025 P5 On-Demand cut of up to 45 percent | third-party trackers ([Holori](https://calculator.holori.com/aws/ec2/p5.48xlarge/us-east-1)) and the [AWS price-cut announcement](https://aws.amazon.com/blogs/aws/announcing-up-to-45-price-reduction-for-amazon-ec2-nvidia-gpu-accelerated-instances/), as of 2026-10; confirm with the Pricing API |
+| p5.48xlarge On-Demand, us-east-1, Linux | about USD 55.04 per hour, after AWS's June 2025 P5 On-Demand cut of 44 percent | third-party trackers ([Holori](https://calculator.holori.com/aws/ec2/p5.48xlarge/us-east-1)) and the [AWS price-cut announcement](https://aws.amazon.com/blogs/aws/announcing-up-to-45-price-reduction-for-amazon-ec2-nvidia-gpu-accelerated-instances/), as of 2026-10; confirm with the Pricing API |
 
 The two Hyperdisk ML throughput figures above differ: the Compute Engine page quotes 2 TiB/s per volume, while the GKE page quotes 1.2 TiB/s across 2,500 nodes.
 Treat the per-instance limit for your machine type as the binding number.
@@ -278,7 +278,7 @@ The instance terminates itself after uploading the results, and a dead-man shutd
 
 ### Cost estimate
 
-One `c6in.4xlarge`-class instance for about 1 hour, 16 GiB of S3 Standard for under a day, and a few tens of thousands of GET requests should cost under USD 2 in total (UNVERIFIED: c6in and S3 prices not checked against the Pricing API in this pass).
+One `c6in.4xlarge`-class instance for about 1 hour, 16 GiB of S3 Standard for under a day, and a few tens of thousands of GET requests should cost under USD 2 in total (UNVERIFIED: a rough estimate, not derived from the Pricing API).
 Get the current instance price with the Pricing API before running.
 
 ```bash

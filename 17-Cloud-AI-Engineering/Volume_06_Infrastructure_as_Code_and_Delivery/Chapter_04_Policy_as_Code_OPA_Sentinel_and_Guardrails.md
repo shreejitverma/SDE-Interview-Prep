@@ -720,7 +720,7 @@ A hard-mandatory policy is blocking a production hotfix during an incident. Desi
 Separate "the policy is wrong" from "the policy is right but the situation is exceptional".
 For the first case the fix is a policy change through the normal review path, which should be fast because policies are tested code.
 For the second case, build a break-glass path that is pre-authorized, narrow, time-boxed, and loud.
-In HCP Terraform that is `soft-mandatory` for controls where human judgment is acceptable, with override permission limited to an on-call group and every override recorded against the run; `hard-mandatory` is reserved for controls where no one should be able to waive, such as disabling audit logging.
+In HCP Terraform that is `soft-mandatory` for controls where human judgment is acceptable, with override permission limited to an on-call group and every override recorded against the run; `hard-mandatory` is reserved for controls where no one should be able to waive, such as disabling audit logging, with the policy set's override option left disabled.
 In a generic OPA pipeline, implement waivers as data: a signed record with resource address, policy id, approver, and an expiry, evaluated by the policy and surfaced in a dashboard.
 Do not use a "skip policy" CI variable, because it is invisible and permanent.
 Pair the exception with an automatic follow-up: a ticket that expires the waiver and a Config or Asset Inventory rule that tracks the resulting resource until it is compliant.
@@ -747,7 +747,7 @@ Success metrics are violation count trend, exception count and age, and the numb
 
 #### Follow-up Interviewer Question
 
-Org Policy propagation can take minutes and is not retroactive; how does that change your canary design and your claim that a ring is "done"?
+Org Policy propagation can take minutes and is usually not retroactive; how does that change your canary design and your claim that a ring is "done"?
 
 ### Question 5 (L6 - Staff)
 

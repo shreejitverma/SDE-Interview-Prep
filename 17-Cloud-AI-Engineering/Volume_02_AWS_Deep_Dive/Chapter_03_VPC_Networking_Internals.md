@@ -70,7 +70,7 @@ flowchart LR
   RT -. "lookup and cache" .-> MAP
   ENC --> SUB["Physical substrate - Clos fabric"]
   SUB --> HostB["EC2 host B - Nitro: decap, re-verify mapping, SG ingress"]
-  SUB --> HP["Hyperplane fleet: NAT GW, NLB, PrivateLink, GWLB, TGW"]
+  SUB --> HP["Hyperplane fleet: NAT GW, NLB, PrivateLink, GWLB"]
   SUB --> LAT["VPC Lattice data plane via 169.254.171.0/24"]
   SUB --> EDGE["Edge: IGW, VGW, Direct Connect"]
   CP["VPC control plane APIs"] -. "async config propagation" .-> RT
@@ -243,7 +243,7 @@ Prices are on-demand for the base US regions; the TGW and NAT Gateway hourly and
 | Active VPC peerings per VPC | 50 default, max 125 | AWS VPC peering quotas, as of 2026-11 |
 | Link-local packet budget | 1,024 pps per ENI to Route 53 Resolver, not adjustable; the same per-interface allowance also covers IMDS and Time Sync | AWS VPC quotas and EC2 ENA docs, as of 2026-11 |
 | MTU | 9001 in VPC; 8500 via TGW, NAT Gateway, VPC endpoints and inter-region peering; 1500 via IGW; 1446 via AWS Site-to-Site VPN | AWS EC2, TGW, VPC and VPN docs, as of 2026-11 |
-| Single-flow bandwidth | 5 Gbps outside a cluster placement group; 10 Gbps inside; 25 Gbps with ENA Express within one AZ | AWS EC2 docs, as of 2026-11 |
+| Single-flow bandwidth | 5 Gbps outside a cluster placement group; 10 Gbps inside; 25 Gbps with ENA Express within a Region, capped by the instance aggregate limit | AWS EC2 docs, as of 2026-11 |
 | Egress cap via IGW or local gateway | 50% of instance bandwidth above 32 vCPUs; 5 Gbps below 32 vCPUs; baseline bandwidth on C8in, C8ine, M8in, M8ine, M8idn, R8in, R8idn | AWS EC2 docs, as of 2026-11 |
 | Conntrack TCP established timeout | 350 s default on Nitro v6 except P6e-GB200; 432,000 s default elsewhere; 60-432,000 s range | AWS EC2 docs, as of 2026-11 |
 | TGW attachments per TGW | 5,000, adjustable | AWS TGW quotas, as of 2026-11 |

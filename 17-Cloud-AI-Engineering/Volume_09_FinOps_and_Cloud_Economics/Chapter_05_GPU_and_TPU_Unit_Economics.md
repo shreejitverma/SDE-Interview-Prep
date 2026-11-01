@@ -352,7 +352,7 @@ That crossing, not the headline $/GPU-hour, is why owners need a believable 3-ye
 
 ### Pull live prices instead of trusting the constants
 
-This helper reads the AWS Price List API, which is free, and was not executed against the live API in this session.
+This helper reads the AWS Price List API, which is free, and has not been executed against the live API.
 
 ```python
 import json, boto3

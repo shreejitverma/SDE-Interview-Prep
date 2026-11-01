@@ -641,7 +641,7 @@ The next chapter formalizes the policy engines.
 IaC itself is nearly free, and the cost lever is shape.
 Defaults inside L2s (NAT gateways in a VPC construct, multi-AZ database defaults) turn into recurring spend invisible in your code.
 Add a cost-review step on `cdk diff` output, tag via `Tags.of(app)` at the root so allocation tags propagate to every taggable resource, and set a budget in the same stack, as above.
-Hosted state and policy services have per-resource or per-seat pricing that I did not verify, so check the vendor's pricing page before committing to a platform.
+Hosted state and policy services have per-resource or per-seat pricing that is not quoted here, so check the vendor's pricing page before committing to a platform.
 
 ## Interview Questions and Model Answers
 

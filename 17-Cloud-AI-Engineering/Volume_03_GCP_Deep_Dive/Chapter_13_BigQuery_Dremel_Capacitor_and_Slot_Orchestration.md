@@ -348,7 +348,7 @@ bq query --use_legacy_sql=false --project_id=my-admin \
   WHERE period_start > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR) ORDER BY 1'
 ```
 
-Budget alerts only send notifications and do not cap spend; the hard guardrails are `maximum_bytes_billed` per job on on-demand and the reservation's `max_slots` on capacity billing.
+Budget alerts only send notifications and do not cap spend; the guardrails are `maximum_bytes_billed` per job on on-demand, a hard per-job limit, and the reservation's `max_slots` on capacity billing, which is best-effort under reservation predictability, so usage might still exceed it (Google Cloud docs, as of 2026-11).
 
 ### Teardown
 
@@ -533,7 +533,7 @@ Guardrails differ by billing model: on-demand projects get per-user and per-proj
 For allocation, all reservations go in one admin project per region so idle slots flow across units, with a reservation per workload class (interactive, batch, ML feature engineering) instead of per business unit, and project caps (Preview, as of 2026-11) stop one project from taking over a class.
 Commitments cover only the organization-wide floor of demand.
 Policy as code checks Terraform for large baselines, `ignore_idle_slots = true`, and missing `require_partition_filter` on tables above a size threshold.
-The failure mode to watch is that hard caps turn cost incidents into availability incidents, so caps need alerting at 80% and a documented break-glass path.
+The failure mode to watch is that caps turn cost incidents into availability incidents, so caps need alerting at 80% and a documented break-glass path.
 
 #### Follow-up Interviewer Question
 

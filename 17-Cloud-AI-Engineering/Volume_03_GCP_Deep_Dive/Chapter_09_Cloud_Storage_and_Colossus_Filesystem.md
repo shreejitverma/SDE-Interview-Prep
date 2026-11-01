@@ -96,12 +96,12 @@ Colossus has five parts, as described publicly by Google.
 
 The client library is, in Google's words, probably the most complex part of the file system. It implements software RAID and lets each application pick an encoding.
 Curators are a horizontally scalable metadata service that clients call for control operations such as file creation.
-The metadata database is Bigtable. Secondary write-ups based on Google talks describe roughly one Bigtable row per file (UNVERIFIED: not in Google's published descriptions).
+The metadata database is Bigtable, with one Bigtable row per file ([Serenyi, "Cluster-Level Storage @ Google", PDSW-DISCS 2017 keynote](https://www.pdsw.org/pdsw-discs17/slides/PDSW-DISCS-Google-Keynote.pdf), as of 2026-11).
 D file servers are network-attached disks, and data moves directly between clients and D servers with no Curator in the byte path.
 Custodians are background managers that balance disk space and reconstruct lost data, the RAID-repair role.
 
 There is an obvious recursion: Bigtable stores its SSTables on Colossus, and Colossus stores its metadata in Bigtable.
-Secondary write-ups based on Google talks say the loop ends by stacking smaller Colossus instances until the remaining metadata is small enough for Chubby ([Burrows, OSDI 2006](https://research.google/pubs/the-chubby-lock-service-for-loosely-coupled-distributed-systems/)). UNVERIFIED: Google's Colossus posts do not describe this layering or mention Chubby.
+Google's 2017 keynote ends the loop by hosting a Colossus on Colossus: 100 PB of data needs about 10 TB of metadata, that needs about 1 GB, and that needs about 100 KB, which fits in Chubby ([Serenyi, PDSW-DISCS 2017 keynote](https://www.pdsw.org/pdsw-discs17/slides/PDSW-DISCS-Google-Keynote.pdf), as of 2026-11).
 Operationally this means a Colossus cluster depends on a Bigtable that depends on a smaller Colossus, and any bootstrap or cold-start procedure has to bring the layers up from the bottom.
 
 A single Colossus cluster scales to exabytes and tens of thousands of machines ([Google Cloud blog, 2021-04](https://cloud.google.com/blog/products/storage-data-transfer/a-peek-behind-colossus-googles-file-system)).

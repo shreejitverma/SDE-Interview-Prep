@@ -262,7 +262,7 @@ Both trade a little extra storage for repair reads that touch a small local grou
 Second, degraded reads: when a data fragment is unavailable, a read must fetch n fragments and decode them, so the request's tail latency becomes the maximum of n disk latencies instead of one.
 Third, small writes and appends do not fit RS stripes well, because parity has to be recomputed as the stripe fills.
 The common industry pattern is to write replicated first and transcode to RS once data is cold or the stripe is sealed.
-Google has not published whether Colossus does exactly this for every encoding (UNVERIFIED for Colossus specifically).
+Google has not published whether Colossus does exactly this for every encoding (UNVERIFIED for Colossus specifically: no Google source read describes this write path).
 
 ### The real-time turn: SSD placement and the stateful protocol
 

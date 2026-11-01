@@ -79,7 +79,7 @@ On the silicon plane the translation is the hardest, because the compiler and th
 ### Serving-plane admission on Bedrock
 
 Bedrock enforces requests per minute (RPM), tokens per minute (TPM), and tokens per day (TPD) quotas per model and Region.
-Tokens are deducted in three stages: at request start the quota is charged for total input tokens plus the `max_tokens` value, during processing the charge is periodically adjusted to the output generated so far, and at the end it is reconciled to input tokens plus cache-write tokens plus output tokens multiplied by a model-specific burndown rate (Bedrock docs, as of 2026-11).
+Tokens are deducted in three stages: at request start the quota is charged for total input tokens plus the `max_tokens` value (AWS's worked example counts uncached input and cache writes, not cache reads), during processing the charge is periodically adjusted to the output generated so far, and at the end it is reconciled to input tokens plus cache-write tokens plus output tokens multiplied by a model-specific burndown rate (Bedrock docs, as of 2026-11).
 The burndown rate on the `bedrock-runtime` endpoint is 15x for output tokens on Claude 4.8, 10x on Claude Opus 5.5, Sonnet 5, Opus 5, Fable 5.1, and OpenAI GPT-5.6 models, 5x on other Anthropic Claude versions 4.7 and below, and 1:1 for all other models unless the model card says otherwise (Bedrock docs, as of 2026-11).
 Models available only on the `bedrock-mantle` endpoint have separate input and output quotas, so burndown does not apply to them (Bedrock docs, as of 2026-11).
 

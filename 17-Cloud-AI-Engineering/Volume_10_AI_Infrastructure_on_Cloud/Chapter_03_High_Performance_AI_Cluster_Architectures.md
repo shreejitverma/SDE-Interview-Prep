@@ -173,7 +173,7 @@ HyperPod's later features address exactly the terms in the Young/Daly model:
 
 - **Task governance** (Kueue-based quotas, priorities and preemption on EKS; AWS launch, 2024-12) and **flexible training plans** (reserved, time-boxed capacity for HyperPod; AWS launch, 2024-12) handle capacity.
 - **Managed tiered checkpointing**, which writes checkpoints to host memory with peer replication and drains them to S3 asynchronously, attacks C and the reload part of R (AWS launch, 2025-09, EKS-orchestrated clusters only at launch).
-- **Elastic and checkpointless training**, which lets a job continue or recover from peer state without a full storage reload, also targets R (AWS launch, 2025-12). Current docs say its recipes are verified on ml.p5 instances and that it is incompatible with managed tiered checkpointing and elastic training (SageMaker HyperPod docs, as of 2026-10).
+- **Elastic and checkpointless training**, which lets a job continue or recover from peer state without a full storage reload, also targets R (AWS launch, 2025-12). Current docs say checkpointless training recipes are verified on ml.p5 instances and that checkpointless training is incompatible with managed tiered checkpointing and elastic training (SageMaker HyperPod docs, as of 2026-10).
 
 Treat the last two as features to verify against your SDK version before designing around them.
 

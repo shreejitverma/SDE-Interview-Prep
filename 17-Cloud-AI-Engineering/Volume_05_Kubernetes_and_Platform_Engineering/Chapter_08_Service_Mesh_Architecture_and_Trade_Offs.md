@@ -270,7 +270,7 @@ A mesh balances per request across endpoints, which is often the first measurabl
 | Retry amplification | `(1 + r)^d`; 27x for r=2, d=3 | Derived | Why retries need budgets |
 | Fleet cluster objects | 2,000 pods x 1,500 services = 3.0M; scoped to 15 deps = 30k | Derived (worked example) | 100x config reduction from scoping |
 | Handshake amortization | `H / n`; 300 us assumed `H` gives 300 us at n=1, 3 us at n=100 | Derived, `H` is an assumption to measure | mTLS cost is connection reuse |
-| List prices | not quoted | Vendor pricing pages not re-verified in this pass | Worked example uses placeholders |
+| List prices | not quoted | Check vendor pricing pages | Worked example uses placeholders |
 
 ## AWS vs GCP Mechanism Parity
 

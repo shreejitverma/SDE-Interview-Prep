@@ -452,7 +452,7 @@ Mitigation: assert the active transport at startup, export transfer bandwidth pe
 
 ### Leaked prefill leases
 
-In pull mode, every request whose decode side never arrives pins prefill KV until the abort timeout.
+In pull mode, every request whose decode side never arrives pins prefill KV until `kv_lease_duration` expires.
 A decode-pool brownout therefore becomes a prefill-pool outage within a few minutes: the prefill pool fills with orphaned blocks, prefill queues grow, and TTFT collapses fleet-wide.
 Mitigation: set the lease timeout from Little's law against the prefill pool's free KV, alert on orphaned-lease count, and shed at the router when the decode pool's free blocks drop below the incoming prefill rate.
 

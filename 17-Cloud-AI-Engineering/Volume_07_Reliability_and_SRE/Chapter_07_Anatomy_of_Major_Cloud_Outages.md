@@ -130,12 +130,11 @@ Mechanism details were re-checked against the report.
 
 ### Case 6: Google Cloud networking, June 2019 (the repair path was the failing path)
 
-Source: [Google Cloud incident 19009](https://status.cloud.google.com/incident/cloud-networking/19009) (Google Cloud status, as of 2026-10).
-Details are recalled from the report; the recovery-obstacle claim is marked UNVERIFIED.
+Source: [Google Cloud incident 19009](https://status.cloud.google.com/incident/cloud-networking/19009) (Google Cloud status, as of 2026-11).
 
-- Trigger: a configuration change intended for a small number of servers in one region was applied to a larger set across several neighboring regions, descheduling network control plane jobs.
-- Effect: network capacity dropped and egress traffic congested.
-- Recovery obstacle: UNVERIFIED the congestion also degraded the network that engineers needed to reach the systems they were repairing, which lengthened the event to several hours.
+- Trigger: during a maintenance event in one physical location, two normally benign misconfigurations and a software bug let automation deschedule network control plane jobs across multiple physical locations.
+- Effect: the network failed static for several minutes, then BGP routing between affected locations was withdrawn, which significantly reduced capacity and congested traffic in the affected regions.
+- Recovery obstacle: the report says debugging was significantly hampered by tools competing for the congested network, and configuration data lost with the control plane had to be rebuilt and redistributed, so packet loss lasted between 3 hours 19 minutes and 4 hours 25 minutes.
 - Lesson: the repair path must have its own bandwidth reservation and its own path, and "who can fix it when the network is down" is a design requirement.
 
 ### Case 7: DynamoDB us-east-1, October 2025 (stale actor, then congestive collapse)

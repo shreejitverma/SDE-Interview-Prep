@@ -185,7 +185,7 @@ Design so that losing the first three degrades creation and discovery but not de
 | Model: 3,000 SCM files per cycle, no ETag | 86,400 reads per hour, 17.3x a 5,000 per hour budget | Derived in the worked example |
 | Model: 40,000-entity full re-stitch at 30 ms, 4 workers | 300 s drain | Derived, assumptions stated |
 | DORA 2024 finding on platform engineering | Platform users: individual productivity +8%, team performance +10%, throughput about -8%, change stability -14% | DORA 2024 report, as of 2026-11 |
-| Managed Postgres list prices (RDS, Cloud SQL) | Omitted: not verified this session | n/a |
+| Managed Postgres list prices (RDS, Cloud SQL) | Omitted: check vendor pricing pages | n/a |
 
 Every derived number depends on an assumption you must replace with a measurement from your own catalog.
 
@@ -544,7 +544,7 @@ Admission rules (CEL in the CRD, plus Kyverno or OPA) are the preventive layer, 
 
 ### Cost levers
 
-- Portal run cost is small (a few small replicas plus managed Postgres, list prices not quoted here because they were not verified this session). The dominant cost is engineers, so staff the platform team as a product team and track cost per supported service.
+- Portal run cost is small (a few small replicas plus managed Postgres, list prices not quoted here). The dominant cost is engineers, so staff the platform team as a product team and track cost per supported service.
 - Cut database load by lengthening the refresh interval for stable entity kinds, using event-driven providers, and eliminating non-deterministic processors.
 - Build TechDocs in CI and publish to object storage instead of building at request time.
 - Make the claim carry `owner`, and have the composition stamp it into cloud tags or labels, so showback works without developer discipline. Costs flow to the owning team through the same catalog identity.

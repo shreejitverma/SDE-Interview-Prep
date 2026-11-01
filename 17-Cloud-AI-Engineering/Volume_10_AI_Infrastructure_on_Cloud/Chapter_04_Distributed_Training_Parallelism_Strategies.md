@@ -84,7 +84,7 @@ This batch ceiling is why trillion-token runs on 16K GPUs use model parallelism 
 ### Data parallelism: the mechanism under DDP
 
 Every DP rank holds a full replica (or, with ZeRO, a shard of the optimizer state), processes its own microbatches, and the ranks all-reduce gradients before the optimizer step.
-PyTorch DDP groups gradients into buckets (25 MB by default via `bucket_cap_mb`) in reverse layer order and fires each bucket's all-reduce as soon as autograd has filled it.
+PyTorch DDP groups gradients into buckets (25 MiB by default via `bucket_cap_mb`) in reverse layer order and fires each bucket's all-reduce as soon as autograd has filled it.
 That lets the last layers' communication overlap the first layers' backward compute.
 A ring all-reduce over n ranks sends 2(n-1)/n x S bytes per rank, which is bandwidth-optimal and nearly independent of n; latency grows linearly with n, which is why NCCL switches to tree or hierarchical algorithms at scale.
 ZeRO stage 1 replaces the all-reduce with a reduce-scatter of gradients plus an all-gather of updated parameters, the same total volume, and the optimizer state per GPU drops by a factor of d ([Rajbhandari et al., SC20](https://arxiv.org/abs/1910.02054)); the next chapter covers stages 2 and 3.
@@ -558,7 +558,7 @@ On RoCE fabrics, you depend on QP-count tuning and adaptive routing.
 A rank stuck in a collective (a bad NVLink lane, an ECC-retired page causing slow memory, a thermally throttled GPU) does not fail; it stalls.
 Every other rank then waits until the NCCL watchdog timeout fires, often after many minutes of a fully paid, fully idle fleet.
 MegaScale documents the in-depth observability and diagnosis tooling ByteDance had to build to localize such stragglers at 10K+ GPUs ([MegaScale, NSDI 2024](https://www.usenix.org/system/files/nsdi24-jiang-ziheng.pdf)).
-Llama 3 reported 466 job interruptions over a 54-day snapshot (47 planned, 419 unexpected); about 78% of the unexpected ones were attributed to confirmed hardware issues, and GPU issues alone were 58.7% of unexpected interruptions ([Llama 3 paper](https://arxiv.org/abs/2407.21783)).
+Llama 3 reported 466 job interruptions over a 54-day snapshot (47 planned, 419 unexpected); about 78% of the unexpected ones were attributed to confirmed or suspected hardware issues, and GPU issues alone were 58.7% of unexpected interruptions ([Llama 3 paper](https://arxiv.org/abs/2407.21783)).
 At those rates, mean time between job-level failures at 16K GPUs is measured in hours, so checkpoint and restart latency become first-order throughput terms.
 
 ### Silent numerical divergence from parallelism bugs

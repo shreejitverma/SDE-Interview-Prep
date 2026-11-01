@@ -597,7 +597,7 @@ Quiet periods are exactly when connections sit idle past the backend timeout.
 To confirm, check the load balancer request logs for the status details on the 502s and correlate them with connection age.
 The fix is to set the backend keepalive above 600 s, for example 620 s.
 Raising GFE retries is the wrong fix, because retries on non-idempotent POSTs are unsafe and only hide the cause.
-For the regional Envoy-based load balancer the same reasoning applies with its 600 s backend default.
+For the regional Envoy-based load balancer the same reasoning applies with its fixed 600 s backend keepalive.
 
 #### Follow-up Interviewer Question
 

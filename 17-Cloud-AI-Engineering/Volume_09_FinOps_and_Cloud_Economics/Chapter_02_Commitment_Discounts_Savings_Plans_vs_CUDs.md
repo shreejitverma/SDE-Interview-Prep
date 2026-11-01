@@ -100,7 +100,7 @@ This has three consequences:
 
 A Savings Plan is a commitment in dollars per hour, expressed at the discounted Savings Plan rate, for a 1 or 3 year term, with All Upfront, Partial Upfront, or No Upfront payment ([AWS Savings Plans user guide](https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html), as of 2026-11).
 Database Savings Plans are the exception, with a 1-year term and no upfront payment only ([AWS Database Savings Plans pricing](https://aws.amazon.com/savingsplans/database-pricing/), as of 2026-11).
-The same guide says the prices you pay for usage stay the same through the plan term, which matters for the price-decline analysis below.
+The AWS Savings Plans user guide says the prices you pay for usage stay the same through the plan term, which matters for the price-decline analysis below.
 AWS currently sells four plan types: Compute, EC2 Instance, SageMaker AI, and Database ([AWS plan types](https://docs.aws.amazon.com/savingsplans/latest/userguide/plan-types.html), as of 2026-11).
 Compute Savings Plans apply to EC2 regardless of family, size, region, OS, or tenancy, and also to Fargate and Lambda (same source).
 EC2 Instance Savings Plans are scoped to one instance family in one region and are flexible across size, OS, and tenancy within it (same source).
@@ -222,7 +222,7 @@ The commitment layer is the financial analogue: cover the long-lived production 
 | Lab stress, 40% unit price cut | Flexible-style commit: post-cut utilization 75.5%, full-year saving 13.7%. Rate-locked commit: full-year saving 4.9%, post-cut saving -16.9% | Lab script output, synthetic demand |
 
 Pricing for specific instance types is deliberately absent.
-GPU list prices have moved sharply (AWS announced On-Demand reductions of up to 33% on P4d and P4de, up to 45% on P5, and up to 26% on P5en in June 2025, [AWS What's New](https://aws.amazon.com/about-aws/whats-new/2025/06/pricing-usage-model-ec2-instances-nvidia-gpus/)), and any figure I printed would be stale.
+GPU list prices have moved sharply (AWS announced On-Demand reductions of 33% on P4d and P4de, 44% on P5, and 25% on P5en in June 2025, with Savings Plan reductions of up to 45% on P5 and 26% on P5en, [AWS News Blog](https://aws.amazon.com/blogs/aws/announcing-up-to-45-price-reduction-for-amazon-ec2-nvidia-gpu-accelerated-instances/), as of 2026-11), and any figure I printed would be stale.
 Pull current rates with the AWS Price List API or the Cloud Billing Catalog API at purchase time.
 
 ## AWS vs GCP Mechanism Parity
@@ -365,7 +365,7 @@ The numbers below are from the script run with seed 7.
 - Survival test for 3-year versus rolling 1-year: the 3-year slice wins only above 75% average survival.
   Apply it only to the portion of the baseline you would stake a product line on, and use the 1-year term for the rest.
 - Flexible-style versus rate-locked under a 40% price cut at midyear, d = 0.28: the flexible-style commitment saves 13.7% with post-cut utilization of 75.5%.
-  The rate-locked commitment stays fully used on the same units but saves only 4.9% over the year, and -16.9% after the cut, because its locked 0.72 rate is above the new 0.60 on-demand price.
+  The rate-locked commitment keeps its 96.3% utilization on the same units but saves only 4.9% over the year, and -16.9% after the cut, because its locked 0.72 rate is above the new 0.60 on-demand price.
 
 ### Step 3: Read-only AWS recommendation and coverage queries
 
@@ -503,7 +503,7 @@ The commitment itself cannot be torn down once it has fired, which is the point 
 A commitment is a bet that unit prices will not fall faster than your demand grows.
 In the lab, a 40% price cut at midyear drops the utilization of a flexible-style dollar commitment to 75.5%, and the saving falls from 20.5% to 13.7%.
 A rate-locked commitment keeps its utilization, but its saving falls to 4.9% for the year, and -16.9% after the cut.
-GPU instance prices have dropped materially in recent cycles (in June 2025 AWS cut P4d and P4de by up to 33%, P5 by up to 45%, and P5en by up to 26%, for On-Demand from June 1 and Savings Plan purchases effective after June 4, [AWS What's New](https://aws.amazon.com/about-aws/whats-new/2025/06/pricing-usage-model-ec2-instances-nvidia-gpus/)), so for accelerators a 3-year commitment is a short position on your own vendor.
+GPU instance prices have dropped materially in recent cycles (in June 2025 AWS cut On-Demand prices by 33% on P4d and P4de, 44% on P5, and 25% on P5en from June 1, and Savings Plan rates by up to 31%, 45%, and 26% for purchases after June 4, [AWS News Blog](https://aws.amazon.com/blogs/aws/announcing-up-to-45-price-reduction-for-amazon-ec2-nvidia-gpu-accelerated-instances/), as of 2026-11), so for accelerators a 3-year commitment is a short position on your own vendor.
 Mitigations are 1-year terms for accelerator spend, ladders, and sizing at the P(d) quantile of a demand curve that already reflects the expected price path.
 
 ### Family and region lock-in
@@ -659,7 +659,7 @@ Capacity first: no Savings Plan holds capacity, so the fleet's guaranteed supply
 Price second: a commitment on accelerators is exposed to price declines.
 AWS says plan prices stay the same through the term, so a plan keeps paying its old rate while new buyers get the lower one.
 In my model a 40% cut at midyear takes a correctly sized rate-locked commitment from a 20.5% saving to 4.9% for the year, and to -16.9% after the cut.
-Accelerator prices have fallen sharply in recent cycles: in June 2025 AWS cut P4d and P4de by up to 33%, P5 by up to 45%, and P5en by up to 26%, for Savings Plan purchases effective after June 4 (AWS What's New, as of 2026-11), so I treat a 3-year commitment as a short position on the vendor's price list.
+Accelerator prices have fallen sharply in recent cycles: in June 2025 AWS cut On-Demand prices by 33% on P4d and P4de, 44% on P5, and 25% on P5en, and Savings Plan rates by up to 31%, 45%, and 26% for purchases after June 4 (AWS News Blog, as of 2026-11), so I treat a 3-year commitment as a short position on the vendor's price list.
 Generation third: an instance-family-scoped plan strands when the fleet moves to the next generation.
 My proposal is a ladder of 1-year Compute Savings Plans sized to the P(d) quantile of the forecast floor, covering only the long-lived inference baseline, with training bursts on reservations, Blocks, and Spot.
 The 3-year term is used only for the slice where expected survival exceeds (1 - d3)/(1 - d1), about 75% at illustrative discounts.

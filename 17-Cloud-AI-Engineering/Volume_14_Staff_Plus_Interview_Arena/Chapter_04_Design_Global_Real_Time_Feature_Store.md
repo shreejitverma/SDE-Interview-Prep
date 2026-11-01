@@ -470,7 +470,7 @@ On Bigtable, the docs rate an SSD node at 17,000 reads/s for 1KB rows (as of 202
 Assume about 10,000/s at 2KB, which gives 30 nodes for reads, plus about 6 for 40,000 writes/s, for roughly 36 nodes at full load.
 At the 60% maximum CPU utilization that Google recommends for latency-optimized clusters (90% for throughput-optimized; Google Cloud docs, as of 2026-10), that is 60 nodes, roughly 60 x 730 x $0.65, or about $28,500 per month (Google Cloud pricing page, as of 2026-10), with storage negligible at 1TB x $0.17.
 The structural conclusion: request-unit pricing punishes write-heavy streaming features, and node pricing rewards sustained throughput but makes you own headroom and autoscaling.
-DynamoDB provisioned capacity with reserved capacity would narrow the gap, but those prices were not verified this session.
+DynamoDB provisioned capacity with reserved capacity would narrow the gap, but this comparison does not price it.
 Cross-cloud replication of 20,000 updates/s per direction at about 600 bytes is 12 MB/s, or about 31.5 TB per month per direction, roughly $2,700 per month on AWS us-east-1 internet egress tiers ($0.09/GB for the first 10 TB, $0.085/GB for the next 40 TB; AWS Price List API, as of 2026-10), against about 4x that for raw-event replication.
 See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]].
 

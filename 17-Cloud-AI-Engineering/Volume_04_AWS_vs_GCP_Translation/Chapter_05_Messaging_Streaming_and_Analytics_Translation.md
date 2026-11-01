@@ -216,7 +216,7 @@ Prices are US list prices unless stated.
 | BigQuery editions slot-hour (US) | 0.04 Standard, 0.06 Enterprise, 0.10 Enterprise Plus, pay as you go; per-second billing with a 1-minute minimum unless opted into Fluid scaling | Google Cloud pricing (as of 2026-11) |
 | Dataproc service fee | 0.010 USD per vCPU-hour over Compute Engine, per second with a 1-minute minimum | Google Cloud pricing (as of 2026-11) |
 | EMR service fee | per-second uplift over EC2 that varies by instance type, 1-minute minimum | AWS pricing (as of 2026-11) |
-| Inter-region and internet egress (typical list) | inter-region 0.02 USD per GB within North America on both clouds; internet 0.09 USD per GB for the first 10 TB per month on AWS, 0.12 down to 0.085 USD per GiB to North America on Google Cloud | AWS price list and Google Cloud network pricing (as of 2026-11) |
+| Inter-region and internet egress (typical list) | inter-region 0.02 USD per GB within North America on both clouds; internet 0.09 USD per GB for the first 10 TB per month on AWS, 0.12 down to 0.08 USD per GiB to North America on Google Cloud | AWS price list and Google Cloud network pricing (as of 2026-11) |
 
 Derived numbers used later (these follow from the table rows, not from separate sources):
 shared-consumer polling floor = N x 200 ms per shard;
