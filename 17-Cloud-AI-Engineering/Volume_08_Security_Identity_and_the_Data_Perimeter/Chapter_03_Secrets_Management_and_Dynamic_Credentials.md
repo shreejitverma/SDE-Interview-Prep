@@ -16,6 +16,35 @@ sources:
   - "https://developer.hashicorp.com/vault/docs/internals/architecture"
   - "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/"
   - "https://aws.amazon.com/builders-library/static-stability-using-availability-zones/"
+  - "https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_PutSecretValue.html"
+  - "https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_RotateSecret.html"
+  - "https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_CreateSecret.html"
+  - "https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_DeleteSecret.html"
+  - "https://docs.aws.amazon.com/secretsmanager/latest/userguide/security-encryption.html"
+  - "https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotation-strategy.html"
+  - "https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotate-secrets_lambda-functions.html"
+  - "https://docs.aws.amazon.com/secretsmanager/latest/userguide/create-manage-multi-region-secrets.html"
+  - "https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access_examples_cross.html"
+  - "https://docs.aws.amazon.com/secretsmanager/latest/userguide/api-keys-security-sensitive.html"
+  - "https://aws.amazon.com/secrets-manager/pricing/"
+  - "https://docs.aws.amazon.com/general/latest/gr/iam-service.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_revoke-sessions.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/requests-per-second.html"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://cloud.google.com/secret-manager/pricing"
+  - "https://docs.cloud.google.com/secret-manager/docs/secret-rotation"
+  - "https://docs.cloud.google.com/secret-manager/docs/event-notifications"
+  - "https://docs.cloud.google.com/secret-manager/docs/audit-logging"
+  - "https://docs.cloud.google.com/run/docs/configuring/services/secrets"
+  - "https://developer.hashicorp.com/vault/docs/configuration"
+  - "https://developer.hashicorp.com/vault/docs/enterprise/consistency"
+  - "https://developer.hashicorp.com/vault/docs/concepts/seal"
+  - "https://developer.hashicorp.com/vault/tutorials/monitoring/troubleshoot-irrevocable-leases"
+  - "https://github.com/hashicorp/vault/blob/main/vault/expiration.go"
+  - "https://www.hashicorp.com/en/blog/hashicorp-adopts-business-source-license"
+  - "https://newsroom.ibm.com/2025-02-27-IBM-Completes-Acquisition-of-HashiCorp,-Creates-Comprehensive,-End-to-End-Hybrid-Cloud-Platform"
+  - "https://about.codecov.io/security-update/"
+  - "https://circleci.com/blog/january-4-2023-security-alert/"
 ---
 
 # Secrets Management and Dynamic Credentials
@@ -55,36 +84,36 @@ The cache sits in the workload on purpose. It is the only component that keeps w
 ### Object model and storage
 
 AWS Secrets Manager stores a secret as a container for a set of versions.
-Each version holds an encrypted payload of up to 65,536 bytes and zero or more staging labels (AWS docs, as of 2026-10).
-Labels are mutable pointers over immutable versions, and two versions cannot carry the same label. A version can carry several labels, up to 20 labels across all versions of a secret (AWS docs, as of 2026-10).
-Secrets Manager never removes labeled versions. It treats unlabeled versions as deprecated and removes them once there are more than 100, but never one created less than 24 hours ago (AWS docs, as of 2026-10).
+Each version holds an encrypted payload of up to 65,536 bytes and zero or more staging labels (AWS docs, as of 2026-11).
+Labels are mutable pointers over immutable versions, and two versions cannot carry the same label. A version can carry several labels, up to 20 labels across all versions of a secret (AWS docs, as of 2026-11).
+Secrets Manager never removes labeled versions. It treats unlabeled versions as deprecated and removes them once there are more than 100, but never one created less than 24 hours ago (AWS docs, as of 2026-11).
 Payloads are envelope-encrypted under a KMS key you choose, with the AWS managed key as the default.
-KMS is called on your behalf, and the decrypt shows up in CloudTrail with the secret ARN and version ID as encryption context (from memory, UNVERIFIED).
+KMS is called on your behalf, and the decrypt shows up in CloudTrail with the secret ARN and version ID as encryption context (AWS docs, as of 2026-11).
 The consequence is that secret read availability is the product of Secrets Manager availability and KMS availability. Key policy errors surface as secret read failures (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]]).
 
 GCP Secret Manager uses the same shape with different words.
-A secret is a container with a replication policy. Versions are numbered, immutable, and have states (enabled, disabled, destroyed). `latest` is an alias resolved at access time (from memory, UNVERIFIED).
+A secret is a container with a replication policy. Versions are numbered, immutable, and have states (enabled, disabled, destroyed). `latest` is an alias to the most recently created version, resolved at access time ([Secret Manager REST reference](https://docs.cloud.google.com/secret-manager/docs/reference/rest/v1/projects.secrets.versions/access), as of 2026-11).
 The consequence of integer versions plus an alias is that "which version does my client hold" is a property of when the client resolved the alias, not of when the secret rotated.
 
 ### AWS rotation as a journaled state machine
 
-`RotateSecret` invokes your Lambda once per step, with an event carrying `SecretId`, `ClientRequestToken`, and `Step`. The token is the version ID of the in-flight attempt.
-The four steps are `createSecret`, `setSecret`, `testSecret`, `finishSecret` (AWS docs, as of 2026-10).
-The staging labels are the durable journal. `AWSPENDING` marks a candidate not yet trusted, `AWSCURRENT` marks what readers get by default, and `AWSPREVIOUS` marks the last good value kept for rollback (AWS docs, as of 2026-10).
+`RotateSecret` invokes your Lambda once per step, with an event carrying `SecretId`, `ClientRequestToken`, `Step`, and `RotationToken`, which is needed for assumed-role or cross-account rotation (AWS docs, as of 2026-11). The token is the version ID of the in-flight attempt.
+The four steps are `createSecret`, `setSecret`, `testSecret`, `finishSecret` (AWS docs, as of 2026-11).
+The staging labels are the durable journal. `AWSPENDING` marks a candidate not yet trusted, `AWSCURRENT` marks what readers get by default, and `AWSPREVIOUS` marks the last good value kept for rollback (AWS docs, as of 2026-11).
 Three properties make this robust, and none of them appear in getting-started guides.
 
-1. Idempotency is carried by the token. `PutSecretValue` with the same `ClientRequestToken` and the same payload is a no-op, and with a different payload it is rejected (from memory, UNVERIFIED). A retried `createSecret` therefore cannot mint two candidates.
+1. Idempotency is carried by the token. `PutSecretValue` with the same `ClientRequestToken` and the same payload is a no-op, and with a different payload it is rejected (PutSecretValue API reference, as of 2026-11). A retried `createSecret` therefore cannot mint two candidates.
 2. The handler must treat label state as the source of truth. The AWS template checks that rotation is enabled, that the token has a stage, and that it is staged `AWSPENDING`, and it returns early if the token is already `AWSCURRENT`. Without that last check a retry of `finishSecret` after a success would raise and leave the schedule in a failed state.
 3. A crash between a side effect at the target and the journal write leaves an orphan at the target. The target is the part the journal cannot see. Your `createSecret` or `setSecret` must be able to find and reclaim orphans, because the label journal has no record of them.
 
 The two rotation strategies differ only in what `setSecret` mutates.
-Single-user rotation changes the password of the same database user the secret names. In the interval between `setSecret` (the database now rejects the old password) and `finishSecret` (readers get the new one), every new connection using the cached `AWSCURRENT` fails. Secrets Manager's own documentation of the strategy admits the window is small but non-zero (AWS Security Blog and Secrets Manager docs, as of 2026-10).
-Alternating-users rotation maintains two database users in one secret. During the first rotation the function clones the first user to create the second (AWS docs, as of 2026-10).
+Single-user rotation changes the password of the same database user the secret names. In the interval between `setSecret` (the database now rejects the old password) and `finishSecret` (readers get the new one), every new connection using the cached `AWSCURRENT` fails. Secrets Manager's own documentation of the strategy admits the window is short but non-zero, calls the risk low, and recommends a retry strategy (Secrets Manager docs, as of 2026-11).
+Alternating-users rotation maintains two database users in one secret. During the first rotation the function clones the first user to create the second (AWS docs, as of 2026-11).
 Each rotation changes only the user that is not currently served, so the user clients hold stays valid for a full rotation interval. The overlap window equals the rotation interval.
 The cost is that the clone copies grants at clone time. A privilege change you apply later to user A silently does not exist on user B, and the failure appears at the next flip as a permissions error, not an authentication error.
 
-Rotation functions are templates for RDS and Aurora, plus a generic template for anything else (AWS docs, as of 2026-10).
-For secrets that are third-party API keys, the AWS guidance is that `testSecret` verifies the pending key against the provider, and that `finishSecret` moves the labels and optionally deletes the old key (AWS docs, as of 2026-10).
+Rotation function templates cover RDS and Aurora, DocumentDB, Redshift, Timestream for InfluxDB, ElastiCache, and Active Directory, plus a generic template for anything else (AWS docs, as of 2026-11).
+For secrets that are third-party API keys, the AWS guidance is that `testSecret` verifies the pending key against the provider, and that `finishSecret` moves the labels and optionally deletes the old key (AWS docs, as of 2026-11).
 
 ### The overlap window inequality
 
@@ -102,31 +131,35 @@ The client-side fallback that closes the gap when `W` is short is: on an authent
 
 ### GCP: notification, not execution
 
-GCP Secret Manager rotation is a schedule on the secret (a rotation period and a next rotation time) plus Pub/Sub topics. When the time arrives the service publishes a notification and advances the schedule. It does not generate or apply a new credential (from memory, UNVERIFIED).
-Pub/Sub delivery is at-least-once, so the executor must be idempotent. A reliable key is "does a version newer than the rotation boundary already exist".
-The Secret Manager service agent needs publish rights on the topic, or the notifications silently never arrive. Monitor the absence of rotation events, not only their failure.
+GCP Secret Manager rotation is a schedule on the secret (a rotation period and a next rotation time) plus Pub/Sub topics. When the time arrives the service publishes a notification and advances the schedule. It does not generate or apply a new credential (Secret Manager rotation docs, as of 2026-11).
+Pub/Sub delivery is at-least-once by default ([Pub/Sub docs](https://docs.cloud.google.com/pubsub/docs/subscription-overview), as of 2026-11), so the executor must be idempotent. A reliable key is "does a version newer than the rotation boundary already exist".
+The Secret Manager service agent needs publish rights on the topic.
+Without them, setting the topic on the secret fails at create or update time, and if the grant is lost later the notifications stop arriving and only logs on the secret show it (Secret Manager docs, as of 2026-11).
+Monitor the absence of rotation events, not only their failure.
 The consequence is that GCP gives you the scheduling and eventing, and you own the journal, the orphan reclamation, and the test step.
-There is no label journal, so the equivalent of `AWSPENDING` must be modeled, for example as a disabled version that you enable only after testing (UNVERIFIED as a pattern recommendation, mechanism from memory).
+There is no label journal, so the equivalent of `AWSPENDING` must be modeled, for example as a disabled version that you enable only after testing.
+A disabled version cannot be accessed but can return to the enabled state ([REST reference](https://docs.cloud.google.com/secret-manager/docs/reference/rest/v1/projects.locations.secrets.versions), as of 2026-11); the pattern itself is an engineering recommendation, not documented Google guidance.
+Consumers must then read a pinned number or a custom alias, because `latest` points at the most recently created version, which is the disabled candidate.
 
-Alias resolution is the GCP trap. A `latest` reference consumed as an environment variable is resolved once at instance start, so a rotated value is not seen until the instance is replaced. A volume mount can observe newer values on read (Cloud Run behavior from memory, UNVERIFIED, verify against current Cloud Run docs).
+Alias resolution is the GCP trap. A `latest` reference consumed as an environment variable is resolved once at instance start, so a rotated value is not seen until the instance is replaced. A volume mount fetches the value from Secret Manager on each read, and Google recommends pinning a version for environment variables (Cloud Run docs, as of 2026-11).
 
 ### Vault: leases, the expiration manager, and the write path
 
-Vault's storage is encrypted by a barrier key. The barrier key is protected by a root key, which is protected either by Shamir-split unseal keys (Shamir, "How to Share a Secret", CACM 1979) or by an auto-unseal wrapper in a cloud KMS.
-Auto-unseal creates a startup dependency on regional KMS. A running cluster is unaffected by a KMS outage, but a restart during one cannot unseal. This is a static stability question, so keep unseal KMS in the same failure domain assumptions as the cluster (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]]).
+Vault's storage is encrypted behind the barrier with a key from the keyring. The keyring is encrypted by a root key, and the root key is protected by an unseal key that is either Shamir-split (Shamir, "How to Share a Secret", CACM 1979) or protected by auto-unseal through a cloud KMS or HSM (Vault docs, as of 2026-11).
+Auto-unseal creates a startup dependency on regional KMS. A running node stays unsealed through a KMS outage, but a restart during one cannot unseal, and recovery keys cannot decrypt the root key (Vault seal docs, as of 2026-11). This is a static stability question, so keep unseal KMS in the same failure domain assumptions as the cluster (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]]).
 Integrated storage uses Raft (Ongaro and Ousterhout, USENIX ATC 2014; see [[08-Distinguished-Engineering/02-Distributed-Systems-Internals/Raft-Consensus|Raft-Consensus]]). Every write commits through a leader and a quorum fsync.
 
 A dynamic secret read, for example `database/creds/app`, is semantically a write.
-The engine runs `creation_statements` against the target, and Vault writes a lease record to storage and registers it with the expiration manager (mechanism from memory, UNVERIFIED in detail).
-The expiration manager keeps in-memory timers for every lease. After a restart or leadership change it rebuilds them by scanning lease records, so recovery time scales with lease count (from memory, UNVERIFIED).
-At expiry or revocation it calls the engine's revoke handler, for example `DROP ROLE`. Failures retry with backoff, and a lease that keeps failing is marked irrevocable and stays in storage until an operator force-revokes it (from memory, UNVERIFIED).
+The engine runs `creation_statements` against the target, and Vault writes a lease record to storage and registers it with the expiration manager (Vault architecture and consistency docs, as of 2026-11).
+The expiration manager keeps in-memory timers for every lease. After a restart or leadership change it rebuilds them by scanning lease records (`Restore` in [vault/expiration.go](https://github.com/hashicorp/vault/blob/main/vault/expiration.go), as of 2026-11), so recovery time scales with lease count.
+At expiry or revocation it calls the engine's revoke handler, for example `DROP ROLE`. Failures retry with exponential backoff from a 10 second base, and after 6 failed attempts a lease is marked irrevocable and stays in storage until an operator force-revokes it (vault/expiration.go and the Vault irrevocable leases tutorial, as of 2026-11).
 
 Three consequences matter in capacity planning.
 1. Live leases follow Little's law: `L = lambda * W`, where `lambda` is the creation rate and `W` is the TTL (Little, Operations Research, 1961). A batch fleet starting 50 jobs per second with a 15-minute lease holds 45,000 live leases.
-2. Standby nodes forward writes to the active node, so dynamic secret issuance is bound by one node's commit path regardless of cluster size. Performance standbys help reads, and lease-creating reads are writes (from memory, UNVERIFIED for current OSS and Enterprise behavior).
+2. Standby nodes forward writes to the active node, so dynamic secret issuance is bound by one node's commit path regardless of cluster size. Performance standbys, which require Vault Enterprise or HCP Vault Dedicated, help reads, and lease-creating reads still make an RPC to the active node to store the lease (Vault docs, as of 2026-11).
 3. Revocation is a second load, correlated in time. Leases created in a deploy wave expire in the same minute, so the target database sees a burst of `DROP ROLE` exactly when the next wave is being created. Jitter TTLs, or stagger deploys.
 
-The target database is the other half of the cost. Each Vault-created PostgreSQL role is a row in shared catalogs, and high churn produces catalog bloat and lock contention in `CREATE ROLE` and `DROP ROLE`. Measure role churn per hour on the database, not only Vault throughput (engineering inference, UNVERIFIED as a measured number).
+The target database is the other half of the cost. Each Vault-created PostgreSQL role is a row in `pg_authid`, a single catalog shared by every database in the cluster ([PostgreSQL docs](https://www.postgresql.org/docs/current/catalog-pg-authid.html), as of 2026-11), and high churn produces catalog bloat and lock contention in `CREATE ROLE` and `DROP ROLE` (UNVERIFIED: engineering inference, no published measurement found). Measure role churn per hour on the database, not only Vault throughput.
 
 ### Dynamic credential taxonomy
 
@@ -136,7 +169,7 @@ The target database is the other half of the cost. Each Vault-created PostgreSQL
 | Static secret with rotation | Secrets Manager or Secret Manager plus executor | Yes, by rotating | One credential, plus cache window |
 | Vault dynamic | Vault engine creates a user or key per lease | Yes, by revoking the lease | One lease |
 
-For AWS STS the revocation story is a deny policy conditioned on `aws:TokenIssueTime`, which is how the IAM console "revoke active sessions" action works (from memory, UNVERIFIED). It revokes every session of the role issued before a time, not one session.
+For AWS STS the revocation story is a deny policy conditioned on `aws:TokenIssueTime`, which is how the IAM console "revoke active sessions" action works through the `AWSRevokeOlderSessions` inline policy (AWS IAM docs, as of 2026-11). It revokes every session of the role issued before a time, not one session.
 This is why per-workload roles beat shared roles for incident response.
 
 ### Delivery paths and their trade-offs
@@ -148,30 +181,30 @@ This is why per-workload roles beat shared roles for incident response.
 | Mounted file via CSI driver or agent | Poll interval | Mount refresh lag, and the app must re-read the file |
 | Local sidecar or agent | Agent-managed | Another process to run, but it centralizes cache, retry, and renewal |
 
-For Kubernetes see [[04-System-Design/07-Infrastructure-and-Orchestration/Kubernetes-Architecture|Kubernetes-Architecture]]. Kubernetes `Secret` objects are base64 in etcd, and envelope encryption in the API server must be enabled separately.
+For Kubernetes see [[04-System-Design/07-Infrastructure-and-Orchestration/Kubernetes-Architecture|Kubernetes-Architecture]]. Kubernetes `Secret` objects are base64 in etcd and stored unencrypted by default, and encryption at rest in the API server must be enabled separately ([Kubernetes docs](https://kubernetes.io/docs/concepts/configuration/secret/), as of 2026-11).
 
 ## Numbers to Know
 
 | Quantity | Value | Source |
 |---|---|---|
-| Secrets Manager `GetSecretValue` rate | 10,000 requests per second per Region | AWS What's New, 2025-03 (as of 2026-10) |
-| Secrets Manager `DescribeSecret` rate | 40,000 requests per second per Region | AWS What's New, 2025-03 (as of 2026-10) |
-| `BatchGetSecretValue` rate | 100 requests per second | AWS quotas, via third-party mirror (as of 2026-10) |
-| Combined `PutSecretValue`, `UpdateSecret`, `UpdateSecretVersionStage` and replication calls | 50 per second per Region | AWS quotas (as of 2026-10) |
-| Max secret payload | 65,536 bytes | AWS quotas (as of 2026-10) |
-| Secrets per Region per account | 500,000 | AWS quotas (as of 2026-10) |
-| Staging labels across all versions of one secret | 20 | AWS quotas (as of 2026-10) |
-| Unlabeled version cleanup | Removed when more than 100, never if under 24 hours old | AWS quotas (as of 2026-10) |
-| Update cadence that outruns cleanup | More often than once per 10 minutes | AWS quotas (as of 2026-10) |
-| Secrets Manager price | $0.40 per secret per month (prorated hourly), $0.05 per 10,000 API calls | AWS pricing page as reported by secondary sources (as of 2026-10) |
-| Secrets Manager secret deletion recovery window | 7 to 30 days, default 30 | UNVERIFIED, from memory |
-| IAM access keys per user | 2 | UNVERIFIED, from memory |
-| GCP Secret Manager payload limit | 64 KiB | UNVERIFIED, from memory |
-| GCP Secret Manager access quota | 90,000 access requests per minute per project | UNVERIFIED, from memory |
-| GCP Secret Manager price | $0.06 per active version per location per month, $0.03 per 10,000 access operations | UNVERIFIED, from memory |
-| GCP Secret Manager minimum rotation period | 1 hour | UNVERIFIED, from memory |
-| Vault default lease TTL | 32 days (768h) | UNVERIFIED, from memory |
-| Vault license | Business Source License since August 2023; HashiCorp acquired by IBM, closed early 2025 | UNVERIFIED, from memory |
+| Secrets Manager `GetSecretValue` rate | 10,000 requests per second per Region | AWS What's New, 2025-03 (as of 2026-11) |
+| Secrets Manager `DescribeSecret` rate | 40,000 requests per second per Region | AWS What's New, 2025-03 (as of 2026-11) |
+| `BatchGetSecretValue` rate | 100 requests per second per Region | AWS quotas (as of 2026-11) |
+| Combined `PutSecretValue`, `UpdateSecret`, `UpdateSecretVersionStage` and replication calls | 50 per second per Region | AWS quotas (as of 2026-11) |
+| Max secret payload | 65,536 bytes | AWS quotas (as of 2026-11) |
+| Secrets per Region per account | 500,000 | AWS quotas (as of 2026-11) |
+| Staging labels across all versions of one secret | 20 | AWS quotas (as of 2026-11) |
+| Unlabeled version cleanup | Removed when more than 100, never if under 24 hours old | AWS quotas (as of 2026-11) |
+| Update cadence that outruns cleanup | More often than once per 10 minutes | AWS quotas (as of 2026-11) |
+| Secrets Manager price | $0.40 per secret per month (prorated by the hour in AWS's example), $0.05 per 10,000 API calls | AWS pricing page (as of 2026-11) |
+| Secrets Manager secret deletion recovery window | 7 to 30 days, default 30 | DeleteSecret API reference (as of 2026-11) |
+| IAM access keys per user | 2, not adjustable | AWS IAM quotas (as of 2026-11) |
+| GCP Secret Manager payload limit | 64 KiB | Google quotas (as of 2026-11) |
+| GCP Secret Manager access quota | 90,000 access requests per minute per project | Google quotas (as of 2026-11) |
+| GCP Secret Manager price | $0.06 per active version per location per month, $0.03 per 10,000 access operations, $0.05 per rotation notification; 6 versions, 10,000 accesses, and 3 notifications free monthly | Google pricing page (as of 2026-11) |
+| GCP Secret Manager minimum rotation period | 1 hour | Secret Manager rotation docs (as of 2026-11) |
+| Vault default lease TTL | 32 days (768h), for both `default_lease_ttl` and `max_lease_ttl` | Vault configuration docs (as of 2026-11) |
+| Vault license | Business Source License v1.1 for releases after 2023-08-10; IBM closed its HashiCorp acquisition on 2025-02-27 | HashiCorp blog, IBM newsroom (as of 2026-11) |
 | Derived: 4,000 pods, 3 secrets each, 5 minute TTL | 40 requests per second, about 103.7M calls and $518 per 30 days | Computed below |
 | Derived: same fleet, 1 hour TTL | 3.3 requests per second, about 8.6M calls and $43 per 30 days | Computed below |
 
@@ -179,18 +212,18 @@ For Kubernetes see [[04-System-Design/07-Infrastructure-and-Orchestration/Kubern
 
 | Dimension | AWS Secrets Manager | GCP Secret Manager |
 |---|---|---|
-| Version model | Immutable versions, mutable staging labels, `AWSCURRENT` default | Immutable numbered versions with states, `latest` alias (UNVERIFIED) |
-| Rotation executor | Managed schedule invokes your Lambda per step; RDS and Aurora templates provided | Schedule plus Pub/Sub notification only; you build the executor (UNVERIFIED) |
+| Version model | Immutable versions, mutable staging labels, `AWSCURRENT` default | Immutable numbered versions with states, `latest` alias (Google docs, as of 2026-11) |
+| Rotation executor | Managed schedule invokes your Lambda per step; templates provided for RDS, Aurora, and other AWS engines | Schedule plus Pub/Sub notification only; you build the executor (Google docs, as of 2026-11) |
 | Rotation journal | Labels `AWSPENDING`, `AWSCURRENT`, `AWSPREVIOUS` | None; model pending state yourself (for example a disabled version) |
 | Idempotency primitive | `ClientRequestToken` equals version ID | Your own key; Pub/Sub is at-least-once |
-| Read throughput | 10,000 rps `GetSecretValue` per Region (AWS, as of 2026-10) | 90,000 per minute per project, about 1,500 rps (UNVERIFIED) |
-| Replication | Replicas in other Regions with per-Region KMS key; rotation happens in the primary (UNVERIFIED in detail) | Automatic or user-managed replication policy, plus regional secrets (UNVERIFIED) |
-| Encryption | KMS, default AWS managed key; customer managed key required to share cross-account (UNVERIFIED) | Google-managed default, CMEK optional (UNVERIFIED) |
+| Read throughput | 10,000 rps `GetSecretValue` per Region (AWS, as of 2026-11) | 90,000 per minute per project, about 1,500 rps (Google, as of 2026-11) |
+| Replication | Replicas in other Regions with per-Region KMS key; rotation happens in the primary and propagates (AWS docs, as of 2026-11) | Automatic or user-managed replication policy, plus regional secrets (Google docs, as of 2026-11) |
+| Encryption | KMS, default AWS managed key; customer managed key required to share cross-account (AWS docs, as of 2026-11) | Google-managed default, CMEK optional (Google docs, as of 2026-11) |
 | Access control | Identity policy plus resource policy plus KMS key policy; `secretsmanager:VersionStage` condition key | IAM role `secretmanager.secretAccessor` plus IAM Conditions; grant per secret, not per project |
 | Private path | Interface VPC endpoint with endpoint policy | Private Service Connect or Private Google Access, plus VPC Service Controls perimeter |
-| Short-lived alternative | STS sessions, minimum 900 seconds (UNVERIFIED) | IAM Credentials API access tokens, default 1 hour (UNVERIFIED) |
-| Delete semantics | Scheduled deletion with recovery window; name stays reserved during it (UNVERIFIED) | Version destroy, optionally delayed (UNVERIFIED) |
-| Audit | CloudTrail management events for reads and writes | Admin Activity logs; secret access is a Data Access log that must be enabled (UNVERIFIED) |
+| Short-lived alternative | STS sessions, minimum 900 seconds, default 3,600 ([AssumeRole API reference](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html), as of 2026-11) | IAM Credentials API access tokens, default and default maximum 1 hour ([generateAccessToken reference](https://docs.cloud.google.com/iam/docs/reference/credentials/rest/v1/projects.serviceAccounts/generateAccessToken), as of 2026-11) |
+| Delete semantics | Scheduled deletion with recovery window; `CreateSecret` fails on a name still scheduled for deletion (AWS API reference, as of 2026-11) | Version destroy, optionally delayed by 1 to 1,000 days ([Google docs](https://docs.cloud.google.com/secret-manager/docs/delay-destruction-of-secret-versions), as of 2026-11) |
+| Audit | CloudTrail management events for reads and writes | Admin Activity logs; secret access is a Data Access log that must be enabled (Google docs, as of 2026-11) |
 
 | Dimension | Native stores | HashiCorp Vault |
 |---|---|---|
@@ -199,19 +232,19 @@ For Kubernetes see [[04-System-Design/07-Infrastructure-and-Orchestration/Kubern
 | Failure domain | Regional managed service | Your cluster, your Raft quorum, your unseal KMS |
 | Scaling limit | API rate and KMS | Live lease count and active-node write commits |
 | Operational cost | Near zero | Upgrades, backup of Raft snapshots, seal and DR design |
-| Licensing and fork risk | Not applicable | BUSL; community fork OpenBao exists (UNVERIFIED) |
+| Licensing and fork risk | Not applicable | BUSL; community fork [OpenBao](https://openbao.org/) exists under the Linux Foundation (as of 2026-11) |
 
 ## Worked Example: IAM access key rotation with a two-slot Lambda
 
 This lab rotates the access key of a legacy integration IAM user.
-IAM allows two active keys per user (UNVERIFIED), which is the alternating-users strategy for free. The new key is created while the old one stays valid, and the old key is deleted only at the next rotation, so the overlap window equals the rotation interval.
+IAM allows two access keys per user (AWS IAM quotas, as of 2026-11), which is the alternating-users strategy for free. The new key is created while the old one stays valid, and the old key is deleted only at the next rotation, so the overlap window equals the rotation interval.
 The seed secret holds an empty placeholder so that no key material enters Terraform state.
 
 ### Cost estimate and guardrails
 
-- One secret: $0.40 per month, prorated hourly (AWS pricing page via secondary sources, as of 2026-10). A lab of a few hours costs about $0.01.
+- One secret: $0.40 per month, prorated by the hour in AWS's example (AWS pricing page, as of 2026-11). A lab of a few hours costs about $0.01.
 - API calls: under 100 for the lab, about $0.0005 at $0.05 per 10,000.
-- Lambda: well inside any free allowance for a handful of invocations (UNVERIFIED).
+- Lambda: a handful of invocations is well inside the free tier of 1 million requests and 400,000 GB-seconds per month ([AWS Lambda pricing](https://aws.amazon.com/lambda/pricing/), as of 2026-11).
 - The budget below alarms at 80 percent of $5.
 
 ### `main.tf`
@@ -455,12 +488,8 @@ def finish_secret(arn, token):
         MoveToVersionId=token,
         RemoveFromVersionId=current,
     )
-    try:
-        sm.update_secret_version_stage(
-            SecretId=arn, VersionStage="AWSPENDING", RemoveFromVersionId=token
-        )
-    except ClientError:
-        pass  # already removed by the service
+    # Leave AWSPENDING alone: AWS warns that removing it by a separate call can
+    # signal to Secrets Manager that the rotation did not complete.
 ```
 
 ### Run and observe
@@ -468,7 +497,8 @@ def finish_secret(arn, token):
 ```bash
 terraform init && terraform apply -var alert_email=you@example.com
 SID=lab/legacy-integration/access-key
-for i in 1 2 3; do
+sleep 45  # apply already started rotation 1: rotate_immediately defaults to true
+for i in 2 3; do
   aws secretsmanager rotate-secret --secret-id "$SID"
   sleep 45
   aws secretsmanager describe-secret --secret-id "$SID" --query VersionIdsToStages
@@ -476,40 +506,45 @@ for i in 1 2 3; do
 done
 ```
 
+Rotation 1 comes from `terraform apply`, because `rotate_immediately` defaults to `true` on `aws_secretsmanager_secret_rotation` ([Terraform AWS provider docs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_rotation), as of 2026-11).
 Expected behavior: after rotation 1 there is one key, after rotation 2 there are two keys and the older one is `AWSPREVIOUS`, and after rotation 3 the first key is deleted inside `createSecret` before the third is created. At no point is the key a client got from `AWSCURRENT` invalid before the next rotation.
-The rotation after `rotate-secret` can take longer than 45 seconds when `testSecret` retries, so re-run the `describe-secret` if labels have not moved.
+A rotation can take longer than 45 seconds when `testSecret` retries, so re-run the `describe-secret` if labels have not moved.
+`RotateSecret` returns an error while an earlier rotation still holds `AWSPENDING` on a different version than `AWSCURRENT` (RotateSecret API reference, as of 2026-11), so re-run that step too if it fails this way.
 
 ### Capacity and cost arithmetic for a fleet reading this secret
 
 Assume 4,000 pods (for example inference replicas that need a provider key) each reading 3 secrets.
 
 1. Steady state with a 5 minute cache TTL: `4,000 * 3 / 300 s = 40 requests per second`.
-2. Monthly calls: `40 * 2,592,000 s = 103,680,000`, which is `10,368` blocks of 10,000, or `10,368 * $0.05 = $518.40` (AWS pricing as reported, as of 2026-10).
+2. Monthly calls: `40 * 2,592,000 s = 103,680,000`, which is `10,368` blocks of 10,000, or `10,368 * $0.05 = $518.40` (AWS pricing page, as of 2026-11).
 3. With a 1 hour TTL: `12,000 / 3,600 = 3.33 requests per second`, `8,640,000` calls, `$43.20`.
-4. Cold-start burst: all 4,000 pods restart within 30 seconds, `12,000 / 30 = 400 requests per second`, which is 4 percent of the 10,000 rps quota (AWS, as of 2026-10). The quota is not the constraint, the shared KMS and the identity token endpoint behind it usually are.
+4. Cold-start burst: all 4,000 pods restart within 30 seconds, `12,000 / 30 = 400 requests per second`, which is 4 percent of the 10,000 rps quota (AWS, as of 2026-11). The quota is not the constraint at this size.
+The same burst adds up to 400 `Decrypt` calls per second to the symmetric KMS quota, which defaults to 10,000, 20,000, or 100,000 per second depending on Region and is shared by every caller in the account (KMS docs, as of 2026-11), so check what else consumes that quota.
 5. Stored secret cost for 300 secrets: `300 * $0.40 = $120` per month. Packing related values into one JSON secret under 65,536 bytes cuts that line item without touching the read bill.
-6. Vault comparison for the same fleet: one database credential per pod with a 1 hour TTL renewed at half TTL gives `L = 4,000` live leases, about `4,000 * 3 / 3,600 = 3.3` lease writes per second at steady state, and a 60 second deploy wave produces about 67 creates per second plus a matching revoke wave an hour later. Size the target database for that role churn.
+6. Vault comparison for the same fleet: one database credential per pod with a 1 hour TTL renewed at half TTL gives `L = 4,000` live leases, about `4,000 * 3 / 3,600 = 3.3` lease writes per second at steady state (counting one create and two renewals per lease per hour), and a 60 second deploy wave produces about 67 creates per second plus a matching revoke wave an hour later. Size the target database for that role churn.
 
 ### GCP counterpart (notification only)
 
 ```bash
 PROJECT=my-project
 gcloud pubsub topics create secret-rotation --project=$PROJECT
-gcloud secrets create lab-api-key --replication-policy=automatic \
-  --topics=projects/$PROJECT/topics/secret-rotation \
-  --rotation-period=2592000s \
-  --next-rotation-time=2026-11-21T00:00:00Z --project=$PROJECT
-# The Secret Manager service agent must be able to publish to the topic.
+# The Secret Manager service agent must be able to publish to the topic before
+# the secret names it, or the create fails.
+gcloud beta services identity create --service=secretmanager.googleapis.com --project=$PROJECT
 PN=$(gcloud projects describe $PROJECT --format='value(projectNumber)')
 gcloud pubsub topics add-iam-policy-binding secret-rotation \
   --member=serviceAccount:service-$PN@gcp-sa-secretmanager.iam.gserviceaccount.com \
   --role=roles/pubsub.publisher --project=$PROJECT
+gcloud secrets create lab-api-key --replication-policy=automatic \
+  --topics=projects/$PROJECT/topics/secret-rotation \
+  --rotation-period=2592000s \
+  --next-rotation-time=2026-11-21T00:00:00Z --project=$PROJECT
 # Teardown
 gcloud secrets delete lab-api-key --quiet --project=$PROJECT
 gcloud pubsub topics delete secret-rotation --quiet --project=$PROJECT
 ```
 
-Flag names and the service agent name come from memory and are listed as UNVERIFIED; check `gcloud secrets create --help` before use.
+Flag names, the service agent name, and the grant order follow the Secret Manager rotation and notification docs (as of 2026-11); the commands have not been run here, and `--next-rotation-time` must be at least five minutes in the future.
 The Pub/Sub consumer must dedupe because delivery is at-least-once.
 
 ```python
@@ -551,8 +586,8 @@ A rotation Lambda that creates a key or a user and then times out leaves state a
 
 ### Version churn and cost
 
-Updating a secret more often than every 10 minutes creates versions faster than cleanup removes them, because cleanup only removes unlabeled versions beyond 100 and never under 24 hours old (AWS docs, as of 2026-10).
-Custom labels stop cleanup entirely, since labeled versions are never removed (AWS docs, as of 2026-10), so a deploy pipeline that labels every release leaks versions.
+Updating a secret more often than every 10 minutes creates versions faster than cleanup removes them, because cleanup only removes unlabeled versions beyond 100 and never under 24 hours old (AWS docs, as of 2026-11).
+Custom labels exempt versions from cleanup, since labeled versions are never removed, and a secret can hold only 20 labels (AWS docs, as of 2026-11), so a deploy pipeline that labels every release runs into the label quota.
 
 ### Reachability of the rotation function
 
@@ -561,12 +596,13 @@ Put the function in the same VPC as the database and add a Secrets Manager inter
 
 ### Cross-account and key policy
 
-A secret encrypted with the AWS managed key cannot be read by another account, because that key's policy cannot be changed (from memory, UNVERIFIED). Use a customer managed key for any secret shared across accounts.
+A secret encrypted with the AWS managed key cannot be read by another account, because that key's policy cannot be changed (AWS docs, as of 2026-11). Use a customer managed key for any secret shared across accounts.
 Deleting or disabling the KMS key makes every secret under it unreadable, with an error that looks like an application outage.
 
 ### Names stay reserved after delete
 
-Without `recovery_window_in_days = 0`, a Terraform destroy followed by apply collides with the scheduled-deletion name and fails (from memory, UNVERIFIED).
+Without `recovery_window_in_days = 0`, a Terraform destroy followed by apply collides with the scheduled-deletion name and fails, because `CreateSecret` lists a secret scheduled for deletion as a cause of `InvalidRequestException` (CreateSecret API reference, as of 2026-11).
+Even a forced delete is asynchronous, so AWS advises backoff and retry before recreating the name (DeleteSecret API reference, as of 2026-11).
 
 ### Thundering herd at boot
 
@@ -579,11 +615,11 @@ On GCP, a `latest` alias consumed as an environment variable never changes for t
 
 ### Pub/Sub duplicates and silent no-delivery
 
-At-least-once rotation events cause double rotation if the executor is not idempotent. A missing publisher grant causes zero events, which looks like a healthy quiet system until the credential expires.
+At-least-once rotation events cause double rotation if the executor is not idempotent. A publisher grant lost after setup causes zero delivered events, because failed sends are retried for up to seven days and then canceled (Secret Manager rotation docs, as of 2026-11), which looks like a healthy quiet system until the credential expires.
 
 ### Vault lease explosion and irrevocable leases
 
-Dynamic secrets with short TTLs and high creation rates drive live lease count up, slowing restarts and leadership changes (lease restore scales with count). Failed revocations accumulate as irrevocable leases and keep real accounts alive at the target (from memory, UNVERIFIED).
+Dynamic secrets with short TTLs and high creation rates drive live lease count up, slowing restarts and leadership changes (lease restore scales with count). Failed revocations accumulate as irrevocable leases and keep real accounts alive at the target, and Vault notes they degrade performance during startup and when a node assumes leadership (Vault irrevocable leases tutorial, as of 2026-11).
 Watch lease count and irrevocable lease count, and alert on both.
 
 ### Vault dependency circles
@@ -592,23 +628,23 @@ If Vault's own database credentials, TLS certificates, or unseal key come from a
 
 ### Public incidents
 
-- The Codecov bash uploader compromise (2021) exfiltrated environment variables from customer CI, which shows why long-lived secrets in env vars have a blast radius equal to every build that ran. Codecov's own postmortem describes it (reference by name; URL not verified).
-- The CircleCI incident of December 2022 to January 2023 led the vendor to tell customers to rotate every secret stored in the platform. The lesson is that rotation tooling and revocation drills are worth building before the incident, because the recovery cost scales with secret count (reference by name; URL not verified).
-- The AWS us-east-1 event of 2025-10-19 and 2025-10-20 (DynamoDB DNS) showed that a regional control surface failure propagates to every service that resolves credentials or configuration at start. Whether Secrets Manager reads were among the impacted operations is UNVERIFIED, but the design lesson holds: processes that need a secret at boot should hold a stale-on-error local copy (see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]]).
+- The Codecov bash uploader compromise (2021) exfiltrated environment variables from customer CI, which shows why long-lived secrets in env vars have a blast radius equal to every build that ran. [Codecov's own security update](https://about.codecov.io/security-update/) describes it, with unauthorized script changes from 2021-01-31 until a customer reported a checksum mismatch on 2021-04-01.
+- The CircleCI incident of December 2022 to January 2023 led the vendor to tell customers to rotate every secret stored in the platform. The lesson is that rotation tooling and revocation drills are worth building before the incident, because the recovery cost scales with secret count ([CircleCI security alert](https://circleci.com/blog/january-4-2023-security-alert/) and [incident report](https://circleci.com/blog/jan-4-2023-incident-report/)).
+- The AWS us-east-1 event of 2025-10-19 and 2025-10-20 (DynamoDB DNS, 23:48 PDT on 10-19 to 14:20 PDT on 10-20) showed that a regional control surface failure propagates to services that resolve credentials or configuration at start. [AWS's post-event summary](https://aws.amazon.com/message/101925/) reports STS errors and latency in us-east-1 and does not name Secrets Manager or KMS, but the design lesson holds: processes that need a secret at boot should hold a stale-on-error local copy (see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]]).
 
 ## Security and Cost Angles
 
 ### IAM scoping
 
 - Grant read access per secret ARN, never `secretsmanager:*` on `*`. On GCP bind `roles/secretmanager.secretAccessor` on the individual secret, not the project.
-- Restrict labels with the `secretsmanager:VersionStage` condition key, so a consumer can read `AWSCURRENT` but not `AWSPENDING` (AWS docs, as of 2026-10).
+- Restrict labels with the `secretsmanager:VersionStage` condition key, so a consumer can read `AWSCURRENT` but not `AWSPENDING` (AWS docs, as of 2026-11).
 - Separate three identities: the consumer (read `AWSCURRENT`), the rotator (describe, get, put, update stage on one secret plus the minimum target-system actions), and the administrator (create, delete, change resource policy).
 - Use a resource policy with `aws:PrincipalOrgID` and `aws:SourceVpce` so a stolen credential used outside the VPC endpoint is denied, and an endpoint policy to bound which secrets the VPC can read.
 
 ### Key hierarchy
 
 Secret payloads are data keys wrapped by a KMS key (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]]).
-Use one customer managed key per sensitivity class and not per secret, since KMS request rates and per-key policies are the real constraints. Scope `kms:Decrypt` with `kms:ViaService` and the encryption context so the key is usable only through the secret service.
+Use one customer managed key per sensitivity class and not per secret, since the KMS request quota is shared across the account and Region regardless of key count (KMS docs, as of 2026-11) and every extra key is another policy to maintain. Scope `kms:Decrypt` with `kms:ViaService` and the encryption context so the key is usable only through the secret service.
 For Vault, the auto-unseal key is the root of trust for the whole cluster. Give it a key policy that allows only the Vault node role, and alarm on any other principal using it.
 
 ### Network boundaries
@@ -625,15 +661,15 @@ For AI agents, give each tool call the narrowest credential available, because a
 ### Detection
 
 Alert on reads of `AWSPREVIOUS`, on reads from principals not seen in 30 days, on rotation failure, and on rotation silence (no rotation event within 1.5 times the interval).
-On GCP, secret access is a Data Access audit log and is not on by default (UNVERIFIED), so enable it for the secret service in production projects.
+On GCP, secret access is a Data Access audit log, and those logs are disabled by default except for BigQuery ([Cloud Audit Logs docs](https://docs.cloud.google.com/logging/docs/audit), as of 2026-11), so enable it for the secret service in production projects.
 
 ### Unit economics levers
 
 1. Raise cache TTL: it cut the example fleet's read bill from $518 to $43 per month, a 12x reduction.
 2. Pack related values into one JSON secret under 65,536 bytes to reduce the per-secret charge.
-3. Use SSM Parameter Store for non-rotating configuration, since it has a standard tier priced differently (AWS docs, as of 2026-10; confirm current pricing).
+3. Use SSM Parameter Store for non-rotating configuration, since standard parameters carry no additional charge and advanced parameters cost $0.05 per parameter per month ([AWS Systems Manager pricing](https://aws.amazon.com/systems-manager/pricing/), as of 2026-11).
 4. Do not run Vault for fewer than a handful of credential classes. A 3 to 5 node Raft cluster, snapshots, upgrades, and an on-call rotation cost more than tens of thousands of secrets at $0.40.
-5. On GCP, destroy old versions, since active versions are billed per location (UNVERIFIED).
+5. On GCP, destroy old versions, since active versions are billed per location and destroyed versions are free (Google pricing page, as of 2026-11).
 
 ## Interview Questions and Model Answers
 
@@ -685,7 +721,7 @@ The redesign has four rules.
 2. Reclaim orphans at the start of the first side-effecting step by deleting any target credential that is not the one named in `AWSCURRENT`, which is the self-healing step in the lab code. This is safe only because the old slot's grace period is one rotation interval, and a human has not pinned it.
 3. Write the side effect and the journal entry as close together as possible and in the order that leaves a recoverable state. Here the order is create key, then put pending, and the orphan is recoverable, whereas the reverse order would leave a pending version pointing at a key that does not exist.
 4. Alarm on rotation failure and on rotation silence, and set the Lambda timeout above the sum of `testSecret` retries, so timeouts are not the normal path.
-Also consider the dedicated-principal issue: the rotator needs only `iam:*AccessKey` on that one user ARN, and its role should not be able to touch other users.
+Also consider the dedicated-principal issue: the rotator needs only `iam:ListAccessKeys`, `iam:CreateAccessKey`, and `iam:DeleteAccessKey` on that one user ARN, and its role should not be able to touch other users.
 
 #### Follow-up Interviewer Question
 
@@ -700,9 +736,10 @@ Design the rotation pipeline on GCP, where Secret Manager only publishes a notif
 Secret Manager gives a schedule and an event. I build the executor, the journal, the test, and the dead-letter handling.
 The executor is a Cloud Run service or function subscribed to the topic. Because Pub/Sub is at-least-once, the handler first derives an idempotency key (for example the secret name plus the rotation boundary) and exits if a version newer than the boundary already exists.
 For the journal, I create the new value as a version that no consumer reads (disabled, or tracked by a label or an alias that consumers do not use), apply it to the target, run a test using the new credential, and only then enable the version and update the alias that consumers read. This gives the same `AWSPENDING` to `AWSCURRENT` semantics that AWS provides natively.
+Consumers cannot read `latest` during this flow, because `latest` points at the most recently created version, which is the disabled candidate (Secret Manager REST reference, as of 2026-11).
 Guarantees: no zero-downtime flip unless the target supports two live credentials (the overlap window `W`), so I choose targets and strategies for that property, and I write retries as a dead-letter topic with an alarm.
-Observability: alert on rotation failure and on silence, since a missing publisher grant produces no events at all.
-Consumers need to resolve aliases at the right time. A Cloud Run `latest` reference in an environment variable resolves at instance start, so rotation does not reach running instances (UNVERIFIED, verify), and I would use file mounts or an in-process client with a TTL.
+Observability: alert on rotation failure and on silence, since a publisher grant lost after setup produces no delivered events.
+Consumers need to resolve aliases at the right time. A Cloud Run `latest` reference in an environment variable resolves at instance start, so rotation does not reach running instances (Cloud Run docs, as of 2026-11), and I would use file mounts or an in-process client with a TTL.
 
 #### Follow-up Interviewer Question
 
@@ -715,7 +752,7 @@ Vault in production is slow after a large deploy. Lease count is 8 million. How 
 #### Model Answer
 
 First establish whether the problem is lease volume or request volume. Live leases equal creation rate times TTL (Little's law), and 8 million leases at a one hour TTL implies about 2,200 creates per second sustained, or a long TTL with a lower rate. Check which engine and which roles account for the leases, since one chatty role usually dominates.
-Mechanism: each lease is a replicated storage write, the expiration manager holds an in-memory timer per lease, and restarts and leadership changes re-scan lease records, so recovery time scales with count (from memory, UNVERIFIED). Standby nodes forward writes to the active node, so adding nodes does not raise issuance capacity. Expiry waves also create revoke bursts that hit the target database at the same time as the next creation wave.
+Mechanism: each lease is a replicated storage write, the expiration manager holds an in-memory timer per lease, and restarts and leadership changes re-scan lease records, so recovery time scales with count (vault/expiration.go, as of 2026-11). Standby nodes forward writes to the active node, so adding nodes does not raise issuance capacity. Expiry waves also create revoke bursts that hit the target database at the same time as the next creation wave.
 Immediate actions: stop the source of churn (a crash-looping deployment requesting credentials per start), revoke by prefix to remove leases for dead workloads, force-revoke irrevocable leases after confirming the target is clean, and stagger rollout.
 Design prevention: share a credential per workload instance and renew instead of re-requesting per request, issue credentials through a sidecar or agent, use TTLs sized by Little's law with a budget (for example, a cap of 100,000 live leases per cluster), use batch tokens where the lease record is not needed, and avoid dynamic credentials for workloads that start thousands of short jobs per minute, where cloud-native short-lived credentials (STS or IAM Credentials) carry no lease state.
 Capacity ceilings come from the active node's commit path and the target's role churn, so I load-test both before launch.
@@ -730,7 +767,7 @@ A CI token leaked in a public repo for 40 minutes and was used. Describe the fir
 
 #### Model Answer
 
-First hour, in order: revoke at the source (disable the token or key), establish the blast radius from the identity and not from the secret (what roles, what accounts, what data), and identify sessions derived from it. For AWS STS sessions you cannot revoke one session, but you can attach a deny conditioned on `aws:TokenIssueTime` before a timestamp to the role, which invalidates all earlier sessions of that role (from memory, UNVERIFIED). That works cleanly only if the role is per-workload, because a shared role makes the revocation an outage.
+First hour, in order: revoke at the source (disable the token or key), establish the blast radius from the identity and not from the secret (what roles, what accounts, what data), and identify sessions derived from it. For AWS STS sessions you cannot revoke one session, but you can attach a deny conditioned on `aws:TokenIssueTime` before a timestamp to the role, which invalidates all earlier sessions of that role (AWS IAM docs, as of 2026-11). That works cleanly only if the role is per-workload, because a shared role makes the revocation an outage.
 Then review audit logs for use of the token, rotate dependents that the token could read (anything fetched by that principal), and write the timeline.
 Design for bounded exposure rests on four properties.
 1. No static credential in CI: federate the pipeline identity through OIDC to a role with a short session, so the leaked artifact expires on its own (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]]).
@@ -771,11 +808,11 @@ An acquisition brings a Vault cluster with 3 million leases and a custom auth pl
 - [AWS Secrets Manager quotas](https://docs.aws.amazon.com/secretsmanager/latest/userguide/reference_limits.html) - hard limits, the version cleanup rules, and the 10-minute churn guidance.
 - [AWS Secrets Manager rotation function templates](https://docs.aws.amazon.com/secretsmanager/latest/userguide/reference_available-rotation-templates.html) - the reference implementation of the four-step state machine and the single-user versus alternating-users strategies.
 - [AWS Secrets Manager increases API requests per second limits](https://aws.amazon.com/about-aws/whats-new/2025/03/aws-secrets-manager-increases-api-requests-seconds/) - the current read throughput ceilings.
-- [AWS Security Blog: single-user rotation using RDS admin credentials](https://aws.amazon.com/blogs/security/how-to-implement-single-user-secret-rotation-using-amazon-rds-admin-credentials/) - the practical trade-offs between the two strategies.
-- [Google Cloud Secret Manager documentation](https://cloud.google.com/secret-manager/docs) - versions, aliases, rotation scheduling, and replication (URL not fetched in this pass).
-- [Google Cloud Secret Manager quotas](https://cloud.google.com/secret-manager/quotas) - access request quotas and payload limits to verify the UNVERIFIED figures here (URL not fetched in this pass).
-- [Vault lease concepts](https://developer.hashicorp.com/vault/docs/concepts/lease) - lease, renewal, and revocation semantics (URL not fetched in this pass).
-- [Vault architecture internals](https://developer.hashicorp.com/vault/docs/internals/architecture) - barrier, seal, and storage layering (URL not fetched in this pass).
+- [AWS Security Blog: single-user rotation using RDS admin credentials](https://aws.amazon.com/blogs/security/how-to-implement-single-user-secret-rotation-using-amazon-rds-admin-credentials/) - how single-user rotation works, plus a variant using admin credentials and the brief denial lag it can cause.
+- [Google Cloud Secret Manager documentation](https://cloud.google.com/secret-manager/docs) - versions, aliases, rotation scheduling, and replication.
+- [Google Cloud Secret Manager quotas](https://cloud.google.com/secret-manager/quotas) - access request quotas and payload limits.
+- [Vault lease concepts](https://developer.hashicorp.com/vault/docs/concepts/lease) - lease, renewal, and revocation semantics.
+- [Vault architecture internals](https://developer.hashicorp.com/vault/docs/internals/architecture) - barrier, seal, and storage layering.
 - Shamir, "How to Share a Secret", Communications of the ACM, 1979 - the threshold scheme behind Vault's unseal keys.
 - Ongaro and Ousterhout, "In Search of an Understandable Consensus Algorithm", USENIX ATC 2014 - the replication protocol under Vault integrated storage, and the reason every lease is a quorum write.
 - Little, "A Proof for the Queuing Formula L = lambda W", Operations Research, 1961 - the one-line law for sizing live leases.

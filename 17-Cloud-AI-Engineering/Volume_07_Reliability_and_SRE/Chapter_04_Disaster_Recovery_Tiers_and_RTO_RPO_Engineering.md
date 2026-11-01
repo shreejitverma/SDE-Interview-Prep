@@ -2,10 +2,49 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-workloads-on-aws.html"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database-disaster-recovery.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication-time-control.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/repl-metrics.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/metrics-dimensions.html"
+  - "https://aws.amazon.com/s3/sla-rtc/"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/PointInTimeRecovery_Howitworks.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_HowItWorks.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/06/amazon-dynamo-db-global-tables-multi-region-strong-consistency-generally-available/"
+  - "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/health-checks-creating-values.html"
+  - "https://docs.aws.amazon.com/r53recovery/latest/dg/introduction-regions-routing.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-fast-snapshot-restore.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/capacity-reservations-pricing-billing.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-blocks.html"
+  - "https://docs.cloud.google.com/compute/docs/instances/reservations-overview"
+  - "https://docs.aws.amazon.com/aws-backup/latest/devguide/vault-lock.html"
+  - "https://docs.aws.amazon.com/aws-backup/latest/devguide/logicallyairgappedvault.html"
+  - "https://docs.aws.amazon.com/aws-backup/latest/devguide/restore-testing.html"
+  - "https://docs.cloud.google.com/backup-disaster-recovery/docs/concepts/backup-vault"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/multi-region-keys-overview.html"
+  - "https://docs.cloud.google.com/compute/docs/disks/async-pd/about"
+  - "https://docs.cloud.google.com/bigtable/docs/replication-overview"
+  - "https://docs.cloud.google.com/storage/docs/availability-durability"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/storage/buckets/create"
+  - "https://docs.cloud.google.com/architecture/dr-scenarios-planning-guide"
+  - "https://docs.cloud.google.com/spanner/docs/instance-configurations"
+  - "https://docs.cloud.google.com/dns/docs/routing-policies-overview"
+  - "https://docs.cloud.google.com/load-balancing/docs/https"
+  - "https://docs.cloud.google.com/kms/docs/locations"
+  - "https://docs.cloud.google.com/alloydb/docs/cross-region-replication/about-cross-region-replication"
+  - "https://docs.cloud.google.com/architecture/dr-scenarios-for-data"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://status.cloud.google.com/incidents/dS9ps52MUnxQfyDGPfkY"
+  - "https://www.atlassian.com/blog/atlassian-engineering/post-incident-review-april-2022-outage"
+  - "https://cloud.google.com/blog/products/infrastructure/details-of-google-cloud-gcve-incident"
+  - "https://www.unisuper.com.au/about-us/media-centre/2024/a-joint-statement-from-unisuper-and-google-cloud"
+  - "https://aws.amazon.com/message/12721/"
 ---
 
 # Disaster Recovery Tiers and RTO/RPO Engineering
@@ -43,9 +82,9 @@ A tier you do not exercise is a hypothesis, not a capability.
 
 ### The four tiers, and what actually differs
 
-The AWS Well-Architected DR whitepaper names four strategies: backup and restore, pilot light, warm standby, and multi-site active/active (AWS Well-Architected, Disaster Recovery of Workloads on AWS, as of 2026-10).
-The same paper defines RTO as the maximum acceptable window during which the service is unavailable, and RPO as the maximum acceptable time since the last data recovery point (same source, as of 2026-10).
-Google's DR planning guidance uses cold, warm, and hot patterns for the same ladder (Google Cloud Architecture Center; UNVERIFIED, wording not re-checked as of 2026-10).
+The AWS Well-Architected DR whitepaper names four strategies: backup and restore, pilot light, warm standby, and multi-site active/active (AWS Well-Architected, Disaster Recovery of Workloads on AWS, as of 2026-11).
+The same paper defines RTO as the maximum acceptable window during which the service is unavailable, and RPO as the maximum acceptable time since the last data recovery point (same source, as of 2026-11).
+Google's DR planning guide uses cold, warm, and hot patterns for the same ladder (Google Cloud Architecture Center, as of 2026-11).
 
 What differs between tiers is which of the following are pre-provisioned and continuously running:
 
@@ -83,8 +122,9 @@ Cross-region link degradation lowers `mu` directly, so the tail is correlated wi
 Size RPO from the lag p99.9 conditional on an incident, not from the dashboard average.
 
 AWS exposes a version of this trade-off for Aurora PostgreSQL global databases.
-Aurora Global Database replicates at the storage layer using dedicated replication infrastructure, with typical lag under one second (AWS docs; UNVERIFIED, not re-checked as of 2026-10).
-A parameter named `rds.global_db_rpo` can bound RPO by delaying commits on the primary when secondary lag exceeds the configured threshold (AWS docs; UNVERIFIED, not re-checked as of 2026-10).
+Aurora Global Database replicates at the storage layer using dedicated replication infrastructure, with latency typically under one second (AWS Aurora docs, as of 2026-11).
+A parameter named `rds.global_db_rpo` (Aurora PostgreSQL only, minimum 20 seconds) can bound RPO by blocking commits on the primary when every secondary's RPO lag exceeds the configured threshold, so one secondary inside the window keeps commits flowing (AWS Aurora docs, as of 2026-11).
+In a two-Region global database AWS recommends keeping the default value in the secondary's parameter group, because a failover after losing the primary Region could otherwise pause transactions (same source, as of 2026-11).
 That is a deliberate availability-for-durability trade: when the replication path is sick, writes stall instead of silently widening the loss window.
 Whether that is acceptable is a product decision, and it must be made before the incident, not during it.
 
@@ -93,7 +133,8 @@ Whether that is acceptable is a product decision, and it must be made before the
 Quorum systems replicate by committing a write only after a majority of replicas acknowledge it.
 Spanner uses Paxos groups with long-lived leaders and leader leases, with a default lease of 10 seconds (Corbett et al., "Spanner: Google's Globally-Distributed Database", OSDI 2012).
 DynamoDB uses Multi-Paxos replica groups inside a region (Elhemali et al., "Amazon DynamoDB: A Scalable, Predictably Performant, and Fully Managed NoSQL Database Service", USENIX ATC 2022).
-Spanner multi-region configurations place voting replicas across regions so that a region loss leaves a majority, giving RPO of zero (Google Cloud docs; UNVERIFIED, not re-checked as of 2026-10).
+Most Spanner base multi-region configurations place read-write replicas in two regions and a witness in a third, and each write needs a quorum that includes a replica in the default leader region, so a region loss leaves a majority (Google Cloud docs, as of 2026-11).
+Google's page states zero RPO explicitly only for dual-region configurations; for multi-region configurations it follows from the same quorum commit rule rather than from a quoted guarantee (same source, as of 2026-11).
 See [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_06_Google_Spanner|Google Spanner]] and [[08-Distinguished-Engineering/02-Distributed-Systems-Internals/Raft-Consensus|Raft Consensus]] for the protocol-level treatment.
 
 The cost is physical.
@@ -107,9 +148,11 @@ Quorum systems convert data loss into unavailability.
 
 Last-writer-wins replication, as used by default in DynamoDB global tables (multi-Region eventual consistency mode), sits between the two.
 Both regions accept writes and converge by timestamp.
-The RPO is effectively zero in the sense that no acknowledged write is dropped from the replicating region's log, but concurrent writes to the same item are resolved by discarding one of them.
+AWS puts the RPO of this mode at the replication delay between replicas, usually a few seconds, not zero, and concurrent writes to the same item are resolved by keeping the modification with the latest internal timestamp (AWS DynamoDB docs, as of 2026-11).
+Writes stranded on an isolated replica are replicated when it becomes healthy again, but the surviving Regions cannot see them until then (same source, as of 2026-11).
 After a failover, a client that wrote in region A and read in region B sees stale data until replication catches up.
-DynamoDB also offers a multi-Region strong consistency mode for global tables (AWS docs; UNVERIFIED, GA status and constraints not re-checked as of 2026-10).
+DynamoDB also offers a multi-Region strong consistency (MRSC) mode, generally available since June 30, 2025: writes replicate synchronously to at least one other Region, RPO is zero, and a table spans exactly three Regions, as three replicas or as two replicas plus a witness (AWS What's New and DynamoDB docs, as of 2026-11).
+MRSC does not support TTL, local secondary indexes, or transactions, and a write to an item being modified in another Region fails with a retryable `ReplicatedWriteConflictException` (same source, as of 2026-11).
 
 ### RTO decomposition
 
@@ -121,7 +164,7 @@ Each term has a mechanism that a getting-started guide omits.
 
 **T_detect.**
 A health check with interval `I` and failure threshold `k` detects a hard failure in `k * I` plus, on average, `I / 2` of phase offset.
-Route 53 health checks offer 10 second and 30 second intervals (AWS docs; UNVERIFIED, not re-checked as of 2026-10).
+Route 53 health checks offer a standard 30 second interval and a fast 10 second interval that costs extra (AWS Route 53 docs, as of 2026-11).
 With a 10 second interval and threshold 3 that is 30 to 40 seconds for a crash-stop failure.
 Gray failures (elevated error rate, slow disk, partial AZ impairment) may never trip a shallow check.
 A health check that probes `/healthz` returning 200 from a process that is up but cannot reach its database detects nothing.
@@ -136,9 +179,9 @@ The cost of a false failover is real (data loss, failback work, split-brain risk
 **T_execute.**
 The failover action must be a data plane operation.
 If the runbook needs the control plane of the failing region (console, IAM changes, API calls to a regional endpoint that is down), it is not static-stable.
-AWS Route 53 Application Recovery Controller (ARC) was built around this: routing controls are toggled through a highly available data plane cluster with five regional endpoints, and changes require a majority (AWS docs; UNVERIFIED, not re-checked as of 2026-10).
-The operator's client must try endpoints until one answers.
-Safety rules (assertion and gating) prevent turning off both sites at once.
+Amazon Application Recovery Controller (ARC, formerly Route 53 Application Recovery Controller) was built around this: routing controls are toggled through a highly available data plane cluster with five regional endpoints, and changes need at least three of the five to form a quorum (AWS ARC docs, as of 2026-11).
+The operator's client must try endpoints until one answers, because AWS regularly takes endpoints down for maintenance (same source, as of 2026-11).
+Safety rules guard the switch: an assertion rule can require that at least one site stays on, and a gating rule acts as an overall on-off switch over a set of routing controls (same source, as of 2026-11).
 See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]] and [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
 Credentials matter too: prefer regional STS endpoints and pre-provisioned DR roles, because global control plane dependencies are the ones that fail together.
 
@@ -147,7 +190,7 @@ This is the term the tier diagrams hide.
 Pilot light and warm standby scale up in the recovery region at the moment other tenants in the failing region are doing the same.
 Instance launch API rate limits, regional capacity for a specific instance family, and quota ceilings all become binding at once.
 RTO is bounded below by the p99 of capacity acquisition, not by boot time.
-The mechanism for removing this term is to pay for it ahead of time: EC2 On-Demand Capacity Reservations or Google Compute Engine reservations in the recovery region, which are billed whether or not instances run in them (AWS and Google Cloud docs; UNVERIFIED, billing semantics not re-checked as of 2026-10).
+The mechanism for removing this term is to pay for it ahead of time: EC2 On-Demand Capacity Reservations or Google Compute Engine reservations in the recovery region, which are billed at the on-demand rate whether or not instances run in them (AWS EC2 and Google Compute Engine docs, as of 2026-11).
 Spot is the wrong tool here, because spot capacity is the first to be reclaimed in a regional event.
 For GPU fleets this term is dominant, and is covered below.
 
@@ -169,22 +212,23 @@ The same mechanism applies to JIT-compiled runtimes, page cache after a database
 ### Backup restore time and lazy hydration
 
 Restore time for the backup tier is not backup size divided by link speed.
-It is the minimum over several stages: object store read throughput, instance network and disk throughput, decompression, and database recovery (log replay, index rebuild).
+It is governed by the slowest of several stages: object store read throughput, instance network and disk throughput, decompression, and database recovery (log replay, index rebuild).
 At 50 TB, a sustained 10 Gbps yields about 11 hours, 25 Gbps about 4.4 hours, and 100 Gbps about 1.1 hours (calculation in the worked example).
 Volumes restored from block snapshots are typically hydrated lazily from object storage on first access, so first-read latency on untouched blocks is far higher than steady state.
-EBS Fast Snapshot Restore removes this for selected snapshots and AZs at additional cost (AWS docs; UNVERIFIED, not re-checked as of 2026-10).
+EBS Fast Snapshot Restore removes this for selected snapshot and AZ pairs at additional cost, $0.75 per pair per hour in the AWS example, with at most 5 enabled snapshots per Region and snapshots of at most 16 TiB (AWS EBS docs, as of 2026-11).
 A database that "restored in 20 minutes" may spend hours at degraded performance while blocks hydrate.
 
 ### Fencing, split brain, and failback
 
 Promoting a replica while the old primary is merely unreachable produces two writers.
 The defense is a fencing token or epoch that the storage layer or the clients check, so that the old primary's writes are rejected after the epoch advances.
-Managed systems implement this internally (global database failover detaches the old cluster from the replication topology).
+Managed systems implement part of this internally: an Aurora managed failover attempts to fence writes through the storage layer, and rebuilds the old primary as a secondary on a new storage volume when its Region returns (AWS Aurora docs, as of 2026-11).
+AWS calls that fencing best effort, so writes may be momentarily accepted in the old primary Region and split brain remains possible (same source, as of 2026-11).
 Application-level state (job queues, schedulers, singleton cron workers, leader-elected controllers) is often not covered and is the usual source of duplicate side effects.
 Failback is a second failover, with the additional problem of reconciling the old primary's unreplicated writes.
 Log them when you discard them.
-Unplanned failover in Aurora global databases can promote a secondary with data loss, and the dropped writes must be reconciled by the application owner (AWS docs; UNVERIFIED, not re-checked as of 2026-10).
-Prefer planned switchover for failback, which waits for replication to catch up.
+Unplanned failover in Aurora global databases can promote a secondary with data loss, and Aurora tries to snapshot the old storage volume at the point of failure so the application owner can recover and reconcile the dropped writes (AWS Aurora docs, as of 2026-11).
+Prefer planned switchover for failback, which waits for replication to catch up and has RPO 0 (same source, as of 2026-11).
 
 ### Backups protect against a different failure class
 
@@ -192,11 +236,11 @@ Failover answers "this region is gone".
 Backups answer "the data is wrong".
 A `DROP TABLE`, a bad migration, a buggy batch job, or ransomware is replicated to the standby in about one replication lag.
 Point-in-time recovery plus immutable backups gives a recovery point that predates the corruption.
-Immutability requires a control the production account cannot remove: AWS Backup Vault Lock and logically air-gapped vaults, or Google Backup and DR vaults with enforced retention (AWS and Google Cloud docs; UNVERIFIED, not re-checked as of 2026-10).
+Immutability requires a control the production account cannot remove: AWS Backup Vault Lock in compliance mode (governance mode can be removed with sufficient IAM permissions), logically air-gapped vaults, which come with compliance mode, or Google Backup and DR vaults with enforced retention (AWS and Google Cloud docs, as of 2026-11).
 Place the vault in a separate account or project with separate administrators.
 For the highest-value data, keep a copy outside the provider.
 A backup you have not restored is not a backup.
-AWS Backup restore testing automates scheduled restores (AWS docs; UNVERIFIED, not re-checked as of 2026-10).
+AWS Backup restore testing automates scheduled restores and records how long they take (AWS Backup docs, as of 2026-11).
 
 ### DR for AI workloads
 
@@ -225,22 +269,22 @@ Managed inference offers cross-region routing profiles, but quota and availabili
 
 ## Numbers to Know
 
-Vendor figures that could not be re-verified in this session are flagged UNVERIFIED in the source column and listed at the end of the chapter.
+Vendor figures below were checked against the primary sources named in the source column on the dates shown.
 
 | Quantity | Value | Source |
 |---|---|---|
-| AWS-defined DR strategies | Four: backup and restore, pilot light, warm standby, multi-site active/active | AWS Well-Architected DR whitepaper (as of 2026-10) |
-| RTO definition | Maximum acceptable duration of service unavailability | AWS Well-Architected DR whitepaper (as of 2026-10) |
-| RPO definition | Maximum acceptable time since last recovery point | AWS Well-Architected DR whitepaper (as of 2026-10) |
-| S3 Replication Time Control | 99.99 percent of objects replicated within 15 minutes, with replication metrics | AWS S3 docs (UNVERIFIED, not re-checked as of 2026-10) |
-| Aurora Global Database typical lag | Under 1 second; storage-layer replication | AWS Aurora docs (UNVERIFIED, not re-checked as of 2026-10) |
-| Aurora Global Database secondary regions | Up to 5 | AWS Aurora docs (UNVERIFIED, not re-checked as of 2026-10) |
-| DynamoDB point-in-time recovery window | Up to 35 days | AWS DynamoDB docs (UNVERIFIED, not re-checked as of 2026-10) |
-| Route 53 health check intervals | 10 s or 30 s | AWS Route 53 docs (UNVERIFIED, not re-checked as of 2026-10) |
-| Route 53 ARC cluster endpoints | 5 regional endpoints, majority required | AWS ARC docs (UNVERIFIED, not re-checked as of 2026-10) |
+| AWS-defined DR strategies | Four: backup and restore, pilot light, warm standby, multi-site active/active | AWS Well-Architected DR whitepaper (as of 2026-11) |
+| RTO definition | Maximum acceptable duration of service unavailability | AWS Well-Architected DR whitepaper (as of 2026-11) |
+| RPO definition | Maximum acceptable time since last recovery point | AWS Well-Architected DR whitepaper (as of 2026-11) |
+| S3 Replication Time Control | Most objects in seconds; 99.9 percent within 15 minutes, which is also the SLA credit threshold; the S3 replication overview page also says 99.99 percent, so AWS's docs disagree | AWS S3 docs and S3 RTC SLA (as of 2026-11) |
+| Aurora Global Database typical lag | Under 1 second; storage-layer replication | AWS Aurora docs (as of 2026-11) |
+| Aurora Global Database secondary regions | Up to 10; the DR whitepaper still says five | AWS Aurora docs (as of 2026-11) |
+| DynamoDB point-in-time recovery window | Configurable from 1 to 35 days | AWS DynamoDB docs (as of 2026-11) |
+| Route 53 health check intervals | 30 s standard or 10 s fast | AWS Route 53 docs (as of 2026-11) |
+| ARC cluster endpoints | 5 regional endpoints; at least 3 must be available and form the quorum; state is consistent across endpoints within 5 s on average and 15 s at most | AWS ARC docs (as of 2026-11) |
 | Spanner leader lease default | 10 s | Spanner paper, OSDI 2012 |
-| Spanner multi-region availability SLA | 99.999 percent | Google Cloud Spanner SLA (UNVERIFIED, not re-checked as of 2026-10) |
-| Cloud Storage dual-region replication | Default RPO of 1 hour for 100 percent of objects; turbo replication targets 15 minutes | Google Cloud Storage docs (UNVERIFIED, not re-checked as of 2026-10) |
+| Spanner multi-region availability | 99.999 percent, against 99.99 percent for regional | Google Cloud Spanner instance configuration docs (as of 2026-11) |
+| Cloud Storage dual-region replication | Default: 99.9 percent of new objects within 1 hour and 100 percent within 12 hours, so RPO is 12 hours; turbo replication (dual-region only): 100 percent within 15 minutes | Google Cloud Storage docs (as of 2026-11) |
 | Signal propagation in fiber | About 5 microseconds per km one way | Physics; about 200,000 km/s |
 | Downtime at 99.9 / 99.99 / 99.999 percent | 525.6 / 52.6 / 5.26 minutes per year | Arithmetic on 525,600 minutes per year |
 | Restore of 50 TB at 10 / 25 / 100 Gbps effective | 11.1 / 4.4 / 1.1 hours | Worked example script, this chapter |
@@ -259,19 +303,19 @@ Model-derived RTO percentiles from the worked example (minutes, parameters are a
 
 ## AWS vs GCP Mechanism Parity
 
-All rows carry the caveat that vendor-specific specifics were not re-verified in this session (UNVERIFIED as of 2026-10); the mechanism class is what to internalize.
+Vendor specifics in this table were checked against AWS and Google Cloud docs (as of 2026-11); the mechanism class is what to internalize.
 
 | Concern | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
-| Object replication | S3 Cross-Region Replication with optional Replication Time Control and replication metrics; asynchronous, versioning required, replicas keep version IDs | Dual-region and multi-region buckets; default asynchronous replication, optional turbo replication for a tighter RPO | AWS replicates between two independent buckets you manage; Google presents one logical bucket across regions, so there is one namespace and failover needs no client reconfiguration |
-| Relational async DR | Aurora Global Database, storage-layer replication, planned switchover and unplanned failover with possible data loss | Cloud SQL cross-region replicas and AlloyDB secondary clusters, log-based asynchronous replication | Aurora replicates below the engine; others ship engine-level logs, so lag behavior under write bursts differs |
+| Object replication | S3 Cross-Region Replication with optional Replication Time Control and replication metrics; asynchronous, versioning required, replicas keep version IDs | Dual-region and multi-region buckets; default asynchronous replication, optional turbo replication for a tighter RPO on dual-region buckets only | AWS replicates between two independent buckets you manage; Google presents one logical bucket across regions, so there is one namespace and failover needs no client reconfiguration |
+| Relational async DR | Aurora Global Database, storage-layer replication, planned switchover (RPO 0) and unplanned failover with possible data loss | Cloud SQL cross-region replicas and AlloyDB secondary clusters with asynchronous replication; AlloyDB switchover has zero data loss, and Cloud SQL Enterprise Plus advanced DR documents zero data loss after a cross-regional failover | Aurora replicates below the engine through the cluster storage volume; the AlloyDB page states only that secondaries replicate asynchronously, so measure lag under write bursts instead of assuming parity |
 | Globally consistent database | Aurora DSQL (see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_12_Aurora_DSQL_Multi_Region_Active_Active_SQL\|Aurora DSQL]]); DynamoDB global tables strong-consistency mode | Spanner multi-region configurations (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_10_Cloud_Spanner_TrueTime_and_External_Consistency\|Cloud Spanner]]) | Both pay a cross-region commit RTT; Spanner has the longest production track record of RPO 0 across regions |
-| Multi-writer eventual | DynamoDB global tables, last-writer-wins by timestamp | Bigtable multi-cluster replication, eventually consistent | Both silently discard one of two concurrent writes to the same key |
-| Traffic failover | Route 53 health checks plus ARC routing controls with safety rules, data plane cluster | Global external Application Load Balancer backend failover, Cloud DNS routing policies | ARC gives a deliberate, quorum-backed manual switch; Google global load balancing makes failover an automatic health-driven backend decision with no DNS TTL, with no direct ARC equivalent known to the author (UNVERIFIED) |
-| Server-level DR | AWS Elastic Disaster Recovery, continuous block replication into a low-cost staging area | Backup and DR service; no identical continuous block-level equivalent known to the author (UNVERIFIED) | Choose the mechanism by RPO: continuous block replication versus scheduled backups |
-| Immutable backups | AWS Backup Vault Lock, logically air-gapped vault | Backup and DR vaults with enforced retention | Both rely on a retention lock the production admin cannot lift; the vault must live in a separate account or project |
-| Capacity guarantees | On-Demand Capacity Reservations, EC2 Capacity Blocks for ML | Compute Engine reservations, future reservations for accelerators | Both bill while idle; the reservation is the price of removing T_capacity |
-| Encryption keys across regions | KMS multi-Region keys share key material across regions | Cloud KMS keys are bound to a location; multi-region locations exist for some uses | Replicated ciphertext is useless without key access in the recovery region |
+| Multi-writer eventual | DynamoDB global tables, last-writer-wins by timestamp | Bigtable multi-cluster replication, eventually consistent | Both resolve conflicts by last write wins, but on different keys: DynamoDB per item by latest internal timestamp, Bigtable by server-side time only when two writes share the same row, column family, qualifier, and timestamp |
+| Traffic failover | Route 53 health checks plus ARC routing controls with safety rules, data plane cluster | Global external Application Load Balancer backend failover, Cloud DNS routing policies | ARC gives a deliberate, quorum-backed manual switch; Google global load balancing uses a global anycast IP, so failover is a health-driven backend decision with no DNS-based load balancing required; Cloud DNS failover policies can be triggered manually by sending 100 percent to the backup, but that is a policy change and the Cloud DNS and load balancing pages checked describe no quorum-backed data plane switch (as of 2026-11) |
+| Server-level DR | AWS Elastic Disaster Recovery, continuous block replication into a low-cost staging area | Compute Engine Asynchronous Replication, block-level disk replication between two regions with a target RPO of one minute on Balanced and SSD Persistent Disk and on selected Hyperdisk types; Backup and DR service for scheduled backups (as of 2026-11) | Choose the mechanism by RPO: continuous block replication versus scheduled backups |
+| Immutable backups | AWS Backup Vault Lock in compliance mode, logically air-gapped vault | Backup and DR vaults with enforced retention | Both rely on a retention lock the production admin cannot lift; the vault must live in a separate account or project |
+| Capacity guarantees | On-Demand Capacity Reservations; EC2 Capacity Blocks for ML, which reserve GPU instances for a bounded window starting up to 8 weeks out, so they fit planned drills rather than open-ended standby | Compute Engine reservations; future reservations, which can specify GPUs and start up to a year out | On-Demand Capacity Reservations and Compute Engine reservations both bill at the on-demand rate while idle; the reservation is the price of removing T_capacity |
+| Encryption keys across regions | KMS multi-Region keys share key material and key ID across regions, but most services treat them as single-Region keys | Cloud KMS key material is confined to the chosen location; multi-region locations such as `us`, `europe`, `asia`, and `global` store it in multiple regional data centers | Replicated ciphertext is useless without key access in the recovery region |
 | Policy traps | SCPs that deny non-approved regions block DR regions | Organization Policy resource location constraints | Both must be reviewed for the DR region before the incident |
 
 For the cross-provider translation view, see [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_04_Storage_and_Database_Translation|Storage and Database Translation]].
@@ -384,7 +428,7 @@ These are illustrative inputs, not benchmarks.
 4. The result flips if outage cost rises to several million dollars per hour or if events become more frequent. Compute the break-even instead of arguing about tiers.
 5. Use p95 or p99 RTO against a contractual objective, not p50. Pilot light has p50 75 minutes but p99 247 minutes; a 2 hour RTO objective is not met by this tier.
 6. The data-loss side: at 40 MB/s sustained writes and 2 seconds of lag, an async failover loses about 80 MB. If the incident multiplies lag by 30, that is 2.4 GB, and the same pipeline that was "RPO 2 seconds" is "RPO 60 seconds".
-7. The availability side: at single-region 99.9 percent, a naive independent two-region model gives 99.9999 percent (0.5 minutes per year). With a 10 percent common-cause fraction it is 99.990 percent (53 minutes per year). The common-cause term is 100 times larger than the independent term.
+7. The availability side: at single-region 99.9 percent, a naive independent two-region model gives 99.9999 percent (0.5 minutes per year). With a 10 percent common-cause fraction it is 99.990 percent (53 minutes per year). The common-cause term of 1e-4 is about 123 times the independent term of `(0.9e-3)^2 = 8.1e-7`, and 100 times the naive `1e-6`.
 
 ### Step 3: Lab - measure real cross-region replication lag
 
@@ -392,7 +436,7 @@ This lab replicates an S3 bucket from `us-east-1` to `us-west-2` with Replicatio
 
 **Cost estimate.**
 The workload is 50 one-kilobyte objects plus request charges; storage and replication data charges are negligible.
-Expect well under one US dollar for a one-hour session, including RTC and inter-region transfer fees (per-GB rates UNVERIFIED, not re-checked as of 2026-10).
+Expect well under one US dollar for a one-hour session: 50 KB of replicated data costs under a cent even at a deliberately pessimistic $1 per GB for RTC plus inter-region transfer, and S3 Replication metrics bill at CloudWatch custom metric rates (AWS S3 docs, as of 2026-11).
 Cost Explorer and Budgets data lag actual usage by many hours, so the budget below is a backstop, not a real-time control.
 Leave nothing running; the teardown is a single command.
 
@@ -505,16 +549,19 @@ resource "aws_s3_bucket_replication_configuration" "this" {
 }
 
 resource "aws_sns_topic" "alerts" {
-  name = "${var.prefix}-alerts"
+  provider = aws.dr
+  name     = "${var.prefix}-alerts"
 }
 
 resource "aws_sns_topic_subscription" "email" {
+  provider  = aws.dr
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
 }
 
 resource "aws_cloudwatch_metric_alarm" "repl_latency" {
+  provider            = aws.dr
   alarm_name          = "${var.prefix}-replication-latency"
   namespace           = "AWS/S3"
   metric_name         = "ReplicationLatency"
@@ -523,7 +570,7 @@ resource "aws_cloudwatch_metric_alarm" "repl_latency" {
   evaluation_periods  = 1
   threshold           = 900
   comparison_operator = "GreaterThanThreshold"
-  treat_missing_data  = "notBreaching"
+  treat_missing_data  = "ignore"
   dimensions = {
     SourceBucket      = aws_s3_bucket.src.id
     DestinationBucket = aws_s3_bucket.dst.id
@@ -550,6 +597,9 @@ resource "aws_budgets_budget" "lab" {
 output "src_bucket" { value = aws_s3_bucket.src.id }
 output "dst_bucket" { value = aws_s3_bucket.dst.id }
 ```
+
+`ReplicationLatency` is published in the destination bucket's Region, so the alarm and its SNS topic live in `us-west-2`, and AWS recommends the `ignore` missing-data treatment for replication metric alarms (AWS S3 docs, as of 2026-11).
+CloudWatch starts reporting these metrics 15 minutes after S3 RTC is enabled (same source, as of 2026-11).
 
 Run the lag probe after `terraform apply`:
 
@@ -609,7 +659,7 @@ terraform destroy -auto-approve -var prefix="$PREFIX" -var alert_email="$EMAIL"
 Confirm with `aws s3api head-bucket --bucket "$PREFIX-src"` (expect a 404) and `aws s3api head-bucket --bucket "$PREFIX-dst" --region us-west-2`.
 The SNS email subscription must be confirmed by clicking a link; unconfirmed subscriptions receive nothing, which is an easy way to build an alarm that never pages.
 
-For the Google Cloud analog, a dual-region bucket with turbo replication is created with a single command such as `gcloud storage buckets create gs://NAME --location=nam4 --rpo=ASYNC_TURBO` (flag name UNVERIFIED, not re-checked as of 2026-10).
+For the Google Cloud analog, a dual-region bucket with turbo replication is created with a single command such as `gcloud storage buckets create gs://NAME --location=nam4 --rpo=ASYNC_TURBO`; `--rpo` is an alias of `--recovery-point-objective`, `ASYNC_TURBO` is valid only for dual-region buckets, and `nam4` is the predefined Iowa and South Carolina dual-region (gcloud reference and Cloud Storage docs, as of 2026-11).
 It is delete-and-forget with `gcloud storage rm -r gs://NAME`.
 
 ## Failure Modes and Pitfalls
@@ -625,39 +675,43 @@ Mitigation: IaC for the recovery site applied continuously (empty or minimal), p
 
 In a regional event, many tenants fail over to the same neighboring region.
 Instance launch throttling, family-level capacity shortages, and quota ceilings are correlated.
-This was the practical lesson of large us-east-1 events: AWS's October 2025 us-east-1 event began with a DNS automation defect for the DynamoDB regional endpoint and cascaded into EC2 launch and network load balancer health impairments (AWS post-event summary; details UNVERIFIED, not re-checked as of 2026-10).
+This was the practical lesson of large us-east-1 events: AWS's October 19-20, 2025 us-east-1 event began with a latent race condition in the DynamoDB DNS automation that removed all IP addresses for the regional endpoint, and cascaded into EC2 launch failures and network load balancer health check failures over about 14.5 hours (AWS post-event summary, as of 2026-11).
 Design points: never assume you can launch into an impaired region, and never assume a neighbor has infinite headroom.
 
 ### Global control plane and global config as common cause
 
 Failures that propagate through a globally replicated configuration or control plane hit every region at once, which is exactly the beta term.
-Google Cloud's June 2025 incident involved invalid policy data replicated globally to a central service control component and crashing it in many regions (Google Cloud incident report; details UNVERIFIED, not re-checked as of 2026-10).
+Google Cloud's June 12, 2025 incident began when policy data with unintended blank fields replicated globally within seconds and hit a code path in Service Control with no error handling and no feature flag, crash-looping the binary in every region (Google Cloud incident report, as of 2026-11).
 The lesson is not that Google is unreliable.
 It is that "multi-region" does not mean "independent", and that your deployment pipeline, feature-flag service, certificate rotation, and identity provider are your own global control planes.
 See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture]] for staging config rollouts by cell, and [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]] for additional case studies.
 
 ### Physical events that defeat "multi-AZ"
 
-The April 2023 europe-west9 (Paris) incident, in which a water intrusion and fire event took down a zone, and in which customers reported regional effects, is a reminder that a failure domain boundary is a design intent, not a guarantee (Google Cloud incident report; details UNVERIFIED, not re-checked as of 2026-10).
+In the April 2023 europe-west9 (Paris) incident, water from a leaking cooling pipe reached a UPS battery room and started a fire, which took down zone europe-west9-a (Google Cloud incident report, as of 2026-11).
+Regional Spanner lost quorum because two of its three replicas were in the powered-down building, so services that depend on it degraded across the region (same source, as of 2026-11).
+It is a reminder that a failure domain boundary is a design intent, not a guarantee.
 Cross-AZ is not cross-region.
 See [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_06_Physical_Failure_Domains_and_Blast_Radius|Physical Failure Domains and Blast Radius]].
 
 ### Restore at scale was never tested at scale
 
-In April 2022 Atlassian deleted a set of customer sites through a faulty maintenance script; backups existed, but the restore process was built for restoring one customer or one large system, not hundreds of tenants selectively, and recovery for some customers took about two weeks (Atlassian post-incident review; numbers UNVERIFIED, not re-checked as of 2026-10).
+In April 2022 Atlassian deleted the sites of 775 customers through a maintenance script that was given site IDs instead of app IDs; backups existed, but there was no way to restore a large group of sites in one coordinated operation, and recovery took up to 14 days for some customers (Atlassian post-incident review, as of 2026-11).
+Atlassian's own summary is that it missed its RTO but met its RPO (same source, as of 2026-11).
 The mechanism: backup RTO is a function of the restore unit.
 Per-tenant restore from a shared multi-tenant backup requires extraction tooling that must itself be tested with realistic concurrency.
 
 ### Everything was in one blast radius, including the backups
 
-In May 2024, UniSuper's Google Cloud private cloud subscription was deleted due to a provider-side misconfiguration, and the fund recovered using backups held with another provider (UniSuper and Google Cloud public statements; details UNVERIFIED, not re-checked as of 2026-10).
+In May 2024, UniSuper's Google Cloud VMware Engine private cloud was deleted because a blank parameter in an internal provisioning tool defaulted to a one-year term, and the deletion hit both of its geographies (Google Cloud post and UniSuper joint statement, as of 2026-11).
+The joint statement credits backups with an additional service provider, and Google's later post also credits backups in Cloud Storage that the deletion did not touch, together with third-party backup software (same sources, as of 2026-11).
 Replicas in a second region of the same account and provider would not have helped.
 Backup isolation must cover account, administrator, and, for crown-jewel data, provider.
 
 ### Failover that depends on what failed
 
 Runbooks that need the console, SSO, a wiki, a chat tool, or a CI system hosted in the failing region will not run.
-December 2021 us-east-1 impaired the AWS console and several control plane functions while data plane services continued, and customers who relied on control plane actions to fail over struggled (AWS post-event summary; details UNVERIFIED, not re-checked as of 2026-10).
+The December 7, 2021 us-east-1 event impaired console login and left Route 53 APIs unable to change DNS entries for about seven hours, while running EC2 instances, existing DNS answers, and Lambda invocation kept working, so failover plans that needed a control plane action stalled (AWS post-event summary, as of 2026-11).
 Store runbooks and break-glass credentials outside the region, test them from a clean laptop, and use only data plane operations.
 
 ### Replica corruption and split brain
@@ -678,7 +732,7 @@ Ramp traffic with weighted routing and apply admission control at the front.
 
 - Put the recovery site and backup vault in separate accounts or projects with distinct administrators and distinct break-glass roles. An attacker who owns production IAM should not be able to delete backups.
 - Use immutable retention (Vault Lock or equivalent) with a lock the production org cannot lift, and alarm on any change to retention or vault policy.
-- Envelope encryption: replicate ciphertext and make sure the recovery region can unwrap data keys. AWS KMS multi-Region keys carry the same key material and key ID across regions; with single-Region keys you must re-encrypt on replication, which requires permissions on both keys (AWS docs; UNVERIFIED, not re-checked as of 2026-10). See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
+- Envelope encryption: replicate ciphertext and make sure the recovery region can unwrap data keys. AWS KMS multi-Region keys carry the same key material and key ID across regions, but most AWS services treat them as single-Region keys: S3 Cross-Region Replication still decrypts and re-encrypts data keys under the destination key even for related multi-Region keys, so the replication role needs permissions on both keys (AWS KMS docs, as of 2026-11). See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 - Private boundaries must exist in both regions: VPC endpoints with endpoint policies, VPC Service Controls perimeters that include the recovery project and its replication service accounts, and egress rules that allow replication traffic without opening general egress. See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
 - Replication roles follow least privilege: read on source versions, replicate on destination prefix, nothing else. The replication role is a high-value target because it can write to the recovery copy.
 - Failover credentials: pre-provision roles in the recovery site, prefer federated short-lived credentials via regional endpoints, and exercise them in drills.
@@ -687,8 +741,8 @@ Ramp traffic with weighted routing and apply admission control at the front.
 ### Cost
 
 - Standby cost is paid every hour for an event that happens a few times per decade. Express DR as insurance: premium (annual standby cost) against expected loss (events x RTO x loss per hour), as in the model above.
-- Tier by service criticality. Most platforms are 5 percent tier-0 (identity, payments, core API), 25 percent tier-1, and the rest tier-2 or 3. Applying warm standby to everything is the common over-spend.
-- Reservations for the recovery site cost full price while idle. Savings Plans and committed use discounts do not make idle capacity useful, so negotiate them against the primary and keep recovery capacity small, or fund a fleet that serves lower-priority work and can be preempted.
+- Tier by service criticality. As an illustrative split, not a measured industry figure, take 5 percent tier-0 (identity, payments, core API), 25 percent tier-1, and the rest tier-2 or 3. Applying warm standby to everything is the common over-spend.
+- Reservations for the recovery site cost the on-demand rate while idle, and AWS applies Savings Plans discounts to instance usage before unused Capacity Reservations (AWS EC2 docs, as of 2026-11). Savings Plans and committed use discounts do not make idle capacity useful, so negotiate them against the primary and keep recovery capacity small, or fund a fleet that serves lower-priority work and can be preempted.
 - Cross-region data transfer scales with write volume. Replicate only what you need: compress, filter, replicate every Nth checkpoint, and skip derived data that can be rebuilt within the RTO.
 - Replica storage tiers: use lifecycle rules to move old recovery copies to cheaper classes; keep the most recent restore point hot.
 - Observability for DR is not free: synthetic transactions and cross-region metrics are small but nonzero.
@@ -878,7 +932,7 @@ Your automation shifted traffic away from a healthy region because the health pr
 - Amazon Builders' Library, "Static stability using Availability Zones" - the design rule behind keeping failover on the data plane.
 - Amazon Builders' Library, "Avoiding fallback in distributed systems" - why fallback paths that are rarely exercised fail when needed, which is the central argument for exercising DR continuously.
 - Google SRE Book, chapters on managing incidents and postmortem culture - the human side of the T_decide term and the case-study discipline used above.
-- AWS Route 53 Application Recovery Controller documentation - routing controls, safety rules, and the quorum data plane cluster; read it to understand how a failover switch is made static-stable.
+- Amazon Application Recovery Controller (ARC) documentation - routing controls, safety rules, and the quorum data plane cluster; read it to understand how a failover switch is made static-stable.
 - Google Cloud Architecture Center, Disaster recovery planning guide - Google's cold, warm, and hot pattern descriptions and the per-product replication guarantees.
 - [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_05_Chaos_Engineering_and_Game_Days|Chaos Engineering and Game Days]] - the next chapter, on turning the drills described here into a repeatable practice.
 - [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_01_SLIs_SLOs_and_Error_Budget_Engineering|SLIs, SLOs, and Error Budget Engineering]] - how to express the DR objectives as measurable service-level indicators.

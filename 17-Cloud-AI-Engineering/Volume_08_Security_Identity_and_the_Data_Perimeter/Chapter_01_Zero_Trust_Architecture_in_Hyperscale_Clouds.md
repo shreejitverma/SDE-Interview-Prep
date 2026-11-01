@@ -9,6 +9,40 @@ sources:
   - "https://docs.cloud.google.com/iap/docs/signed-headers-howto"
   - "https://docs.aws.amazon.com/verified-access/latest/ug/auth-policies.html"
   - "https://docs.aws.amazon.com/verified-access/latest/ug/user-trust.html"
+  - "https://docs.aws.amazon.com/verified-access/latest/ug/how-it-works.html"
+  - "https://docs.aws.amazon.com/verified-access/latest/ug/verified-access-endpoints.html"
+  - "https://docs.aws.amazon.com/verified-access/latest/ug/user-claims-passing.html"
+  - "https://docs.aws.amazon.com/verified-access/latest/ug/trust-data-iam-add-pol.html"
+  - "https://docs.aws.amazon.com/verified-access/latest/ug/trust-data-third-party-trust.html"
+  - "https://aws.amazon.com/verified-access/pricing/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/02/aws-verified-access-zero-trust-resources-non-https-protocols"
+  - "https://aws.amazon.com/elasticloadbalancing/pricing/"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/security-group-connection-tracking.html"
+  - "https://docs.aws.amazon.com/vpc-lattice/latest/ug/auth-policies.html"
+  - "https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_revoke-sessions.html"
+  - "https://aws.amazon.com/blogs/security/defense-in-depth-open-firewalls-reverse-proxies-ssrf-vulnerabilities-ec2-instance-metadata-service/"
+  - "https://raw.githubusercontent.com/hashicorp/terraform-provider-aws/main/website/docs/r/verifiedaccess_endpoint.html.markdown"
+  - "https://cloud.google.com/iap/pricing"
+  - "https://chromeenterprise.google/pricing/"
+  - "https://docs.cloud.google.com/iap/docs/using-tcp-forwarding"
+  - "https://docs.cloud.google.com/iap/docs/sessions-howto"
+  - "https://docs.cloud.google.com/iap/docs/configuring-reauth"
+  - "https://docs.cloud.google.com/firewall/docs/firewalls"
+  - "https://docs.cloud.google.com/firewall/docs/tags-firewalls-overview"
+  - "https://docs.cloud.google.com/docs/security/beyondprod"
+  - "https://docs.cloud.google.com/docs/security/encryption-in-transit/application-layer-transport-security"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://www.usenix.org/system/files/atc19-pang.pdf"
+  - "https://research.google.com/pubs/archive/43231.pdf"
+  - "https://research.google.com/pubs/archive/44860.pdf"
+  - "https://research.google.com/pubs/archive/46134.pdf"
+  - "https://security.googleblog.com/2019/06/how-google-adopted-beyondcorp.html"
+  - "https://arxiv.org/abs/2403.04651"
+  - "https://arxiv.org/abs/2407.01688"
+  - "https://sec.okta.com/articles/2023/10/tracking-unauthorized-access-oktas-support-system/"
+  - "https://www.cisa.gov/sites/default/files/2025-03/CSRBReviewOfTheSummer2023MEOIntrusion508.pdf"
 ---
 
 # Zero Trust Architecture in Hyperscale Clouds
@@ -47,20 +81,21 @@ Segmentation is the last line of defense, because the assumption is that some cr
 
 [NIST SP 800-207](https://csrc.nist.gov/pubs/sp/800/207/final) (Aug 2020) formalizes the logical components: a Policy Engine (PE) that grants or denies, a Policy Administrator (PA) that establishes or tears down the session path, and a Policy Enforcement Point (PEP) on the data path.
 PE and PA together form the PDP.
-The standard describes three approaches: enhanced identity governance, micro-segmentation, and software-defined perimeters.
-It also describes several deployment variations: device agent or gateway, enclave gateway, resource portal, and application sandboxing.
+The standard describes three approaches: enhanced identity governance, micro-segmentation, and network infrastructure with software-defined perimeters.
+It also describes several deployment variations: device agent or gateway, enclave gateway, resource portal, and device application sandboxing.
 Cloud proxies such as Google IAP and AWS Verified Access are "resource portal" or "gateway" variants in which the cloud provider operates the PEP and PDP.
 The control plane (PE, PA) and the data plane (PEP) are separate on purpose, which is the same split described in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
 
 ### BeyondCorp: what Google actually built
 
-BeyondCorp started after the 2009-2010 intrusions that prompted Google to abandon the privileged-intranet model.
-The architecture was published in a series of ;login: articles: Ward and Beyer, "BeyondCorp: A New Approach to Enterprise Security" (Dec 2014); Osborn et al., "BeyondCorp: Design to Deployment at Google" (2016); Escobedo et al., "BeyondCorp: The User Experience" (2017); Peck et al., "Migrating to BeyondCorp" (2017); and "BeyondCorp: Building a Healthy Fleet" (2018).
-The component model from the design paper is the one worth memorizing:
+Google's own account says that by 2011 it had become clear the perimeter-and-VPN model was problematic ([Google Security Blog](https://security.googleblog.com/2019/06/how-google-adopted-beyondcorp.html), 2019).
+The often-repeated link to the 2009-2010 intrusions is not stated in that account or in the 2014, 2016, and 2017 papers checked here (UNVERIFIED: no Google primary source found).
+The architecture was published in a series of ;login: articles: Ward and Beyer, "BeyondCorp: A New Approach to Enterprise Security" (Dec 2014); Osborn et al., "BeyondCorp: Design to Deployment at Google" (Spring 2016); Peck et al., "Migrating to BeyondCorp" (Summer 2017); Escobedo et al., "BeyondCorp: The User Experience" (2017); and King et al., "BeyondCorp: Building a Healthy Fleet" (Fall 2018).
+The component model from the first two papers is the one worth memorizing:
 
 | Component | Mechanism | Why it exists |
 | --- | --- | --- |
-| Device identity | Certificate issued to a managed device and stored in a machine-bound store (hardware-backed where available) | Binds the TLS session to a known inventory record, so a stolen password alone is insufficient |
+| Device identity | Certificate issued to a managed device and stored on a hardware or software TPM or a qualified certificate store | Binds the TLS session to a known inventory record, so a stolen password alone is insufficient |
 | Device Inventory Service | Pipeline that ingests configuration, patch, and management signals from many sources into one record per device | Gives the PDP a single, queryable device state |
 | Trust Inferer | Computes a trust tier per device from inventory data, continuously | Converts raw posture into a small ordered set that policy can reference |
 | User and Group database | Joined with HR and job-function data | Authorization is by role, not by individual |
@@ -68,18 +103,22 @@ The component model from the design paper is the one worth memorizing:
 | Access Proxy | Internet-facing reverse proxy that terminates TLS and enforces the engine's decision | The PEP |
 | Unprivileged network | Corporate network that grants no extra reachability | Removes the "inside is trusted" assumption |
 
-(Source: BeyondCorp ;login: papers listed above; component names from memory of the design paper, see batch report.)
+(Source: [Ward and Beyer 2014](https://research.google.com/pubs/archive/43231.pdf) for device certificates, the User and Group Database, the unprivileged network, and the access proxy; [Osborn et al. 2016](https://research.google.com/pubs/archive/44860.pdf) for the Device Inventory Service, Trust Inferer, and Access Control Engine, where the enforcement points are called Gateways.)
 
 Two mechanisms from that paper series do not appear in cloud product getting-started guides.
 
 First, the trust tier is a derived value with a freshness problem.
 A device that was healthy at its last scan is still "healthy" in the inventory until the next report arrives.
 The Trust Inferer therefore has to treat stale data as a signal in its own right, and policy must define what a stale record maps to.
+The design paper says this directly: reevaluations are triggered "either by state changes or by a failure to receive updates from a device" (Osborn et al. 2016).
 The decision must degrade toward a lower tier rather than hold the last good value.
 If you do not define this, your effective policy is "healthy as of an unbounded time ago".
 
 Second, the migration method was observation first.
-The "Migrating to BeyondCorp" paper describes deriving the set of flows that would break from network traffic data and from the access proxy's own decision logs, and driving the migration by working that set down per service before enforcement was turned on.
+The ["Migrating to BeyondCorp"](https://research.google.com/pubs/archive/46134.pdf) paper describes a client-based network ACL simulator, built with Capirca to generate local iptables or Packet Filter rules from the real ACL.
+While devices stayed on the privileged network, the simulator logged the source and destination of all traffic the new non-privileged network would block.
+Those logs identified the failing users and services, and devices with compliant traffic were moved automatically, so the migration was driven by working that set down before network enforcement was turned on.
+A second simulator mode dropped the traffic on the client, which gave a reversible trial of enforcement.
 The general technique is to run the new policy in a shadow mode, log the would-be denies, fix the workflows or the data, and only then enforce.
 Both [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]] dry-run mode and AWS Config or Cedar policy simulation are descendants of the same idea.
 
@@ -100,11 +139,15 @@ Verified Access (VA) is an OIDC client in front of your endpoint, with an option
 Policies are written in Cedar and are evaluated against trust data from the configured trust providers ([AWS docs, as of 2026-10](https://docs.aws.amazon.com/verified-access/latest/ug/auth-policies.html)).
 For OIDC user trust providers, the trust data comes from the provider's UserInfo endpoint ([AWS docs, as of 2026-10](https://docs.aws.amazon.com/verified-access/latest/ug/user-trust.html)).
 Access is denied unless a policy permits it explicitly.
+Trust providers created as of February 24, 2025 also pass ID token claims in an additional user context key, spelled `addition_user_context` in that page and `additional_user_context` in the [signed claims sample](https://docs.aws.amazon.com/verified-access/latest/ug/user-claims-passing.html).
 The consequence of reading claims from UserInfo is that policy freshness is bounded by what the IdP returns at the time VA queries it.
-Whether and when VA refreshes that trust data inside an established session is not something the documentation I could verify settles, so test it with a revoked user before depending on it (UNVERIFIED, see batch report).
+VA evaluates trust data against policy on each application request ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/verified-access/latest/ug/how-it-works.html)).
+The OIDC session lasts until the refresh token expires if there is one, and otherwise defaults to one day for trust providers created as of February 24, 2025 and seven days for older ones (AWS docs, as of 2026-11).
+Whether and when VA re-reads UserInfo inside an established session is not stated, so test it with a revoked user before depending on it (UNVERIFIED: not in current AWS docs).
+For non-HTTP(S) endpoints, AWS says VA continuously monitors active connections and terminates those that stop meeting the policy ([AWS What's New](https://aws.amazon.com/about-aws/whats-new/2025/02/aws-verified-access-zero-trust-resources-non-https-protocols), Feb 2025).
 
 **Cedar as the policy engine.**
-Cedar (Cutler et al., OOPSLA 2024; "How We Built Cedar", FSE 2024) is a deliberately restricted language: no loops, explicit `permit` and `forbid` effects, `forbid` overrides `permit`, and default deny.
+Cedar ([Cutler et al.](https://arxiv.org/abs/2403.04651), PACMPL OOPSLA1 2024; ["How We Built Cedar"](https://arxiv.org/abs/2407.01688), FSE Companion 2024) is a deliberately restricted language: no loops, explicit `permit` and `forbid` effects, `forbid` overrides `permit`, and default deny.
 The restriction exists so that policies are analyzable with SMT-based tools and so that evaluation is bounded.
 The implementation was built with verification-guided development, using formal models and differential testing against the production evaluator.
 The trade-off is expressiveness: anything that needs a join across a large external dataset must be materialized into the request context first.
@@ -126,10 +169,10 @@ It bounds only the requests that pass through the proxy after the decision chang
 ### The new-enemy problem in authorization
 
 Google's Zanzibar paper (Pang et al., USENIX ATC 2019) names a consistency hazard that applies to any zero trust PDP that caches.
-The "new enemy problem" has two forms.
-In the first, a user is removed from a group and then shown content that was added after the removal, because the ACL check read a stale snapshot.
-In the second, a content change and an ACL change are applied in the opposite of the order the user intended.
-Zanzibar addresses this with a consistency token ("zookie") returned with content writes, which forces later checks to read an ACL snapshot at least as fresh as that write.
+The "new enemy problem" has two forms ([paper section 2.2](https://www.usenix.org/system/files/atc19-pang.pdf)).
+In the first, ACL update order is neglected: Alice removes Bob from a folder's ACL, Charlie then moves new documents into that folder, and Bob can see them if the check ignores the ordering between the two ACL changes.
+In the second, an old ACL is applied to new content: Alice removes Bob from a document's ACL, Charlie then adds new content, and Bob can see it if the check reads a stale ACL from before the removal.
+Zanzibar addresses this with external consistency plus a consistency token ("zookie") that the client obtains through a content-change ACL check and stores with the content, which forces later checks to read an ACL snapshot at least as fresh as that content version.
 The lesson for a cloud zero trust design is that evaluating a policy against stale entity data is not merely slow revocation.
 It can grant access the policy author explicitly intended to forbid.
 If your group membership is replicated to the PDP asynchronously, then "remove from group, then rotate the secret" is a race, and the safe order is to rotate the secret after the PDP has acknowledged the membership change.
@@ -139,10 +182,10 @@ Related consistency machinery is covered in [[17-Cloud-AI-Engineering/Volume_03_
 
 Google's internal answer for service-to-service is ALTS (Application Layer Transport Security) and the BeyondProd model (2019 whitepaper).
 ALTS authenticates services by service identity rather than by host or IP and exposes the authenticated peer identity to the RPC layer, so that authorization decisions are made on "which service is calling" and not "which address".
-BeyondProd lists the principles: protection at the network edge, no mutual trust between services, trusted machines running code with known provenance, logical choke points for policy enforcement, simple and automated change rollout, and isolation between workloads.
-(Source: Google Cloud ALTS and BeyondProd whitepapers; details from memory, see batch report.)
+BeyondProd lists: network edge protection, no inherent mutual trust between services, trusted machines that run code with known provenance, consistent policy enforcement across services, simple and standardized automated change rollout, isolation between workloads that share an operating system, and trusted hardware and attestation.
+(Source: [BeyondProd](https://docs.cloud.google.com/docs/security/beyondprod), as of 2026-11; [ALTS whitepaper](https://docs.cloud.google.com/docs/security/encryption-in-transit/application-layer-transport-security), which states its content is accurate as of December 2017.)
 Cloud equivalents are SPIFFE-style workload certificates from a mesh CA or a private CA, covered in [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_08_Service_Mesh_Architecture_and_Trade_Offs|Service Mesh Architecture and Trade-Offs]] and [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]].
-Amazon VPC Lattice provides a managed alternative: auth policies on a service network evaluated against SigV4-signed requests (UNVERIFIED, not re-read this session).
+Amazon VPC Lattice provides a managed alternative: IAM-syntax auth policies on a service network or a service, with auth type `AWS_IAM`, where a policy that requires authenticated callers requires SigV4-signed requests ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/vpc-lattice/latest/ug/auth-policies.html)).
 
 ### Micro-segmentation: how enforcement actually works
 
@@ -153,23 +196,26 @@ A rule can reference another security group, so "app tier may reach database tie
 Network ACLs are stateless and per-subnet, and they support explicit deny.
 Statefulness is implemented with connection tracking.
 That produces the behavior that matters for revocation: removing a security group rule changes the admission of new flows, while an already-tracked flow continues until it ends or idles out.
-The documented default idle timeouts are 432000 seconds for established TCP, 30 seconds for UDP, and 180 seconds for UDP streams, and they are configurable per network interface (AWS docs, not re-verified this session, see batch report).
-Traffic that is "untracked" because the group allows all traffic in both directions is not subject to connection tracking at all.
-The tracking table has a per-instance allowance, and exceeding it is exposed as the ENA driver metric `conntrack_allowance_exceeded` (UNVERIFIED, from memory of the ENA metrics).
+The documented default idle timeout for established TCP is 432000 seconds on most instance types and 350 seconds on Nitro v6 instance types (excluding P6e-GB200), and the configurable range is 60 to 432000 seconds per network interface ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/security-group-connection-tracking.html)).
+The defaults for UDP and UDP streams are 30 seconds and 180 seconds (same source).
+A TCP or UDP flow is "untracked" when a rule permits all addresses (0.0.0.0/0 or ::/0) and a rule in the other direction permits all response traffic, and removing the enabling rule interrupts an untracked flow immediately (same source).
+Connections through NLBs, NAT gateways, PrivateLink, and several other services are tracked automatically regardless of the rules (same source).
+The tracking table has a per-instance allowance, and packets dropped by exceeding it are counted by the network performance metric `conntrack_allowance_exceeded`, alongside `conntrack_allowance_available` (same source).
 
 **GCP.**
 VPC firewall rules and hierarchical firewall policies are programmed into the host-side virtual switch of the Andromeda network stack (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_04_Global_VPC_Andromeda_SDN_and_Network_Tiers|Global VPC, Andromeda SDN, and Network Tiers]]).
-Rules can target by network tag, by service account, or by secure tag (a Resource Manager tag bound to a VPC network).
+Rules can target by network tag (VPC firewall rules only), by service account, or by secure tag (a Resource Manager tag with purpose `GCE_FIREWALL`, scoped to one VPC network or to the organization, usable only in firewall policies).
 The security difference is the authority needed to change the target.
-Network tags are instance metadata that anyone with permission to edit the instance can change, so a tag-targeted rule delegates firewall posture to instance editors.
-Service accounts and secure tags are IAM-governed resources with their own permissions.
-Prefer them for any rule that expresses a trust boundary (UNVERIFIED in detail for current flags, see batch report).
+Network tags are strings on the instance with no access controls of their own, and anyone with permission to edit the instance can change them, so a tag-targeted rule delegates firewall posture to instance editors.
+Service accounts and secure tags are IAM-governed: using a service account takes the Service Account User role, and binding a secure tag value takes `roles/resourcemanager.tagUser`.
+Prefer them for any rule that expresses a trust boundary ([firewall docs](https://docs.cloud.google.com/firewall/docs/firewalls) and [secure tags docs](https://docs.cloud.google.com/firewall/docs/tags-firewalls-overview), as of 2026-11).
 
 **Kubernetes.**
 Pod-level segmentation is enforced by the CNI: eBPF in Cilium and in GKE Dataplane V2, and the VPC CNI network policy agent on EKS.
 See [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_03_CNI_and_eBPF_with_Cilium|Container Networking Interface and eBPF with Cilium]].
 Node metadata services remain a segmentation gap unless you block pod access to them explicitly.
-That is the lesson of the 2019 Capital One incident, in which a request forgery flaw reached the instance metadata service and obtained role credentials, and it is the reason IMDSv2 with a hop limit of 1 exists.
+That is the lesson of the 2019 Capital One incident, in which a request forgery flaw reached the instance metadata service and obtained role credentials.
+AWS introduced IMDSv2 in November 2019 and named SSRF among the threat classes it addresses, with a default TTL of 1 on packets carrying the token ([AWS Security Blog](https://aws.amazon.com/blogs/security/defense-in-depth-open-firewalls-reverse-proxies-ssrf-vulnerabilities-ec2-instance-metadata-service/)).
 
 ## Numbers to Know
 
@@ -181,14 +227,16 @@ That is the lesson of the 2019 Capital One incident, in which a request forgery 
 | IAP JWT audience, Compute Engine backend | `/projects/PROJECT_NUMBER/global/backendServices/ID` | Verified (Google Cloud docs, as of 2026-10) |
 | Verified Access price, per application per hour | $0.27 (US East Ohio example) | Verified ([AWS pricing page](https://www.aws.amazon.com/verified-access/pricing/), as of 2026-10) |
 | Verified Access data processing | $0.02 per GB | Verified (AWS pricing page worked example, as of 2026-10) |
-| Verified Access volume tier | $0.20 per endpoint-hour above 200 applications | Launch-era figure ([AWS News Blog](https://aws.amazon.com/blogs/aws/aws-verified-access-preview-vpn-less-secure-network-access-to-corporate-applications/), 2022); UNVERIFIED as current |
+| Verified Access volume tier | $0.20 per app-hour after the first 148,800 app-hours (200 applications over a 31 day month) | Verified ([AWS pricing page](https://aws.amazon.com/verified-access/pricing/) Example 2, US East Ohio, as of 2026-11) |
+| Verified Access non-HTTP(S) price | $0.20 per endpoint-hour, 100 free connections per endpoint-hour, then $0.001 per connection | Verified (AWS pricing page worked examples, as of 2026-11) |
+| Verified Access signed claims JWT | Header `x-amzn-ava-user-context`, ES384, 120 s expiration in the documented sample | Verified ([AWS docs](https://docs.aws.amazon.com/verified-access/latest/ug/user-claims-passing.html), as of 2026-11) |
 | IAM Identity Center trust provider group limit | Up to 1,000 groups per user | Verified (AWS docs, as of 2026-10) |
 | IAM Identity Center prerequisite | Organization instance, same Region as the trust provider | Verified (AWS docs, as of 2026-10) |
-| Chrome Enterprise Premium list price | $6 per user per month | Secondary source only ([Computerworld](https://www.computerworld.com/article/2088368/google-adds-a-premium-option-for-chrome-enterprise.html)); UNVERIFIED against Google pricing page |
-| SG tracked TCP established idle timeout | 432000 s (5 days) | UNVERIFIED this session (AWS docs, from memory) |
-| SG tracked UDP and UDP stream idle timeouts | 30 s and 180 s | UNVERIFIED this session (AWS docs, from memory) |
-| STS role session duration | 900 s to 43200 s, bounded by role setting | UNVERIFIED this session (AWS docs, from memory) |
-| RDS IAM auth token lifetime | 15 minutes, applies at connect only | UNVERIFIED this session (AWS docs, from memory) |
+| Chrome Enterprise Premium list price | $6 per user per month | Verified ([Google pricing page](https://chromeenterprise.google/pricing/), as of 2026-11) |
+| SG tracked TCP established idle timeout | 432000 s (5 days) default on most instance types; 350 s default on Nitro v6 (excluding P6e-GB200); configurable 60 to 432000 s | Verified ([AWS docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/security-group-connection-tracking.html), as of 2026-11) |
+| SG tracked UDP and UDP stream idle timeouts | 30 s and 180 s defaults (configurable 30-60 s and 60-180 s) | Verified (AWS docs, as of 2026-11) |
+| STS role session duration | 900 s to 43200 s, bounded by the role maximum (1 to 12 hours); default 3600 s; role chaining capped at 1 hour | Verified ([AWS STS API docs](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html), as of 2026-11) |
+| RDS IAM auth token lifetime | 15 minutes, applies at connect only | Verified ([AWS docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html), as of 2026-11) |
 
 Derived numbers used later in this chapter are labeled as assumptions where they are not documented limits.
 
@@ -196,18 +244,18 @@ Derived numbers used later in this chapter are labeled as assumptions where they
 
 | Concern | AWS | Google Cloud |
 | --- | --- | --- |
-| Identity-aware HTTP proxy | Verified Access (endpoint in a VPC, load balancer or network interface target) | Identity-Aware Proxy on load balancers, App Engine, and others |
+| Identity-aware HTTP proxy | Verified Access (endpoint in a VPC, with a load balancer, network interface, network CIDR, or RDS target) | Identity-Aware Proxy on load balancers, App Engine, and others |
 | Policy language | Cedar, default deny, evaluated on trust data from providers | IAM allow/deny with IAM Conditions (CEL) plus Access Context Manager access levels for device, IP, and geo context |
-| Device posture input | Third-party device trust providers integrated with Verified Access | Endpoint Verification and Chrome Enterprise Premium device signals (formerly BeyondCorp Enterprise) |
-| Signed identity assertion to backend | Signed user-context header (header name and claims UNVERIFIED) | `x-goog-iap-jwt-assertion`, ES256, audience bound to the resource (verified) |
-| Non-HTTP administrative access | SSM Session Manager (agent dials out, IAM-authorized per session); Verified Access TCP support (GA status UNVERIFIED) | IAP TCP forwarding for SSH and RDP, authorized by IAM |
-| Where the login session clock lives | IdP session plus IAM Identity Center and STS durations | Google Cloud session control for console and CLI plus IAP session settings (defaults UNVERIFIED) |
+| Device posture input | Third-party device trust providers integrated with Verified Access | Endpoint Verification and Chrome Enterprise Premium device signals (formerly BeyondCorp Enterprise); device attributes in access levels are a paid Chrome Enterprise Premium feature ([IAP pricing](https://cloud.google.com/iap/pricing), as of 2026-11) |
+| Signed identity assertion to backend | `x-amzn-ava-user-context`, ES384 JWT with IdP claims; validate the `signer` header against the instance ARN (AWS docs, as of 2026-11) | `x-goog-iap-jwt-assertion`, ES256, audience bound to the resource (verified) |
+| Non-HTTP administrative access | SSM Session Manager (agent dials out, IAM-authorized per session); Verified Access non-HTTP(S) support for TCP, SSH, and RDP (GA since Feb 6, 2025, per AWS What's New) | IAP TCP forwarding for SSH and RDP, authorized by IAM |
+| Where the login session clock lives | IdP session plus IAM Identity Center and STS durations; Verified Access OIDC session of 1 day by default, or the refresh token's expiry | Google Cloud session control for console and CLI; the IAP session follows the Google login session, IAP detects sign-outs within about two minutes ([IAP sessions](https://docs.cloud.google.com/iap/docs/sessions-howto)), and IAP reauthentication `maxAge` has a 300 s minimum ([reauth docs](https://docs.cloud.google.com/iap/docs/configuring-reauth)), as of 2026-11 |
 | Service-to-service authorization | VPC Lattice auth policies (SigV4), mTLS via a mesh or private CA | Cloud Service Mesh with mesh-issued workload certificates; ALTS internally at Google |
 | Segmentation target selector | Security group reference (membership), subnet, NACL | Service account, secure tag, network tag, hierarchical firewall policy |
 | Segmentation rule semantics | Allow-only SGs, stateful with connection tracking; NACLs stateless with deny | Allow and deny rules with priorities, stateful, in global or hierarchical policies |
 | Perimeter around cloud APIs | VPC endpoint policies, SCPs, RCPs (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter\|data perimeter]]) | VPC Service Controls perimeters and ingress/egress rules |
-| Session-revocation primitive for cloud credentials | Deny policy conditioned on token issue time ("revoke active sessions") | Disable principal or add IAM deny policy; short-lived access tokens |
-| Pricing shape | Per application-hour plus per GB processed (verified) | IAP itself is not separately metered (UNVERIFIED); the load balancer is billed |
+| Session-revocation primitive for cloud credentials | Deny policy conditioned on `aws:TokenIssueTime` ("revoke active sessions" attaches `AWSRevokeOlderSessions`) | Disable principal or add IAM deny policy; short-lived access tokens |
+| Pricing shape | Per application-hour plus per GB processed (verified) | IAP core features are at no charge, networking and compute charges apply for the required load balancing, and some features need Chrome Enterprise Premium ([IAP pricing](https://cloud.google.com/iap/pricing), as of 2026-11) |
 
 The central mechanism difference is where the trust boundary of the proxy's assertion lies.
 IAP is a Google-operated front end that mints a Google-signed JWT, and you verify it against Google-published keys.
@@ -223,7 +271,7 @@ Part C is the capacity and cost arithmetic.
 
 ### Part A: Verify the assertion correctly, then compute the revocation budget
 
-The verifier below was run in the authoring sandbox with PyJWT 2.14 and `cryptography`.
+The verifier below was run in the authoring sandbox with PyJWT 2.14 and `cryptography`, and re-run with the same result on PyJWT 2.15.1 during fact-checking.
 Its self-test rejects a cross-application replay, an expired token, and a token whose lifetime exceeds the documented IAP bound.
 
 ```python
@@ -291,7 +339,7 @@ if __name__ == "__main__":
 ```
 
 Observed output: three `rejected:` lines (`InvalidAudienceError`, `ExpiredSignatureError`, `ValueError`) followed by `selftest ok`.
-The issuer string and the key-fetch location come from Google's sample code and are listed in the batch report as not re-verified.
+The issuer string is the documented value, and the public keys are published at `https://www.gstatic.com/iap/verify/public_key` and, in JWK format, `https://www.gstatic.com/iap/verify/public_key-jwk` (Google Cloud docs, as of 2026-11).
 
 The second script makes the revocation argument quantitative.
 The end-to-end bound is the maximum of the layers, because the layers run concurrently and the slowest enforcement point dominates.
@@ -302,7 +350,7 @@ The end-to-end bound is the maximum of the layers, because the layers run concur
 LAYERS = {
     "IAP JWT cached by backend (10 min + 2*30 s skew)": 600 + 60,
     "Backend authz cache you wrote (TTL)": 300,
-    "SG tracked TCP flow, idle timeout 432000 s (5 d), UNVERIFIED this session": 432000,
+    "SG tracked TCP flow, default idle timeout 432000 s (5 d), 350 s on Nitro v6": 432000,
     "Same flow after NACL deny (stateless, next packet)": 1,
     "App max-connection-age you enforce": 900,
 }
@@ -324,12 +372,14 @@ if __name__ == "__main__":
 ```
 
 Observed output: the dominant layer is the tracked flow at 432000 s (120 hours), and after you cap flow lifetime with an application-enforced maximum connection age the bound becomes 900 s (15 minutes).
-The 5 day figure is an idle timeout, so a flow that keeps sending never expires.
+The 5 day figure is the default idle timeout outside Nitro v6, and Nitro v6 instance types default to 350 s (AWS docs, as of 2026-11).
+Either way it is an idle timeout, so a flow that keeps sending never expires, and AWS recommends TCP keepalives under 5 minutes to hold long-lived connections open (same source).
 The practical remedy is the pair of an application-level maximum connection age and, for emergency revocation, a NACL deny, which is stateless and takes effect on the next packet.
 
 ### Part B: Verified Access with a segmented backend (Terraform skeleton)
 
 This file was not applied or validated in the authoring session because no Terraform binary and no cloud account were available.
+Its Verified Access resource and argument names were checked against the [Terraform AWS provider docs](https://raw.githubusercontent.com/hashicorp/terraform-provider-aws/main/website/docs/r/verifiedaccess_endpoint.html.markdown) (as of 2026-11), but it remains unapplied.
 Run `terraform validate` first and check the Cedar context attribute names against the current Verified Access policy documentation before relying on it.
 
 ```hcl
@@ -381,7 +431,8 @@ resource "aws_verifiedaccess_instance_trust_provider_attachment" "idp" {
 resource "aws_verifiedaccess_group" "internal" {
   verifiedaccess_instance_id = aws_verifiedaccess_instance.this.id
   # Cedar: default deny; this permits only verified company identities.
-  # The context attribute path (context.idp.email) is UNVERIFIED; confirm against current docs.
+  # The context key is the policy reference name, "idp" here (AWS docs, as of 2026-11).
+  # Claims below that key come from your IdP's UserInfo response, so confirm "email" is returned.
   policy_document = <<-EOT
     permit(principal, action, resource)
     when { context.idp.email like "*@example.com" };
@@ -466,8 +517,8 @@ If you left the instance running, the endpoint still bills hourly.
 Lab cost.
 One endpoint at $0.27 per hour for a 4 hour session is 4 x 0.27 = $1.08 (AWS pricing page, as of 2026-10).
 Data processing for a smoke test of 1 GB is 1 x $0.02 = $0.02.
-An internal ALB adds an hourly charge and LCU charges that I did not verify this session, which I estimate at roughly $0.10 for four hours (UNVERIFIED).
-Estimated total: about $1.20, with the $10 budget as a hard tripwire.
+An internal ALB adds 4 x $0.0225 = $0.09 in hourly charges, plus at most about 4 x $0.008 = $0.03 at one LCU per hour, using the US East N. Virginia rates (AWS [ELB pricing](https://aws.amazon.com/elasticloadbalancing/pricing/) worked examples, as of 2026-11).
+Estimated total: about $1.22, with the $10 budget as a hard tripwire.
 The failure to guard against is forgetting the endpoint: 0.27 x 730 hours = $197.10 per month for a single idle endpoint.
 
 Production sizing.
@@ -489,7 +540,8 @@ The price is a revocation delay equal to the staleness bound, so the staleness b
 
 **Bypass paths around the proxy.**
 IAP and Verified Access protect only traffic that goes through them.
-Google's own getting-started guidance states that if an attacker can bypass the load balancer, they can bypass IAP, for example through a firewall rule that is too broad or a backend with a public address ([Google Cloud blog](https://cloud.google.com/blog/products/identity-security/getting-started-with-cloud-identity-aware-proxy)).
+Google's own getting-started guidance states that if someone can bypass the load balancer, they can bypass IAP, for example through misconfigured firewall rules or by SSHing into the instance or another instance on the network ([Google Cloud blog](https://cloud.google.com/blog/products/identity-security/getting-started-with-cloud-identity-aware-proxy)).
+A backend with a public address is another route to the same bypass.
 The control is a network rule that admits only the proxy, plus assertion verification in the backend.
 Test it adversarially: from a host in the same VPC, connect directly to the backend and assert failure.
 
@@ -506,18 +558,18 @@ Either re-verify the assertion on every request or cap the application session a
 **Revocation gap through long-lived flows.**
 A security group rule removal does not terminate tracked flows, and a database connection authorized by a 15 minute IAM token lives as long as the connection does (see Part A).
 STS sessions cannot be revoked individually.
-The documented route is to add a deny policy keyed on the token issue time, which is exactly the "revoke active sessions" action.
+The documented route is to add a deny policy keyed on the token issue time, which is exactly the "revoke active sessions" action, and it applies to every session of that role issued before the cutoff ([IAM docs, as of 2026-11](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_revoke-sessions.html)).
 Short role sessions for production and a maximum connection age on every long-lived protocol are the preventive controls.
 
 **PDP and IdP as a hard dependency.**
-In the Google Cloud incident of 2025-06-12, a policy-data change with unintended blank fields was replicated globally within seconds to the service that performs API policy and quota checks, triggered a null-pointer crash loop, and produced a multi-hour disruption across many products, with a herd effect on recovery in the largest region (Google Cloud incident report; summary from memory, UNVERIFIED).
+In the Google Cloud incident of 2025-06-12, a policy-data change with unintended blank fields was replicated globally within seconds to Service Control, the service that performs API policy and quota checks, triggered a null-pointer crash loop in a code path without feature-flag protection, and produced a multi-hour disruption across many products, with a herd effect on recovery in us-central1 ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
 The reusable lessons are that policy data deserves the same staged rollout as code, that a global-replication path for policy is a global blast radius, and that a PEP crashing on malformed policy is a fail-closed outage.
 Compare the cases in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 A related trap is circularity: if the IdP, the proxy configuration repository, or the break-glass credentials are themselves behind the proxy, an outage of the proxy locks out the people who could fix it ([[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]]).
 
 **Bearer token theft defeats user and device checks.**
-In the October 2023 Okta support-system incident, session tokens captured in files uploaded to a support case were used to hijack customer sessions (Okta disclosures, 2023).
-In 2023 the Storm-0558 actor used a stolen signing key to forge tokens that the verifier accepted, as analyzed in the Cyber Safety Review Board report (April 2024).
+In the October 2023 Okta support-system incident, an attacker used a stolen credential to read HAR files uploaded to support cases, and the session tokens in those files can be used to impersonate users ([Okta, 2023-10-20](https://sec.okta.com/articles/2023/10/tracking-unauthorized-access-oktas-support-system/)).
+In 2023 the Storm-0558 actor used a stolen consumer signing key, combined with a flaw in Microsoft's authentication system, to forge tokens that enterprise email accepted, as analyzed in the [Cyber Safety Review Board report](https://www.cisa.gov/sites/default/files/2025-03/CSRBReviewOfTheSummer2023MEOIntrusion508.pdf) (dated March 20, 2024, released April 2, 2024).
 Both incidents show that a bearer assertion is only as strong as its binding.
 Defenses are device-bound credentials (short-lived tokens whose use requires a key held in hardware), strict issuer and audience validation, and a plan for signing-key compromise.
 
@@ -533,7 +585,8 @@ The segmentation boundary is only as strong as the IAM boundary around the selec
 
 **Connection-tracking exhaustion.**
 Heavy east-west fan-out, such as many short-lived RPCs between inference gateways and workers, can exhaust the per-instance connection tracking allowance, and the symptom is dropped new connections with healthy CPU.
-Watch the allowance metrics and design chatty paths to use untracked rules or long-lived multiplexed connections.
+Watch the allowance metrics, set a lower TCP established timeout, and design chatty paths to use untracked rules or long-lived multiplexed connections.
+Untracked rules do not help on paths that are always tracked, such as those through an NLB or a NAT gateway (AWS docs, as of 2026-11).
 
 **Enforcing before observing.**
 Turning on strict policy without a shadow period produces an outage and then a policy exception that never goes away.
@@ -547,7 +600,7 @@ Expiry is a classic cascading failure when the issuing CA is unavailable for lon
 
 ### IAM scoping
 
-- IAP: grant the HTTPS accessor role on the specific resource, not the project. Programmatic access uses the permission `iap.webServiceVersions.accessViaIap` on the target (Google Cloud docs, as of 2026-10; [programmatic authentication](https://docs.cloud.google.com/iap/docs/authentication-howto)). TCP forwarding has its own tunnel permission (UNVERIFIED name, check the current role list).
+- IAP: grant the HTTPS accessor role on the specific resource, not the project. Programmatic access uses the permission `iap.webServiceVersions.accessViaIap` on the target (Google Cloud docs, as of 2026-10; [programmatic authentication](https://docs.cloud.google.com/iap/docs/authentication-howto)). TCP forwarding has its own role, `roles/iap.tunnelResourceAccessor`, and permission, `iap.tunnelInstances.accessViaIAP` ([TCP forwarding docs](https://docs.cloud.google.com/iap/docs/using-tcp-forwarding), as of 2026-11).
 - Verified Access: keep the group-level policy as the organization baseline (verified company identity, and device posture where used) and the endpoint-level policy as the per-application restriction, so a new endpoint cannot be created with a weaker policy than the baseline by omission.
 - Deny the ability to modify the selectors that segmentation depends on (security group attachment, network tags) for non-network-admin principals. Use IAM deny policies on GCP and SCPs on AWS, as described in [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]] and [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions|Cloud IAM: Roles, Policies, and Conditions]].
 
@@ -555,7 +608,8 @@ Expiry is a classic cascading failure when the issuing CA is unavailable for lon
 
 The zero trust fabric has three signing roots that you must inventory: the proxy's assertion signing keys (provider-managed, you only consume the public keys), the IdP's token signing keys, and the workload CA that issues mTLS certificates.
 Treat the workload CA like a KMS root: offline or HSM-backed root, short-lived online intermediates, and certificate lifetimes measured in hours.
-Use customer-managed encryption keys where the service offers them for stored trust data and logs (UNVERIFIED for Verified Access specifics).
+Use customer-managed encryption keys where the service offers them for stored trust data and logs.
+Verified Access groups, endpoints, and trust providers expose a server-side encryption option with a KMS key ([Terraform AWS provider docs](https://raw.githubusercontent.com/hashicorp/terraform-provider-aws/main/website/docs/r/verifiedaccess_endpoint.html.markdown), as of 2026-11), but the AWS user guide does not spell out which stored data it covers.
 See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 
 ### Private network boundaries
@@ -576,7 +630,7 @@ For agentic workloads that call tools on behalf of users, the confused-deputy ri
 - Per-endpoint billing means endpoint count is the cost driver (Part C: $4,927.50 versus $985.50 per month for 25 versus 5 endpoints at the verified $0.27 per hour).
 - Data processing is $0.02 per GB, so route bulk transfers (model artifacts, datasets, checkpoints) over private data paths and not through the proxy. Only interactive and administrative traffic belongs there.
 - Decision-log volume is a hidden cost at per-request evaluation; sample allows and retain all denies if audit policy permits.
-- Seat-based tiers (Chrome Enterprise Premium at about $6 per user per month, secondary source) price by population, while Verified Access prices by application count, so the crossover depends on users per application.
+- Seat-based tiers (Chrome Enterprise Premium at $6 per user per month, Google pricing page, as of 2026-11) price by population, while Verified Access prices by application count, so the crossover depends on users per application.
 
 ## Interview Questions and Model Answers
 
@@ -606,8 +660,8 @@ You remove a security group rule that allowed a contractor's bastion to reach a 
 
 Security groups are stateful, and statefulness is implemented with connection tracking.
 A rule governs whether a new flow is admitted, and an already-tracked flow continues until it closes or idles out.
-The documented idle timeout for an established TCP flow is 5 days, and a flow that keeps sending never idles, so the contractor's session can outlive the rule (I would confirm the current value in the AWS documentation before quoting it).
-Also, if the group allows all traffic in both directions the flow is untracked, which is a separate subtlety.
+The documented default idle timeout for an established TCP flow is 5 days on most instance types and 350 seconds on Nitro v6, and a flow that keeps sending never idles, so the contractor's session can outlive the rule (AWS docs, as of 2026-11).
+Also, if the rules permit all addresses in both directions the flow is untracked, and that is the one case where removing the rule interrupts the flow immediately.
 To make removal immediate there are three options with different costs.
 A network ACL deny is stateless and applies to the next packet, so it is the emergency control, at the cost of subnet-wide scope and rule-number management.
 An application or database-side session kill (terminating the backend session) works for protocols with a server-side session concept.
@@ -650,7 +704,7 @@ Third, fix the largest classes of would-be denies, usually by enrolling devices 
 Fourth, enforce per application, starting with high-traffic low-sensitivity ones to burn in the machinery, and keep a per-application rollback to the VPN path until the application has run clean for a defined period.
 Fifth, close the old path: only after the proxy is the sole route do you remove the VPN reachability and add the backend-side assertion check, since otherwise you have two doors.
 The trap I avoid is exception accumulation: every exemption has an owner and an expiry date, and the exemption count is a tracked metric.
-Cost is part of the plan: with Verified Access at $0.27 per application-hour, 800 endpoints would be about $157,680 per month, so I would consolidate behind shared gateways for low-risk applications and give only sensitive ones a dedicated endpoint.
+Cost is part of the plan: with Verified Access at $0.27 per application-hour for the first 148,800 app-hours and $0.20 after that, 800 endpoints over 730 hours would be 40,176 + 87,040 = about $127,216 per month (AWS pricing page, US East Ohio, as of 2026-11), so I would consolidate behind shared gateways for low-risk applications and give only sensitive ones a dedicated endpoint.
 
 #### Follow-up Interviewer Question
 
@@ -670,7 +724,7 @@ S is the explicit price of availability, since revocations during the outage are
 Availability arithmetic supports this: serial dependencies of 99.9%, 99.9%, and 99.99% give about 18.4 hours of unavailability per year, and caching the device-trust leg off the critical path brings it to about 9.6 hours.
 Second, I prevent the policy plane from being a global single blast radius: policy changes roll out per cell with canary evaluation, and a malformed policy must make the PEP keep the last known good version, not crash.
 Third, I break the circular dependencies: break-glass credentials, the IdP, and the proxy configuration pipeline are not behind the proxy, are exercised quarterly, and are alarmed on use.
-The 2025-06-12 Google Cloud incident is the cautionary example of globally replicated policy data triggering a crash loop in an enforcement service (details unverified here).
+The 2025-06-12 Google Cloud incident is the cautionary example of globally replicated policy data triggering a crash loop in an enforcement service (Google Cloud incident report).
 
 #### Follow-up Interviewer Question
 
@@ -724,14 +778,14 @@ A deployment tool takes 20 minutes and cannot be cancelled safely mid-flight. Ho
 - [NIST SP 800-207, Zero Trust Architecture](https://csrc.nist.gov/pubs/sp/800/207/final) - the canonical PE, PA, and PEP model and the deployment variants; read the tenets and the deployment scenarios sections.
 - Ward and Beyer, "BeyondCorp: A New Approach to Enterprise Security", ;login: (Dec 2014) - the original motivation and architecture statement.
 - Osborn, Ward, Beyer, and others, "BeyondCorp: Design to Deployment at Google", ;login: (2016) - the component-level design (device inventory, trust inferer, access control engine, access proxy).
-- Peck and others, "Migrating to BeyondCorp: Maintaining Productivity While Improving Security", ;login: (2017) - the observe-before-enforce migration method that no product guide describes.
-- "BeyondCorp: Building a Healthy Fleet", ;login: (2018) - how device trust data is produced and kept fresh.
+- Peck and others, "Migrating to BeyondCorp: Maintaining Productivity While Improving Security", ;login: (Summer 2017) - the observe-before-enforce migration method that no product guide describes.
+- King, Janosko, and others, "BeyondCorp: Building a Healthy Fleet", ;login: (Fall 2018) - how device trust data is produced and kept fresh.
 - Google Cloud whitepapers "BeyondProd" (2019) and "Application Layer Transport Security" - the workload side of Google's zero trust model, including service identity at the RPC layer.
 - Pang and others, "Zanzibar: Google's Consistent, Global Authorization System", USENIX ATC 2019 - the new-enemy problem and consistency tokens for authorization.
-- Cutler and others, "Cedar: A New Language for Expressive, Fast, Safe, and Analyzable Authorization", OOPSLA 2024, and "How We Built Cedar: A Verification-Guided Approach", FSE 2024 - why the language is restricted and how it was verified.
+- Cutler and others, "Cedar: A New Language for Expressive, Fast, Safe, and Analyzable Authorization", PACMPL OOPSLA1 2024, and Disselkoen and others, "How We Built Cedar: A Verification-Guided Approach", FSE Companion 2024 - why the language is restricted and how it was verified.
 - [IAP signed headers documentation](https://docs.cloud.google.com/iap/docs/signed-headers-howto) - the exact verification contract for the assertion header, including the audience and lifetime rules.
 - [AWS Verified Access policies](https://docs.aws.amazon.com/verified-access/latest/ug/auth-policies.html) and [trust providers](https://docs.aws.amazon.com/verified-access/latest/ug/user-trust.html) - how Cedar policies meet trust data and what the IdP integration limits are.
-- Cyber Safety Review Board, "Review of the Summer 2023 Microsoft Exchange Online Intrusion" (Apr 2024) - a primary analysis of signing-key compromise and token validation failure.
+- Cyber Safety Review Board, "Review of the Summer 2023 Microsoft Exchange Online Intrusion" (dated Mar 20, 2024, released Apr 2, 2024) - a primary analysis of signing-key compromise and token validation failure.
 - DOJ criminal complaint and public analyses of the 2019 Capital One breach, plus the AWS IMDSv2 announcement - the canonical case for metadata-service segmentation.
 - Okta public disclosures on the October 2023 support-system incident - the session-token theft case for device and context binding.
 - [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]] - the next chapter, which covers the machine-identity half of this model.
