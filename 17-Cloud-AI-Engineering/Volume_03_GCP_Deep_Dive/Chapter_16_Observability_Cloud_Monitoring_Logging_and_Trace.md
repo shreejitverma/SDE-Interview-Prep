@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.vldb.org/pvldb/vol13/p3181-adams.pdf"
@@ -211,9 +211,9 @@ Google recommends exporting OTLP to a Collector, which then sends to the Telemet
 The Google-Built OpenTelemetry Collector is Google's build of upstream components on a secure supply chain.
 It adds Google Cloud resource metadata so that application telemetry can be correlated with infrastructure telemetry (Google Cloud docs, as of 2026-11).
 Ops Agent 2.71.0 or newer can also be switched, with `otlp_exporter: true` under `global` in its config, to send logs, metrics, and traces through the Telemetry API instead of the proprietary Monitoring, Logging, and Trace APIs (Google Cloud docs, as of 2026-11).
-The logs and metrics opt-in was labeled Preview in the May 2026 release note (UNVERIFIED: current Ops Agent docs and the 2.71.0 note state no release stage, so do not assume GA).
+The May 2026 release note described the logs and metrics opt-in, starting with Ops Agent 2.66.0, as available during a preview period (Google Cloud release notes, as of 2026-11).
 Metric ingestion through the Telemetry API reached GA on 2026-08-05 and log ingestion on 2026-08-14, both after Preview periods (Google Cloud release notes, as of 2026-11).
-Google has recommended the Telemetry API for traces since 2025-03-25 (Google Cloud release notes, as of 2026-11), and the `v1.traces` reference carries no Preview label (UNVERIFIED: no explicit GA entry for traces in the release notes).
+Google has recommended the Telemetry API for traces since 2025-03-25 (Google Cloud release notes, as of 2026-11).
 Sending traces also requires the Cloud Trace API to be enabled, because otherwise the Telemetry API discards them (Google Cloud release notes, as of 2026-11).
 Older exporters still exist: `googlecloud` and `googlemanagedprometheus` in collector-contrib, and per-language `opentelemetry-exporter-gcp-trace` and `opentelemetry-exporter-gcp-monitoring`.
 These write to the proprietary APIs and remain valid where OTLP is not yet supported for a signal.

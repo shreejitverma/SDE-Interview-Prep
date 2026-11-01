@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-token-burndown.html"
@@ -38,6 +38,8 @@ sources:
   - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/measure-provisioned-throughput"
   - "https://cloud.google.com/vertex-ai/generative-ai/pricing"
   - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/data-governance"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/prov-thru-edit.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html"
 ---
 
 # Managed Inference: Amazon Bedrock vs Vertex AI
@@ -174,7 +176,7 @@ Priority is a queue position, not a quota partition.
 
 Provisioned Throughput by Model Units reserves model-specific capacity, billed hourly, with no commitment or a 1-month or 6-month term ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/prov-throughput.html), as of 2026-10).
 Before buying, you must request an MU allocation through AWS Support ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/prov-thru-purchase.html), as of 2026-10).
-AWS now documents a second type, Provisioned Throughput by Tokens, whose input and output tokens per minute can be modified after purchase; its terms and pricing are UNVERIFIED here (not detailed on the AWS pages checked).
+AWS now documents a second type, Provisioned Throughput by Tokens, whose input and output tokens per minute can be modified after purchase, whereas a Model Units purchase can edit only its name, tags and (for custom models) the model ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/prov-thru-edit.html), as of 2026-11).
 Inference profiles do not support Provisioned Throughput ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html), as of 2026-10).
 That makes a PT purchase a single-region capacity island: it cannot borrow from other regions the way an on-demand inference profile can.
 
@@ -197,7 +199,7 @@ Each region's pool reports headroom, and the router either sends to the source r
 Neither vendor documents the selection policy, so you should assume that consecutive requests in a session may land in different regions.
 That affects prompt-cache hit rates, because KV prefix caches are local to the replica.
 The cache-affinity problem is the same one Mooncake ([Qin et al., FAST 2025](https://www.usenix.org/conference/fast25/presentation/qin)) and Llumnix ([Sun et al., OSDI 2024](https://www.usenix.org/conference/osdi24/presentation/sun-biao)) solve inside one fleet with KV-aware scheduling and migration.
-Whether the managed routers are cache-affine is UNVERIFIED: neither vendor documents it.
+AWS documents that prompt caching can be combined with cross-region inference and that, at times of high demand, cross-region routing may lead to increased cache writes ([AWS docs](https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html), as of 2026-11).
 
 ### Capacity plane: what tiers probably map to inside the fleet
 
@@ -257,7 +259,7 @@ Reserved capacity (Bedrock PT, Vertex PT) protects you from capacity-plane conte
 | Premium lane | Priority tier, shares on-demand quota | Priority PayGo, selected by header | Neither partitions quota; both reorder queues |
 | Discount lane | Flex tier (-50%); batch at 50% | Flex PayGo (-50%, Preview, global endpoint only); Gemini batch at 50% | Flex shares quota with production on Bedrock |
 | Reserved capacity | PT by MUs (none/1/6 months) and Reserved tier (1/3 months, per 1K TPM) | PT by GSUs (1 week/1/3/12 months) | Vertex sells a 1-week term; Bedrock sells a no-commit hourly MU |
-| Overflow above reservation | Reserved tier overflows to Standard; MU PT overflow behavior UNVERIFIED (not stated in AWS PT docs); PT not usable via inference profiles | Spillover to PayGo by default; `dedicated` header fails closed | Vertex overflow is a silent cost risk; Bedrock PT is a regional island |
+| Overflow above reservation | Reserved tier overflows to Standard; PT not usable via inference profiles | Spillover to PayGo by default; `dedicated` header fails closed | Vertex overflow is a silent cost risk; Bedrock PT is a regional island |
 | Cross-region price | Source-region pricing; global about 10% cheaper | Non-global PT about 10% more than global for GA Gemini 3 and later | Both pay you to give up residency |
 | Residency control | Geographic profiles bound processing to a geography | `us`/`eu` multi-region endpoints bound processing | Both: global means "anywhere commercial" |
 | Governance hook | SCP `aws:RequestedRegion` must allow destinations or `unspecified` | Org Policy resource locations and VPC-SC perimeter on `aiplatform.googleapis.com` | AWS routing can be broken by an SCP written years earlier |
@@ -284,8 +286,7 @@ No standing resources are created except the budgets.
 
 ```bash
 # AWS: account-level monthly cost budget with an 80% actual-spend alert.
-# The budget is not filtered by service, because third-party model usage may be itemized outside "Amazon Bedrock"
-# (UNVERIFIED: secondary reports show per-model "(Amazon Bedrock Edition)" service names; no AWS doc found).
+# The budget is not filtered by service, so that all spend in the account is counted whichever service line it is itemized under.
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 cat > /tmp/budget.json <<'EOF'
 {"BudgetName":"bedrock-lab-5usd","BudgetLimit":{"Amount":"5","Unit":"USD"},
@@ -356,9 +357,9 @@ def bedrock():
     from botocore.exceptions import ClientError
 
     profile = os.environ["BEDROCK_PROFILE_ID"]
-    # max_attempts=1 disables SDK retries so throttles are visible to our own policy.
+    # total_max_attempts=1 counts the initial request, so the SDK never retries and throttles stay visible to our own policy.
     client = boto3.client("bedrock-runtime",
-                          config=Config(retries={"max_attempts": 1, "mode": "standard"},
+                          config=Config(retries={"total_max_attempts": 1, "mode": "standard"},
                                         read_timeout=120))
     extra = {}
     tier = os.environ.get("BEDROCK_SERVICE_TIER")  # "priority", "default" or "flex"

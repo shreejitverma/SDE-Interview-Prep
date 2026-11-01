@@ -2,7 +2,7 @@
 type: playbook
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://doi.org/10.1145/1498765.1498785"
@@ -171,7 +171,7 @@ See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_01_SLIs_SLOs
 
 Verification note: rows dated 2026-11 were re-checked against the named docs and price sheets in that month.
 The date shown on each row is the date the figure was last verified against the named primary source, so older dates were not re-checked in that pass.
-Rows marked UNVERIFIED could not be confirmed and must be re-checked before anyone quotes them in a design review.
+Figures derived by dividing a board-level specification by the GPU count say so in the row.
 Vendor silicon specifications (HBM capacity and bandwidth, peak FLOPs) are fixed per SKU and do not drift.
 
 ### Physics and latency ladder
@@ -194,7 +194,7 @@ Vendor silicon specifications (HBM capacity and bandwidth, peak FLOPs) are fixed
 | NVIDIA A100 80GB SXM | 80 GB HBM2e | 2.04 TB/s | 312 TFLOPS BF16 | ~153 | NVIDIA datasheet (stable) |
 | NVIDIA H100 SXM | 80 GB HBM3 | 3.35 TB/s | 989 TFLOPS BF16, 1,979 FP8 (dense, half the datasheet's with-sparsity 1,979 and 3,958) | ~295 BF16 | NVIDIA datasheet (stable) |
 | NVIDIA H200 | 141 GB HBM3e | 4.8 TB/s | Same as H100 | ~206 BF16 | NVIDIA datasheet (stable) |
-| NVIDIA B200 (as in DGX/HGX B200) | 180 GB HBM3e | 8 TB/s | ~2.25 PFLOPS BF16 dense (UNVERIFIED: derived by scaling DGX B200's 144/72 PFLOPS Tensor figure, NVIDIA publishes no per-GPU dense BF16) | ~281 | NVIDIA DGX B200 datasheet, Google Cloud docs for memory (as of 2026-11) |
+| NVIDIA B200 (as in DGX/HGX B200) | 180 GB HBM3e | 8 TB/s | ~2.25 PFLOPS BF16 dense (NVIDIA lists 36 PFLOPS BF16 with sparsity for the 8-GPU HGX B200 board, so 18 dense, divided by 8 GPUs; no per-GPU figure is published) | ~281 | [NVIDIA HGX B200 specifications](https://www.nvidia.com/en-us/data-center/hgx/) (as of 2026-11), [Google Cloud A4 docs](https://docs.cloud.google.com/compute/docs/accelerator-optimized-machines) for memory (as of 2026-11) |
 | AWS Trainium2 | 96 GiB HBM | 2.9 TB/s | 1,299 TFLOPS FP8 dense, 667 TFLOPS BF16 | ~230 BF16 | AWS Neuron docs (as of 2026-11) |
 | AWS Inferentia2 | 32 GiB HBM | 820 GiB/s | - | - | AWS Neuron docs (as of 2026-11) |
 | Google TPU v5e | 16 GB HBM2 | 800 GiB/s (~859 GB/s) | 197 TFLOPS BF16 | ~229 | Google Cloud TPU docs (as of 2026-11) |

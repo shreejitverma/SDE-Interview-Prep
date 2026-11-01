@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://cdn.amazon.science/a6/34/41496f64421faafa1cbe301c007c/a-cloud-optimized-transport-protocol-for-elastic-and-scalable-hpc.pdf"
@@ -254,8 +254,8 @@ Patarasuk and Yuan prove the ring's bandwidth optimality ("Bandwidth optimal all
 | In-house accelerator scale-up | Trainium NeuronLink; Trn2 UltraServer joins 64 chips across four instances (AWS Trn2 page, as of 2026-11; the page says both "available now" and "available in preview", so confirm status) | TPU ICI 3D/2D torus with OCS | Google's fabric is switchless and optically reconfigurable; see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_01_Accelerator_Architectures_GPUs_Trainium_TPUs\|Accelerator Architectures]] |
 | Scale-out transport | SRD on Nitro, exposed as EFA through libfabric | GPUDirect-TCPXO (A3 Mega), RoCEv2 on ConnectX-7 (A3 Ultra, A4, A4X), DCN for TPU Multislice (Google Cloud docs, as of 2026-11) | SRD is AWS-proprietary and lossy-tolerant; RoCE follows verbs semantics and usually depends on fabric-level flow control |
 | Ordering | Out-of-order delivery; ordering restored above transport | RoCE RC is in-order per queue pair | Out-of-order delivery removes head-of-line blocking from retransmits |
-| Multipathing | Per-packet spray steered by encapsulation entropy and per-path RTT | Rail-aligned RoCE network (Google Cloud docs, as of 2026-11); per-flow ECMP with collective libraries adding entropy through more queue pairs (UNVERIFIED: GCP fabric load balancing not in current docs) | Per-flow hashing collides with few large flows; spraying does not |
-| Loss recovery | Fast hardware retransmit on Nitro (Shalev et al. 2020) | NIC-dependent; the ConnectX-7 datasheet lists out-of-order RDMA for adaptive routing (UNVERIFIED: selective repeat not in the datasheet or Google docs) | Loss tolerance decides whether PFC is mandatory |
+| Multipathing | Per-packet spray steered by encapsulation entropy and per-path RTT | Rail-aligned RoCE network (Google Cloud docs, as of 2026-11) | Per-flow hashing collides with few large flows; spraying does not |
+| Loss recovery | Fast hardware retransmit on Nitro (Shalev et al. 2020) | NIC-dependent; the ConnectX-7 datasheet lists out-of-order RDMA supporting adaptive routing (NVIDIA ConnectX-7 datasheet, as of 2026-11) | Loss tolerance decides whether PFC is mandatory |
 | NCCL integration | `aws-ofi-nccl` plugin over libfabric `efa` provider | `nccl-plugin-gpudirecttcpx` images for TCPX/TCPXO and `nccl-gib` packages for RoCE (Google Cloud docs, as of 2026-11) | Plugin version mismatch is a top cause of silent fallback on both clouds |
 | Locality primitive | Cluster placement groups, EC2 UltraClusters, Capacity Blocks for ML | Compact placement policy (`group-placement --collocation=collocated`), TPU slice topology at creation | TPU topology is explicit and guaranteed; GPU Clos locality is best-effort unless reserved |
 | Reconfigurability | Static Clos; locality fixed at placement | OCS reshapes TPU slices and bypasses failed cubes | OCS turns hardware failure into a scheduling event |
@@ -568,7 +568,7 @@ The documented failure is `cudaErrorSystemNotReady` on non-ALI systems; on ALI s
 **ECMP hash collisions on RoCE fabrics.**
 Collective traffic produces a few long, high-bandwidth flows with little hash entropy, so per-flow ECMP can put two of them on one uplink while other uplinks sit idle.
 Meta described this failure mode and its mitigations for its RoCE training fabrics in Gangidi et al., "RDMA over Ethernet for Distributed AI Training at Meta Scale", SIGCOMM 2024. Alibaba described the same problem, and a dual-plane design to address it, in "Alibaba HPN: A Data Center Network for Large Language Model Training", SIGCOMM 2024.
-SRD's per-packet spraying is built to avoid this class of problem. On GCP RoCE families, the collective library's queue-pair count and the fabric's load balancing carry the burden instead (UNVERIFIED: GCP fabric load balancing not in current docs).
+SRD's per-packet spraying is built to avoid this class of problem (Shalev et al. 2020).
 
 **PFC pause storms and deadlock.**
 In lossless RoCE fabrics, one misbehaving NIC that keeps sending pause frames can spread back-pressure across switches and stall unrelated flows. Cyclic buffer dependencies can deadlock the fabric (Guo et al., SIGCOMM 2016).
@@ -607,7 +607,6 @@ Reach S3 through gateway VPC endpoints, and put `tpu.googleapis.com` and `storag
 
 **Encryption.**
 Collective traffic on the scale-up fabric never leaves the single-tenant instance or rack. AWS lists P5, P5e, P5en, P6-B200, P6-B300, P6e-GB200, Trn1, Trn1n, Trn2, Trn2u, and C5n among the types whose Nitro hardware automatically encrypts in-transit traffic between instances in the same Region and the same or peered VPC, with 256-bit AEAD (AWS EC2 data protection docs, as of 2026-11).
-Whether that wording includes EFA traffic must be confirmed with AWS (UNVERIFIED: the docs do not mention EFA or SRD specifically).
 Weights and checkpoints at rest belong under KMS or Cloud KMS envelope encryption, as covered in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies]].
 
 **Unit-economics levers, ordered by typical impact:**

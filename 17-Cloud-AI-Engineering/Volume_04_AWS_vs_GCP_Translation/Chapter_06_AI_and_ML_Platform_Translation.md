@@ -47,7 +47,7 @@ sources:
 
 ## TL;DR
 
-1. The serving-plane admission rule is the real contract on both clouds: Bedrock charges a request's `max_tokens` against your token quota at admission and reconciles after completion, while Vertex serves Gemini pay-as-you-go from a shared dynamic pool with no guarantee, and a reserved lane costs a commitment on either cloud: Provisioned Throughput on both, plus the Reserved tier on Bedrock.
+1. The serving-plane admission rule is the real contract on both clouds: Bedrock charges a request's `max_tokens` against your token quota at admission and reconciles after completion, while Vertex serves Gemini pay-as-you-go from a shared dynamic pool with no guarantee, and a reserved lane is separately paid capacity on either cloud: Provisioned Throughput on both (Bedrock also sells it with no commitment), plus the Reserved tier on Bedrock.
 2. Persistent resilient clusters (SageMaker HyperPod, GKE with TPU or GPU pools) are worth choosing over ephemeral training jobs once job MTBF drops below roughly a day. At 4096 chips with an assumed 50,000 h chip-level MTBF, checkpoint-restart goodput is about 93 percent by the Young-Daly model below, so recovery design is a first-order cost lever.
 3. Accelerator choice is a compiler and topology choice before it is a FLOPs choice: Neuron and XLA both compile ahead of execution against static shapes, Trn3 is a switched all-to-all scale-up domain, and TPUs are 2D or 3D tori with optical circuit switching that carves slices out of 64-chip cubes.
 4. Memory bandwidth, not peak FLOPs, sets the decode floor: for a 70B FP8 model the weights-plus-KV streaming time is 15 to 22 ms per step on one Ironwood or Trainium3 chip, and no amount of extra FLOPs changes it.
@@ -354,7 +354,8 @@ PROMPT = "Explain consistent hashing in about 150 words."
 
 def aws():
     import boto3, botocore
-    cfg = botocore.config.Config(retries={"max_attempts": 1, "mode": "standard"})
+    # total_max_attempts=1 counts the initial request, so the SDK never retries and throttles stay visible.
+    cfg = botocore.config.Config(retries={"total_max_attempts": 1, "mode": "standard"})
     c = boto3.client("bedrock-runtime", region_name=os.environ["AWS_REGION"], config=cfg)
     for mt in SWEEP:
         for _ in range(N):

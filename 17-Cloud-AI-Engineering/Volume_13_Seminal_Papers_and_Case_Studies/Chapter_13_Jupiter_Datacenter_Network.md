@@ -2,7 +2,7 @@
 type: paper
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p183.pdf"
@@ -533,9 +533,9 @@ This lab measures what a tenant actually sees: per-flow throughput and how throu
 Interpret it with care.
 In practice the binding constraint is usually the per-VM egress shaping in the virtual NIC (see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_12_Andromeda_Network_Virtualization|Andromeda]]), not the Jupiter fabric.
 
-Cost estimate (the n2-standard-8 rate is UNVERIFIED: the Compute Engine pricing page does not expose it in fetchable text, so check it there before running):
-2 x n2-standard-8 at roughly 0.39 USD/hour each in us-central1, plus two ephemeral external IPv4 addresses at 0.005 USD/hour each ([Google Cloud network pricing](https://cloud.google.com/vpc/network-pricing), as of 2026-11) and two 10 GB boot disks.
-That comes to roughly 1 USD for a one-hour session.
+Cost estimate:
+the lab bills 2 x n2-standard-8 for the session, about USD 0.78 per hour at USD 0.3885 per VM-hour in us-central1 (third-party [Holori price tracker](https://calculator.holori.com/gcp/vm/n2-standard-8/us-central1), as of 2026-11; check the Compute Engine pricing page), plus two ephemeral external IPv4 addresses at 0.005 USD/hour each ([Google Cloud network pricing](https://cloud.google.com/vpc/network-pricing), as of 2026-11) and two 10 GB boot disks.
+That is about USD 0.80 per hour (this chapter's arithmetic: 0.78 + 0.01 plus a small disk charge), so delete the VMs as soon as the measurement finishes.
 Same-zone traffic over internal IPv4 addresses in one VPC has no charge (same source, as of 2026-11).
 
 ```bash

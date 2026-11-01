@@ -34,6 +34,7 @@ sources:
   - "https://arxiv.org/abs/1910.02054"
   - "https://arxiv.org/abs/2304.01433"
   - "https://sre.google/workbook/alerting-on-slos/"
+  - "https://docs.cloud.google.com/compute/docs/regions-zones"
 ---
 
 # Appendix E: 16-Week Mastery Study Plan for Senior Engineers
@@ -300,7 +301,6 @@ Budget: 10 USD alert; use a small provisioned capacity and a 30-minute window.
 Teardown: `aws dynamodb delete-table --table-name caie-w06`.
 
 Mechanism not in getting-started guides: DynamoDB enforces throughput per partition, not per table, so a table provisioned for 10,000 WCU can still reject writes to one hot key at the per-partition write ceiling of 1,000 write units per second, alongside 3,000 read units per second ([AWS docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html), as of 2026-11).
-The often-quoted 10 GB per partition is not stated there (UNVERIFIED: not in the current partition docs).
 Aurora's quorum arithmetic: 6 copies across 3 AZs, write quorum 4, read quorum 3, so Vr + Vw = 7 > 6 and Vw = 4 > 6/2 (Aurora paper, SIGMOD 2017).
 Losing an AZ leaves 4 copies, so writes continue; losing an AZ plus one more node leaves 3 copies, so reads continue but writes block until repair, which the paper bounds by segmenting storage into small protection groups for fast re-replication.
 Spanner commit wait: a transaction picks a commit timestamp no earlier than TrueTime's latest bound and then waits until that timestamp is definitely in the past, so the expected wait is at least twice the average clock-uncertainty bound (Spanner paper, OSDI 2012, which reports an uncertainty sawtooth of about 1 to 7 ms over each poll interval, 4 ms most of the time).
@@ -362,7 +362,7 @@ Teardown: `tofu -chdir=labs/w08 destroy -auto-approve` and `gcloud run services 
 
 Mechanism not in getting-started guides: in the oldest AWS Regions, Availability Zone codes are mapped independently per account for accounts created before November 2025, so `us-east-1a` in your account may be a different physical zone than in another account, while accounts created from November 2025 get the same mapping ([AWS docs](https://docs.aws.amazon.com/global-infrastructure/latest/regions/aws-availability-zones.html), as of 2026-11).
 Use AZ IDs (for example `use1-az1`) whenever two accounts must co-locate, such as a producer and consumer sharing a PrivateLink service or a cross-account data path where inter-AZ transfer cost matters.
-GCP zone names are treated here as consistent across projects, which would remove this class of bug but means the translation table must record the asymmetry (UNVERIFIED: Google Cloud docs call zones logical abstractions and do not state cross-project mapping).
+Google Cloud docs describe zones as logical abstractions of underlying physical resources ([Google Cloud docs](https://docs.cloud.google.com/compute/docs/regions-zones), as of 2026-11), so the translation table should record the AWS AZ ID next to each GCP zone name.
 The structural difference to internalize is regional VPC plus Transit Gateway on AWS versus a global VPC on GCP, because it changes the blast radius of one bad route or firewall change.
 
 Drill: mock loop 2 with D3, then D8.

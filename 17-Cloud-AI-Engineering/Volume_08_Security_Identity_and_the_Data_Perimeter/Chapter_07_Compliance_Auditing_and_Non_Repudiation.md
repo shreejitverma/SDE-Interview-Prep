@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-log-file-validation-enabling.html"
@@ -251,8 +251,7 @@ Data Access logging is configured through `auditConfigs` in the IAM policy at th
 Access Transparency logs actions by Google personnel on your content.
 Access Approval gates those actions behind your explicit approval.
 Key Access Justifications gates key use on Cloud EKM, Cloud HSM, and Cloud KMS software keys, with the available key types set by the control package (Google Cloud docs, as of 2026-11).
-AWS has no direct equivalent product that gates provider-personnel access (UNVERIFIED: absence claim, no AWS document states it).
-Its stance is architectural: the Nitro System is designed with no operator access, and no mechanism for any system or person to access EC2 instance memory (AWS Nitro whitepaper, as of 2026-11).
+AWS's stance on provider-personnel access is architectural: the Nitro System is designed with no operator access, and no mechanism for any system or person to access EC2 instance memory (AWS Nitro whitepaper, as of 2026-11).
 
 ### Time
 
@@ -271,7 +270,7 @@ Other runtime actions such as `StartAsyncInvoke`, and Agents runtime actions suc
 Amazon Bedrock model invocation logging is disabled by default, delivers prompts and completions to S3 or CloudWatch Logs, and covers only the `bedrock-runtime` endpoint and not `bedrock-mantle` (AWS Bedrock docs, as of 2026-11).
 Vertex AI request-response logging writes a configurable sample of online inference requests and responses to BigQuery (Google Cloud docs, as of 2026-11).
 Data Access audit logs for `aiplatform.googleapis.com` are off by default and list `endpoints.predict` and `endpoints.rawPredict` as DATA_READ (Google Cloud docs, as of 2026-11).
-That page does not list `generateContent`, so Gemini call coverage needs a test (UNVERIFIED: not in current docs).
+That page's method tables do not list `generateContent` or `streamGenerateContent`, so Gemini call coverage needs a test (Google Cloud Vertex AI audit logging docs, as of 2026-11).
 These stores contain whatever users typed, including PHI.
 They are in HIPAA scope, need the same encryption and retention controls as any ePHI store, and collide with minimum-necessary and deletion obligations.
 See [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_07_AI_Safety_Guardrails_and_Governance|AI Safety, Guardrails, and Governance]] for the audit trail design on the application side.
@@ -317,7 +316,7 @@ Prices and limits are volatile, so re-check them before you quote them.
 | Management account exemption | SCPs do not apply to the organization management account | Org-level IAM Deny policies apply to all principals |
 | Immutable store | S3 Object Lock, governance or compliance mode, on versioned bucket | Bucket Lock on GCS; log bucket retention lock |
 | Native cryptographic tamper evidence | Signed hourly digest chain with SHA-256 and RSA | None in the Cloud Audit Logs overview, which documents entries as immutable (Google Cloud docs, as of 2026-11) |
-| Provider-operator access visibility | No direct equivalent product (UNVERIFIED: absence claim, no AWS document states it) | Access Transparency and Access Approval |
+| Provider-operator access visibility | Nitro System design with no operator access to EC2 instance memory (AWS Nitro whitepaper, as of 2026-11) | Access Transparency and Access Approval |
 | Delivery to custody store | Batched log files, average of about 5 minutes (AWS docs, as of 2026-11) | Router at ingestion; GCS sinks processed hourly, Pub/Sub and BigQuery near real time |
 | Query | Athena on S3; CloudTrail Lake (SQL, managed retention) is closed to new customers since 2026-05-31, and AWS points to CloudWatch (AWS docs, as of 2026-11) | Log Analytics, BigQuery sink |
 | Encryption | SSE-KMS, with key policies conditioned on encryption context `kms:EncryptionContext:aws:cloudtrail:arn` (AWS docs, as of 2026-11) | CMEK on log buckets, GCS CMEK |
@@ -369,7 +368,7 @@ Use advanced event selectors to scope data events to the PHI bucket only, or exc
 **Lab cost.**
 One KMS key (about $1 per month, prorated), a single multi-region trail (first management copy free if no other trail exists), a few MB of S3.
 Expect under $2 for a day.
-The budget alarm caps surprise at $10.
+The budget alarm only notifies as spend nears its $10 limit and does not stop spend, so the teardown is what stops it.
 
 ### Terraform: archive bucket, key, trail, budget
 
@@ -976,7 +975,7 @@ For evidence, the AU-2 and AU-12 questions are: what events will exist for model
 Management-plane calls are logged by default.
 Prompts and completions are not, unless I enable Bedrock invocation logging or Vertex request-response logging, which makes those stores in scope for AU-9 and AU-11.
 CloudTrail records Bedrock `InvokeModel` and `Converse` as management events without prompt bodies, Agents runtime calls need data events, and Vertex `endpoints.predict` is DATA_READ (AWS and Google Cloud docs, as of 2026-11).
-Google's audit logging page does not list Gemini `generateContent`, so I would test that coverage before relying on it (UNVERIFIED: not in current docs).
+Google's audit logging page does not list Gemini `generateContent`, so I would test that coverage before relying on it (Google Cloud Vertex AI audit logging docs, as of 2026-11).
 I add application-level audit records binding user identity, model ID, and prompt hash, stored in the same archive with the same retention.
 I avoid storing full prompts when a hash plus a pointer to a controlled store suffices, which shrinks the sensitive surface.
 

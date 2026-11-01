@@ -2,7 +2,7 @@
 type: paper
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/conference/nsdi18/presentation/dalton"
@@ -217,7 +217,6 @@ The product-level view of VPCs, subnets, and network tiers is in [[17-Cloud-AI-E
 | Data plane upgrade blackout | 270 ms median; later slides: 200 ms median, 1 s p99 | (Dalton et al., NSDI 2018; CS244 slides, 2022) |
 | VM live migration blackout | 65 ms median, 388 ms p99 | (Dalton et al., NSDI 2018) |
 | 2.1 latency gain | 40% vs 2.0; nearly 8x vs 2014 launch | (Google Cloud blog, 2017-11) |
-| 2.1 throughput gain | 47% vs 2.0 | UNVERIFIED: not in the text of Google's 2017-11 post, and the Data Center Knowledge report it was taken from could not be located |
 | Same-zone VM RTT after 2.1 | about 40 us, informal engineer statement | (Hacker News, 2017-11; not official) |
 | Same-zone egress cap, Skylake+ VMs with at least 16 vCPUs | 32 Gbps, GA at the 2019 announcement; still the standard cap on N1 (Skylake and later) and N2, while newer series go higher | (Google Cloud blog, 2019-06; Google Cloud docs, as of 2026-11) |
 | GPU VM bandwidth at Next '19 | up to 100 Gbps on V100 and T4 platforms, alpha at announcement | (Google Cloud blog, 2019-06) |
@@ -231,14 +230,13 @@ The product-level view of VPCs, subnets, and network tiers is in [[17-Cloud-AI-E
 ## AWS vs GCP Mechanism Parity
 
 AWS-side entries were checked against AWS documentation where it exists (as of 2026-11).
-AWS does not document how VPC forwarding state is distributed in the pages checked, so those two cells remain marked.
+The AWS pages checked do not describe how VPC forwarding state is distributed, so the AWS cell for that row states only what the Nitro whitepaper establishes.
 
 | Dimension | Google Cloud (Andromeda) | AWS (Nitro VPC data plane) | Critical difference |
 |---|---|---|---|
 | Where per-packet work runs | Originally a userspace Fast Path on dedicated, busy-polling host cores (Dalton et al., NSDI 2018); now on the Titanium IPU, introduced with third-generation instances (Google Cloud blog, 2023) | Nitro Card for VPC, a dedicated card physically separate from the main board that runs customer workloads (AWS Nitro whitepaper, as of 2026-11) | Andromeda optimized for software velocity first and moved to offload later; Nitro started as offload hardware |
-| Forwarding-state distribution | Hoverboard defaults plus usage-triggered offload flows over extended OpenFlow via OFE (Dalton et al., NSDI 2018) | Central mapping service queried and cached by the Nitro data plane (UNVERIFIED: not in the AWS docs checked) | GCP publishes its long-tail strategy; AWS has not published an equivalent of usage-based offload |
+| Forwarding-state distribution | Hoverboard defaults plus usage-triggered offload flows over extended OpenFlow via OFE (Dalton et al., NSDI 2018) | The Nitro Controller is the exclusive gateway between the server and the EC2, EBS, and VPC control planes (AWS Nitro whitepaper, as of 2026-11) | GCP describes its long-tail strategy in a peer-reviewed paper |
 | Control plane partitioning | Per-cluster stacks, VMC partitions by consistent hashing, Chubby master plus two standbys, per-network queues (Dalton et al., NSDI 2018) | Zonal data planes, zonal control planes for zonally aligned EC2 operations, and a regional endpoint; security groups are listed under regional control planes, and VPC-specific partitioning is not published (AWS fault isolation whitepaper, as of 2026-11) | Both contain blast radius; only GCP has a peer-reviewed description |
-| Long-tail and first-packet path | Unrouted packets take the low-priority default route to Hoverboards; no controller punt (Dalton et al., NSDI 2018) | Mapping-cache miss handling is not publicly specified (UNVERIFIED: not in the AWS docs checked) | Andromeda keeps the controller out of the first-packet path |
 | Expensive features | Coprocessor threads charged to the VM (Dalton et al., NSDI 2018) | Hyperplane-based shared services for NLB, NAT Gateway, PrivateLink (AWS Compute blog, 2019) | GCP charges feature CPU to the tenant's VM; AWS moves features to separate scale-out fleets |
 | Stateful filtering | Always-on connection-tracking firewall in the host data plane, with rules analysed by vswitchd on a flow miss (Dalton et al., NSDI 2018); 130,000 tracked connections per vCPU, capped at 1,040,000 (Google Cloud docs, as of 2026-11) | Security groups with a per-instance connection-tracking maximum, monitored through `conntrack_allowance` metrics (AWS docs, as of 2026-11) | Both budget tracked connections per instance; at the limit Google Cloud stops tracking the longest-idle connections, while AWS drops packets for new connections |
 | Isolation of packet rate | Fast Path CPU sized to throughput targets; costly work billed per VM (Dalton et al., NSDI 2018) | Per-instance pps maximum, visible through the ENA `pps_allowance_exceeded` counter (AWS docs, as of 2026-11) | AWS exposes an explicit pps-exceeded counter; GCP limits are mostly expressed as bandwidth caps |

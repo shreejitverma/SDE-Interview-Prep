@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/abs/2210.17323"
@@ -42,6 +42,7 @@ sources:
   - "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct"
   - "https://instances.vantage.sh/aws/ec2/g6e.xlarge"
   - "https://gcloud-compute.com/g2-standard-8.html"
+  - "https://arxiv.org/abs/2404.00456"
   - "https://papers.nips.cc/paper_files/paper/2024/hash/496720b3c860111b95ac8634349dcc88-Abstract-Conference.html"
   - "https://ppopp25.sigplan.org/details/PPoPP-2025-Main-Conference-1/22/MARLIN-Mixed-Precision-Auto-Regressive-Parallel-Inference-on-Large-Language-Models"
 ---
@@ -273,7 +274,9 @@ Wire those gates into the platform eval harness described in [[17-Cloud-AI-Engin
 Published evaluations agree on a rough ordering.
 FP8 W8A8 with dynamic per-token activation scales is close to indistinguishable from BF16.
 W4A16 g128 with GPTQ or AWQ loses a small but measurable amount that grows on smaller models and harder tasks.
-3-bit weights and un-rotated W4A4 lose noticeably (qualitative literature consensus; specific deltas UNVERIFIED: they vary by model, task and recipe, and no single primary source fixes them, as of 2026-10).
+3-bit weights and W4A4 without rotation lose noticeably more, and the loss depends on model, task and recipe.
+Two primary data points (as of 2026-11): the GPTQ paper (arXiv 2210.17323, Table 5) reports WikiText2 perplexity for 3-bit GPTQ of 8.68 on OPT-175B and 8.64 on BLOOM-176B against FP16 baselines of 8.34 and 8.11, while 3-bit round-to-nearest collapses to 7.3e3 and 571.
+The QuaRot paper (arXiv 2404.00456, Table 1) reports WikiText-2 perplexity for Llama-2 7B of 5.47 in FP16, 6.10 for rotated W4A4, and 8.87 to 83.12 for the non-rotated W4A4 baselines it compares (QUIK-4B, which keeps 256 outlier features in higher precision, OmniQuant and SmoothQuant).
 
 ### Control plane versus data plane
 
@@ -322,7 +325,7 @@ Alert on throughput per GPU, not just on errors.
 | Non-FP8 legacy GPUs in fleet | G5 (A10G), P4d/P4de (A100) | A2 (A100) | FP8 artifacts fall back to weight-only paths here; failover onto these changes latency. |
 | Custom silicon low precision | Trainium2 / Inferentia2 via Neuron SDK; compiled from BF16 master | TPU v5e/v6e INT8 via JAX/XLA; Ironwood native FP8 (Google blog, April 2025) | CUDA-packed GPTQ/AWQ artifacts are not portable; each target needs its own quantization step and eval gate. |
 | Quantization toolchain | Neuron quantization APIs; NVIDIA ModelOpt and llm-compressor on GPU | AQT-style int8 in JAX/MaxText; ModelOpt and llm-compressor on GPU | GPU toolchains are cloud-neutral; accelerator toolchains are vendor-locked. |
-| Managed self-weights serving | SageMaker AI endpoints with LMI/vLLM containers; Bedrock Custom Model Import for supported architectures (quantized-format support UNVERIFIED: the import docs require Hugging Face safetensors weights for listed architectures but do not document quantized formats, as of 2026-10) | Vertex AI Model Garden vLLM containers and Hex-LLM on TPU; GKE with vLLM | Managed import paths may re-host weights at their own precision; verify what precision you are actually billed for. |
+| Managed self-weights serving | SageMaker AI endpoints with LMI/vLLM containers; Bedrock Custom Model Import for supported architectures (the import docs require Hugging Face format `.safetensors` weights for the listed architectures, as of 2026-11) | Vertex AI Model Garden vLLM containers and Hex-LLM on TPU; GKE with vLLM | Managed import paths may re-host weights at their own precision; verify what precision you are actually billed for. |
 | Artifact storage | S3 (Standard or Express One Zone), SSE-KMS | Cloud Storage, CMEK via Cloud KMS | Smaller artifacts shorten cold starts, see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_08_Cloud_GPU_Autoscaling_and_Cold_Start_Mitigation\|Cold-Start Mitigation]]. |
 | Private artifact path | S3 gateway VPC endpoint with endpoint policy | Private Google Access plus VPC Service Controls perimeter | VPC SC blocks copying artifacts to a project outside the perimeter; endpoint policies must be written per bucket. |
 | KV transfer fabric for disaggregation | EFA with SRD | GPUDirect-TCPXO on A3 Mega; GPUDirect RDMA on A3 Ultra/A4 (GCP docs, as of 2026-10) | FP8 KV halves transfer bytes on either fabric. |

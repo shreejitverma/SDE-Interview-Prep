@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://cloud.google.com/titanium"
@@ -122,7 +122,7 @@ The control plane watches flow statistics and installs direct host-to-host route
 Andromeda's motivation was control-plane scaling. Programming time and per-host memory grow with the number of active heavy flows, not with network size squared.
 The paper's fast path ran on host CPU cores as a busy-polling userspace data plane. Snap (Marty et al., SOSP 2019) generalizes that model into a microkernel-style host networking system with schedulable engines.
 On Titanium, that busy-polling fast path is the obvious workload to move onto the adapter.
-Google has not published the exact split between adapter and host, so read this as an inference from the published architecture, not a documented fact (UNVERIFIED: split not published).
+Google has not published the exact split between adapter and host, so read this as an inference from the published architecture, not a documented fact.
 In operational terms, the "host tax" that used to come out of the same cores as your vCPUs (cores reserved for networking, noise from soft interrupts, cache pollution) now lands on separate silicon.
 This is where the C3-generation claims of more predictable performance come from.
 
@@ -131,12 +131,12 @@ A flow that has not yet been promoted to a direct route takes an extra gateway h
 That shows up as first-packet and early-flow latency outliers on short-lived connections. Long-lived pooled connections avoid it.
 This is one more reason to keep connection pools warm across service tiers.
 The gateway behavior is from the Andromeda paper, which reports that 98% of flows peak below 20 kbps and evaluates a 20 kbps offload threshold (Dalton et al., NSDI 2018).
-Whether the current production thresholds still match the paper is not public (UNVERIFIED: no current Google source).
+The paper's figures are from 2018, so treat them as the published design point rather than current production values.
 
 ### Data plane versus control plane
 
 The data plane is the KVM-based VMM on the host, the Titanium adapter, and the fabric services behind it.
-Google runs KVM with its own user-space VMM instead of QEMU, as stated in its 2017 hypervisor hardening post (Google Cloud blog, 2017-01; UNVERIFIED for the current generation: no newer statement found).
+Google runs KVM with its own user-space VMM instead of QEMU, as stated in its 2017 hypervisor hardening post (Google Cloud blog, 2017-01: "we wrote our own user-space virtual machine monitor"). That post is the latest statement on this, so it is not confirmed for current generations.
 The control plane is the Compute Engine API, the zonal schedulers that place VMs on hosts, quota and policy checks, and the systems that program flows and disk attachments.
 Once a VM is placed and its devices are programmed, packets and I/Os do not touch the control plane.
 This is static stability in the sense of [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]] and [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
@@ -146,7 +146,7 @@ The engineering consequence is that every action needing a control-plane call is
 
 Compute Engine live-migrates most VMs off hosts that need maintenance, instead of rebooting them.
 Ruprecht et al., "VM Live Migration At Scale" (VEE 2018), describe Google's production design. It is iterative pre-copy, in which memory is copied while the guest runs and dirty pages are tracked and re-sent (the "brownout"). Then comes a short pause that moves the remaining dirty state and device state (the "blackout"). Remaining pages can then be fetched on demand at the target.
-The paper treats blackout length and brownout degradation as the customer-visible service-level indicators, and it puts migration in the normal maintenance pipeline rather than treating it as an emergency tool (UNVERIFIED: SLI framing not in the abstract, full text not retrieved).
+Blackout length and brownout degradation are the customer-visible costs of a migration, which is why the design minimizes both.
 Its abstract reports more than 1,000,000 migrations per month with a 50 ms median and a 300 ms 99th-percentile blackout (VEE 2018 abstract), and the current docs say the disruption is typically much less than 1 second (Google Cloud docs, as of 2026-11).
 The docs also add a target-brownout stage, in which the source VM forwards packets until the fabric catches up, and warn that the guest clock can appear to jump forward by up to 5 seconds during blackout (Google Cloud docs, as of 2026-11).
 Offloaded I/O changes what "device state" means.
@@ -183,7 +183,7 @@ C4, C4A, C4D, N4, N4A, N4D and X4 do not support Persistent Disk, while C3, C3D 
 ### vCPUs, SMT, core pairs, and NUMA domains
 
 On most x86 series, one vCPU is one hyperthread. Each standard shape gets both hyperthreads of every physical core it uses, which is why non-shared-core shapes come in even vCPU counts.
-Never placing two tenants on sibling hyperthreads of one core is the structural defense against cross-hyperthread side channels such as L1TF and MDS. Google has said that Compute Engine never concurrently shares a core between distinct VMs (Google Cloud L1TF blog, 2018-08), but the current per-series policy is UNVERIFIED: not restated in current docs.
+Never placing two tenants on sibling hyperthreads of one core is the structural defense against cross-hyperthread side channels such as L1TF and MDS. Google stated that Compute Engine host isolation ensures an individual core is never concurrently shared between distinct VMs (Google Cloud L1TF blog, 2018-08). The post does not give a per-series policy, so check current docs for any specific shape.
 Some series map a vCPU to a full physical core with SMT off: C4A, N4A, T2D, T2A, H4D, H3 and A4X, and Arm processors have one thread per core (Google Cloud CPU platforms docs, as of 2026-11).
 
 The per-shape NUMA column is the mechanism most capacity planners overlook.
@@ -194,7 +194,7 @@ For C4D, every shape from `c4d-standard-2` through `c4d-standard-96` is listed a
 The tail-latency effect is not linear with size. Going from a 96-vCPU "shared" shape to a 192-vCPU "isolated" shape removes a whole class of noisy-neighbor variance, not just half of it.
 
 On AMD EPYC parts, L3 cache is per core complex die (CCD), so the effective LLC a VM sees depends on how many CCDs its cores span.
-Whether Compute Engine aligns sub-domain shapes to CCD boundaries is not documented (UNVERIFIED: not in current docs). Measure LLC behavior instead of assuming it.
+Whether Compute Engine aligns sub-domain shapes to CCD boundaries is not documented. Measure LLC behavior instead of assuming it.
 
 The guest can override two topology controls at create time:
 - `--threads-per-core=1` turns off SMT inside the VM. This halves the visible vCPUs, but you are still billed for the shape's full vCPU count, and the flag is unavailable on C4A, H4D, H3, N4A, T2A and T2D (Google Cloud docs, as of 2026-11).
@@ -203,7 +203,7 @@ The guest can override two topology controls at create time:
 ### Network bandwidth is a per-VM egress contract
 
 Each shape publishes a default egress ceiling and, for larger shapes, a higher Tier_1 ceiling. For example, `c4d-standard-2` gets up to 10 Gbps by default, `c4d-standard-96` up to 67 Gbps by default or 100 Gbps with Tier_1, and `c4d-standard-192` up to 100 Gbps by default or 150 Gbps with Tier_1 (Google Cloud docs, as of 2026-11).
-These ceilings apply to egress, and the point of enforcement is assumed to be the offload tier (UNVERIFIED: enforcement point not documented).
+These ceilings apply to egress.
 Ingress within a VPC network has no additional Google-imposed cap, so its limits come from elsewhere, such as the guest's ability to process packets, the server NIC and other traffic on the host (Google Cloud docs, as of 2026-11).
 Ingress routed outside a VPC network is capped at the first of 1,800,000 pps or 30 Gbps, per physical NIC on multi-NIC series, with higher limits on C4N (Google Cloud docs, as of 2026-11).
 Tier_1 needs a gVNIC or IDPF interface, a supported shape and the per-VM setting `--network-performance-configs=total-egress-bandwidth-tier=TIER_1` (Google Cloud docs, as of 2026-11).
@@ -651,7 +651,7 @@ Nitro concentrates per-host function in a set of dedicated cards for VPC, EBS an
 Titanium explicitly pairs an on-host adapter with scale-out tiers in the fabric. The Andromeda design shows the principle: hot flows run on the host's fast path, long-tail flows go to gateway fleets, and Hyperdisk keeps durability and performance enforcement in a storage fleet.
 On failure domains:
 - In both clouds, a host offload card is a single point of failure for every VM on that host.
-- Titanium's scale-out tiers are shared across many hosts, so a defect there has a wider but shallower blast radius: latency or availability degradation across a zone or region rather than outright host loss. Google mitigates that with cell-style deployment of those fleets (UNVERIFIED: internal detail, not published).
+- Titanium's scale-out tiers are shared across many hosts, so a defect there has a wider but shallower blast radius: latency or availability degradation across a zone or region rather than outright host loss.
 - Nitro's per-card design makes host loss the common case. AWS also has well-documented regional dependency chains in its control planes, as the 2025-10 us-east-1 event showed.
 For an AI platform this has three consequences:
 - **Treat accelerators as non-migratable on both clouds.** Build checkpoint-and-reschedule into the scheduler, not into hope.

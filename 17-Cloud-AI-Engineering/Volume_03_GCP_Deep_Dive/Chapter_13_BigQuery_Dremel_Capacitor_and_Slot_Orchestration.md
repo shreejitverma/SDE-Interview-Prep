@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "http://www.vldb.org/pvldb/vldb2010/papers/R29.pdf"
@@ -34,6 +34,7 @@ sources:
   - "https://docs.aws.amazon.com/redshift/latest/dg/c_columnar_storage_disk_mem_mgmnt.html"
   - "https://docs.aws.amazon.com/redshift/latest/dg/t_Sorting_data.html"
   - "https://docs.aws.amazon.com/redshift/latest/mgmt/test-cluster-multi-az.html"
+  - "https://docs.aws.amazon.com/redshift/latest/mgmt/serverless-capacity.html"
 ---
 
 # BigQuery: Dremel, Capacitor, and Slot Orchestration
@@ -141,7 +142,7 @@ The data plane is workers, shuffle, and Colossus reads.
 Reservations are regional (or multi-regional) resources owned by an administration project; an assignment binds a project, folder, or organization to a reservation for a job type such as QUERY.
 A query runs where its data lives, and a job whose location does not match its datasets returns an error, so the location is a hard partition boundary for both data and compute (Google Cloud docs, as of 2026-11).
 The exception is global queries, which reference data in more than one location by transferring it between regions, and which are in Preview (Google Cloud docs and release notes, as of 2026-11).
-If the control plane is unavailable, queries already running keep executing on their allocated slots, but new jobs cannot be admitted (UNVERIFIED: inferred from the architecture, not stated in Google docs), which is the read-only degradation pattern described in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
+The Decade paper places the query coordinator and the centralized scheduler in the orchestration path and the workers in the data path, and it states that Dremel's execution was designed on the assumption that workers are unreliable (Melnik et al., PVLDB 2020), which is the separation described in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
 
 ### Slot orchestration: the scheduling hierarchy
 
@@ -574,7 +575,7 @@ I would frame it as data gravity and egress, then workload shape, then operating
 Data gravity: if 70% of event data is produced in AWS, replicating it to GCP costs internet or interconnect egress per byte, plus a freshness lag, every month for as long as the system runs, and that often outweighs any engine-level price difference; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Egress Economics]].
 Workload shape: BigQuery's disaggregated shuffle and continuous slot re-allocation favor spiky, high-concurrency, ad hoc workloads with very large joins, while provisioned Redshift with good distribution keys favors steady, predictable dashboards with co-located joins, and Athena favors infrequent scans of open-format lakes.
 Operating model: BigQuery removes cluster sizing, vacuum, and distribution-key design, but adds reservation and fair-share design.
-Redshift Serverless narrows that gap, but its RPU scaling is coarser than slot re-allocation (UNVERIFIED: no published measured comparison found).
+Redshift Serverless narrows that gap: it scales RPUs automatically in steps of 4 to 8 RPUs below 512 and 32 RPUs above (AWS docs, as of 2026-11), whereas BigQuery re-allocates slots whenever a query starts or finishes (Google Cloud docs, as of 2026-11).
 Lock-in: open table formats (Iceberg) with BigLake on GCP or Athena and Redshift Spectrum on AWS reduce engine lock-in and make the choice reversible.
 My recommendation would be to keep the system of record and the lake in the cloud where data is produced, choose the engine per workload class, and require a two-week benchmark of the top 50 real query fingerprints on both engines, measured in cost per query and p95 latency, before committing.
 Multi-cloud is justified only if the data does not have to move, as discussed in [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_07_Multi_Cloud_and_Hybrid_Architecture_Reality|Multi-Cloud Reality]].

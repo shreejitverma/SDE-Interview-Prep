@@ -2,7 +2,7 @@
 type: playbook
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/abs/1603.09320"
@@ -32,6 +32,7 @@ sources:
   - "https://docs.cloud.google.com/vertex-ai/docs/vector-search-2/overview"
   - "https://aws.amazon.com/message/101925/"
   - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/build/vector-search/storage-optimized-vector-search"
 ---
 
 # System Design: Billion-Scale Real-Time Enterprise RAG
@@ -305,7 +306,7 @@ A cell is an independent cluster with its own index, encoder pool, and quotas, a
 | Filtering | `filter` inside `knn` clause, efficient filtering with exact fallback | Token `restricts` (allow/deny) and numeric restricts on datapoints | Neither publishes recall guarantees under low selectivity; benchmark it |
 | Tenant co-location | `_routing` + `routing_partition_size`, or index-per-tenant | Index or namespace-per-tenant, restricts on `tenant` token | No shard-routing primitive on Vector Search; isolation is by index or restrict |
 | Freshness | Refresh interval (default 1 s) on segments | Streaming update indexes vs batch-update indexes | Batch-update indexes cannot meet a 60 s SLO |
-| Cheap cold tier | S3 Vectors (GA 2025-12, ~100 ms) | Agent Retrieval (formerly Vector Search 2.0, GA 2026-03-05) offers usage-based pricing for small workloads (Google Cloud docs, as of 2026-10); an object-storage-backed equivalent is UNVERIFIED: none found in current docs | AWS has a first-party object-storage vector tier |
+| Cheap cold tier | S3 Vectors (GA 2025-12, ~100 ms) | Agent Retrieval (formerly Vector Search 2.0, GA 2026-03-05) offers usage-based pricing for small workloads (Google Cloud docs, as of 2026-10); Vector Search also has a storage-optimized tier that uses a disk-based architecture instead of RAM, at higher query latency than the default index (Google Cloud docs, as of 2026-11) | AWS has a first-party object-storage vector tier; Google's cold option is a disk-based index tier on deployed replicas |
 | Managed RAG | Bedrock Knowledge Bases | Vertex AI RAG Engine | Bedrock KB job and doc-count quotas bind at billion scale |
 | Private network | VPC domain for OpenSearch, PrivateLink interface endpoints for Bedrock | Private Service Connect for Vector Search endpoints, VPC Service Controls | VPC-SC is an API-level perimeter; AWS composes SCPs + endpoint policies |
 | Keys | KMS CMK on OpenSearch domain and S3 | CMEK via Cloud KMS on supported resources | Verify CMEK coverage per resource before promising it |

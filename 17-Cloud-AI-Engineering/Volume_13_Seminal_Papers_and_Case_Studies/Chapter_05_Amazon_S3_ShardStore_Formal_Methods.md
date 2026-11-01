@@ -2,7 +2,7 @@
 type: paper
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://dl.acm.org/doi/10.1145/3477132.3483540"
@@ -29,6 +29,7 @@ sources:
   - "https://aws.amazon.com/message/101925/"
   - "https://aws.amazon.com/message/41926/"
   - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://aws.amazon.com/blogs/storage/how-automated-reasoning-helps-us-innovate-at-s3-scale"
 ---
 
 # Validating Amazon S3 ShardStore with Formal Methods (2021 SOSP)
@@ -196,7 +197,8 @@ Full verification of storage systems exists. FSCQ (Chen et al., SOSP 2015) prove
 Both verify systems built for verification. They are not fast-moving production codebases with full-time feature teams.
 Black-box crash testing went the other way. ALICE (Pillai et al., OSDI 2014) found crash vulnerabilities across widely used applications by exploring file system reordering, and CrashMonkey (Mohan et al., OSDI 2018) did bounded black-box crash testing of Linux file systems.
 ShardStore takes the middle path. It writes white-box executable specifications and uses automated, unsound-but-scalable checking, and it accepts weaker guarantees so that future engineers can validate their own changes without a formal-methods expert.
-That positioning matches AWS's broader practice described in [Systems Correctness Practices at AWS](https://dl.acm.org/doi/10.1145/3729175) (CACM 2025). That survey calls ShardStore AWS's most notable example of property-based testing and also describes deterministic simulation testing used across AWS (UNVERIFIED: ACM and Queue full text returned HTTP 403, as of 2026-11).
+That positioning matches AWS's own account of ShardStore, which embeds the specification in the Rust code base rather than a language like TLA+ and uses property-based testing and model checking to validate the implementation ([AWS Storage Blog](https://aws.amazon.com/blogs/storage/how-automated-reasoning-helps-us-innovate-at-s3-scale), as of 2026-11).
+AWS's broader practice is surveyed in [Systems Correctness Practices at AWS](https://dl.acm.org/doi/10.1145/3729175) (CACM 2025).
 
 ## Numbers to Know
 
@@ -847,7 +849,7 @@ Halfway through rollout, scrubbing finds a rare checksum mismatch only on new-im
 - [Amazon Science, "AWS team wins best-paper award for work on automated reasoning"](https://www.amazon.science/blog/aws-team-wins-best-paper-award-for-work-on-automated-reasoning) - the clearest explanation of extents, write pointers and reclamation, plus the per-deployment AWS Batch validation practice.
 - [awslabs/shuttle](https://github.com/awslabs/shuttle) - the randomized concurrency checker built for ShardStore; read its scheduler implementations to understand PCT in practice.
 - [tokio-rs/loom](https://github.com/tokio-rs/loom) - the sound bounded model checker ShardStore uses for small critical components.
-- [Brooker and Desai et al., "Systems Correctness Practices at Amazon Web Services", CACM 2025](https://dl.acm.org/doi/10.1145/3729175) - places ShardStore within AWS's full portfolio, from proofs to deterministic simulation.
+- [Brooker and Desai et al., "Systems Correctness Practices at Amazon Web Services", CACM 2025](https://dl.acm.org/doi/10.1145/3729175) - survey of correctness practices across AWS.
 - [Newcombe et al., "How Amazon Web Services Uses Formal Methods", CACM 2015](https://dl.acm.org/doi/10.1145/2699417) - the TLA+ predecessor that explains why design-level checking comes before code-level checking.
 - [Van Geffen, Wang, Torlak and Bornholt, "Synthesis-Aided Crash Consistency for Storage Systems" (DepSynth), ECOOP 2023](https://jamesbornholt.com/papers/depsynth-ecoop23.pdf) - automates the hardest part of soft updates, using a ShardStore-like system as the case study.
 - Ganger, McKusick, Soules and Patt, "Soft Updates: A Solution to the Metadata Update Problem in File Systems", ACM TOCS 2000 - the original ordering-based crash consistency protocol ShardStore adapts.

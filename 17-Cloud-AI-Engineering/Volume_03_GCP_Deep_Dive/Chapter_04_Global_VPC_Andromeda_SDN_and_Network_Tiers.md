@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/conference/nsdi18/presentation/dalton"
@@ -37,6 +37,9 @@ sources:
   - "https://aws.amazon.com/builders-library/avoiding-overload-in-distributed-systems-by-putting-the-smaller-service-in-control/"
   - "https://aws.amazon.com/ec2/features/"
   - "https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html"
+  - "https://docs.cloud.google.com/compute/docs/instances/live-migration-process"
+  - "https://docs.cloud.google.com/free/docs/free-cloud-features"
+  - "https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/the-components-of-the-nitro-system.html"
 ---
 
 # Global VPC, Andromeda SDN, and Network Tiers
@@ -146,7 +149,7 @@ Andromeda supports global virtual networks and live migration across clusters, a
 During the migration blackout, the source host enables "hairpin" flows: it forwards ingress packets meant for the departed VM on to the destination host until senders' flow tables converge.
 The paper reports a migration blackout with a median of 65 ms and a 99th percentile of 388 ms.
 Google's separate live-migration paper reports over 1,000,000 migrations monthly with a 50 ms median and a 300 ms p99 blackout ([Ruprecht et al., VEE 2018](https://dl.acm.org/doi/pdf/10.1145/3186411.3186415), [abstract](https://conf.researchr.org/event/vee-2018/vee-2018-research-papers-vm-live-migration-at-scale)).
-An April 2017 snapshot date and variation by machine shape and memory size are also attributed to the full paper, but are UNVERIFIED here: only the abstract was accessible.
+Google's live-migration documentation says the source-brownout stage of a migration takes time that is a function of guest memory size, and that the blackout itself is typically much less than 1 second ([Live migration process, as of 2026-11](https://docs.cloud.google.com/compute/docs/instances/live-migration-process)).
 Dataplane upgrades transfer firewall and VM state from the old engine to the new one in the background, then take a short blackout to switch over.
 Google lecture material cites about a 200 ms median network blackout and about 1 s at p99 for this hitless upgrade ([Stanford CS244 2022 lecture](https://2022-cs244.github.io/slides/Lecture_09_2022.pdf)).
 These are 2017-2022 published figures, not SLAs, and current values are not public.
@@ -265,7 +268,7 @@ AWS-specific numbers and feature names below were checked against AWS sources as
 |---|---|---|---|
 | VPC scope | One global VPC, regional subnets | Regional VPC, subnets scoped to one Availability Zone | GCP crosses regions without a transit construct, and AWS needs Transit Gateway, peering, or Cloud WAN |
 | Host dataplane | Andromeda userspace Fast Path on host CPU cores, on Snap | VPC dataplane offloaded to Nitro cards | GCP spends host cores for software velocity, and AWS spends dedicated silicon for isolation |
-| Programming model | Hoverboard gateways for the long tail, controller-installed offload flows for active pairs | Mapping service lookups cached on the host, per AWS public talks (UNVERIFIED: host-caching detail not in AWS docs, only secondary write-ups) | Both avoid full-mesh preprogramming, and GCP documents the gateway-first path explicitly |
+| Programming model | Hoverboard gateways for the long tail, controller-installed offload flows for active pairs | VPC control plane pushes configuration to each host through the Nitro Controller, and the Nitro Card for VPC runs the dataplane ([AWS Nitro System whitepaper, as of 2026-11](https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/the-components-of-the-nitro-system.html)) | GCP publishes the gateway-first path and offload threshold in its NSDI paper, so its programming model is documented in more detail |
 | Control-plane partitioning | Per-cluster control stacks, VMC partitions by consistent hashing | Cellular and zonal control planes, per Builders' Library principles | Both are cellular, and GCP's global configuration object still fans out to every region |
 | NAT architecture | Distributed SNAT on each host, ports preallocated per VM | NAT Gateway as a managed Hyperplane-based service ([AWS Builders' Library](https://aws.amazon.com/builders-library/avoiding-overload-in-distributed-systems-by-putting-the-smaller-service-in-control/)), zonal or regional | GCP has no gateway throughput ceiling, but each VM has a port budget; AWS has a per-gateway ceiling of up to 100 Gbps and 55,000 connections per IP per destination ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-basics.html)) |
 | NAT failure domain | Regional config, per-host data path | Zonal gateway, so you deploy one per AZ for static stability, or the regional availability mode launched in November 2025, which expands across AZs automatically ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateways-regional.html)) | A cross-AZ dependency on a zonal NAT gateway is a classic zonal-failure trap, and GCP has no such hop |
@@ -286,12 +289,12 @@ Second, a VM without an external IP reaches the internet only through Cloud NAT,
 Third, two external IPs in the same region, one Premium and one Standard, show different paths when traced from your laptop.
 Fourth, the NAT sizing formula predicts when port exhaustion starts.
 
-### Cost estimate (UNVERIFIED VM price; check the pricing pages before running)
+### Cost estimate (check the pricing pages before running)
 
-Four e2-micro VMs at an assumed USD 0.01 per hour each come to about USD 0.04 per hour (UNVERIFIED: the e2-micro rate was not readable from the pricing page).
+The lab uses four e2-micro VMs, and their compute charge is not included below; one non-preemptible e2-micro per month is free in certain US regions ([Free Tier, as of 2026-11](https://docs.cloud.google.com/free/docs/free-cloud-features)).
 One Cloud NAT gateway serving one VM comes to USD 0.0014 per hour, plus USD 0.045 per GiB processed ([Cloud NAT pricing, as of 2026-11](https://cloud.google.com/nat/pricing)).
 Two static external IPv4 addresses for NAT and two ephemeral ones on the edge VMs come to USD 0.005 per address-hour each, or USD 0.02 per hour ([network pricing, as of 2026-11](https://cloud.google.com/vpc/network-pricing)).
-A two-hour run with under 1 GiB of traffic should cost less than USD 0.25.
+Excluding VM compute, a two-hour run with under 1 GiB of traffic should cost about USD 0.09: USD 0.0214 per hour for the gateway and addresses (this chapter's arithmetic: 0.0014 + 0.02) over two hours, plus at most USD 0.045 for the data processed.
 The budget below alerts at USD 10.
 
 ### OpenTofu / Terraform

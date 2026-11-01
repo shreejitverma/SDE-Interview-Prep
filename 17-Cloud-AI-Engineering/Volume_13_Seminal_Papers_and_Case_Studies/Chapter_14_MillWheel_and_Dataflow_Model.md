@@ -2,7 +2,7 @@
 type: paper
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "http://www.vldb.org/pvldb/vol6/p1033-akidau.pdf"
@@ -22,6 +22,7 @@ sources:
   - "https://docs.cloud.google.com/dataflow/docs/concepts/streaming-with-cloud-pubsub"
   - "https://docs.cloud.google.com/dataflow/docs/release-notes"
   - "https://cloud.google.com/dataflow/pricing"
+  - "https://docs.cloud.google.com/dataflow/docs/guides/pubsub-bigquery-performance"
   - "https://docs.cloud.google.com/pubsub/architecture"
   - "https://docs.cloud.google.com/bigquery/docs/continuous-queries-introduction"
   - "https://docs.cloud.google.com/sdk/gcloud/reference/billing/budgets/create"
@@ -554,7 +555,11 @@ Workload: 200,000 events/s, 1 KB each, 10 million active users, 1-minute fixed w
 3. Dedup catalog: a 10-minute retry horizon gives 120 million live IDs. The Bloom filter takes 144 MB at 1% false positives, split into ten rolling 1-minute filters of about 14.4 MB each, and backing-store lookups fall to about 2,000/s.
 4. Window state: each key holds at most `(60 + 120) / 60 + 1 = 4` live windows. That is 40 million accumulators, and at 64 bytes each about 2.6 GB of state before overhead.
 5. Latency budget for the on-time pane: 60 s window, plus about 5 s of source watermark lag, plus about 3 x 1 s of per-stage lag, gives about 68 s from window start. Early panes every 10 s give dashboards a speculative number in the meantime. Per-stage lag values are assumptions; measure them with the data watermark lag metrics.
-6. Compute: assume a measured 5,000 events/s per vCPU in exactly-once mode for parse plus a combiner-lifted sum (UNVERIFIED: planning assumption, no published figure; benchmark your own DoFns). That gives 40 vCPU. At an assumed all-in 0.10 USD per vCPU-hour including memory and Streaming Engine (UNVERIFIED: the Streaming Engine share is workload dependent; list worker rates alone are about 0.082 USD per vCPU-hour at 3.75 GiB per vCPU in us-central1, Dataflow pricing, as of 2026-11), the cost is about `40 x 730 x 0.10 = 2,920 USD/month`.
+6. Compute: Google's Pub/Sub to BigQuery benchmark ran a 1-minute fixed-window aggregation in exactly-once mode at 1,000,000 messages/s of about 1 KiB each, on a mean of 169 n1-standard-2 workers (338 vCPUs) at 80% average CPU, which is about 3,000 messages/s per vCPU ([Dataflow benchmark](https://docs.cloud.google.com/dataflow/docs/guides/pubsub-bigquery-performance), as of 2026-11).
+   Scaling that linearly to 200,000 events/s gives about 68 vCPU.
+   Treat this as an order of magnitude and benchmark your own DoFns, because the benchmark used 1 million keys and its own transforms.
+   The same benchmark reports 354 mean Streaming Engine Compute Units (SECUs) per hour, so at us-central1 list rates it cost `338 x 0.069 + 1,267.5 x 0.003557 + 354 x 0.089 = 23.32 + 4.51 + 31.51 = about 59.3 USD/hour`, where 1,267.5 GiB is 169 workers at 7.5 GiB each.
+   That is about 0.176 USD per vCPU-hour all-in, and the cost is about `68 x 730 x 0.176 = 8,700 USD/month` (derived from the benchmark page and the [Dataflow pricing page](https://cloud.google.com/dataflow/pricing), as of 2026-11).
 7. Mode decision: this pipeline aggregates counts, so at-least-once would inflate totals. Keep exactly-once, and use the at-least-once discount only on the separate raw-event ETL branch.
 
 ## Failure Modes and Pitfalls

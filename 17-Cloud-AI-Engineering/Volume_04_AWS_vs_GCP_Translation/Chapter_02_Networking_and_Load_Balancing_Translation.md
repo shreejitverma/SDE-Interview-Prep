@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/vpc/latest/tgw/transit-gateway-quotas.html"
@@ -13,7 +13,6 @@ sources:
   - "https://www.usenix.org/conference/nsdi18/presentation/dalton"
   - "https://research.google/pubs/jupiter-rising-a-decade-of-clos-topologies-and-centralized-control-in-googles-datacenter-network/"
   - "https://sre.google/sre-book/load-balancing-datacenter/"
-  - "https://aws.amazon.com/builders-library/static-stability-using-availability-zones/"
   - "https://aws.amazon.com/message/12721/"
   - "https://aws.amazon.com/message/101925/"
   - "https://aws.amazon.com/transit-gateway/pricing/"
@@ -45,6 +44,7 @@ sources:
   - "https://docs.cloud.google.com/load-balancing/docs/passthrough-network-load-balancer"
   - "https://status.cloud.google.com/incident/cloud-networking/19009"
   - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://docs.cloud.google.com/load-balancing/docs/release-notes"
 ---
 
 # Networking and Load Balancing Translation
@@ -130,7 +130,7 @@ A firewall appliance fleet in a shared-services VPC sees the forward path in one
 Appliance mode on the attachment pins both directions of a flow to one AZ of the appliance VPC for the life of the flow (see the [AWS TGW appliance scenario docs](https://docs.aws.amazon.com/vpc/latest/tgw/transit-gateway-appliance-scenario.html)).
 With route propagation enabled on the associated route table, same-AZ traffic stays in that AZ and inter-AZ traffic picks an AZ by flow hash, and without propagation every flow falls back to flow hash ([AWS TGW VPC attachment docs](https://docs.aws.amazon.com/vpc/latest/tgw/tgw-vpc-attachments.html), as of 2026-11).
 The trade-off is that a share of flows leave AZ-local routing and take extra latency.
-Whether those hops bill as inter-AZ data is UNVERIFIED: the docs read state no extra TGW charge only for the no-attachment case above.
+The TGW pricing page says standard AWS data transfer charges apply in addition to TGW charges, and does not break out cross-AZ hops, so check the EC2 data transfer pricing before you assume how those hops bill ([AWS TGW pricing](https://aws.amazon.com/transit-gateway/pricing/), as of 2026-11).
 
 The ceilings are explicit and sizable but real (AWS docs, as of 2026-11):
 
@@ -162,9 +162,7 @@ Cross-zone load balancing is always on at the load balancer level for ALB, where
 Cross-zone traffic through an NLB incurs regional data transfer charges, while ALB cross-zone traffic does not ([AWS ELB FAQ](https://aws.amazon.com/elasticloadbalancing/faqs/), as of 2026-11).
 
 AWS describes Hyperplane as an internal network virtualization platform, says NLB runs on it ([AWS Builders' Library](https://builder.aws.com/content/3F05oqNtNUWxHJ5r6L6I2HrH4rI/reliability-constant-work-and-a-good-cup-of-coffee), as of 2026-11), and names PrivateLink as one of its constructs ([AWS Compute Blog](https://aws.amazon.com/blogs/compute/understanding-vpc-links-in-amazon-api-gateway-private-integrations/), as of 2026-11).
-NAT Gateway membership is UNVERIFIED: not named in the AWS sources read.
-The design philosophy is explicit flow state, replicated so that a node failure does not drop connections (UNVERIFIED: not in AWS docs read, and re:Invent talks were not retrieved).
-This buys exact stickiness for the connection lifetime, and tracked state comes with hard limits such as the NAT Gateway cap of 55,000 simultaneous connections per IPv4 address to each unique destination ([AWS NAT gateway docs](https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-basics.html), as of 2026-11).
+The NLB design pins each connection to one target for its life, which buys exact stickiness for the connection lifetime, and tracked state comes with hard limits such as the NAT Gateway cap of 55,000 simultaneous connections per IPv4 address to each unique destination ([AWS NAT gateway docs](https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-basics.html), as of 2026-11).
 
 Because the entry point is DNS, every AWS failover path is a DNS or client-behavior path.
 Amazon Application Recovery Controller (ARC) zonal shift removes an AZ's zonal load balancer IP address from DNS ([AWS ELB docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html), as of 2026-11), and on an NLB it must first be enabled through the `zonal_shift.config.enabled` attribute, which defaults to false ([AWS NLB docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html), as of 2026-11).
@@ -178,7 +176,7 @@ The GFE then chooses a backend and forwards over Google's backbone.
 Because there is no DNS answer to go stale, failover is a routing and health-check event, and capacity spillover is controlled by balancing mode and per-backend capacity settings.
 If you do not set realistic max-rate or utilization targets for GPU backends, the LB has no signal that a replica is saturated, and it keeps sending to the nearest region until health checks fail.
 A newer mechanism is the `CUSTOM_METRICS` balancing mode, fed by ORCA load reports in backend responses, on global, regional and cross-region Application Load Balancers ([Google Cloud custom metrics docs](https://docs.cloud.google.com/load-balancing/docs/https/applb-custom-metrics), as of 2026-11).
-Its GA status is UNVERIFIED: that page shows no launch stage, and the backend-service docs mark its long-traffic-duration use as Preview, so check before you depend on it.
+The Google Cloud load balancing release notes list custom metrics for Application Load Balancers as Preview on 2025-03-04 and General availability on 2025-06-03 ([Google Cloud load balancing release notes](https://docs.cloud.google.com/load-balancing/docs/release-notes), as of 2026-11).
 
 The external passthrough Network Load Balancer is built on Maglev, with the regional variant also using the Andromeda stack ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/passthrough-network-load-balancer), as of 2026-11), so it is close to the Maglev data plane.
 The Maglev paper (NSDI 2016) describes the pieces: upstream routers use ECMP to spread packets for a VIP across Maglev machines, each machine steers packets by 5-tuple hash to per-thread queues in a kernel-bypass datapath, and each packet thread consults its own connection-tracking table.
@@ -227,7 +225,6 @@ PSC also publishes Google APIs as an endpoint IP in your VPC, which is an altern
 ## Numbers to Know
 
 Every row shows its source and date.
-Rows marked UNVERIFIED could not be re-checked against primary documentation during this revision and must be confirmed before use in a design review.
 
 | Quantity | Value | Source |
 | --- | --- | --- |
@@ -250,7 +247,7 @@ Rows marked UNVERIFIED could not be re-checked against primary documentation dur
 | NAT Gateway simultaneous connections to one destination | 55,000 per IPv4 address, up to 8 addresses per gateway | [AWS NAT gateway docs](https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-basics.html), as of 2026-11 |
 | Interface endpoint price | $0.01 per endpoint ENI-hour (us-east-1 example) plus $0.01 per GB for the first 1 PB per month | [AWS PrivateLink pricing](https://aws.amazon.com/privatelink/pricing/), as of 2026-11 |
 | GCP default VPC MTU; configurable range | 1,460; 1,300 to 8,896 | [Google Cloud MTU docs](https://docs.cloud.google.com/vpc/docs/mtu), as of 2026-11 |
-| GCP VPC network peering limit per network | 25 | UNVERIFIED: `PEERINGS_PER_NETWORK` is an adjustable quota, but current docs state no default value |
+| GCP VPC network peering limit per network | `PEERINGS_PER_NETWORK` is a quota whose value is shown on the Quotas page in the console; the docs state no default | [Google Cloud VPC quotas](https://docs.cloud.google.com/vpc/docs/quota), as of 2026-11 |
 | GCP backend service default timeout (external Application LB) | 30 seconds (a request and response timeout, not an idle timer) | [Google Cloud request distribution docs](https://docs.cloud.google.com/load-balancing/docs/https/request-distribution), as of 2026-11 |
 | Cloud NAT usable ports per NAT IP; default minimum ports per VM | 64,512; 32 with dynamic port allocation, 64 with static | [Google Cloud NAT docs](https://docs.cloud.google.com/nat/docs/ports-and-addresses), as of 2026-11 |
 | Google health check source ranges | 35.191.0.0/16 for most LB types; 130.211.0.0/22 also required for GFE-based LBs as a proxy range; 136.124.104.0/22 and 136.124.108.0/22 for global external passthrough NLB; 209.85.204.0/22 and 209.85.152.0/22 also for target pools | [Google Cloud health check docs](https://docs.cloud.google.com/load-balancing/docs/health-check-concepts) and [firewall rule docs](https://docs.cloud.google.com/load-balancing/docs/firewall-rules), as of 2026-11 |
@@ -415,7 +412,7 @@ terraform destroy -auto-approve -var alert_email=you@example.com
 ### Step 3: GCP lab, one VPC, two regions, no hub
 
 Cost estimate: the VPC, subnets and firewall rules are free.
-Two e2-micro VMs run roughly a cent or less per hour each (UNVERIFIED: rate not readable from the pricing page fetched 2026-11), so a two-hour lab is a few cents.
+The two e2-micro VMs run about USD 0.0084 per hour in us-central1 and USD 0.0092 per hour in europe-west4 (third-party [gcloud-compute.com tracker](https://gcloud-compute.com/e2-micro.html), as of 2026-11; check the [Compute Engine VM pricing page](https://cloud.google.com/compute/vm-instance-pricing)), so a two-hour lab costs about USD 0.04 in compute.
 IAP tunnels carry no extra charge for this use.
 
 ```bash
@@ -707,7 +704,7 @@ The consistent hash makes that miss path land on the same backend almost always.
 In my simulation with a table size of 65,537 and 100 backends, removing one backend orphans 1.0 percent of the entries, which is unavoidable, and perturbs another 0.6 percent of surviving entries.
 Hash-mod-N would remap about 99 percent.
 So the flows at risk are those that miss the table and coincide with a backend-set change, a small fraction.
-An explicit-state design such as the one AWS has described for NLB keeps the flow in a replicated table, so a node failure should not move it, and the cost is bounded state and hard limits.
+An explicit-state design such as the one AWS has described for NLB keeps the flow pinned to one target for its life, and the cost is bounded state and hard limits.
 For a drained backend both systems keep existing connections to that backend until they end, if you use connection draining, and send new flows elsewhere.
 For a failed backend both reset connections, since the backend is gone.
 

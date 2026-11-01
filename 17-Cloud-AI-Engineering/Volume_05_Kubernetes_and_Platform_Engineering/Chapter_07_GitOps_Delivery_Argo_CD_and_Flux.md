@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://opengitops.dev/"
@@ -604,7 +604,7 @@ Cost levers, in order of typical impact:
 1. **Render CPU:** path scoping and webhooks, shown above, change render load by orders of magnitude.
 2. **Controller memory:** resource exclusions and shard count. Right-size from `working_set` metrics, not from limits.
 3. **Cross-AZ and NAT traffic:** controllers that list and watch API servers across AZs, and egress to a public Git host through NAT, both bill by the byte. Use in-region registries or mirrors.
-4. **Audit log volume:** list and watch traffic from controllers can dominate audit logs on a managed control plane (UNVERIFIED: no published measurement of the magnitude found). Tune the audit policy and log retention.
+4. **Audit log volume:** the API server emits audit events in proportion to the request rate, for example about 200 events per second for 100 requests per second when each request is audited at two stages ([Kubernetes auditing docs](https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/), as of 2026-11), and EKS charges standard CloudWatch Logs ingestion and storage for every enabled control plane log type ([EKS control plane logs docs](https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html), as of 2026-11). Controller list and watch traffic adds to that request rate, so tune the audit policy and log retention.
 5. **Per-cluster controllers versus a hub:** per-cluster Flux or Argo costs a few hundred MiB of memory per cluster in exchange for a smaller blast radius. A hub saves that and spends it on a bigger credential store. Decide on risk, then size.
 
 Platform cost per cluster is approximately `(controller memory GiB x memory price + render cores x CPU price + egress GiB x egress price) / clusters`, with prices from the current pricing pages.

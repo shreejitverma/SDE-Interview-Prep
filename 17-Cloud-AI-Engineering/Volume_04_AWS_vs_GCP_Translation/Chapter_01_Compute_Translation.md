@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/pdfs/whitepapers/latest/security-design-of-aws-nitro-system/security-design-of-aws-nitro-system.pdf"
@@ -27,6 +27,7 @@ sources:
   - "https://docs.cloud.google.com/compute/docs/instances/host-maintenance-overview"
   - "https://docs.cloud.google.com/compute/docs/instances/creating-instance-with-custom-machine-type"
   - "https://aws.amazon.com/about-aws/whats-new/2024/10/amazon-ec2-dedicated-hosts-live-migration-based-host-maintenance"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/dedicated-hosts-maintenance.html"
   - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-network-bandwidth.html"
   - "https://docs.aws.amazon.com/ec2/latest/instancetypes/instance-type-names.html"
   - "https://cloud.google.com/run/pricing"
@@ -117,7 +118,7 @@ Two semantic differences bite during sizing:
 GCE's long-standing differentiator is live migration: the host's VMM copies guest memory to another host while the guest runs, with a short blackout at cutover, so host maintenance rarely terminates a guest.
 Some configurations terminate rather than migrate during host events, including instances with attached GPUs, bare metal instances, H4D, instances with a Cloud RDMA interface, and Z3, Z4D, or Z4M with very large Titanium SSD capacity, so check `onHostMaintenance` behavior per series (GCE docs, as of 2026-11: [host maintenance](https://docs.cloud.google.com/compute/docs/instances/host-maintenance-overview)).
 EC2 relies first on in-place updates: Nitro replaces the running hypervisor and card firmware without moving the guest (AWS Nitro whitepaper, as of 2026-11: [components](https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/the-components-of-the-nitro-system.html)), and host failures surface as scheduled events or instance retirement.
-AWS does use live migration in at least one product: Dedicated Hosts have supported live-migration-based host maintenance since October 2024 ([AWS announcement](https://aws.amazon.com/about-aws/whats-new/2024/10/amazon-ec2-dedicated-hosts-live-migration-based-host-maintenance)), while no customer-visible live migration guarantee exists for shared-tenancy instances (UNVERIFIED: absence inferred from AWS docs, which never state it outright).
+AWS does use live migration in at least one product: Dedicated Hosts have supported live-migration-based host maintenance since October 2024, which moves instances to a replacement host within 24 hours without stopping or restarting them (AWS docs, as of 2026-11: [announcement](https://aws.amazon.com/about-aws/whats-new/2024/10/amazon-ec2-dedicated-hosts-live-migration-based-host-maintenance), [Dedicated Host maintenance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/dedicated-hosts-maintenance.html)).
 The design implication is that EC2 workloads must treat a host-level retire event as an ordinary failure (health checks, Auto Scaling replacement), whereas GCE workloads on migratable series can often ignore host maintenance but still need to survive the migration blackout and clock jump.
 
 Spot and preemptible capacity differ in warning time: EC2 Spot gives a two-minute interruption notice, emitted on a best effort basis and not given in advance for hibernation (AWS docs, as of 2026-11: [Spot notices](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html)).

@@ -2,7 +2,7 @@
 type: paper
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/conference/nsdi16/technical-sessions/presentation/eisenbud"
@@ -404,7 +404,8 @@ How to read the output:
 
 ### Part 2 - Observe Maglev behavior on a Google Cloud external passthrough NLB
 
-Estimated cost for one hour is roughly 0.05 USD at list price: one forwarding rule at 0.025 USD/h and two ephemeral external IPs at 0.005 USD/h each ([Google Cloud pricing](https://docs.cloud.google.com/vpc/network-pricing), as of 2026-11), plus two e2-micro VMs at about 0.008 USD/h each (UNVERIFIED: the VM price table is not readable from the static pricing page), plus negligible egress and data processing.
+The network pieces cost roughly 0.035 USD for one hour at list price: one forwarding rule at 0.025 USD/h and two ephemeral external IPs at 0.005 USD/h each ([Google Cloud pricing](https://docs.cloud.google.com/vpc/network-pricing), as of 2026-11).
+Add the hourly price of two e2-micro VMs from the current Compute Engine price list, plus negligible egress and data processing.
 Set a budget alarm before you create anything.
 
 ```bash
@@ -727,7 +728,7 @@ Compare Maglev's deterministic-hash design with AWS Hyperplane's replicated flow
 Maglev treats the hash as truth and state as a cache, so any node can forward any packet when configs agree, scaling is linear, and losing a node costs nothing but a cache.
 That works for a public VIP balancer because the backend can reply directly to the client, and the LB never needs to rewrite the return path.
 A NAT gateway breaks that assumption: translation creates a mapping, the source port allocation, that the return packet must find, and the return packet arrives from the internet on whatever node the routing chooses.
-That mapping is state that cannot be recomputed from the header, so a NAT needs replicated or deterministically partitioned flow state, which is what Hyperplane-style designs provide, using shuffle sharding to bound blast radius per customer (shuffle-sharding detail UNVERIFIED: not found in the AWS sources reviewed; see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Shuffle Sharding]]).
+That mapping is state that cannot be recomputed from the header, so a NAT needs replicated or deterministically partitioned flow state, which is what Hyperplane-style designs provide; see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Shuffle Sharding]] for how per-customer blast radius is bounded in general.
 The costs of state are correctness under partitions, state capacity as a hard limit (flow counts become billing dimensions), and failover that needs a replica rather than a hash.
 I would build the Maglev design for public VIPs, PrivateLink-free internal VIPs, and anything with DSR-capable backends, and the replicated-state design for NAT, firewalls, PrivateLink, and anything that rewrites addresses in both directions.
 The principal-level framing is to put state only where the protocol forces it, and to make the stateless tier the default so the stateful tier stays small, cellular, and separately scaled.

@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.cloud.google.com/pubsub/architecture"
@@ -143,7 +143,7 @@ For every message received and not yet acked, the leaser sends modacks before th
 The deadline each modack asks for is adaptive: the Python, Go, and Java high-level libraries track the application's receive-to-ack latency and use its 99th percentile, within the 10 to 600 s range (Google Cloud docs, as of 2026-11).
 The default maximum total lease extension is 60 minutes (`max_lease_duration` = 3600 s in Python), after which the library stops renewing and the message becomes eligible for redelivery (Google Cloud docs, as of 2026-11).
 Flow control (`max_messages`, `max_bytes`) caps the number of outstanding leased messages.
-The client also sends these limits to the server in the StreamingPull request, but the server-side limit is best-effort, so the library can still receive messages beyond the limit and hold them in a local buffer (UNVERIFIED: best-effort wording not found in the RPC reference, as of 2026-11).
+The client also sends these limits to the server in the initial StreamingPull request, and the server stops sending more messages while the outstanding count or bytes are at the limit (Pub/Sub RPC reference, as of 2026-11).
 Here is the failure physics.
 Leases are kept alive by a background thread or task that needs CPU and network.
 If a subscriber has a long GC pause, CPU starvation from a noisy neighbor, an event-loop block, or a saturated egress path, its modacks go out late, the leases lapse, and the service redelivers those messages to other streams.
@@ -187,12 +187,10 @@ For a deeper paper reading, see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Pape
 The Dataflow Pub/Sub source acknowledges messages to Pub/Sub only after the first fused stage has committed them durably in Dataflow (Google Cloud docs, as of 2026-11).
 Dataflow deduplicates Pub/Sub redeliveries by Pub/Sub message ID, and it can deduplicate publisher-side retries if you supply a unique ID attribute (`id_label` in the Python SDK), provided the duplicates are published within 10 minutes of each other (Google Cloud docs and Beam pydoc, as of 2026-11).
 Watermark estimation is the part the getting-started guide leaves out.
-If elements are timestamped by publish time, the source can get its watermark from the oldest unacknowledged publish time in the subscription backlog, through a private Pub/Sub API that reports that age (Google Cloud docs, as of 2026-11), together with messages that have been pulled but not yet committed (UNVERIFIED: the pulled-but-uncommitted term is not in the current docs).
+If elements are timestamped by publish time, the source can get its watermark from the oldest unacknowledged publish time in the subscription backlog, through a private Pub/Sub API that reports that age (Google Cloud docs, as of 2026-11).
 If you set a custom `timestamp_attribute`, publish time no longer bounds event time, so Dataflow creates an extra tracking subscription on the same topic and uses it to inspect event timestamps in the backlog (Google Cloud docs, as of 2026-11).
-The tracking subscription has three operational effects.
+The tracking subscription has an operational effect you must plan for.
 It needs `pubsub.subscriptions.create`, `pubsub.subscriptions.consume`, and `pubsub.subscriptions.delete` on the project, plus `pubsub.topics.attachSubscription` on the topic (Google Cloud docs, as of 2026-11).
-It roughly doubles delivery throughput billing for that source, because the tracking subscription also receives the messages (UNVERIFIED: inferred from per-subscription subscribe billing; the Dataflow docs do not state it, as of 2026-11).
-And deleting it by hand breaks the watermark (UNVERIFIED: not stated in the current docs, as of 2026-11).
 The estimate is a heuristic.
 A publisher that sends an event-time-old message after the watermark has passed that time produces late data by definition, and Pub/Sub cannot prevent that.
 
@@ -616,7 +614,6 @@ Publish bytes: 50,000 x 1,500 B = 75 MB/s.
 Monthly publish: 75e6 x 2.592e6 = 1.944e14 B = 176.8 TiB.
 Delivery: 3 subscriptions x 176.8 TiB = 530.4 TiB.
 Billable throughput: 707.2 TiB, of which 530.4 TiB (publish plus two regular subscriptions) is billed at USD 40/TiB and 176.8 TiB (the BigQuery subscription) at USD 50/TiB, so about USD 21,217 + USD 8,840 = USD 30,057 per month (Google Cloud pricing, as of 2026-11).
-If the Dataflow source uses a custom timestamp attribute, the tracking subscription adds roughly another 176.8 TiB of delivery, about USD 7,072 per month (UNVERIFIED: same billing inference as in Internals, as of 2026-11).
 Batching lever: for 200-byte messages published one per request, the 1 KB per-request minimum (taken as 1,000 B here) bills 117.9 TiB per month of publish instead of 23.6 TiB with batching, about USD 4,715 versus USD 943 per month on the publish side alone (Google Cloud pricing, as of 2026-11).
 Ordering check: if the busiest entity emits 400 KB/s, it fits under the per-key ceiling of about 1 MBps; a tenant-level key at 20 MB/s would not.
 Dataflow compute: measure per-vCPU throughput in a load test, never assume it.
@@ -720,7 +717,7 @@ A message storage policy is a residency control, but it narrows the failover set
 
 Batch on the publisher to amortize the per-request billing minimum.
 The worked example shows a 5x difference for small messages.
-Every subscription is billed delivery throughput, so remove dead subscriptions and avoid the extra tracking subscription when publish time is an acceptable event-time proxy.
+Every subscription is billed delivery throughput, so remove dead subscriptions and avoid the extra tracking subscription and its permissions when publish time is an acceptable event-time proxy.
 Replace a Dataflow job that only lands rows with a BigQuery subscription, which removes worker-hours entirely for schema-mapped ingestion, at USD 50/TiB instead of USD 40/TiB of subscribe throughput (Google Cloud pricing, as of 2026-11).
 Keep subscribers in the same region as the publishers that feed them, because cross-region delivery adds latency and inter-region network charges (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]]).
 In Dataflow, allowed lateness and window count drive state size, and state size drives Streaming Engine cost and worker memory, so size lateness from the measured event-time delay distribution.

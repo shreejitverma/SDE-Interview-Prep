@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://dl.acm.org/doi/10.1145/3035918.3056101"
@@ -115,13 +115,14 @@ The motivating failure was the April 2011 EBS event, in which an incorrectly exe
 GCP exposes a different primitive: regional Persistent Disk and Hyperdisk Balanced High Availability synchronously replicate a volume across two zones in one region ([Compute Engine docs](https://docs.cloud.google.com/compute/docs/disks/high-availability-regional-persistent-disk), as of 2026-11).
 There is no one-click AWS equivalent for a synchronously mirrored block device across AZs, so the AWS answer is database-level replication (Multi-AZ RDS, Aurora, or application-level) or a shared file system.
 
-The mechanism most migrations trip over is lazy loading of snapshot-restored volumes.
-Both clouds store snapshots in object storage, and a volume created from a snapshot is usable immediately while blocks are fetched on first touch.
-The AWS behavior is documented ([EBS volume initialization](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-initialize.html), as of 2026-11), Compute Engine docs place standard snapshots in Cloud Storage locations, and first-touch loading on GCP is UNVERIFIED: not stated in the Compute Engine pages read.
-The first read of each block pays an object-store round trip, so a freshly restored database sees latency that is one to two orders of magnitude worse than steady state, and a full table scan on restore benchmarks the snapshot tier rather than the volume type.
+The mechanism most migrations trip over is lazy loading of snapshot-restored EBS volumes.
+An EBS volume created from a snapshot is usable immediately while blocks are fetched from S3 on first touch ([EBS volume initialization](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-initialize.html), as of 2026-11).
+Compute Engine documents the opposite for standard snapshots: a disk created from one "can immediately achieve its maximum performance and doesn't require pre-warming" ([Compute Engine snapshots docs](https://docs.cloud.google.com/compute/docs/disks/snapshots), as of 2026-11).
+On AWS the first read of each block pays an object-store round trip, so a freshly restored database sees latency that is one to two orders of magnitude worse than steady state, and a full table scan on restore benchmarks the snapshot tier rather than the volume type.
+A migration that carries the AWS pre-warm habit to GCP is harmless but unnecessary for standard snapshots.
 AWS offers Fast Snapshot Restore ($0.75 per DSU-hour per snapshot per AZ) and a Provisioned Rate for Volume Initialization (100 to 300 MiB/s, billed per GiB of snapshot data) to bound this ([EBS docs](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-initialize.html), [EBS pricing](https://aws.amazon.com/ebs/pricing/), as of 2026-11).
 GCP offers instant snapshots stored in the same zone or region as the source disk, which Google lists as the fastest recovery option, at the cost of no off-disk redundancy and deletion along with the source disk ([Compute Engine docs](https://docs.cloud.google.com/compute/docs/disks/instant-snapshots), as of 2026-11).
-Any DR runbook that says "restore from snapshot and cut over" must include a pre-warm step and a measured time-to-steady-state.
+Any AWS DR runbook that says "restore from snapshot and cut over" must include a pre-warm step and a measured time-to-steady-state; a GCP runbook should still measure restore time, because Google does not guarantee disk creation from a snapshot faster than its documented snapshot-frequency limits ([Compute Engine snapshot best practices](https://docs.cloud.google.com/compute/docs/disks/snapshot-best-practices), as of 2026-11).
 
 The second mechanism is that the VM, not the volume, is the bottleneck.
 EBS bandwidth and IOPS are capped per instance type, and GCE disk performance is capped per machine type and vCPU count, so provisioning 64,000 IOPS on a volume attached to an instance that supports 20,000 IOPS buys nothing.
@@ -266,7 +267,7 @@ All prices are USD, us-east-1 or us-central1 list prices, and exclude taxes, dis
 | Directory semantics | Flat keys; Express One Zone directory buckets | Flat buckets plus hierarchical-namespace buckets with atomic folder rename | Rename-heavy jobs (Spark committers) behave differently |
 | Block volume failure domain | Replicated within one AZ | Zonal, or synchronous two-zone regional/HA disks | AWS needs DB-level cross-AZ replication |
 | Block provisioning model | Provision IOPS and throughput on gp3, io2 | Provision IOPS and throughput on Hyperdisk | Both capped by VM type |
-| Snapshot restore | Lazy load from S3; FSR or init rate to pre-warm | Standard snapshots in Cloud Storage locations; instant snapshots local to the disk's zone or region | Both need pre-warm in DR runbooks |
+| Snapshot restore | Lazy load from S3; FSR or init rate to pre-warm | Standard snapshots in Cloud Storage locations; instant snapshots local to the disk's zone or region | AWS needs pre-warm in DR runbooks; GCP standard snapshots document no pre-warming need |
 | KV partitioning | Hash of partition key, Paxos group per partition, data on local SSD | Row-key range tablets, data in Colossus | Hash gives spread, range gives scans; different hot-key failure |
 | KV transactions | Up to 100 items, not supported on MRSC global tables | Single-row atomic only | Cross-row invariants must move to Spanner or app logic |
 | KV multi-region | Global tables, MREC last-writer-wins or MRSC | Bigtable multi-cluster async replication, app profiles | Conflict resolution differs; Bigtable is last-write by timestamp per cell |
@@ -564,7 +565,8 @@ Reconnect before each long run, because a DSQL connection lives at most 60 minut
 - **GCS single-object write loops.**
   Code that updates a status or manifest object at more than one write per second per name can be throttled; the pattern works on S3 at modest rates, so it passes in AWS and fails after migration.
 - **Restoring from a snapshot and benchmarking immediately.**
-  First-touch lazy loading makes the restored volume look 10x to 100x slower than it will be after warm-up; DR tests that skip pre-warm report RTOs that are too optimistic for the first minutes and too pessimistic for steady state.
+  On EBS, first-touch lazy loading makes the restored volume look 10x to 100x slower than it will be after warm-up; DR tests that skip pre-warm report RTOs that are too optimistic for the first minutes and too pessimistic for steady state.
+  Compute Engine documents no pre-warming requirement for disks created from standard snapshots (as of 2026-11).
 - **Provisioned IOPS above the instance cap.**
   The volume is billed, the instance throttles, and the dashboard shows the volume under-utilized.
 - **Bigtable row keys that start with a timestamp or a sequence.**
@@ -663,7 +665,7 @@ On GCP the match for gp3 is a Hyperdisk Balanced volume with IOPS and throughput
 The failure domain is the important difference: an EBS volume is replicated inside one AZ, so an AZ failure loses availability of the volume, and cross-AZ protection requires PostgreSQL streaming replication to a standby in another AZ with a failover manager.
 On GCP I can additionally choose a regional Persistent Disk or Hyperdisk Balanced High Availability, which replicates synchronously across two zones, so a zone failure can be handled by attaching the disk to a standby VM in the other zone.
 The trade-off is write latency and cost: synchronous cross-zone replication adds a network round trip to each write acknowledgment and costs a premium over a zonal disk, and it still does not protect against logical corruption or a bad deploy, so I would keep database-level replication or PITR in either case.
-For backup and DR the snapshot restore has the lazy-load penalty, so the runbook must include a pre-warm and a measured time to steady state.
+For backup and DR the EBS snapshot restore has the lazy-load penalty, so the AWS runbook must include a pre-warm and a measured time to steady state; Compute Engine documents no pre-warming need for standard snapshots, so the GCP runbook measures restore time only.
 Finally, I would not use the regional disk to replace a replica if the RPO is zero but the RTO must be seconds, because failover still needs the standby VM to start PostgreSQL and replay WAL.
 
 #### Follow-up Interviewer Question

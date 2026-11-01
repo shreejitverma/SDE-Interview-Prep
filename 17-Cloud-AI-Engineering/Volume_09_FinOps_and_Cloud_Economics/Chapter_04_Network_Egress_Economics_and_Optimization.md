@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://aws.amazon.com/vpc/pricing/"
@@ -219,7 +219,7 @@ GCP rates below come from the [Google Cloud VPC pricing page](https://cloud.goog
 | Private path to managed APIs | Gateway endpoints for S3 and DynamoDB (no hourly or per-GB fee); interface endpoints for most other services | Private Google Access and Private Service Connect |
 | Dedicated link | Direct Connect: port hours plus DTO per GB; inbound free (AWS Direct Connect pricing, as of 2026-11) | Dedicated, Partner, and Cross-Cloud Interconnect with per-GiB egress; 10 Gbps Dedicated circuit $2.328 per hour plus VLAN attachment fees (Google Cloud docs, as of 2026-11) |
 | VPC scope | Regional VPC; cross-region needs peering or Transit Gateway with per-GB meters | Global VPC; cross-region traffic inside one VPC avoids a gateway meter but still pays inter-region egress |
-| Cross-account AZ alignment | AZ ID versus AZ name mapping is per account (AWS RAM docs, as of 2026-11) | Zones are logical abstractions of physical resources (Google Cloud docs, as of 2026-11); UNVERIFIED that a zone name maps to the same physical location across projects: not stated in current docs, and secondary sources report per-organization mapping |
+| Cross-account AZ alignment | AZ ID versus AZ name mapping is per account (AWS RAM docs, as of 2026-11) | Zones are logical abstractions of physical resources (Google Cloud docs, as of 2026-11) |
 | Link to hardware | Nitro cards implement the VPC data path at the host | Andromeda host-based virtualization implements the virtual network data path at the host (NSDI 2018) |
 
 The structural difference that changes design: AWS lets you cut the bill by removing a managed hop (NAT, TGW, interface endpoint), while GCP's global VPC removes whole classes of gateway fees but not the physical inter-region rate.

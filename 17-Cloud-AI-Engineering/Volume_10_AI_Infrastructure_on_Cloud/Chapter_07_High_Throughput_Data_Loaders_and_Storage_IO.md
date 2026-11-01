@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/abs/2101.12127"
@@ -134,7 +134,7 @@ Rapid Bucket zonal storage, GA since 2026-03-10 (Cloud Storage release notes, as
 Little's law, `L = lambda x W`, sets the in-flight byte budget: `bytes_in_flight = target_bandwidth x per_request_latency`.
 A node that needs 2.2 GB/s from a store with 50 ms effective latency per 8 MiB ranged GET needs about 2.2 GB/s x 0.05 s / 8 MiB, which is roughly 13 GETs in flight before transfer time.
 Once you include per-connection transfer rate, the practical figure is about 25 to 40 concurrent requests per node.
-AWS guidance has historically been about one concurrent request per 85 to 90 MB/s of desired throughput (UNVERIFIED: historical AWS guidance, no longer in the current S3 performance docs).
+AWS advises starting with a single request at a time, measuring the bandwidth achieved and the other resources in use, and sizing concurrency to the bottleneck resource; for example, 25 percent CPU at one request suggests up to four concurrent requests (AWS docs, as of 2026-11).
 No single-threaded Python `boto3.get_object().read()` loop can sustain that, because one connection's TCP window and first-byte latency cap it.
 The Amazon S3 Connector for PyTorch (`s3torchconnector`) exists for this reason.
 It ships `S3IterableDataset`, `S3MapDataset`, `S3Reader`, `S3Writer`, `S3Checkpoint`, a Lightning integration, and a Distributed Checkpoint (`dcp`) module (awslabs docs, versions 1.4.x-1.5.x, as of 2026-10).
@@ -251,7 +251,7 @@ A local NVMe cache dies with its instance, so after node replacement the new nod
 | S3 Express One Zone data access latency | consistent single-digit milliseconds | (AWS docs, as of 2026-10) |
 | S3 Standard GET price | USD 0.0004 per 1,000 requests, us-east-1 | (AWS Price List API, as of 2026-10) |
 | S3 Standard storage | USD 0.023 per GB-month, first 50 TB tier (USD 0.022 next 450 TB), us-east-1 | (AWS Price List API, as of 2026-10) |
-| Concurrency rule of thumb | about 1 request per 85-90 MB/s of target throughput | (UNVERIFIED: historical AWS guidance, not in current docs) |
+| S3 concurrency tuning | start at one request, measure bandwidth and CPU, then scale concurrency to the bottleneck resource | (AWS docs, as of 2026-11) |
 | GCS initial bucket request rate | about 1,000 writes/s and 5,000 reads/s, then auto-scales | (Google Cloud docs, as of 2026-10) |
 | GCS ramp guidance | ramp gradually after several idle days or for new key ranges | (Google Cloud docs, as of 2026-10) |
 | GCS ramp doubling interval | no faster than doubling over 20 minutes | (Google Cloud docs, as of 2026-10) |
@@ -298,7 +298,7 @@ Step 5, layout with 1 GiB WebDataset shards read as 8 MiB ranged GETs: 140.8e9 /
 That costs USD 24 per hour, about 76 times less, and fits within four S3 prefixes or a modestly ramped GCS bucket.
 Step 6, shard count: 1 GiB / 110 KB is about 9,761 samples per shard.
 A 2 billion sample corpus is about 205,000 shards, far more than the 512 ranks x 12 workers = 6,144 readers, so the per-reader assignment can be made exactly even.
-Step 7, concurrency per node: 2.2 GB/s at about 90 MB/s per stream (UNVERIFIED rule, no longer in current AWS docs) is about 25 concurrent ranged GETs, spread across 96 workers, so even one in-flight request per worker covers it.
+Step 7, concurrency per node: 2.2 GB/s at an assumed 90 MB/s sustained per ranged-GET stream (a sizing assumption, not an AWS figure) is about 25 concurrent ranged GETs, spread across 96 workers, so even one in-flight request per worker covers it.
 Step 8, CPU: at an assumed 150 decode-and-augment operations per core per second, a node needs 20,000 / 150 = 133 cores.
 That is more physical cores than a typical 8-GPU host provides, so decode is the binding stage.
 The fix is GPU decode, pre-resized shards, or disaggregated preprocessing, not faster storage.

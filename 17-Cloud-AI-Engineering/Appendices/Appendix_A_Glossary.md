@@ -455,7 +455,7 @@ Spanner assigns a commit timestamp `s` no earlier than `TT.now().latest` at the 
 It then holds the result until `TT.after(s)` is true, meaning every clock in the system agrees that `s` is in the past.
 Any transaction that starts after this one finishes therefore receives a later timestamp, which is external consistency.
 The expected wait is at least `2 x epsilon` where epsilon is the average clock uncertainty.
-The 2012 paper reports epsilon between about 1 and 7 ms in production, averaging about 4 ms (Spanner, OSDI 2012).
+The 2012 paper reports epsilon as a sawtooth varying from about 1 to 7 ms over each poll interval in production, and therefore 4 ms most of the time (Spanner, OSDI 2012).
 That implies roughly 8 ms of commit wait.
 The paper's one-replica microbenchmark measured commit wait at about 5 ms, so treat 8 ms as the derived figure and not a measurement (Spanner, OSDI 2012).
 The wait overlaps with Paxos replication, so it adds little when replication is already slow.

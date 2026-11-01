@@ -8,9 +8,9 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 17354 |
+| Tracked files | 17367 |
 | Markdown notes | 2944 |
-| Internal links checked | 22661 |
+| Internal links checked | 22743 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
@@ -50,9 +50,9 @@ Re-run the script after every structural change; this file is its output and sho
 | `14-Low-Latency-Systems` | 262 | 262 | 0 | 0 | 0 | 1.7 | 2026-10-25 |
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-10-25 |
 | `16-Interview-Command-Center` | 51 | 51 | 0 | 0 | 0 | 0.1 | 2026-10-25 |
-| `17-Cloud-AI-Engineering` | 162 | 162 | 0 | 0 | 0 | 8.9 | 2026-10-25 |
+| `17-Cloud-AI-Engineering` | 162 | 162 | 0 | 0 | 0 | 9.8 | 2026-11-01 |
 | `18-Developer-Toolchain` | 366 | 343 | 12 | 0 | 11 | 0.8 | 2026-11-01 |
-| `19-Shell-and-Unix-Engineering` | 520 | 406 | 69 | 0 | 45 | 2.6 | 2026-11-01 |
+| `19-Shell-and-Unix-Engineering` | 533 | 406 | 76 | 0 | 51 | 3.1 | 2026-11-01 |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
 | `tools` | 26 | 1 | 23 | 0 | 2 | 0.2 | 2026-11-01 |
 

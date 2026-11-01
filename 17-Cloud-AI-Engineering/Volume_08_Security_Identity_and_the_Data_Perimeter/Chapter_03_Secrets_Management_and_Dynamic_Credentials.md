@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/secretsmanager/latest/userguide/whats-in-a-secret.html"
@@ -159,7 +159,7 @@ Three consequences matter in capacity planning.
 2. Standby nodes forward writes to the active node, so dynamic secret issuance is bound by one node's commit path regardless of cluster size. Performance standbys, which require Vault Enterprise or HCP Vault Dedicated, help reads, and lease-creating reads still make an RPC to the active node to store the lease (Vault docs, as of 2026-11).
 3. Revocation is a second load, correlated in time. Leases created in a deploy wave expire in the same minute, so the target database sees a burst of `DROP ROLE` exactly when the next wave is being created. Jitter TTLs, or stagger deploys.
 
-The target database is the other half of the cost. Each Vault-created PostgreSQL role is a row in `pg_authid`, a single catalog shared by every database in the cluster ([PostgreSQL docs](https://www.postgresql.org/docs/current/catalog-pg-authid.html), as of 2026-11), and high churn produces catalog bloat and lock contention in `CREATE ROLE` and `DROP ROLE` (UNVERIFIED: engineering inference, no published measurement found). Measure role churn per hour on the database, not only Vault throughput.
+The target database is the other half of the cost. Each Vault-created PostgreSQL role is a row in `pg_authid`, a single catalog shared by every database in the cluster ([PostgreSQL docs](https://www.postgresql.org/docs/current/catalog-pg-authid.html), as of 2026-11), and `DROP ROLE` fails while the role still owns objects or holds privileges in any database of the cluster ([PostgreSQL DROP ROLE docs](https://www.postgresql.org/docs/current/sql-droprole.html), as of 2026-11), so a revocation can fail at the target and become an irrevocable lease. Measure role churn per hour on the database, not only Vault throughput.
 
 ### Dynamic credential taxonomy
 

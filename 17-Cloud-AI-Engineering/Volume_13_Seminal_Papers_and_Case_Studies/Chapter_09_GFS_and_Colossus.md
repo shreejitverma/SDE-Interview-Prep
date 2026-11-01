@@ -2,7 +2,7 @@
 type: paper
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf"
@@ -262,7 +262,6 @@ Both trade a little extra storage for repair reads that touch a small local grou
 Second, degraded reads: when a data fragment is unavailable, a read must fetch n fragments and decode them, so the request's tail latency becomes the maximum of n disk latencies instead of one.
 Third, small writes and appends do not fit RS stripes well, because parity has to be recomputed as the stripe fills.
 The common industry pattern is to write replicated first and transcode to RS once data is cold or the stripe is sealed.
-Google has not published whether Colossus does exactly this for every encoding (UNVERIFIED for Colossus specifically: no Google source read describes this write path).
 
 ### The real-time turn: SSD placement and the stateful protocol
 
@@ -328,7 +327,7 @@ The pricing page lists "Refresh Read Access Handle" and "Refresh Write Access Ha
 | Metadata plane | Curators, horizontally scaled, state in Bigtable | S3 index subsystem and placement subsystem (named in the 2017 PIR) | Both shard metadata; S3's 2017 outage showed a full restart of the index subsystem took hours |
 | Data servers | D servers: thin, disk-attached, checksum-only | ShardStore storage nodes: LSM-based key-value store per node | Colossus keeps servers thin and puts encoding in the client; ShardStore puts significant logic in the node |
 | Redundancy | Client-library software RAID; RS and replication encodings chosen per application | Erasure coding inside S3 ([Warfield, FAST 2023 keynote post](https://www.allthingsdistributed.com/2023/07/building-and-operating-a-pretty-big-storage-system.html)) | GCP exposes no encoding knob to customers; neither does S3 |
-| Mutation ordering | GFS: chunk lease plus version number; Colossus: curator constructs a file handle for the client (Google Cloud blog, 2025-04); lease mechanics (UNVERIFIED: not in the 2021 and 2025 Colossus posts or the 2017 keynote) | Not exposed; S3 objects are immutable with strong read-after-write | GFS leases were customer-visible semantics; in the cloud they are hidden behind immutable-object APIs |
+| Mutation ordering | GFS: chunk lease plus version number; Colossus: curator constructs a file handle for the client, and a new write stream locks out the prior one by increasing a version number on each object data replica (Google Cloud blog, 2025-04) | Not exposed; S3 objects are immutable with strong read-after-write | GFS leases were customer-visible semantics; in the cloud they are hidden behind immutable-object APIs |
 | Zonal low-latency tier | Rapid Bucket: zonal, stateful gRPC streams, appendable objects (GA 2026-03) | S3 Express One Zone directory buckets with session auth via CreateSession | Both amortize authorization per session; Rapid does it per stream, S3 Express per session token that expires after 5 minutes ([AWS CreateSession docs, as of 2026-11](https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateSession.html)) |
 | Appends | Native appendable objects in zonal buckets; compose (32 sources) elsewhere | Appends supported in S3 Express One Zone through `PutObject` with `x-amz-write-offset-bytes`, up to 5 GB per request and 10,000 parts per object ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/AmazonS3/latest/userguide/directory-buckets-objects-append.html)); S3 general purpose is immutable | Neither offers GFS multi-writer record append; single writer per handle or CAS |
 | Read caching | Colossus SSD placement internally; Rapid Cache (formerly Anywhere Cache) for existing buckets | No cache behind the S3 API itself; [S3 Files](https://aws.amazon.com/about-aws/whats-new/2026/04/amazon-s3-files/) (GA 2026-04) caches active data behind an NFS file system interface; also FSx for Lustre or client caches | GCP offers a managed zonal cache behind the Cloud Storage API over regional and multi-region buckets; the AWS managed cache needs file system access |
@@ -689,7 +688,6 @@ Isolate it in a separate service account from the producers.
 Rapid Bucket requires uniform bucket-level access, which removes per-object ACLs and makes IAM the only authorization path.
 That is simpler to audit and impossible to grant per object.
 Because Rapid streams authorize at stream creation, cap how long streams live in your client so that IAM revocations take effect within a bounded time.
-Verify against the current docs how in-flight handles respond to revocation (UNVERIFIED: not stated in the Rapid Bucket docs or the 2025 Colossus posts).
 See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions|Cloud IAM: Roles, Policies, and Conditions]].
 
 ### Encryption hierarchy
@@ -833,8 +831,8 @@ The residual risks are a process pause on the primary between checking its lease
 Robust systems close the first by having replicas reject mutations tagged with an older epoch, which is the fencing-token pattern.
 The second is closed by giving secondaries the version too.
 The master itself is a single decision-maker made durable by log replication, so leases plus versions are sufficient there.
-In Colossus the curator constructs file handles, and any lease mechanics behind them are not described in the posts reviewed (UNVERIFIED: not in the 2021 and 2025 Colossus posts or the 2017 keynote), but the epoch-check discipline matters more because curators are many and sharded.
-Rapid Bucket shows the visible form: each new write stream transactionally locks out the prior one, and each append carries its offset ([Google Cloud blog, 2025-04](https://cloud.google.com/blog/products/storage-data-transfer/how-the-colossus-stateful-protocol-benefits-rapid-storage)).
+In Colossus the curator constructs file handles, and the epoch-check discipline matters more because curators are many and sharded.
+Rapid Bucket shows the visible form: each new write stream transactionally locks out the prior one by increasing a version number on each object data replica, and each append carries its offset ([Google Cloud blog, 2025-04](https://cloud.google.com/blog/products/storage-data-transfer/how-the-colossus-stateful-protocol-benefits-rapid-storage)).
 
 #### Follow-up Interviewer Question
 

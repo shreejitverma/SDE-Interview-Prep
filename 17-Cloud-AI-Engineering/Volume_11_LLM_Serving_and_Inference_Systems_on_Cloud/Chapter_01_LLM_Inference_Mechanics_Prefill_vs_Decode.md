@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources:
   - "https://www.nvidia.com/en-us/data-center/h100/"
@@ -11,6 +11,7 @@ sources:
   - "https://www.nvidia.com/en-us/data-center/dgx-b200/"
   - "https://www.nvidia.com/en-us/data-center/hgx/"
   - "https://www.nvidia.com/en-us/data-center/l4/"
+  - "https://docs.cloud.google.com/compute/docs/accelerator-optimized-machines"
   - "https://docs.cloud.google.com/tpu/docs/v5p"
   - "https://docs.cloud.google.com/tpu/docs/v6e"
   - "https://docs.cloud.google.com/tpu/docs/tpu7x"
@@ -107,7 +108,7 @@ A budget of 2000 instead of 2048 can lose a few percent of prefill throughput fo
 
 Megatron-style tensor parallelism shards each layer across TP chips and needs two all-reduces per layer, one after attention and one after the MLP, which is 160 all-reduces per generated token for an 80-layer model.
 In decode the payload is tiny (B x d_model x 2 bytes, 1 MiB at B = 64), so each all-reduce costs mostly fixed latency, not bandwidth.
-At an assumed 10 to 20 microseconds per NVLink all-reduce (UNVERIFIED: no published 8x H100 small-message figure found; measure with nccl-tests on your topology), that adds 1.6 to 3.2 ms per token, which is 25% to 50% of the 6.6 ms weight-streaming floor computed below.
+At an assumed 10 to 20 microseconds per NVLink all-reduce (a modeling parameter, not a vendor figure; measure it with nccl-tests on your topology), that adds 1.6 to 3.2 ms per token, which is about 24% to 48% of the 6.6 ms weight-streaming floor computed below.
 TP across nodes over EFA or RoCE raises per-hop latency by an order of magnitude, which is why decode TP almost always stays inside one NVLink, ICI, or NeuronLink domain, with pipeline or expert parallelism used across nodes.
 Pope et al. (MLSys 2023, "Efficiently Scaling Transformer Inference") formalize this trade for TPU v4: weight-stationary 1D and 2D layouts for decode latency, and different layouts for prefill throughput, chosen per phase.
 
@@ -264,7 +265,9 @@ Adding `--allreduce-us 15` raises the B = 1 step from 6.65 to 9.05 ms, which sho
 
 ### Step 2 - Validate the model against a real GPU (billable, about 1 to 2 hours)
 
-Cost estimate: one g2-standard-8 (1x L4) on demand plus a 200 GB balanced boot disk, about $1/hour (UNVERIFIED: Google's pricing page does not expose this rate in fetchable text; third-party trackers list about $0.85/hour for g2-standard-8 in us-central1, so check the Compute Engine pricing page for your region), so a 2-hour lab costs about $2 to $3.
+Cost estimate: one g2-standard-8 (8 vCPU, 32 GB, 1x L4 with 24 GB GDDR6, per Google's accelerator-optimized machine docs as of 2026-11) on demand plus a 200 GB balanced boot disk.
+The third-party [Holori price tracker](https://calculator.holori.com/gcp/vm/g2-standard-8/us-central1) lists g2-standard-8 at about $0.85/hour in us-central1 (as of 2026-11; check the Compute Engine pricing page for your region), so a 2-hour lab costs about $2 including a small disk charge.
+The $20 budget alarm below only notifies at 50, 90 and 100 percent and does not stop the VM, so the teardown is what stops spend.
 
 ```bash
 export PROJECT=my-lab-project ZONE=us-central1-a BILLING_ACCOUNT=XXXXXX-XXXXXX-XXXXXX

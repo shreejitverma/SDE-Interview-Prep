@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines-caching-enabling.html"
@@ -104,7 +104,7 @@ Retries are declared per step through retry policies keyed on exception types `S
 In KFP v2, each task is split into a driver and an executor.
 The driver resolves upstream outputs and parameters, computes the cache fingerprint, looks up the cache, and either records a cached execution or emits the executor's runtime spec.
 The executor is the user container wrapped by a launcher binary, which stages input artifacts, runs the user command, uploads output artifacts to the pipeline root, and records outputs in metadata.
-On open-source KFP running on Argo Workflows the driver and executor are visible as separate pods, while on Vertex each component runs as a Vertex AI CustomJob, on an `e2-standard-4` machine unless the task sets resources ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/docs/pipelines/machine-types), as of 2026-10); whether Vertex reuses the KFP driver and launcher protocol behind those CustomJobs is UNVERIFIED (Vertex internals are not documented).
+On open-source KFP running on Argo Workflows the driver and executor are visible as separate pods, while on Vertex each component runs as a Vertex AI CustomJob, on an `e2-standard-4` machine unless the task sets resources ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/docs/pipelines/machine-types), as of 2026-10).
 The cache decision is made before any compute is requested, so a cache hit costs no accelerator capacity and no container image pull.
 
 ### Step caching is memoization over declared references
@@ -524,7 +524,7 @@ On Vertex, arguments are part of the container spec, so the change is a miss.
 On SageMaker Processing, container arguments live under `AppSpecification`, which is also in the key, so this one matches, which shows you must check per field.
 A real divergence is the output destination.
 On SageMaker Processing, output configuration is not in the key, so changing only the output prefix is a hit that returns the old URIs.
-On Vertex, output definitions are in the key, but the output URI is generated under the pipeline root, so changing the pipeline root alone is likely still a hit (UNVERIFIED: the documented key lists output names, not output URIs, but Google does not state the pipeline-root case), and I would confirm it empirically.
+On Vertex, output definitions are in the key, but the documented definition covers output parameter and artifact names, not output URIs or the pipeline root, so a pipeline-root change is not documented to cause a miss (Google Cloud docs, as of 2026-11), and I would confirm the behavior empirically.
 A second divergence is data identity: SageMaker keys on the S3 URI string, while Vertex keys on artifact ID, so `reimport=True` on an importer causes a miss on every run even with identical bytes, which has no SageMaker equivalent.
 
 #### Follow-up Interviewer Question

@@ -2,7 +2,7 @@
 type: case-study
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://karpenter.sh/docs/"
@@ -244,7 +244,7 @@ This removes the per-account OIDC provider count (default 100, maximum 700) and 
 Both designs share an invariant: the node's own cloud credential must be unreachable from pods.
 On EC2, Karpenter's `EC2NodeClass.spec.metadataOptions` should require IMDSv2 with a response hop limit of 1, which are also its defaults when `metadataOptions` is omitted ([Karpenter NodeClass docs](https://karpenter.sh/docs/concepts/nodeclasses/), as of 2026-11).
 On GKE, node pools must run with `GKE_METADATA` workload metadata mode, and all new node pools default to it when the cluster has Workload Identity Federation enabled ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/workload-identity), as of 2026-11).
-Whether that default covers NAP pools is UNVERIFIED: the docs do not name auto-created pools, so check them with `gcloud container node-pools describe`.
+Check the workload metadata mode of every pool, including auto-created NAP pools, with `gcloud container node-pools describe`.
 
 ### Failure-domain boundaries
 
@@ -751,7 +751,8 @@ Size maps from measured connection rates with Little's law, and alarm on map occ
 ### Default deny that breaks identity and DNS
 
 A default-deny egress policy blocks the node-local credential endpoints, so SDKs fall through to errors that look like IAM denials.
-On EKS the Pod Identity Agent link-local address must be allowed, and whether Cilium classifies it as the `host` entity or a CIDR on your version is UNVERIFIED: the docs say CIDR rules do not apply to node IPs or host-networking pods but do not address this address, so test both with Hubble.
+On EKS the Pod Identity Agent runs on the node's `hostNetwork` and serves the link-local address `169.254.170.23` ([EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html), as of 2026-11), so that address must be allowed.
+Cilium's `host` entity covers the local host and its host-networking containers, and CIDR rules do not apply to node IPs or host-networking pods ([Cilium docs](https://docs.cilium.io/en/stable/security/policy/layer3/), as of 2026-11), so allow both the CIDR and `host` forms and confirm the verdict with Hubble.
 DNS must be allowed to kube-dns with DNS visibility, or `toFQDNs` rules will never match.
 
 ### IP and CIDR exhaustion

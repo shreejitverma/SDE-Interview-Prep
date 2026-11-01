@@ -2,9 +2,12 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources:
+  - "https://datatracker.ietf.org/doc/html/rfc5077"
+  - "https://blog.cloudflare.com/tls-session-resumption-full-speed-and-secure/"
+  - "https://raw.githubusercontent.com/golang/go/master/src/crypto/tls/common.go"
   - "RFC 8446: The Transport Layer Security (TLS) Protocol Version 1.3"
   - "RFC 8470: Using Early Data in HTTP"
   - "BBR: Congestion-Based Congestion Control (ACM Queue 2016) by Cardwell et al."
@@ -105,7 +108,9 @@ Maintaining TLS session state across a globally distributed fleet requires decou
 This fails in multi-server cloud fleets because subsequent queries hit different edge servers that lack the cached session state.
 - Session Tickets (RFC 5077): The server encrypts the session state (cipher suite, master secret, client identity) using a secret Session Ticket Encryption Key (STEK) and sends the ticket to the client.
 On reconnection, the client returns the ticket, and any server holding the STEK can decrypt it locally without consulting a centralized database.
-- Global STEK Rotation: Hyperscale edge fleets distribute symmetric STEK keys globally via secure gossip or key management pipelines every 1 to 24 hours.
+- Global STEK Rotation: Edge fleets distribute symmetric STEK keys globally via key management pipelines and rotate them on a fixed schedule.
+RFC 5077 Section 5.5 says only that the keys "should be changed regularly" and sets no interval.
+Published implementations span roughly 1 to 24 hours between new keys: Cloudflare generates a fresh timestamped key every hour, pre-distributes the next hour's key as decryption-only, and keeps the past 18 hours of keys for decryption (Cloudflare blog, as of 2026-11); Go's crypto/tls rotates its automatic ticket key every 24 hours and drops old keys after seven days (Go source, as of 2026-11).
 Keys follow a dual-key lifecycle: a `current` key encrypts new tickets, while a `previous` key remains valid for decrypting existing tickets, preventing session drops during key rotation.
 
 ### Hardware Cryptographic Offload and BBR Congestion Control
@@ -127,7 +132,7 @@ BBR paces packet transmissions at the estimated bottleneck bandwidth and aims to
 | TLS 1.3 0-RTT Latency | 0 RTT (Application data in first flight) | HTTP clients may send only safe methods in early data | RFC 8446 (mechanism), RFC 8470 (HTTP rules) |
 | CloudFront Edge POP Count | 750+ POPs in 100+ cities across 50+ countries, plus 15 Regional Edge Caches | Embedded POPs inside ISP networks are counted separately | AWS CloudFront details page (as of 2026-10) |
 | Google Cloud Edge Locations | 200+ network edge locations | Integrated with Google Front End (GFE) network | Google Cloud VPC docs (as of 2026-10) |
-| STEK Lifetime / Rotation Window | Commonly rotated every 1 to 24 hours | Dual-key overlap prevents session drop | UNVERIFIED (operator practice, no provider-published figure) |
+| STEK Lifetime / Rotation Window | Cloudflare: new key hourly; Go crypto/tls default: every 24 hours | Dual-key overlap prevents session drop; RFC 5077 gives no interval ("changed regularly") | Cloudflare blog "TLS session resumption: full-speed and secure", Go crypto/tls common.go, RFC 5077 Section 5.5 (as of 2026-11) |
 | CloudFront Data Out to Internet | $0.085 / GB (First 10 TB, US/Europe) | CloudFront free tier includes 1 TB/month | AWS Pricing (as of 2026-10) |
 | CloudFront HTTPS Requests | $0.0100 per 10,000 (US), $0.0120 per 10,000 (Europe) | Free tier includes 10,000,000 requests/month | AWS Pricing (as of 2026-10) |
 | Google Cloud CDN Egress Price | $0.080 / GiB cache egress (First 10 TiB, North America/Europe) | Cache fill and cache lookups are billed separately | GCP Pricing (as of 2026-10) |

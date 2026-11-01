@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://kubernetes.io/docs/concepts/security/multi-tenancy/"
@@ -83,7 +83,7 @@ Where the tenants are not mutually trusted, you push the boundary outward (node 
 
 Disclosure on verification: the admission-chain, kubelet, and APF mechanics below were checked on 2026-11-01 against kubernetes/kubernetes source on `master` and the kubernetes.io documentation.
 Statements checked this way carry a dated source tag.
-Source-derived behavior can shift between releases, so re-check it against the release you run, and anything that could not be confirmed stays tagged UNVERIFIED with the reason.
+Source-derived behavior can shift between releases, so re-check it against the release you run, and anything that could not be confirmed was removed or restated to what the sources establish.
 
 ### Threat model before mechanism
 
@@ -162,7 +162,7 @@ Scopes narrow which objects a quota counts: Terminating, NotTerminating, BestEff
 A PriorityClass-scoped quota is how a platform gives each tenant a budget of high-priority pods rather than letting the tenant choose priority freely (Kubernetes docs, resource-quotas page on `main`, as of 2026-10).
 The less well-known half is the kube-apiserver admission configuration `limitedResources`, which turns the presence of a matching quota into a permission.
 The documentation example restricts cross-namespace pod affinity (`namespaces` and `namespaceSelector` in affinity terms) to namespaces that hold a quota with the CrossNamespacePodAffinity scope (Kubernetes docs, resource-quotas page on `main`, as of 2026-10).
-EKS fixes the enabled admission plugins per platform version (EKS docs, as of 2026-11), and neither EKS nor GKE documents a way to supply the apiserver admission configuration, so on those platforms the same policy has to be expressed as ValidatingAdmissionPolicy or an external policy engine (UNVERIFIED: inferred from absence, no provider statement found).
+EKS publishes a fixed list of enabled admission controllers per Kubernetes version, which includes ResourceQuota and the validating and mutating webhooks (EKS platform versions docs, as of 2026-11), and the EKS multi-tenancy guide points to policy engines such as Gatekeeper and Kyverno for tenant policy (EKS best practices guide, as of 2026-11), so on EKS the same permission is best expressed as ValidatingAdmissionPolicy or an external policy engine, and the same applies on GKE where this chapter found no documented way to supply the apiserver admission configuration.
 
 **Extended resources.**
 Quota for extended resources such as `nvidia.com/gpu` uses only the `requests.` prefix, because extended resources cannot be overcommitted and request must equal limit (Kubernetes docs, as of 2026-11).
@@ -266,7 +266,7 @@ This is gang admission by design: a 64-GPU training job is admitted whole or not
 Notes on the rungs.
 
 - **Rung 2 on managed clusters.**
-  The `PodNodeSelector` and `PodTolerationRestriction` admission plugins are not in the enabled set on EKS (EKS docs, as of 2026-11) and are not documented as configurable on GKE (UNVERIFIED for GKE: no provider statement found), so node-pool pinning is enforced with Kyverno, Gatekeeper, or a ValidatingAdmissionPolicy that rejects pods lacking the tenant's node selector and toleration.
+  The `PodNodeSelector` and `PodTolerationRestriction` admission plugins are not in the enabled set on EKS (EKS docs, as of 2026-11) (the published list names ResourceQuota, LimitRanger, and the admission webhooks, among others), and the EKS multi-tenancy guide enforces tenant node placement with policy engines that mutate pods (EKS docs, as of 2026-11), so node-pool pinning is enforced with Kyverno, Gatekeeper, or a ValidatingAdmissionPolicy that rejects pods lacking the tenant's node selector and toleration.
 - **Karpenter and node pools.**
   A per-tenant Karpenter NodePool with a taint and `limits` caps tenant node capacity at the cloud layer, which is a second, independent cap beneath namespace quota.
 - **Rung 3.**
@@ -313,19 +313,19 @@ Derived rows are arithmetic from the stated inputs.
 ## AWS vs GCP Mechanism Parity
 
 The Kubernetes mechanisms (quota, LimitRange, APF, PodSecurity) are upstream and identical on EKS and GKE, so the differences are in the managed layer around them.
-Rows carry their source, and UNVERIFIED remains only where a claim is a provider negative that no document states outright.
+Rows carry their source.
 
 | Concern | AWS (EKS) | Google Cloud (GKE) | Critical difference | Status |
 |---|---|---|---|---|
 | Quota and LimitRange semantics | Upstream | Upstream | None; identical admission behavior | Upstream docs |
-| Apiserver admission configuration (`limitedResources`, extra plugins) | Not user-configurable | Not user-configurable beyond provider defaults | Express quota-as-permission with VAP or policy engines on both | EKS plugin set fixed (EKS docs, as of 2026-11); UNVERIFIED: both negatives inferred from absence in docs |
+| Apiserver admission configuration (`limitedResources`, extra plugins) | Fixed list per Kubernetes version | Not documented as configurable | Express quota-as-permission with VAP or policy engines on both | EKS plugin set fixed (EKS docs, as of 2026-11); EKS list is published per version (EKS docs, as of 2026-11) |
 | Namespace-scoped human access | Access entries with namespace-scoped access policies | Kubernetes RBAC bound to Google identities, plus IAM roles | EKS maps IAM to RBAC groups via access entries, GKE uses Google identities directly | (EKS and GKE docs, as of 2026-11) |
 | Namespace-scoped workload identity | Pod Identity associations per (cluster, namespace, service account); IRSA trust policies on `sub` | Workload Identity Federation for GKE with `principal://` per service account and `principalSet://` per namespace | GCP can grant IAM to a whole namespace in one binding, AWS binds role per service account | (EKS and GKE docs, as of 2026-11) |
 | Namespace as an ABAC attribute | Pod Identity session tags include the namespace and service account | Namespace is part of the principal identifier | Both allow tenant-prefixed storage policies without per-tenant roles | (EKS and GKE docs, as of 2026-11) |
 | Network policy enforcement | VPC CNI network policy (eBPF) or Calico or Cilium | Dataplane V2 (Cilium) or legacy Calico enforcement | Enforcement is a CNI choice on EKS and a cluster mode on GKE | (EKS and GKE docs, as of 2026-11) |
 | Sandboxed pods | Fargate (compute boundary per pod, built on Firecracker); Kata self-managed on bare metal | GKE Sandbox (gVisor or microVM) via RuntimeClass | Fargate is a different compute model with its own limitations (no DaemonSets, no GPUs, no privileged containers) | (EKS and GKE docs, as of 2026-11) |
 | Per-tenant node capacity | Karpenter NodePool with taints and `limits` | Node pools or ComputeClasses, node auto-provisioning limits | Karpenter limits are a native cloud-layer cap | (Karpenter and GKE docs, as of 2026-11) |
-| Fleet and team management | No native fleet-team object; use accounts, GitOps projects, operators | Fleet teams and scopes | GKE has a first-party multi-team construct | GKE side (GKE docs, as of 2026-11); UNVERIFIED: AWS negative, no such EKS object found in docs reviewed |
+| Fleet and team management | Accounts, GitOps projects, operators, policy engines | Fleet teams and scopes | GKE fleets have a first-party team construct (fleet team management with team scopes) | ([GKE fleet team management docs](https://docs.cloud.google.com/kubernetes-engine/fleet-management/docs/team-management), as of 2026-11) |
 | Hierarchical config | Capsule, GitOps; HNC is retired | Config Sync hierarchical format (Google recommends unstructured), Capsule; HNC is retired | Config Sync is the first-party route on GKE | (Google Cloud and Capsule docs, GitHub, as of 2026-11) |
 | Cost allocation by namespace | Split cost allocation data for EKS, OpenCost | GKE cost allocation exports namespace and labels to billing export | Both need opt-in and tagging discipline | (AWS CUR and GKE docs, as of 2026-11) |
 | Hard-isolation unit | AWS account, enforced with SCPs and RCPs | Project, enforced with Org Policy and VPC Service Controls | Same idea, different hierarchy, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter\|Data Perimeter]] | Design level |
@@ -931,7 +931,7 @@ What do you change in the quota model, and what do you tell the borrower's team?
 - [Kubernetes: API Priority and Fairness](https://kubernetes.io/docs/concepts/cluster-administration/flow-control/) - queues, hand size, seats, and borrowing between priority levels for control-plane isolation.
 - [KEP-1040: Priority and Fairness for API Server Requests](https://github.com/kubernetes/enhancements/tree/master/keps/sig-api-machinery/1040-priority-and-fairness) - the design rationale including the shuffle-sharding and fair-queuing choices.
 - [AWS EKS Best Practices Guide: Multi-tenancy](https://aws.github.io/aws-eks-best-practices/security/docs/multitenancy/) - AWS's position that the cluster is the strong boundary, plus soft and hard tenancy patterns.
-- [GKE multi-tenancy overview](https://cloud.google.com/kubernetes-engine/docs/concepts/multitenancy-overview) - Google's framing of tenancy on GKE, including fleet team management and Config Sync patterns.
+- [GKE multi-tenancy overview](https://cloud.google.com/kubernetes-engine/docs/concepts/multitenancy-overview) - Google's framing of tenancy on GKE, including tenant framing for enterprise teams; fleet team management and team scopes are documented separately.
 - [AWS Builders' Library: Workload isolation using shuffle-sharding](https://aws.amazon.com/builders-library/workload-isolation-using-shuffle-sharding/) - the combinatorics behind APF and cell design, written from operating experience.
 - [Large-scale cluster management at Google with Borg (EuroSys 2015)](https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/) - where admission-time quota, priority bands, and compressible versus non-compressible resources originate; see also [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_07_Google_Borg_and_Omega|Google Borg and Omega]].
 - [Dominant Resource Fairness (NSDI 2011)](https://www.usenix.org/conference/nsdi11/dominant-resource-fairness-fair-allocation-multiple-resource-types) - the fairness definition behind multi-resource sharing across queues.

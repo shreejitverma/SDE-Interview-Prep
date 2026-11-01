@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://csrc.nist.gov/pubs/sp/800/207/final"
@@ -89,7 +89,6 @@ The control plane (PE, PA) and the data plane (PEP) are separate on purpose, whi
 ### BeyondCorp: what Google actually built
 
 Google's own account says that by 2011 it had become clear the perimeter-and-VPN model was problematic ([Google Security Blog](https://security.googleblog.com/2019/06/how-google-adopted-beyondcorp.html), 2019).
-The often-repeated link to the 2009-2010 intrusions is not stated in that account or in the 2014, 2016, and 2017 papers checked here (UNVERIFIED: no Google primary source found).
 The architecture was published in a series of ;login: articles: Ward and Beyer, "BeyondCorp: A New Approach to Enterprise Security" (Dec 2014); Osborn et al., "BeyondCorp: Design to Deployment at Google" (Spring 2016); Peck et al., "Migrating to BeyondCorp" (Summer 2017); Escobedo et al., "BeyondCorp: The User Experience" (2017); and King et al., "BeyondCorp: Building a Healthy Fleet" (Fall 2018).
 The component model from the first two papers is the one worth memorizing:
 
@@ -143,7 +142,7 @@ Trust providers created as of February 24, 2025 also pass ID token claims in an 
 The consequence of reading claims from UserInfo is that policy freshness is bounded by what the IdP returns at the time VA queries it.
 VA evaluates trust data against policy on each application request ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/verified-access/latest/ug/how-it-works.html)).
 The OIDC session lasts until the refresh token expires if there is one, and otherwise defaults to one day for trust providers created as of February 24, 2025 and seven days for older ones (AWS docs, as of 2026-11).
-Whether and when VA re-reads UserInfo inside an established session is not stated, so test it with a revoked user before depending on it (UNVERIFIED: not in current AWS docs).
+Test revocation end to end with a revoked user before depending on mid-session behavior.
 For non-HTTP(S) endpoints, AWS says VA continuously monitors active connections and terminates those that stop meeting the policy ([AWS What's New](https://aws.amazon.com/about-aws/whats-new/2025/02/aws-verified-access-zero-trust-resources-non-https-protocols), Feb 2025).
 
 **Cedar as the policy engine.**

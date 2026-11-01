@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources:
   - "https://arxiv.org/abs/2309.06180"
@@ -465,7 +465,10 @@ Benchmark every (GPU, dtype, engine version) tuple as its own SKU, and record th
 
 ### Graph capture memory and startup time
 
-CUDA graph capture across a wide batch-size ladder consumes HBM that would otherwise hold KV and adds startup time that grows with model size and ladder width (magnitude UNVERIFIED: vLLM docs give no figure, and published startup logs range from a few seconds on small models upward). That affects both capacity and scale-out reaction time.
+CUDA graph capture across a wide batch-size ladder consumes HBM that would otherwise hold KV and adds startup time.
+The vLLM engine args docs cap `max_cudagraph_capture_size` at 512 by default (1024 on data center Blackwell GPUs) precisely to limit "large graphs that increase startup time and memory usage", and the CUDA graphs design doc says `FULL_AND_PIECEWISE` "requires the most memory and takes the longest to capture" (vLLM docs, as of 2026-11).
+`--enforce-eager` skips compilation and graph capture for the fastest startup at the cost of steady-state decode performance (vLLM optimization docs, as of 2026-11).
+That affects both capacity and scale-out reaction time.
 
 ### Upstream churn and backend removal
 
@@ -474,7 +477,7 @@ Pin image digests, keep a per-version eval gate (see [[13-Agentic-AI/Agentic_AI_
 
 ### Public incident record
 
-No public AWS or Google Cloud post-incident review attributes an outage specifically to one of these engines (UNVERIFIED: absence of evidence, none found in searches as of 2026-10). The general cascade patterns of retry storms, cache cold-start after failover, and capacity exhaustion are analyzed in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|major cloud outages]].
+The general cascade patterns of retry storms, cache cold-start after failover, and capacity exhaustion are analyzed in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|major cloud outages]].
 
 ## Security and Cost Angles
 
