@@ -18,7 +18,7 @@ Volume 13 - Seminal Papers and Case Studies in the Cloud AI Engineering Zero to 
 3. [Physalia: Millions of Tiny Databases (2020 NSDI)](Chapter_03_Physalia_EBS_Control_Plane.md) - Millions of small Paxos cells behind the EBS control plane, cell compartmentalization, and blast radius containment.
 4. [Firecracker: Lightweight Virtualization (2020 NSDI)](Chapter_04_Firecracker_MicroVM.md) - Minimal device virtualization in Rust, boot to guest userspace in about 125 ms, Linux KVM integration, and memory overcommit.
 5. [Validating Amazon S3 ShardStore with Formal Methods (2021 SOSP)](Chapter_05_Amazon_S3_ShardStore_Formal_Methods.md) - Property-based testing, crash-consistency formal verification, and defect elimination in core storage engines.
-6. [Google Spanner: Globally-Distributed Database (2012 OSDI)](Chapter_06_Google_Spanner.md) - TrueTime atomic and GPS clocks, external consistency, wait-for-commit protocol, and Paxos consensus groups.
+6. [Google Spanner: Globally-Distributed Database (2012 OSDI)](Chapter_06_Google_Spanner.md) - TrueTime atomic and GPS clocks, external consistency, commit wait protocol, and Paxos consensus groups.
 7. [Google Borg (2015 EuroSys) and Omega (2013 EuroSys)](Chapter_07_Google_Borg_and_Omega.md) - Large-scale cluster management, shared-state transaction scheduling, priority preemption, and container isolation.
 8. [Google Bigtable (2006 OSDI)](Chapter_08_Google_Bigtable.md) - Sparse, distributed multidimensional sorted maps, SSTable and MemTable mechanics, Chubby locking, and compaction.
 9. [Google File System (2003 SOSP) and Colossus](Chapter_09_GFS_and_Colossus.md) - Master bottleneck evolution to decentralized metadata, Reed-Solomon erasure coding, and real-time distributed file storage.
