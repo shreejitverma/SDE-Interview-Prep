@@ -270,8 +270,10 @@ LAB_SHELL=dash bats labs/03-here-documents/here-documents.bats
 > [!warning] Expansion time is the evaluation of the redirection
 > Trigger: expecting a body to be expanded where it is written.
 > Symptom: `f() { cat; } <<EOF` with `fn:$x` prints the current `x` at each call, not the value at definition; `false && cmd <<EOF` never expands its body, so a `$(touch ...)` in it never runs; a `while` loop with the document expands it once, so a counter in it does not advance per iteration.
-> Fix: put the redirection inside the function body when you want a snapshot per call, and compute per-iteration text inside the loop.
-> The lab asserts all three.
+> Fix: moving the here-document inside the function body changes nothing, because both placements expand at each call.
+> To keep a definition-time value, assign it once to a separate variable outside the function and name that variable in the body.
+> Compute per-iteration text inside the loop.
+> The lab asserts all three symptoms.
 
 > [!warning] Tabs from an expansion survive `<<-`
 > Trigger: relying on `<<-` to remove tabs that a variable or command substitution inserts.
