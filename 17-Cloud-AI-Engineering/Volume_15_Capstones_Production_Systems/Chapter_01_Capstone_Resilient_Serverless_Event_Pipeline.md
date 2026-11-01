@@ -2,7 +2,7 @@
 type: case-study
 track: [cloud-ai]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/"
@@ -12,6 +12,36 @@ sources:
   - "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-global-endpoints.html"
   - "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-retry-policy.html"
   - "https://cloud.google.com/pubsub/docs/handling-failures"
+  - "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-quota.html"
+  - "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-putevents.html"
+  - "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html"
+  - "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-ge-best-practices.html"
+  - "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-monitoring.html"
+  - "https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_RetryPolicy.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/01/amazon-eventbridge-increases-event-payload-size-256-kb-1-mb"
+  - "https://aws.amazon.com/blogs/compute/introducing-global-endpoints-for-amazon-eventbridge/"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/invocation-async-error-handling.html"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-scaling.html"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-configure.html"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/invocation-recursion.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html"
+  - "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SetQueueAttributes.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/howitworks-ttl.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/on-demand-capacity-mode.html"
+  - "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://docs.cloud.google.com/pubsub/docs/push"
+  - "https://docs.cloud.google.com/pubsub/docs/subscription-properties"
+  - "https://docs.cloud.google.com/pubsub/docs/exactly-once-delivery"
+  - "https://cloud.google.com/pubsub/pricing"
+  - "https://cloud.google.com/run/pricing"
+  - "https://docs.cloud.google.com/run/docs/about-concurrency"
+  - "https://docs.cloud.google.com/run/docs/configuring/request-timeout"
+  - "https://cloud.google.com/firestore/pricing"
+  - "https://docs.cloud.google.com/firestore/native/docs/ttl"
+  - "https://docs.cloud.google.com/billing/docs/how-to/budgets"
 ---
 
 # Capstone 1: Resilient Multi-Region Serverless Event Pipeline
@@ -74,14 +104,14 @@ See [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_
 ### Mechanism 1: the layered retry stack on AWS, and where the DLQ really is
 
 EventBridge delivers to each target with a retry policy.
-The documented defaults are up to 24 hours and up to 185 attempts with exponential backoff and jitter (AWS docs, as of 2026-10, UNVERIFIED-recalled).
+The documented defaults are up to 24 hours and up to 185 attempts with exponential backoff and jitter (AWS docs, as of 2026-11).
 Both are tunable per target via `MaximumEventAgeInSeconds` and `MaximumRetryAttempts`.
 A target DLQ is an SQS standard queue that receives the event after retries are exhausted.
 
 When the target is Lambda, EventBridge uses the asynchronous `Invoke` path.
 Lambda enqueues the event on an internal queue and returns HTTP 202 immediately.
 From EventBridge's perspective the delivery succeeded.
-Function errors are then handled by Lambda's own async policy: 2 retries by default and a maximum event age of 6 hours.
+Function errors are then handled by Lambda's own async policy: 2 retries by default and a maximum event age of 6 hours (AWS docs, as of 2026-11).
 Throttles are retried on the same internal queue.
 The result is that the EventBridge target DLQ only catches failures to reach the Lambda API (permissions, a deleted function, API errors).
 It does not catch bugs in your handler.
@@ -93,7 +123,7 @@ EventBridge delivers to SQS, which is a plain, synchronous, durable enqueue.
 The rule DLQ then captures only enqueue failures, which are rare and mean misconfiguration (queue policy, KMS key, deleted queue).
 Lambda polls SQS through an event source mapping.
 The time to give up is exactly `maxReceiveCount x visibility timeout` plus queueing time, and it is visible in one place.
-The cost is one extra hop, a small polling-latency tax, and about $0.40 per million SQS requests (AWS pricing, as of 2026-10, UNVERIFIED-recalled).
+The cost is one extra hop, a small polling-latency tax, and about $0.40 per million SQS requests (AWS Price List API, us-east-1, as of 2026-11).
 What you gain is an elastic buffer measured in days rather than the 6-hour async age limit, concurrency control, and redrive tooling.
 This follows the "avoid insurmountable queue backlogs" argument in the Builders' Library ([source](https://aws.amazon.com/builders-library/avoiding-insurmountable-queue-backlogs/)).
 
@@ -104,16 +134,16 @@ Code that only checks for exceptions silently drops events.
 ### Mechanism 2: the SQS event source mapping, receive counts, and the DLQ clock
 
 The Lambda poller long-polls the queue and invokes your function with batches.
-For standard queues it starts with a small number of pollers and scales concurrency up as backlog grows, bounded by function concurrency or by the mapping's `maximum_concurrency` (documented range 2 to 1000, AWS docs, as of 2026-10, UNVERIFIED-recalled).
+For standard queues it starts with a small number of pollers and scales concurrency up as backlog grows, bounded by function concurrency or by the mapping's `maximum_concurrency` (documented range 2 to 1000, AWS docs, as of 2026-11).
 Four consequences follow that you will not find in a getting-started guide:
 
 1. **Throttling consumes receive count.**
    If the poller receives a batch and cannot invoke because the function is throttled, the messages return to the queue after the visibility timeout with `ApproximateReceiveCount` incremented.
    With `maxReceiveCount = 3` and a function pinned by reserved concurrency, healthy messages can reach the DLQ without ever executing.
    Limit concurrency with the mapping's `scaling_config.maximum_concurrency`, which makes the poller stop pulling instead of pulling and failing.
-   Set `maxReceiveCount` to 5 or more.
+   Set `maxReceiveCount` to 5 or more, which is also the AWS recommendation (AWS docs, as of 2026-11).
 2. **Visibility timeout must exceed function timeout by a margin.**
-   AWS guidance is at least 6 times the function timeout plus the batching window (AWS docs, as of 2026-10, UNVERIFIED-recalled).
+   AWS guidance is 6 times the function timeout plus `MaximumBatchingWindowInSeconds` (AWS docs, as of 2026-11).
    If the timeout is shorter, a slow batch becomes visible again and a second invocation processes the same messages concurrently.
    That is a self-inflicted duplicate that your idempotency lease must absorb.
 3. **Partial batch response is mandatory.**
@@ -130,7 +160,7 @@ Four consequences follow that you will not find in a getting-started guide:
 Pub/Sub stores each message durably across zones in a region before acknowledging the publish.
 The topic is a global resource, but storage is regional and `message_storage_policy.allowed_persistence_regions` constrains where.
 A push subscription POSTs a JSON envelope to your endpoint.
-A 102, 200, 201, 202, or 204 response acks the message, and anything else, including a timeout, is a nack (Google Cloud docs, as of 2026-10, UNVERIFIED-recalled).
+A 102, 200, 201, 202, or 204 response acks the message, and anything else, including a timeout, is a nack (Google Cloud docs, as of 2026-11).
 Push delivery uses an adaptive outstanding-message window, described in the docs as a slow-start algorithm.
 The window grows while the endpoint answers quickly with success.
 It shrinks on errors and slow responses.
@@ -145,16 +175,17 @@ Two consequences matter for Cloud Run:
 Dead-lettering has its own pitfalls:
 
 - The delivery-attempt count is documented as best-effort.
-  Treat `max_delivery_attempts` as "approximately N or more".
+  Pub/Sub might forward a message after fewer attempts than configured or after a few more, and the tracked count can reset (Google Cloud docs, as of 2026-11).
+  Treat `max_delivery_attempts` as "approximately N", not as a floor.
 - The DLQ topic has no storage of its own.
   Published messages are retained only if a subscription exists on it, so you need a pull subscription.
 - The Pub/Sub service agent (`service-PROJECT_NUMBER@gcp-sa-pubsub.iam.gserviceaccount.com`) needs `roles/pubsub.publisher` on the DLQ topic and `roles/pubsub.subscriber` on the source subscription.
 - Subscriptions with no activity for 31 days are deleted by default.
   A DLQ subscription that is rarely read is exactly that case, so set `expiration_policy { ttl = "" }`.
 
-The ack deadline for push is 10 to 600 seconds (Google Cloud docs, as of 2026-10, UNVERIFIED-recalled), and the Cloud Run request timeout must be at or below it.
+The ack deadline for push is 10 to 600 seconds (Google Cloud docs, as of 2026-11), and the Cloud Run request timeout must be at or below it.
 Otherwise Pub/Sub redelivers while the first attempt is still running.
-Exactly-once delivery exists for pull and StreamingPull subscriptions only, is regional, and is not available for push, so this pipeline does not rely on it.
+Exactly-once delivery exists for pull and StreamingPull subscriptions only, is regional, and is not available for push (Google Cloud docs, as of 2026-11), so this pipeline does not rely on it.
 
 ### Mechanism 4: the idempotency lease protocol
 
@@ -173,8 +204,8 @@ A crash between 3 and 4 still re-executes the effect once, so the effect itself 
 The lease only narrows the window in which that matters.
 
 Both TTL services are lazy.
-DynamoDB TTL deletion usually happens within about 48 hours of expiry (AWS docs, as of 2026-10, UNVERIFIED-recalled).
-Firestore TTL deletion is similarly lazy.
+DynamoDB TTL deletion typically happens within a few days of expiry (AWS docs, as of 2026-11).
+Firestore TTL deletion is also lazy, with data typically deleted within 24 hours after expiry (Google Cloud docs, as of 2026-11).
 Expired items stay readable until deleted, so the claim condition must compare `expires_at` itself and must never assume that a missing item means "expired".
 The dedupe window (7 days here) must exceed the longest possible redelivery horizon: SQS retention (4 days) plus EventBridge retry age plus replay.
 
@@ -183,10 +214,12 @@ The dedupe window (7 days here) must exceed the longest possible redelivery hori
 **AWS.**
 EventBridge global endpoints give producers one endpoint backed by a bus in each of two regions.
 Routing is a Route 53 failover record driven by a health check on a CloudWatch alarm.
-The documented metric is `IngestionToInvocationStartLatency` (AWS docs, as of 2026-10, UNVERIFIED-recalled).
+The metric AWS describes is `IngestionToInvocationStartLatency`, with a template alarm at 30 seconds of latency sustained for 5 minutes ([AWS Compute Blog](https://aws.amazon.com/blogs/compute/introducing-global-endpoints-for-amazon-eventbridge/), as of 2026-11).
+The EventBridge metrics table spells it `IngestiontoInvocationStartLatency`, so confirm the exact case with `aws cloudwatch list-metrics --namespace AWS/Events` before relying on the alarm.
 The alarm is driven by data-plane latency, so failover does not depend on a control-plane call.
 That matches the static-stability principle in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]].
 The cost is detection delay: an alarm over several 1-minute periods plus health-check polling puts failover on the order of minutes.
+AWS documents an RTO and RPO of 360 seconds, with a maximum of 420 seconds, if you follow its alarm guidance (AWS docs, as of 2026-11).
 Every event accepted by the primary in that window sits in the primary region and is delivered only when it recovers, unless you enable event replication.
 
 Replication is a design decision, not a free feature.
@@ -195,6 +228,7 @@ If both regions' rules are active, both consume every event, and the sink must d
 Region-local idempotency tables cannot do that, and a DynamoDB global table is eventually consistent, so two regions can claim the same key inside the replication window.
 This chapter's lab disables replication and keeps the claim table region-local.
 The accepted trade-off is that in-flight events in a failed primary are delayed, not lost, and that the two regions never consume the same event.
+This departs from AWS guidance, which strongly recommends replication, because without it you must manually reset the Route 53 health check to healthy before events return to the primary region (AWS docs, as of 2026-11).
 Producers must still send via the endpoint with SigV4a, which in `boto3` requires `awscrt`.
 
 **GCP.**
@@ -207,8 +241,8 @@ The failover path depends on the Pub/Sub and IAM control planes, which is the op
 
 ### Mechanism 6: why budgets cannot stop a runaway
 
-AWS Budgets evaluates against billing data that is refreshed up to about three times a day (AWS docs, as of 2026-10, UNVERIFIED-recalled).
-GCP budget notifications are likewise driven by lagging cost data and, per the docs, are alerts, not caps.
+AWS Budgets information is updated up to three times a day, typically 8 to 12 hours after the previous update (AWS docs, as of 2026-11).
+GCP budget notifications are likewise driven by lagging cost data and, per the docs, are alerts, not caps (Google Cloud docs, as of 2026-11).
 A budget notification is a pager, not a brake.
 Spend rate during the blind window is bounded only by what you capped in the data path.
 The sizing section below turns this into dollars per hour.
@@ -224,43 +258,45 @@ The sizing section below turns this into dollars per hour.
 
 ## Numbers to Know
 
-Status note: live documentation access was unavailable while authoring this pass.
-Every row is recalled from prior knowledge and tagged UNVERIFIED.
-Re-verify each one against the cited primary source before promoting the chapter to `status: solid`.
+Status note: every row below was checked against the cited primary source in November 2026.
+The EventBridge rows describe Custom Event Bus - Classic, the rule-and-target bus this chapter uses.
+The newer Custom Event Bus has different quotas and billing, so do not apply these rows to it.
 
 | Quantity | Value | Source and status |
 |---|---|---|
-| EventBridge target retry default | up to 24 h and 185 attempts, exponential backoff with jitter | (AWS docs, as of 2026-10, UNVERIFIED) |
-| EventBridge retry policy bounds | event age 60 s to 24 h, attempts 0 to 185 | (AWS docs, as of 2026-10, UNVERIFIED) |
-| EventBridge targets per rule | 5 | (AWS docs, as of 2026-10, UNVERIFIED) |
-| EventBridge PutEvents entries per call | 10 | (AWS docs, as of 2026-10, UNVERIFIED) |
-| EventBridge event size | 256 KB historically; an increase to 1 MB was announced in 2025 | (AWS docs, as of 2026-10, UNVERIFIED) |
-| EventBridge PutEvents quota | region-dependent, adjustable | (AWS docs, as of 2026-10, UNVERIFIED) |
-| EventBridge custom event price | $1.00 per million events | (AWS pricing, as of 2026-10, UNVERIFIED) |
-| Lambda async invoke defaults | 2 retries, max event age 6 h | (AWS docs, as of 2026-10, UNVERIFIED) |
-| Lambda sync payload | 6 MB | (AWS docs, as of 2026-10, UNVERIFIED) |
-| Lambda max timeout | 900 s | (AWS docs, as of 2026-10, UNVERIFIED) |
-| Lambda default account concurrency | 1,000 per region; new accounts may start lower | (AWS docs, as of 2026-10, UNVERIFIED) |
-| Lambda scale-up rate | 1,000 new execution environments per function per 10 s | (AWS docs, as of 2026-10, UNVERIFIED) |
-| Lambda price (arm64) | $0.20 per million requests, $0.0000133334 per GB-s | (AWS pricing, as of 2026-10, UNVERIFIED) |
-| SQS visibility timeout | 0 s to 12 h, default 30 s | (AWS docs, as of 2026-10, UNVERIFIED) |
-| SQS retention | 60 s to 14 days, default 4 days | (AWS docs, as of 2026-10, UNVERIFIED) |
-| SQS ESM maximum concurrency | 2 to 1000 | (AWS docs, as of 2026-10, UNVERIFIED) |
-| SQS standard price | $0.40 per million requests after free tier | (AWS pricing, as of 2026-10, UNVERIFIED) |
-| DynamoDB on-demand write price | about $0.625 per million WRU in us-east-1 after the 2024 price cut | (AWS pricing, as of 2026-10, UNVERIFIED) |
-| DynamoDB TTL deletion lag | typically within about 48 h of expiry | (AWS docs, as of 2026-10, UNVERIFIED) |
-| AWS Budgets data refresh | up to about 3 times per day | (AWS docs, as of 2026-10, UNVERIFIED) |
-| Pub/Sub ack deadline | 10 s to 600 s | (Google Cloud docs, as of 2026-10, UNVERIFIED) |
-| Pub/Sub retry backoff default | min 10 s, max 600 s | (Google Cloud docs, as of 2026-10, UNVERIFIED) |
-| Pub/Sub dead letter attempts | 5 to 100, default 5, count is best-effort | (Google Cloud docs, as of 2026-10, UNVERIFIED) |
-| Pub/Sub message retention | up to 31 days on subscription; default 7 days | (Google Cloud docs, as of 2026-10, UNVERIFIED) |
-| Pub/Sub max message size | 10 MB | (Google Cloud docs, as of 2026-10, UNVERIFIED) |
-| Pub/Sub inactive subscription expiry | 31 days by default | (Google Cloud docs, as of 2026-10, UNVERIFIED) |
-| Pub/Sub throughput price | $40 per TiB, first 10 GiB per month free | (Google Cloud pricing, as of 2026-10, UNVERIFIED) |
-| Cloud Run concurrency | default 80, max 1000 per instance | (Google Cloud docs, as of 2026-10, UNVERIFIED) |
-| Cloud Run request timeout | default 300 s, max 3600 s | (Google Cloud docs, as of 2026-10, UNVERIFIED) |
-| Cloud Run request-based price | $0.40 per million requests, $0.000018 per vCPU-s, $0.0000020 per GiB-s | (Google Cloud pricing, as of 2026-10, UNVERIFIED) |
-| Firestore write price | about $0.09 to $0.18 per 100k writes, depends on location type | (Google Cloud pricing, as of 2026-10, UNVERIFIED) |
+| EventBridge target retry default | up to 24 h and 185 attempts, exponential backoff with jitter | (AWS docs, as of 2026-11) |
+| EventBridge retry policy bounds | event age 60 s to 24 h, attempts 0 to 185 | (AWS API reference, as of 2026-11) |
+| EventBridge targets per rule | 5, not adjustable | (AWS docs, as of 2026-11) |
+| EventBridge PutEvents entries per call | 10 on Classic buses; 100 on the newer Custom Event Bus | (AWS docs, as of 2026-11) |
+| EventBridge event size | 1 MB total per PutEvents request, raised from 256 KB on 2026-01-29; not yet in every commercial region at launch | (AWS docs and AWS What's New, as of 2026-11) |
+| EventBridge PutEvents quota | 10,000 requests/s in us-east-1, us-west-2, and eu-west-1; 400 to 2,400 requests/s elsewhere; adjustable | (AWS docs, as of 2026-11) |
+| EventBridge custom event price | $1.00 per million events on Classic buses, each 64 KB chunk billed as one event | (AWS pricing, as of 2026-11) |
+| EventBridge global endpoint RTO and RPO | 360 s, maximum 420 s, with AWS alarm guidance; no added endpoint charge | (AWS docs and AWS pricing, as of 2026-11) |
+| Lambda async invoke defaults | 2 retries, max event age 6 h | (AWS docs, as of 2026-11) |
+| Lambda sync payload | 6 MB | (AWS docs, as of 2026-11) |
+| Lambda max timeout | 900 s; 5,400 s for some Lambda Managed Instances invocations | (AWS docs, as of 2026-11) |
+| Lambda default account concurrency | 1,000 per region; new accounts have reduced quotas | (AWS docs, as of 2026-11) |
+| Lambda scale-up rate | 1,000 new execution environments per function per 10 s | (AWS docs, as of 2026-11) |
+| Lambda price (arm64) | $0.20 per million requests, $0.0000133334 per GB-s (us-east-1) | (AWS pricing, as of 2026-11) |
+| SQS visibility timeout | 0 s to 12 h, default 30 s | (AWS API reference, as of 2026-11) |
+| SQS retention | 60 s to 14 days, default 4 days | (AWS API reference, as of 2026-11) |
+| SQS ESM maximum concurrency | 2 to 1000 | (AWS docs, as of 2026-11) |
+| SQS standard price | $0.40 per million requests after free tier | (AWS Price List API, us-east-1, as of 2026-11) |
+| DynamoDB on-demand write price | $0.625 per million WRU in us-east-1 | (AWS pricing, as of 2026-11) |
+| DynamoDB TTL deletion lag | typically within a few days of expiry | (AWS docs, as of 2026-11) |
+| AWS Budgets data refresh | up to 3 times per day, typically 8 to 12 h apart | (AWS docs, as of 2026-11) |
+| Pub/Sub ack deadline | 10 s to 600 s, default 10 s | (Google Cloud docs, as of 2026-11) |
+| Pub/Sub retry policy | retry immediately by default; with exponential backoff, defaults are min 10 s and max 600 s | (Google Cloud docs and Terraform provider docs, as of 2026-11) |
+| Pub/Sub dead letter attempts | 5 to 100, default 5, count is best-effort | (Google Cloud docs, as of 2026-11) |
+| Pub/Sub message retention | 10 min to 31 days on subscription; default 7 days | (Google Cloud docs, as of 2026-11) |
+| Pub/Sub max message size | 10 MB | (Google Cloud docs, as of 2026-11) |
+| Pub/Sub inactive subscription expiry | 31 days by default | (Google Cloud docs, as of 2026-11) |
+| Pub/Sub throughput price | $40 per TiB, first 10 GiB per month free | (Google Cloud pricing, as of 2026-11) |
+| Cloud Run concurrency | default 80 x vCPUs with gcloud or Terraform, 80 in the console; max 1000 per instance | (Google Cloud docs, as of 2026-11) |
+| Cloud Run request timeout | default 300 s, max 3600 s | (Google Cloud docs, as of 2026-11) |
+| Cloud Run request-based price | $0.40 per million requests, $0.000024 per vCPU-s, $0.0000025 per GiB-s (us-central1) | (Google Cloud pricing, as of 2026-11) |
+| Cloud Run instance-based price | no per-request fee, $0.000018 per vCPU-s, $0.000002 per GiB-s (us-central1) | (Google Cloud pricing, as of 2026-11) |
+| Firestore Standard edition price | per 100k: $0.09 writes, $0.03 reads, $0.01 TTL deletes in us-central1; $0.18 writes, $0.06 reads in nam5 | (Google Cloud pricing, as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -268,7 +304,7 @@ Re-verify each one against the cited primary source before promoting the chapter
 |---|---|---|---|
 | Router | EventBridge bus plus rules, JSON-body content filtering | Pub/Sub topic plus subscriptions; Eventarc for CloudEvents routing | Pub/Sub subscription filters match attributes only, so producers must promote routing fields into attributes. EventBridge matches inside the payload. |
 | Delivery guarantee | At-least-once, no ordering | At-least-once, optional per-ordering-key ordering, exactly-once for pull only | EventBridge has no ordering primitive. Pub/Sub ordering is regional and per key. |
-| Retry policy | Per-target age and attempt count (24 h and 185 by default) | Per-subscription exponential backoff 10 s to 600 s, plus ack deadline | AWS bounds retries by time and count. Pub/Sub retries until retention unless a DLQ policy intervenes. |
+| Retry policy | Per-target age and attempt count (24 h and 185 by default) | Per-subscription: retry immediately by default, or exponential backoff (defaults 10 s to 600 s), plus ack deadline | AWS bounds retries by time and count. Pub/Sub retries until retention unless a DLQ policy intervenes. |
 | DLQ | Target DLQ (SQS), plus SQS redrive DLQ, plus Lambda failure destination | Dead letter topic with attempt count, best-effort | The AWS DLQ you need depends on which hop failed. Pub/Sub has one mechanism but needs a subscription and IAM on the DLQ topic. |
 | Consumer binding | Lambda pulls from SQS (ESM) | Pub/Sub pushes to Cloud Run with OIDC | Pull-based lets the consumer set its own pace. Push relies on adaptive window flow control, so a slow endpoint shrinks throughput. |
 | Concurrency cap | ESM `maximum_concurrency`, function reserved concurrency | Cloud Run `max_instance_count` and per-instance concurrency | AWS has an explicit poller-side cap that avoids throttle-induced receive count. On GCP, a cap that is too low causes 429s and nacks that consume delivery attempts. |
@@ -280,8 +316,8 @@ Re-verify each one against the cited primary source before promoting the chapter
 ## Worked Example: A Dual-Cloud Idempotent Event Pipeline
 
 This lab provisions billable resources in two clouds.
-Status note: this code was written without access to `tofu validate` or live provider schemas in this authoring pass.
-Run `tofu validate` and `tofu plan` first, and treat resource argument names as UNVERIFIED until they pass.
+Status note: the less common resource arguments (global endpoint, Route 53 health check, Cloud Run v2, Firestore, billing budget, Pub/Sub retry policy) were checked against the Terraform provider docs as of 2026-11, but this code has not been run through `tofu validate` or applied.
+Run `tofu validate` and `tofu plan` first.
 
 ### Layout
 
@@ -373,7 +409,7 @@ resource "aws_sqs_queue" "dlq" {
 
 resource "aws_sqs_queue" "work" {
   name                       = "${var.name}-work"
-  visibility_timeout_seconds = 180
+  visibility_timeout_seconds = 181
   message_retention_seconds  = 345600
   sqs_managed_sse_enabled    = true
   redrive_policy = jsonencode({
@@ -454,7 +490,8 @@ data "archive_file" "zip" {
 }
 
 resource "aws_iam_role" "fn" {
-  name = "${var.name}-fn"
+  # IAM is global and this module runs in two regions, so a fixed name would collide.
+  name_prefix = "${var.name}-fn-"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -1131,13 +1168,13 @@ gcloud pubsub subscriptions modify-push-config capstone1-events-work \
 
 Then set `gcp_active_region = "us-east1"` in `lab.tfvars` so the next apply does not revert the change.
 For the AWS drill, `set-alarm-state` is not sufficient, because the alarm re-evaluates within a period.
-Instead, lower the alarm threshold to 0 with producer traffic flowing and watch the endpoint route change.
+Instead, invert the Route 53 health check, the test AWS describes, with catch-all rules on both buses, and watch events reach the secondary bus within a few minutes ([AWS Compute Blog](https://aws.amazon.com/blogs/compute/introducing-global-endpoints-for-amazon-eventbridge/), as of 2026-11).
 
 ### Cost estimate and budget guardrails
 
-Lab cost: roughly $0.50 to $2.00 for a few hours (UNVERIFIED).
-The recurring items are a Route 53 CloudWatch-metric health check (about $0.50 per month, prorated), CloudWatch alarms (about $0.10 per alarm per month), and a few hundred Lambda, Cloud Run, Pub/Sub, and Firestore operations.
-Firestore's free quota may not apply to a named database (UNVERIFIED).
+Lab cost: under about $2 for a few hours, estimated from the list prices in this chapter and not measured from a real bill (as of 2026-11).
+The recurring items are a Route 53 CloudWatch-metric health check ($0.50 per month, prorated, AWS pricing, as of 2026-11), CloudWatch alarms ($0.10 per alarm per month, prorated, AWS pricing, as of 2026-11), and a few hundred Lambda, Cloud Run, Pub/Sub, and Firestore operations.
+Firestore's free quota does not apply to a named database such as this lab's `capstone1` (Google Cloud pricing, as of 2026-11).
 Budgets are created by this stack at $10 per month with 50 percent and 100 percent actual and 100 percent forecast thresholds on both clouds.
 The AWS budget snippet is in `budgets.tf` above, and the GCP billing budget with Pub/Sub notifications is in the same file.
 
@@ -1175,17 +1212,17 @@ Assumptions: 50 million events per month, 1 KB each, peak-to-average ratio of 10
 4. **AWS monthly cost.**
    - EventBridge: 50 x $1.00 = $50.00.
    - SQS: about 1.2 requests per message x 50M x $0.40/M = $24.
-   - Lambda: $7.70 (full batches) to $26.70 (batch size 1).
+   - Lambda: $7.70 (full batches) to $23.30 (batch size 1), at 512 MB and the arm64 price.
    - DynamoDB: 100M WRU x $0.625/M = $62.50.
-   - Total is about $144 to $163, or about $2.9 to $3.3 per million events.
+   - Total is about $144 to $160, or about $2.9 to $3.2 per million events.
    - The fixed per-event items (EventBridge and the claim writes) dominate compute.
    - The lease protocol alone doubles the largest controllable line item, so drop the `complete` write when the effect is already naturally idempotent.
 5. **GCP monthly cost (approximate).**
-   - Pub/Sub: about 100 GB (publish plus delivery) = 0.098 TiB x $40 = $3.90.
+   - Pub/Sub: about 100 GiB (publish plus delivery) = 0.098 TiB x $40 = $3.90.
    - Cloud Run requests: 50 x $0.40 = $20.
-   - Cloud Run CPU and memory: one always-busy 1 vCPU, 512 MiB instance for 2.592M s gives $46.66 + $2.59 = $49.25 (upper bound at 40 concurrency).
-   - Firestore: 100M writes plus 50M reads, about $105 using the $0.09 per 100k write figure (UNVERIFIED).
-   - Total is about $178, or about $3.6 per million events.
+   - Cloud Run CPU and memory at request-based prices: one always-busy 1 vCPU, 512 MiB instance for 2.592M s gives $62.21 + $3.24 = $65.45 (upper bound at 40 concurrency).
+   - Firestore in us-central1: 100M writes ($90), 100M reads ($30, because the claim and finish transactions each read once), and 50M TTL deletes ($5), about $125.
+   - Total is about $214, or about $4.3 per million events.
 6. **Blind-window loss from a runaway loop (derived).**
    - At $2.88 per million events on AWS, a 10,000 events/s loop costs $0.0288/s, or about $104/h.
    - A 12-hour billing lag costs about $1,240 before a budget alert fires.
@@ -1224,7 +1261,7 @@ Assumptions: 50 million events per month, 1 KB each, peak-to-average ratio of 10
 9. **Idempotency on service ids.**
    Using EventBridge `id` or Pub/Sub `messageId` as the key lets producer retries bypass dedupe.
 10. **Lazy TTL.**
-    A claim condition of `attribute_not_exists(pk)` alone fails to re-admit expired keys, and one that assumes expired items are gone gives wrong answers for up to about 48 hours.
+    A claim condition of `attribute_not_exists(pk)` alone fails to re-admit expired keys, and one that assumes expired items are gone gives wrong answers until deletion, which AWS says is typically within a few days.
     Compare `expires_at` in the condition.
 11. **Cross-region double processing.**
     Event replication to a secondary region with active rules and region-local claim tables executes effects twice.
@@ -1232,20 +1269,22 @@ Assumptions: 50 million events per month, 1 KB each, peak-to-average ratio of 10
 12. **Event loops.**
     A handler that publishes an event matching its own rule is an unbounded amplifier.
     Exclude self-sourced events in the pattern, carry a hop counter in `detail`, and alarm on 1-minute ingest rates.
-    Lambda's built-in recursive loop detection covers only some integrations (SQS, SNS, S3 as recalled, UNVERIFIED), so do not rely on it for EventBridge.
+    Lambda's built-in recursive loop detection covers SQS, S3, SNS, and EventBridge custom event buses, and stops a chain after about 16 invocations ([AWS docs](https://docs.aws.amazon.com/lambda/latest/dg/invocation-recursion.html), as of 2026-11).
+    It needs a supported AWS SDK and cannot see loops through other services such as DynamoDB, so treat it as a backstop and not as the design.
 13. **Region-coupled dependencies.**
-    The AWS post-event summary for the October 2025 us-east-1 incident describes a DNS automation race that left the DynamoDB regional endpoint unresolvable, with knock-on delays in Lambda, SQS, and EventBridge delivery ([AWS](https://aws.amazon.com/message/101925/), details UNVERIFIED).
+    The AWS post-event summary for the October 19-20, 2025 us-east-1 incident describes a latent race condition in DynamoDB DNS automation that left the regional endpoint with no IP addresses, with knock-on Lambda errors and delayed SQS event source processing ([AWS](https://aws.amazon.com/message/101925/), as of 2026-11).
+    The summary does not discuss EventBridge delivery.
     This pipeline's claim table is a regional DynamoDB dependency of the consumer, so a regional DynamoDB event stalls processing even though the event buffers remain durable.
     The buffer protects data. The idempotency store gates progress.
 14. **Global dependency on a provider's control layer.**
-    Google Cloud's June 2025 incident report describes a policy-data change that crash-looped a global API-serving component across many products and regions ([status page](https://status.cloud.google.com/), exact incident id and details UNVERIFIED).
+    Google Cloud's report on the June 12, 2025 incident describes a policy change with unintended blank fields that replicated globally within seconds and hit a null pointer in a new Service Control quota check, crash-looping its binaries in every regional deployment ([incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-11).
     Multi-region within one provider does not protect against a globally replicated bad config.
     Dual-cloud only helps if the failover decision does not run through the failing provider's control plane.
 15. **Terraform teardown traps.**
     `deletion_protection` on Cloud Run v2 services defaults to true in recent providers.
     Firestore databases need delete protection off and a delete policy.
     The Cloud Build staging bucket is outside state.
-    `google_billing_budget` needs the Budgets API enabled on the billing project and `user_project_override`.
+    `google_billing_budget` needs the Budgets API enabled on the billing project and, with user Application Default Credentials, `billing_project` plus `user_project_override`.
     EventBridge global endpoints must be destroyed before buses (Terraform handles the dependency, but manual partial destroys do not).
 
 ## Security and Cost Angles
@@ -1363,7 +1402,7 @@ The claim table then reduces load and latency, and the token provides correctnes
 Without a token-aware downstream, the only honest answer is effectively-once with a small, documented duplicate window.
 
 Operationally I need three things.
-First, `expires_at` must be compared in the condition because TTL deletion is lazy (about 48 hours for DynamoDB).
+First, `expires_at` must be compared in the condition because TTL deletion is lazy (typically within a few days for DynamoDB).
 Second, the dedupe window must exceed the maximum redelivery horizon, which here is SQS retention plus retry age plus any replay.
 Third, the cost: two writes per event, which at 50M events per month is about $62 on DynamoDB on-demand. I would skip the second write when the downstream is idempotent by token.
 
@@ -1380,20 +1419,21 @@ What can you promise, and what would you change?
 
 I can promise neither as designed.
 Failover on global endpoints is driven by a Route 53 health check on a CloudWatch alarm over ingestion-to-invocation latency.
-Alarm evaluation over several 1-minute periods plus health-check polling puts failover in the minutes, so RTO of one minute is not achievable without a different mechanism, such as producer-side dual-publish with client-driven failover.
+Alarm evaluation over several 1-minute periods plus health-check polling puts failover in the minutes, and AWS documents 360 seconds with a maximum of 420 seconds under its alarm guidance.
+So RTO of one minute is not achievable without a different mechanism, such as producer-side dual-publish with client-driven failover.
 
 For RPO, there are two categories of events.
 Events not yet accepted are retried by the producer and, after failover, land on the secondary bus, so they are not lost.
 Events already accepted by the primary are durable there.
 With replication disabled they are delivered when the primary recovers, which could be hours later.
-With replication enabled, a copy exists in the secondary, so the RPO approaches zero for ingested events.
+With replication enabled, a copy is sent to the secondary asynchronously, which shrinks the exposure but does not reach zero, and AWS documents an RPO of 360 seconds with a maximum of 420 seconds under its alarm guidance.
 The price is that both regions hold every event, so double processing is possible.
 
 I would choose between two designs.
 First, replication on, secondary rule targeting an SQS queue whose consumer mapping is disabled, enabled by the failover runbook. The buffer bounds replay to SQS retention, and the claim table is never contended.
 Second, replication on with both regions active, plus a cross-region dedupe store. I would only choose that after measuring cross-region replication lag on that store, because two regions can claim the same key within the lag window.
 
-Beyond the mechanism, I would state the promise as: RTO of about 5 minutes for new ingest, RPO bounded by replication state, and processing delay for backlog dependent on region recovery.
+Beyond the mechanism, I would state the promise as: RTO of about 6 to 7 minutes for new ingest, RPO bounded by replication state, and processing delay for backlog dependent on region recovery.
 I would also run a game day and publish the measured numbers.
 
 #### Follow-up Interviewer Question
@@ -1437,7 +1477,7 @@ Walk it hop by hop.
 1. **PutEvents.** The producer batches up to 10 entries per call. Regional `PutEvents` throttling is region-dependent (some regions have far lower defaults), so the first failure is likely `ThrottlingException` or `FailedEntryCount > 0`. Producers must retry with full jitter and cap total retry time, otherwise retries amplify.
 2. **Rule to SQS.** EventBridge delivers to SQS with its own retry. Standard queues scale effectively without a provisioned limit, so this hop rarely fails except through misconfiguration.
 3. **SQS to Lambda.** I capped mapping concurrency at 20 on purpose. Each slot handles about 50 events/s, so drain is 1,000 events/s. At 2,000 events/s in, backlog grows at 1,000 events/s, or 3.6M messages after an hour. Drain then takes an hour beyond the spike. Queue retention (4 days) comfortably holds it, so no loss.
-4. **DynamoDB.** At 1,000 events/s with 2 writes each, 2,000 WRU/s, within on-demand behavior for an established table, but a newly created table or a sudden doubling of previous peak can throttle. Throttles surface as handler errors, which raise receive counts, so `maxReceiveCount` must be high enough not to dead-letter healthy messages.
+4. **DynamoDB.** At 1,000 events/s with 2 writes each, 2,000 WRU/s. A new on-demand table sustains up to 4,000 writes/s and an established one instantly handles double its previous peak, but going beyond double that peak within 30 minutes can throttle (AWS docs, as of 2026-11). Throttles surface as handler errors, which raise receive counts, so `maxReceiveCount` must be high enough not to dead-letter healthy messages.
 5. **Cost.** At about $2.9 per million events, 7.2M events costs about $21. Bounded.
 
 What I would change depends on the SLO.
@@ -1498,7 +1538,7 @@ The narrow version that pays for itself:
 - Effects are deduplicated by the key against a sink that both pipelines use. If the sink is token-idempotent, no shared dedupe store is needed. If not, a single strongly consistent store (not replicated across clouds) arbitrates, and its availability becomes the system's.
 
 Cost is the other argument.
-Cross-cloud publishing is paid egress from wherever the producer runs, plus double per-event cost (roughly $3 per million events per cloud here).
+Cross-cloud publishing is paid egress from wherever the producer runs, plus double per-event cost (roughly $3 to $4 per million events per cloud here).
 I would run both only for tiers where the availability requirement justifies it, and run active-passive for the rest.
 
 The honest limit: dual-cloud protects against provider-wide failures, but only if failover does not depend on the failed provider's control plane, and only if the shared sink is not itself in the failed provider.

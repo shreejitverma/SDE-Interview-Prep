@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html"
@@ -12,6 +12,35 @@ sources:
   - "https://docs.cloud.google.com/compute/docs/release-notes"
   - "https://docs.cloud.google.com/tpu/docs/spot"
   - "https://cloud.google.com/products/compute/gpus-pricing"
+  - "https://cloud.google.com/spot-vms/pricing"
+  - "https://docs.cloud.google.com/compute/docs/instances/preemptible"
+  - "https://docs.cloud.google.com/compute/docs/instances/committed-use-discounts-overview"
+  - "https://docs.cloud.google.com/compute/docs/instances/signing-up-committed-use-discounts"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/spot-vms"
+  - "https://docs.cloud.google.com/storage/docs/consistency"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-interruptions.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/rebalance-recommendations.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-fleet-allocation-strategy.html"
+  - "https://docs.aws.amazon.com/autoscaling/ec2/userguide/allocation-strategies.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-best-practices.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-limits.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-IMDS-new-instances.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_FleetSpotCapacityRebalanceRequest.html"
+  - "https://docs.aws.amazon.com/savingsplans/latest/userguide/sp-ris.html"
+  - "https://docs.aws.amazon.com/autoscaling/ec2/userguide/ts-as-instancelaunchfailure.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html"
+  - "https://aws.amazon.com/ec2/spot/pricing/"
+  - "https://spot-bid-advisor.s3.amazonaws.com/spot-advisor-data.json"
+  - "https://aws.amazon.com/blogs/compute/new-amazon-ec2-spot-pricing/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://builder.aws.com/content/3K9SiqiJ369TGkkGzqPM95BuYWI/static-stability-using-availability-zones"
+  - "https://karpenter.sh/docs/concepts/disruption/"
+  - "https://github.com/aws/aws-node-termination-handler"
+  - "https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/"
+  - "https://usenix.org/system/files/nsdi24-wu-zhanghao.pdf"
 ---
 
 # Spot Economics and Interruption Handling
@@ -19,8 +48,8 @@ sources:
 ## TL;DR
 
 Spot and preemptible capacity is the unsold headroom of a per-pool capacity buffer (instance type x zone), so an interruption is a capacity-reclaim event and interruptions in one pool are correlated.
-The signal budget is 120 s on AWS, and on Google Cloud it is 30 s by default (optionally a 120 s notice plus up to 30 s of shutdown), so any drain or checkpoint step longer than that budget is decorative.
-For synchronous gang jobs the fleet interruption rate scales linearly with node count, the optimal checkpoint interval is about sqrt(2 * C * MTBI), and the restart term R/MTBI usually dominates the waste, so cut restart time before you tune checkpoint frequency.
+The signal budget is 120 s on AWS, and on Google Cloud the preemption notice is 0 s by default or 120 s if you configure it, followed in both cases by a best-effort shutdown period of up to 30 s, so any drain or checkpoint step longer than that budget is decorative.
+For synchronous gang jobs the fleet interruption rate scales linearly with node count, the optimal checkpoint interval is about sqrt(2 * C * MTBI), and the restart term R/MTBI dominates the waste whenever R exceeds that interval, so when restarts are slow cut restart time before you tune checkpoint frequency.
 Size serving fleets with N/(P-1) per pool across P independent pools, put an on-demand or committed floor under the load you cannot lose, and never depend on launching capacity at the moment of failure.
 Effective Spot cost is `spot_ratio / (1 - waste)`; the discount is real only while waste stays small, and it collapses when MTBI approaches your restart time.
 
@@ -60,70 +89,76 @@ Interruption risk is a property of the pool's headroom trajectory, not of your i
 Two consequences follow.
 First, interruptions arrive in waves when the pool's headroom is consumed, so inter-arrival times are far from independent.
 Second, your own On-Demand scale-up in the same pool competes with your own Spot fleet for the same headroom, which is why Spot-heavy fleets that also autoscale On-Demand can interrupt themselves.
+AWS warns of this directly: failing over to On-Demand can inadvertently drive interruptions for your other Spot Instances (AWS Spot best practices, as of 2026-11).
 
 ### Price mechanisms: auction history versus posted prices
 
 Early EC2 Spot (2009 to 2017) was presented as a bid-based market in which a uniform clearing price applied to all running instances, and instances with a bid below the price were terminated.
-Academic reverse-engineering ("Deconstructing Amazon EC2 Spot Instance Pricing", Agmon Ben-Yehuda et al.) found the price series was frequently better explained by a hidden dynamic reserve price than by a true bid-clearing auction.
-Since late 2017 AWS uses a smoothed price that changes gradually with long-term supply and demand, and the "bid" is only a maximum price that defaults to the On-Demand price.
+Academic reverse-engineering ("Deconstructing Amazon EC2 Spot Instance Pricing", Agmon Ben-Yehuda et al., ACM TEAC 2013) found the price series was frequently better explained by a hidden dynamic reserve price than by a true bid-clearing auction.
+Since late 2017 AWS uses a smoothed price that changes gradually with long-term supply and demand, and the "bid" is only a maximum price that defaults to the On-Demand price (AWS Compute Blog: model launched at re:Invent 2017).
 Interruptions are therefore driven by capacity, not by price crossing your bid.
-Setting a max price below On-Demand mostly adds a second, pointless way to be interrupted.
-Google Cloud has no auction at all: Spot VM prices are posted, dynamic, and change at most once every 30 days with discounts of 60-91 percent (Google Cloud GPU pricing page, as of 2026-10).
+Setting a max price below On-Demand mostly adds a second, pointless way to be interrupted, and AWS states that specifying a maximum price makes interruptions more frequent (AWS docs, as of 2026-11).
+Google Cloud has no auction at all: Spot VM prices are posted and dynamic, can change up to once every day, and carry discounts of up to 91 percent (Compute Engine Spot docs and Spot VM pricing page, as of 2026-11).
+The Google Cloud GPU pricing page still says at most once every 30 days and 60-91 percent, so the two pages disagree; plan for the daily limit, which is the one the Spot VM pricing page guarantees (as of 2026-11).
 The consequence for forecasting is that price volatility is almost irrelevant on both clouds; availability volatility is the risk, and neither cloud gives you a price signal that predicts it.
 
 ### Allocation strategies are the real "auction algorithm"
 
 When you ask for N units across many pools, the fleet allocator decides which pools receive them.
-The AWS strategies for EC2 Fleet, Spot Fleet, and Auto Scaling mixed-instances groups are lowest-price, diversified, capacity-optimized, capacity-optimized-prioritized, and price-capacity-optimized (AWS docs, as of 2026-10; strategy names not re-verified in this pass, UNVERIFIED).
+The AWS strategies for EC2 Fleet and Spot Fleet are lowest-price, diversified, capacity-optimized, capacity-optimized-prioritized, and price-capacity-optimized (EC2 docs, as of 2026-11); Auto Scaling mixed-instances groups offer the same list without diversified (EC2 Auto Scaling docs, as of 2026-11).
 Mechanically they differ in what they optimize.
 Lowest-price concentrates the fleet in the cheapest pools, and the cheapest pools are often cheap because nobody else can use them or because they are thin, so you buy correlated risk at the lowest price.
+AWS marks lowest-price as not recommended because it has the highest interruption risk, yet it is the CLI default for EC2 Fleet, so set the strategy explicitly (EC2 docs, as of 2026-11).
 Capacity-optimized uses the provider's internal view of pool depth to choose pools least likely to be reclaimed.
-Price-capacity-optimized first filters to the deepest pools and then takes the cheapest of those, and it is the strategy AWS recommends for most workloads (AWS docs, as of 2026-10; UNVERIFIED in this pass).
+Price-capacity-optimized first filters to the deepest pools and then takes the cheapest of those, and it is the strategy AWS recommends for most workloads (EC2 docs, as of 2026-11).
 The allocator runs again at every replacement, so a "maintain" fleet re-draws pools each time capacity is lost.
-The practical rule is to give the allocator many pools: 10 or more instance types across all zones in the region, expressed by attribute-based selection or an explicit override list.
+The practical rule is to give the allocator many pools: 10 or more instance types across all zones in the region (AWS Spot best practices, as of 2026-11), expressed by attribute-based selection or an explicit override list.
 Restricting to one family and one zone for "consistency" removes the only lever you have.
 
 ### The AWS signal path
 
-The AWS interruption notice arrives two minutes before the interruption (AWS docs, as of 2026-10).
+The AWS interruption notice arrives two minutes before the interruption, except when the interruption behavior is hibernate, where you get the notice but hibernation begins immediately (AWS docs, as of 2026-11).
 It is delivered in two ways.
 In the guest, `GET /latest/meta-data/spot/instance-action` on the link-local metadata endpoint returns 404 until a notice exists and then returns a JSON document with the action (terminate, stop, or hibernate) and a timestamp.
 Out of band, EventBridge emits an "EC2 Spot Instance Interruption Warning" event that a controller can consume without touching the instance.
-A separate earlier signal, the EC2 instance rebalance recommendation, tells you a Spot instance is at elevated risk of interruption; it carries no guaranteed lead time and may arrive together with the two-minute notice (AWS docs, as of 2026-10).
-Treat the two-minute notice as best effort, because AWS documents that an instance can be reclaimed before the warning becomes visible.
-You can rehearse the path with AWS Fault Injection Service, which issues the notice and then interrupts the instance two minutes later (AWS docs, as of 2026-10).
+A separate earlier signal, the EC2 instance rebalance recommendation, tells you a Spot instance is at elevated risk of interruption; it carries no guaranteed lead time and may arrive together with the two-minute notice (AWS docs, as of 2026-11).
+Treat the two-minute notice as best effort, because AWS documents that interruption notices are emitted on a best effort basis (AWS docs, as of 2026-11).
+You can rehearse the path with AWS Fault Injection Service, which issues the notice and then interrupts the instance two minutes later (AWS docs, as of 2026-11).
 Nothing is pushed into your process; the metadata service is a pull interface, so your effective budget is `120 s - detection latency - drain time`.
+AWS recommends checking for the notice every 5 seconds (AWS docs, as of 2026-11).
 
 ### The Google Cloud signal path
 
-Compute Engine signals preemption by setting the `preempted` value in the VM's default metadata to TRUE (Google Cloud docs, as of 2026-10).
+Compute Engine signals preemption by setting the `preempted` value in the VM's default metadata to TRUE (Google Cloud docs, as of 2026-11).
 The time between that metadata flip and the ACPI G2 Soft Off signal is the preemption notice duration.
 It is 0 seconds by default, which means no dedicated delay and the metadata flip coincides with the start of the shutdown period.
-It can be set to 120 seconds at VM creation with `--preemption-notice-duration`; this was Preview from 2026-04-16 and Generally Available from 2026-09-30 (Compute Engine release notes, as of 2026-10).
-After the G2 signal the shutdown period is best effort and up to 30 seconds, during which any configured shutdown script runs; if the VM has not stopped, an ACPI G3 Mechanical Off follows and the VM transitions to TERMINATED (Google Cloud docs, as of 2026-10).
+It can be set to 120 seconds at VM creation with `--preemption-notice-duration`; this was Preview from 2026-04-16 and Generally Available from 2026-09-30 (Compute Engine release notes, as of 2026-11).
+After the G2 signal the shutdown period is best effort and up to 30 seconds, during which any configured shutdown script runs; if the VM has not stopped, an ACPI G3 Mechanical Off follows and the VM transitions to TERMINATED, or is deleted if the termination action is DELETE (Google Cloud docs, as of 2026-11).
+Google recommends the 120 s setting for workloads that need more than 30 s to handle preemption (Google Cloud docs, as of 2026-11).
 So the documented maximum guest-visible budget is roughly 150 s with the 120 s notice (120 s notice plus up to 30 s shutdown) and roughly 30 s without it (derived from the documented sequence).
 Two constraints matter for AI fleets.
-TPU Spot VMs cannot use the 120-second notice, cannot be restarted, and must be recreated after preemption (Google Cloud TPU docs, as of 2026-10).
-Spot VMs have no runtime cap, unlike preemptible VMs, which carry the older 24 hour limit (UNVERIFIED for Compute Engine in this pass; the TPU docs confirm Spot has no runtime limit).
-If you adopt the 120 s notice, you must handle preemption in your workload by watching the metadata flag, because a shutdown script runs only in the later best-effort window.
+TPU Spot VMs cannot use the 120-second notice, cannot be restarted, and must be recreated after preemption (Google Cloud TPU docs, as of 2026-11).
+Spot VMs have no maximum runtime unless you set one, unlike preemptible VMs, which Compute Engine always stops after 24 hours (Google Cloud docs, as of 2026-11).
+If you adopt the 120 s notice, you must handle preemption in your workload by watching the metadata flag, because a shutdown script runs only in the later best-effort window (Google Cloud docs, as of 2026-11).
 
 ### Deadline accounting is the mechanism guides skip
 
 Every container-level grace setting is bounded by the node-level signal.
 A Kubernetes pod with `terminationGracePeriodSeconds: 300` on a Spot node that dies at 30 s has an effective grace of about 30 s minus kubelet reaction time.
 The kubelet only learns about the shutdown through the systemd inhibitor lock path (graceful node shutdown) or through a node-termination controller that cordons and drains on the notice.
-On AWS the common implementations are the AWS Node Termination Handler (IMDS mode or queue-processor mode) and Karpenter's interruption queue fed by EventBridge via SQS (not re-verified in this pass).
-A pod disruption budget does nothing here, because PDBs gate voluntary evictions through the Eviction API and a reclaimed host is an involuntary disruption.
+GKE makes the cap explicit: the maximum total grace period any Pod can get on a Spot node is 120 s, however large `terminationGracePeriodSeconds` is (GKE docs, as of 2026-11).
+On AWS the common implementations are the AWS Node Termination Handler (IMDS mode or queue-processor mode) and Karpenter's interruption queue fed by EventBridge via SQS (project docs, as of 2026-11).
+A pod disruption budget does nothing here, because PDBs gate voluntary evictions through the Eviction API and a reclaimed host is an involuntary disruption; GKE documents that Spot reclamation is not covered by PDB guarantees (GKE docs, as of 2026-11).
 The correct model is a deadline budget: `T_notice - T_detect - T_cordon - T_stop_accepting - T_flush >= 0`, and each term must be measured, not assumed.
 One AWS-specific trap sits in the detection term.
-The metadata service requires an IMDSv2 session token obtained with a PUT, and the PUT response hop limit defaults to 1, so a poller running in a container on a bridge network cannot fetch the token.
+With IMDSv2 required, the metadata service needs a session token obtained with a PUT, and the PUT response hop limit defaults to 1 unless the AMI has `ImdsSupport: v2.0` (then 2) or an account default overrides it (AWS docs, as of 2026-11), so at hop limit 1 a poller running in a container on a bridge network may get no response.
 Either run the poller with host networking or set the instance hop limit to 2 in the launch template, as the lab below does.
 
 ### Correlation and why N independent nodes is the wrong model
 
 For a synchronous gang job on N nodes, any single node loss kills the step, so the job's mean time between interruptions is `MTBI = 1 / (N * lambda)`.
 With independent interruptions at a per-node monthly probability p, `lambda = -ln(1 - p) / 720` per hour.
-The AWS Spot Instance Advisor reports interruption frequency in buckets of under 5, 5-10, 10-15, 15-20, and over 20 percent (AWS docs, as of 2026-10; bucket edges UNVERIFIED in this pass).
+The AWS Spot Instance Advisor reports interruption frequency in buckets of under 5, 5-10, 10-15, 15-20, and over 20 percent (AWS Spot Instance Advisor data feed, as of 2026-11).
 Using the bucket edges 5 and 15 percent, a 64-node job sees an MTBI of 219 h and 69 h respectively, and a 256-node job sees 55 h and 17 h (derived).
 Those are best cases, because real reclaim is wave-shaped: a pool event removes many of your nodes within minutes, and the replacements come from a pool that just demonstrated scarcity.
 Plan with an observed MTBI from your own fleet and treat the Advisor number as a prior, not a measurement.
@@ -140,9 +175,10 @@ waste = C/T + (T/2 + W)/MTBI + R/MTBI
 ```
 
 R is restart time: capacity acquisition, boot, image pull, weight and optimizer load, and communicator re-initialization, during which all N-1 surviving nodes are idle and billed.
-At the optimum, the C and T terms contribute `sqrt(2C/MTBI)`, a number that shrinks as the square root of MTBI, while `R/MTBI` shrinks only linearly and is independent of anything you do to the checkpoint code.
+At the optimum, the C and T terms contribute `sqrt(2C/MTBI)`, a number that shrinks as the square root of MTBI, while `R/MTBI` shrinks linearly with MTBI and is independent of anything you do to the checkpoint code.
+The restart term is the larger of the two once R exceeds `T_opt`: at a 6-hour MTBI with C = 30 s, `T_opt` is about 19 minutes and the checkpoint term is 5.3 percent, so a 10-minute restart adds only 2.8 percent while a 1-hour restart adds 16.7 percent (derived).
 That is why a 1-hour restart (no capacity available) at a 6-hour MTBI costs 23 percent waste while a 10-minute restart costs 9 percent (derived, see the worked example).
-The lever with the most return is R: warm spare nodes, pre-baked images, node-local weight caches, and elastic resharding so that the job continues on N-1 nodes instead of idling.
+Once restarts are slow, the lever with the most return is R: warm spare nodes, pre-baked images, node-local weight caches, and elastic resharding so that the job continues on N-1 nodes instead of idling.
 The research line on this problem includes Varuna (EuroSys 2022) and Bamboo (NSDI 2023) for training on preemptible instances, Check-N-Run (NSDI 2022) for differential checkpointing, and Gemini (SOSP 2023) for in-memory checkpoints in peer CPU memory.
 See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_06_High_Throughput_Checkpointing_to_Object_Storage|High-Throughput Checkpointing to Object Storage]] for the write path and [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fault_Tolerance_and_Fleet_Resiliency_at_Scale|Fault Tolerance and Fleet Resiliency at Scale]] for node evacuation.
 
@@ -151,7 +187,7 @@ See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_06_Hi
 An interrupted node can leave a half-written checkpoint, and a reclaimed-then-replaced rank can race a stale writer.
 The safe pattern is two-phase: every rank writes its shard under `ckpt/<job>/<epoch>/<step>/`, then rank 0 writes a small `COMMIT` object containing the shard manifest and checksums only after a barrier confirms all shards are durable.
 Readers choose the highest step that has a `COMMIT` object and verify the manifest.
-Both S3 and Cloud Storage provide strong read-after-write consistency for new objects, so the marker pattern is sound without a metadata database.
+Both S3 and Cloud Storage provide strong read-after-write consistency for new objects (S3 and Cloud Storage docs, as of 2026-11), so the marker pattern is sound without a metadata database.
 Include a monotonically increasing job epoch in the path so a zombie writer from a prior incarnation cannot overwrite a newer step.
 
 ### Control plane versus data plane
@@ -166,23 +202,23 @@ Replacement latency for model servers is dominated by weight load, which is the 
 
 | Quantity | Value | Source |
 |---|---|---|
-| AWS Spot interruption notice lead time | 2 minutes before interruption | (AWS docs, as of 2026-10) |
-| AWS FIS Spot interruption test | Notice issued, instance interrupted 2 minutes later | (AWS docs, as of 2026-10) |
-| AWS notice delivery | IMDS `spot/instance-action` (404 until set) and EventBridge warning event | (AWS docs, as of 2026-10) |
-| AWS rebalance recommendation | Elevated-risk signal, no guaranteed lead time | (AWS docs, as of 2026-10) |
-| AWS Spot discount ceiling | "up to 90 percent" vs On-Demand | (AWS docs, as of 2026-10; UNVERIFIED in this pass) |
-| AWS Spot Advisor interruption buckets | <5, 5-10, 10-15, 15-20, >20 percent per month | (AWS Spot Instance Advisor, as of 2026-10; UNVERIFIED in this pass) |
-| GCP default preemption notice duration | 0 s (metadata flip coincides with ACPI G2) | (Google Cloud docs, as of 2026-10) |
-| GCP optional preemption notice duration | 120 s; Preview 2026-04-16, GA 2026-09-30 | (Compute Engine release notes, as of 2026-10) |
-| GCP shutdown period after G2 | Best effort, up to 30 s, then ACPI G3 | (Google Cloud docs, as of 2026-10) |
-| GCP maximum guest budget | ~30 s default; ~150 s with 120 s notice | (derived from Google Cloud docs, as of 2026-10) |
-| GCP Spot discount and repricing | 60-91 percent off On-Demand; price changes at most once per 30 days | (Google Cloud GPU pricing, as of 2026-10) |
-| GCP TPU Spot | No 120 s notice, cannot restart, no runtime limit | (Google Cloud TPU docs, as of 2026-10) |
+| AWS Spot interruption notice lead time | 2 minutes before interruption; hibernate gets the notice but begins immediately | (AWS docs, as of 2026-11) |
+| AWS FIS Spot interruption test | Notice issued, instance interrupted 2 minutes later | (AWS docs, as of 2026-11) |
+| AWS notice delivery | IMDS `spot/instance-action` (404 until set) and EventBridge warning event | (AWS docs, as of 2026-11) |
+| AWS rebalance recommendation | Elevated-risk signal, no guaranteed lead time | (AWS docs, as of 2026-11) |
+| AWS Spot discount ceiling | "up to 90 percent" vs On-Demand | (AWS Spot pricing page, as of 2026-11) |
+| AWS Spot Advisor interruption buckets | <5, 5-10, 10-15, 15-20, >20 percent per month | (AWS Spot Instance Advisor data feed, as of 2026-11; 30-day window per AWS Compute Blog) |
+| GCP default preemption notice duration | 0 s (metadata flip coincides with ACPI G2) | (Google Cloud docs, as of 2026-11) |
+| GCP optional preemption notice duration | 120 s; Preview 2026-04-16, GA 2026-09-30 | (Compute Engine release notes, as of 2026-11) |
+| GCP shutdown period after G2 | Best effort, up to 30 s, then ACPI G3 | (Google Cloud docs, as of 2026-11) |
+| GCP maximum guest budget | ~30 s default; ~150 s with 120 s notice | (derived from Google Cloud docs, as of 2026-11) |
+| GCP Spot discount and repricing | Up to 91 percent off On-Demand; price changes at most once per day | (Compute Engine Spot docs and Spot VM pricing page, as of 2026-11; the GPU pricing page still says 60-91 percent and 30 days) |
+| GCP TPU Spot | No 120 s notice, cannot restart, no runtime limit | (Google Cloud TPU docs, as of 2026-11) |
 | Gang MTBI, 64 nodes, p=5 / 15 percent per month | 219 h / 69 h | (derived, independence assumed) |
 | Gang MTBI, 256 nodes, p=5 / 15 percent per month | 55 h / 17 h | (derived, independence assumed) |
-| Waste at MTBI 6 h, C=30 s, W=240 s, R=600 s | 9.2 percent; effective cost 0.385x OD at a 0.35 ratio | (derived, as of 2026-10) |
-| Waste at MTBI 6 h, R=3600 s | 23.0 percent; effective cost 0.455x OD | (derived, as of 2026-10) |
-| Waste at MTBI 2 h, R=3600 s | 62.5 percent; effective cost 0.93x OD | (derived, as of 2026-10) |
+| Waste at MTBI 6 h, C=30 s, W=240 s, R=600 s | 9.2 percent; effective cost 0.385x OD at a 0.35 ratio | (derived, as of 2026-11) |
+| Waste at MTBI 6 h, R=3600 s | 23.0 percent; effective cost 0.455x OD | (derived, as of 2026-11) |
+| Waste at MTBI 2 h, R=3600 s | 62.5 percent; effective cost 0.93x OD | (derived, as of 2026-11) |
 | Pool over-provision factor for single-pool-loss tolerance | P/(P-1): 2.0 (P=2), 1.5 (P=3), 1.33 (P=4), 1.2 (P=6) | (derived) |
 
 Absolute list prices are deliberately omitted because they change; the lab fetches live Spot prices from `describe-spot-price-history` and the ratios above are normalized to On-Demand = 1.00.
@@ -193,20 +229,20 @@ The derived waste rows assume a 0.35 Spot-to-On-Demand price ratio, which is an 
 | Dimension | AWS EC2 Spot | Google Cloud Spot VMs |
 |---|---|---|
 | Capacity model | Residual of per-pool capacity (type x AZ) | Excess Compute Engine capacity, per zone and machine type |
-| Price mechanism | Smoothed market-derived price, max price defaults to On-Demand | Posted price, changes at most once per 30 days |
+| Price mechanism | Smoothed market-derived price, max price defaults to On-Demand | Posted price, changes at most once per day |
 | Interruption trigger | Capacity reclaim | Capacity reclaim |
-| Early-warning signal | Rebalance recommendation (no guaranteed lead) | Availability and preemption-rate visibility added in 2026 (details UNVERIFIED) |
+| Early-warning signal | Rebalance recommendation (no guaranteed lead) | No per-VM early signal; pre-create views of obtainability, estimated uptime, and preemption rate are in Preview since 2026-06-15 (Compute Engine release notes, as of 2026-11) |
 | Hard notice | 2 minutes, IMDS and EventBridge | Metadata `preempted=TRUE`, then ACPI G2 after 0 s or 120 s |
 | Time to guest stop after notice | 120 s | Up to 30 s after G2; total up to ~150 s with 120 s notice |
 | Guaranteed to run handler | No; notice can be late | Shutdown script is best effort |
-| Max runtime | None | None for Spot (preemptible had 24 h, UNVERIFIED) |
+| Max runtime | None | None for Spot unless you set a limit (preemptible is stopped at 24 h; Google Cloud docs, as of 2026-11) |
 | After interruption | Terminate, stop, or hibernate (request-dependent) | Stop or delete (termination action) ; TPU Spot must be recreated |
 | Placement control | Allocation strategy plus many overrides | Per-zone choice; managed instance groups and GKE node pools |
-| Fleet managers | EC2 Fleet, Spot Fleet, ASG mixed instances, Karpenter | MIGs with Spot, GKE Spot node pools, node auto-provisioning |
-| Capacity forecasting | Spot placement score API, Spot Advisor, price history | Availability signals in console and docs (UNVERIFIED details) |
-| Commitment interaction | Savings Plans do not discount Spot (UNVERIFIED in this pass) | CUDs do not apply to Spot (UNVERIFIED in this pass) |
-| SLA | None | None; Google documents no availability guarantee |
-| Critical difference | Longer, more uniform budget lets you do in-process drain | Default budget is 30 s, so you need periodic checkpoints or the 120 s option |
+| Fleet managers | EC2 Fleet, ASG mixed instances, Karpenter; Spot Fleet is a legacy API AWS tells you not to use for new work (AWS Spot best practices, as of 2026-11) | MIGs with Spot, GKE Spot node pools, node auto-provisioning |
+| Capacity forecasting | Spot placement score API, Spot Advisor, price history | Obtainability, estimated uptime, and preemption-rate views (Preview since 2026-06-15; Compute Engine release notes, as of 2026-11) |
+| Commitment interaction | Savings Plans do not apply to Spot usage (AWS Savings Plans docs, as of 2026-11) | Compute flexible CUDs cannot be used for Spot or preemptible VMs; resource-based CUD docs name only preemptible VMs in their exclusion (Google Cloud docs, as of 2026-11) |
+| SLA | No guarantee of capacity or of keeping instances running (AWS Spot best practices, as of 2026-11) | None; Spot VMs are not covered by any SLA (Google Cloud docs, as of 2026-11) |
+| Critical difference | Longer, more uniform budget lets you do in-process drain | Default is a 0 s notice plus up to 30 s of best-effort shutdown, so you need periodic checkpoints or the 120 s option |
 
 The architectural difference that matters most is the default budget.
 A design that relies on a "save on notice" step is plausible on AWS for a few GB of state and implausible on Google Cloud at default settings.
@@ -269,7 +305,8 @@ Back-of-the-envelope reading of the output:
 
 Prerequisites: an AMI ID, two or more subnets in different zones, and the Spot service-linked role (`aws iam create-service-linked-role --aws-service-name spot.amazonaws.com`, which errors harmlessly if it exists).
 Cost estimate: the script prints a one-hour cost estimate from live Spot price history; for 2 small instances over 1 hour the estimate is a few cents at typical Spot prices, and the script computes it rather than relying on a stated list price.
-Parameter names below follow the EC2 `CreateFleet` API (not re-verified in this pass, see the report).
+Parameter names below follow the EC2 `CreateFleet` API (AWS API reference, as of 2026-11).
+A `maintain` fleet cannot tag instances through `TagSpecifications`, so the instance tag goes in the launch template and the `CreateFleet` tag applies to the fleet itself.
 
 ```python
 import os, time, datetime, boto3
@@ -289,6 +326,7 @@ ec2.create_launch_template(
     LaunchTemplateData={
         "ImageId": ami,
         "MetadataOptions": {"HttpTokens": "required", "HttpPutResponseHopLimit": 2},
+        "TagSpecifications": [{"ResourceType": "instance", "Tags": [{"Key": "lab", "Value": name}]}],
     },
 )
 
@@ -310,7 +348,7 @@ resp = ec2.create_fleet(
         "LaunchTemplateSpecification": {"LaunchTemplateName": name, "Version": "$Latest"},
         "Overrides": overrides,
     }],
-    TagSpecifications=[{"ResourceType": "instance", "Tags": [{"Key": "lab", "Value": name}]}],
+    TagSpecifications=[{"ResourceType": "fleet", "Tags": [{"Key": "lab", "Value": name}]}],
     TerminateInstancesWithExpiration=True,
     ValidUntil=datetime.datetime.utcnow() + datetime.timedelta(hours=hours + 1),
 )
@@ -408,6 +446,7 @@ if __name__ == "__main__":
 ```
 
 The poll interval of 2 seconds spends under 2 percent of the AWS window on detection latency; a 60-second interval would burn half of it.
+AWS recommends 5 seconds (AWS docs, as of 2026-11), so 2 seconds is deliberately tighter.
 On Google Cloud with the default 0 s notice, detection and shutdown start together, so this handler is only a partial flush and the periodic checkpoint is what you will actually recover from.
 Set `CKPT_TIMEOUT_S` below the budget (for example 90 on AWS, 20 on Google Cloud default) so the handler cannot outlive the host.
 
@@ -423,11 +462,13 @@ The trap is that cost dashboards reward the concentrated fleet right up to the d
 
 When a pool is reclaimed, every orchestrator in the region retries into the same alternatives, producing InsufficientInstanceCapacity responses and API throttling.
 Use jittered, bounded retries as in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Resilient Communication: Retries, Jitter, and Circuit Breakers]], widen the override list on each failed attempt, and fall back to an On-Demand or reserved pool with a deadline-aware policy.
-The "Can't Be Late" result (NSDI 2024, SkyPilot group) formalizes that policy: run on Spot while slack remains, and switch to On-Demand when remaining slack equals remaining work plus restart overhead.
+AWS warns that after a Spot interruption it can be difficult to get On-Demand in that same instance type and zone, and that the failover can drive further Spot interruptions, so aim the fallback at other pools or reserved capacity (AWS Spot best practices, as of 2026-11).
+"Can't Be Late" (Wu et al., NSDI 2024, Berkeley SkyPilot group) studies that policy for single and multi-instance jobs.
+Its greedy baseline stays on Spot and moves to On-Demand once an idle job's remaining time to deadline falls below remaining compute plus twice the changeover delay, and its Uniform Progress policy beats greedy by spreading the compute evenly across the time to deadline.
 
 ### Control-plane impairment during the failure you are recovering from
 
-The October 2025 AWS us-east-1 event, documented in AWS's public post-event summary for the DynamoDB disruption, included a period in which new EC2 launches were impaired while internal systems recovered (details UNVERIFIED in this pass).
+The October 2025 AWS us-east-1 event, documented in AWS's public post-event summary for the DynamoDB disruption, included a period in which new EC2 launches failed from 2:25 AM to 10:36 AM PDT on October 20, with connectivity problems on new instances until 1:50 PM, while internal systems recovered (AWS post-event summary, as of 2026-11).
 A Spot-only fleet that relies on launching replacements is exposed to this class of event, because reclaim and control-plane degradation can coincide.
 The mitigation is static stability: hold surplus capacity so no launch is needed to remain in SLO, as laid out in the AWS Builders' Library article on static stability using Availability Zones.
 
@@ -454,8 +495,8 @@ See [[04-System-Design/05-Data-Stores/Apache-ZooKeeper|Apache ZooKeeper]] for th
 
 ### Quotas
 
-Spot capacity on AWS is governed by vCPU-based quotas grouped by instance family category, with GPU and accelerated families in separate categories whose defaults are often low or zero (specific quota names and defaults UNVERIFIED in this pass).
-Quota requests for GPU Spot take days; file them before the project starts, per region, and test that the quota covers `P` pools at full fleet size, since a fleet spread across many types draws on the same quota bucket.
+Spot capacity on AWS is governed by vCPU-based quotas grouped by instance family category, with GPU and accelerated families in separate categories: All P, All G and VT, All Inf, All Trn, All DL, All F, and All X Spot Instance Requests default to 0 and All Standard defaults to 5 (AWS docs, as of 2026-11).
+File GPU Spot quota increases before the project starts, per region, and test that the quota covers `P` pools at full fleet size, since a fleet spread across many types draws on the same quota bucket.
 
 ### Deceptive savings
 
@@ -473,7 +514,7 @@ Track cost per training step or cost per million served tokens, not instance hou
 
 ### Encryption and network boundaries
 
-- Checkpoints use envelope encryption through SSE-KMS or Cloud KMS CMEK; with EBS encryption under a customer managed key, Auto Scaling launches can fail with a client error unless the key policy grants the Auto Scaling service-linked role (a long-standing launch failure mode, not re-verified in this pass).
+- Checkpoints use envelope encryption through SSE-KMS or Cloud KMS CMEK; with EBS encryption under a customer managed key, Auto Scaling launches fail with `Client.InternalError: Client error on launch` unless the key policy grants the Auto Scaling service-linked role (EC2 Auto Scaling docs, as of 2026-11).
 - Use an S3 gateway endpoint for checkpoint traffic to avoid NAT gateway data processing charges, and Private Google Access for Cloud Storage from instances without external IPs.
 - Keep checkpoint buckets in the same region as the fleet; cross-region checkpoint replication belongs to the DR design, not the hot path, and cross-region transfer pricing is covered in [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]].
 
@@ -489,7 +530,8 @@ Track cost per training step or cost per million served tokens, not instance hou
 
 ### Question 1 (L5 - Senior)
 
-You run a batch inference job on AWS Spot and the workers are being interrupted mid-item. Describe exactly what happens during an interruption and how you build a worker that does not lose work.
+You run a batch inference job on AWS Spot and the workers are being interrupted mid-item.
+Describe exactly what happens during an interruption and how you build a worker that does not lose work.
 
 #### Model Answer
 
@@ -509,7 +551,8 @@ What changes about the economics and the design?
 
 ### Question 2 (L5 - Senior)
 
-A teammate proposes the lowest-price allocation strategy on two instance types in one zone because it has the best current price. Argue for or against.
+A teammate proposes the lowest-price allocation strategy on two instance types in one zone because it has the best current price.
+Argue for or against.
 
 #### Model Answer
 
@@ -527,12 +570,13 @@ How do you validate the capacity assumption before launching a 500-node fleet, g
 
 ### Question 3 (L6 - Staff)
 
-You are training a 128-node model on Spot GPUs. Choose a checkpoint interval, estimate the waste, and tell me at what point you would abandon Spot.
+You are training a 128-node model on Spot GPUs.
+Choose a checkpoint interval, estimate the waste, and tell me at what point you would abandon Spot.
 
 #### Model Answer
 
 The job is a synchronous gang, so the fleet MTBI is `1/(N * lambda)`.
-At a per-node monthly interruption probability of 15 percent, N=128 gives about 34 h MTBI under independence, and I would not trust that figure, so I would measure interruptions in a two-day pilot at scale and plan with the observed number.
+At a per-node monthly interruption probability of 15 percent, N=128 gives about 35 h MTBI under independence, and I would not trust that figure, so I would measure interruptions in a two-day pilot at scale and plan with the observed number.
 Take C = 30 s stall for async snapshot, W = 240 s durable lag, R = 600 s restart.
 Then `T_opt = sqrt(2 * 30 * MTBI)`; at 6 h MTBI that is about 19 minutes, and waste is about 9 percent, giving effective cost 0.385x at a 0.35 price ratio.
 The sensitivity that matters is R: if capacity droughts push R to an hour, waste is 23 percent at 6 h and 62 percent at 2 h, and Spot is near parity with On-Demand at 0.93x.
@@ -578,9 +622,10 @@ A reclaimed host is an involuntary disruption, so the PDB, which gates the Evict
 The `terminationGracePeriodSeconds` is also irrelevant beyond the host deadline: on Google Cloud at default settings the guest has up to 30 s after the ACPI signal, and on AWS roughly 120 s minus detection.
 The kubelet only starts draining if it is told: graceful node shutdown through systemd inhibitor locks reacts to the ACPI event, and on AWS a node termination controller (the Node Termination Handler or Karpenter's interruption queue) must cordon and drain on the notice or the rebalance recommendation.
 Fixes: enable the interruption path on each platform, set `shutdownGracePeriod` to fit under the host budget, reduce pod grace to match, make preStop hooks bounded, and move long-running state off the node.
-For GKE consider the 120 s notice duration on Spot VMs, noting that workloads must detect preemption through the metadata flag, and that TPU Spot cannot use it.
+On GKE the default graceful termination period is 30 s (15 s for regular Pods, then 15 s for critical system Pods), and `shutdownGracePeriodSeconds` extends the total to at most 120 s, which on Standard node pools needs a control plane at GKE 1.35.0-gke.1171000 or later (GKE docs, as of 2026-11).
+On plain Compute Engine the equivalent is the 120 s notice duration, noting that workloads must detect preemption through the metadata flag, and that TPU Spot cannot use it.
 Finally, spread each workload across pools with topology spread constraints so one reclaim wave cannot take all replicas.
-Verify with an actual interruption test (AWS FIS on AWS, a controlled preempt via simulated maintenance or deletion on Google Cloud) and measure the time from notice to pod readiness loss.
+Verify with an actual interruption test (AWS FIS on AWS, a simulated maintenance event on Google Cloud, which forces a Spot VM to preempt) and measure the time from notice to pod readiness loss.
 
 #### Follow-up Interviewer Question
 
@@ -599,7 +644,7 @@ The failure modes are all in the state.
 Checkpoints must be portable (framework-native sharded format, not instance-specific), and they must be reachable from the other cloud without paying egress on every checkpoint.
 A 2 TB checkpoint every 30 minutes cross-cloud is 96 TB per day, which at typical internet egress pricing will exceed the Spot savings; the economics are in the next chapter.
 The sane design is to keep the checkpoint bucket in one cloud, accept that the other cloud pays egress only on restore, and migrate only on long outages (a deadline-aware policy as in "Can't Be Late") rather than chasing small price differences.
-Operationally you add two sets of quotas, two identity federations, two interruption semantics (120 s versus 30 s default, TPU versus GPU mismatch), and two network fabrics with different collective performance, so a mixed job is not realistic and the unit of migration is the whole job.
+Operationally you add two sets of quotas, two identity federations, two interruption semantics (120 s versus a default 0 s notice plus up to 30 s of shutdown, TPU versus GPU mismatch), and two network fabrics with different collective performance, so a mixed job is not realistic and the unit of migration is the whole job.
 My recommendation would be to diversify within a cloud first (pools, sizes, regions), use the second cloud as a failover for the whole job, and quantify the second cloud's value with a pilot that measures observed MTBI and R in both.
 If the training is long enough that capacity droughts dominate, buying a short capacity reservation for the critical phases is usually cheaper than building the cross-cloud machine.
 
@@ -636,9 +681,9 @@ How do you frame the decision?
 - [Create and use Spot VMs](https://docs.cloud.google.com/compute/docs/instances/create-use-spot) - the `--preemption-notice-duration` flag and shutdown script requirements.
 - [Compute Engine release notes](https://docs.cloud.google.com/compute/docs/release-notes) - the dated record of the 120 s notice moving from Preview to GA and of new availability signals.
 - [Manage TPU Spot VMs](https://docs.cloud.google.com/tpu/docs/spot) - TPU-specific restrictions on notice duration and restart.
-- [Google Cloud GPU pricing](https://cloud.google.com/products/compute/gpus-pricing) - Spot discount range and repricing cadence for GPU capacity.
+- [Google Cloud GPU pricing](https://cloud.google.com/products/compute/gpus-pricing) - GPU list prices; its Spot note (60-91 percent, 30 days) disagrees with the daily cadence and up-to-91-percent wording on the Spot docs, as of 2026-11.
 - Young (1974, CACM) and Daly (2006, Future Generation Computer Systems) on optimum checkpoint intervals - the derivation behind the interval and waste formulas used here.
-- Agmon Ben-Yehuda et al., "Deconstructing Amazon EC2 Spot Instance Pricing" - the evidence that the early Spot price was not a pure bid auction.
+- Agmon Ben-Yehuda et al., "Deconstructing Amazon EC2 Spot Instance Pricing" (ACM TEAC, 2013) - the evidence that the early Spot price was not a pure bid auction.
 - Thorpe et al., "Bamboo" (NSDI 2023), Athlur et al., "Varuna" (EuroSys 2022), Wang et al., "Gemini" (SOSP 2023), and Eisenman et al., "Check-N-Run" (NSDI 2022) - the main lines of work on training through preemptions and fast checkpoints.
 - Wu et al., "Can't Be Late" (NSDI 2024) and Yang et al., "SkyPilot" (NSDI 2023) - deadline-aware Spot policies and intercloud brokering.
 - Verma et al., "Large-scale cluster management at Google with Borg" (EuroSys 2015) - the priority and preemption model that Spot products commercialize.

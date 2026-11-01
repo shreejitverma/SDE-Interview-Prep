@@ -14,6 +14,36 @@ sources:
   - "https://cloud.google.com/network-connectivity/docs/interconnect/pricing"
   - "https://cwiki.apache.org/confluence/display/KAFKA/KIP-392%3A+Allow+consumers+to+fetch+from+closest+replica"
   - "https://www.usenix.org/conference/nsdi18/presentation/dalton"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSDataTransfer/current/us-east-1/index.json"
+  - "https://docs.aws.amazon.com/cur/latest/userguide/cur-data-transfers-charges.html"
+  - "https://aws.amazon.com/privatelink/pricing/"
+  - "https://aws.amazon.com/transit-gateway/pricing/"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-basics.html"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateways-regional.html"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/metrics-dimensions-nat-gateway.html"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/flow-log-records.html"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/egress-only-internet-gateway.html"
+  - "https://docs.aws.amazon.com/AmazonECR/latest/userguide/vpc-endpoints.html"
+  - "https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html"
+  - "https://docs.aws.amazon.com/cost-management/latest/userguide/ce-filtering.html"
+  - "https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/"
+  - "https://aws.amazon.com/cloudfront/pricing/pay-as-you-go/"
+  - "https://docs.aws.amazon.com/directconnect/latest/UserGuide/MACsec.html"
+  - "https://aws.amazon.com/blogs/aws/free-data-transfer-out-to-internet-when-moving-out-of-aws/"
+  - "https://aws.amazon.com/message/12721/"
+  - "https://cloud.google.com/blog/products/networking/eliminating-data-transfer-fees-when-migrating-off-google-cloud"
+  - "https://cloud.google.com/nat/pricing"
+  - "https://cloud.google.com/storage/pricing"
+  - "https://docs.cloud.google.com/nat/docs/overview"
+  - "https://docs.cloud.google.com/compute/docs/regions-zones"
+  - "https://kubernetes.io/docs/reference/networking/virtual-ips/"
+  - "https://kubernetes.io/docs/concepts/services-networking/topology-aware-routing/"
+  - "https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/"
+  - "https://archive.apache.org/dist/kafka/2.4.0/RELEASE_NOTES.html"
+  - "https://www.usenix.org/conference/nsdi23/presentation/jain"
+  - "https://www.usenix.org/conference/nsdi24/presentation/wooders"
+  - "https://research.google/pubs/jupiter-evolving-transforming-googles-datacenter-network-via-optical-circuit-switches-and-software-defined-networking/"
+  - "https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/budgets_budget.html.markdown"
 ---
 
 # Network Egress Economics and Optimization
@@ -21,7 +51,7 @@ sources:
 ## TL;DR
 
 - Data transfer is billed at the metering point that owns the byte, not at the link that carries it. A single AZ crossing on AWS is billed twice, once as sender "out" and once as receiver "in", so the real cost is about $0.02 per GB crossed, not $0.01.
-- Cost per GB rises with distance and lack of control: same-AZ private IP is free, inter-AZ is cheap, inter-region is about 2x inter-AZ, and internet egress is 4.5x to 9x inter-AZ. Bytes that never leave an AZ are the only free bytes.
+- Cost per GB rises with distance and lack of control: same-AZ private IP is free, inter-AZ is cheap, a typical US inter-region pair is $0.02 per GB billed only on the sender (2x one inter-AZ meter, equal to a full AZ crossing, and $0.01 for us-east-1 to us-east-2), and first-tier internet egress is 4.5x to 9x inter-AZ (AWS price list, as of 2026-11). Besides same-AZ private-IP traffic, the other free path is same-region S3 and DynamoDB through a gateway endpoint.
 - Per-GB processing fees stack. A flow through a NAT gateway pays NAT processing plus the underlying transfer charge, and a Transit Gateway or Interface Endpoint adds another per-GB meter.
 - Chatty replicated systems turn east-west traffic into the dominant network bill. With Kafka at RF=3 across 3 AZs and 3 consumer groups, one ingested GB causes about 4.67 AZ crossings, which costs more than a GB sent to the internet.
 - Direct Connect is a fixed-fee plus cheaper-per-GB trade. It pays off only above a computable monthly volume, and it does nothing for ingress, which is already free.
@@ -56,7 +86,7 @@ flowchart LR
 Think of the bill as a set of meters bolted onto the physical topology.
 Inside one AZ the traffic rides the datacenter Clos fabric and is not metered.
 Crossing an AZ boundary uses metro fiber between buildings, and the provider meters both ends.
-Crossing a region boundary uses the provider's backbone, which has the same metering structure at a higher rate.
+Crossing a region boundary uses the provider's backbone, and only the sending region is charged: the destination's "in" line carries no charge (AWS CUR docs, as of 2026-11).
 Leaving the provider uses peering and transit, which has the highest rate and the steepest volume discounts.
 Optimization is the act of moving each flow to the cheapest meter that still preserves the availability property you need, and never trading away failure-domain separation to save network dollars.
 See [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_02_Datacenter_Networking_Fabrics|Datacenter Networking Fabrics]] for the fabric that makes same-AZ traffic nearly free to the provider.
@@ -66,30 +96,27 @@ See [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_02_D
 ### Where the meter sits
 
 AWS meters inter-AZ and inter-region transfer at the network interface of the instance or service endpoint that emits or receives the bytes.
-The AWS pricing summary quoted by third parties describes inter-AZ traffic as 
-
-$0.01 per GB in each direction
-
-, so a flow from AZ-a to AZ-b generates a $0.01 charge on the sender's "out" line and a $0.01 charge on the receiver's "in" line (CloudZero summary of AWS pricing, as of 2026-10).
-If the two endpoints live in different accounts, each account pays its own half.
+The EC2 pricing page states inter-AZ traffic is charged at $0.01 per GB in each direction, so a flow from AZ-a to AZ-b generates a $0.01 charge on the sender's "out" line and a $0.01 charge on the receiver's "in" line (AWS EC2 pricing and CUR docs, as of 2026-11).
+If the two endpoints live in different accounts, each account pays its own half, because each metered resource carries its own in and out line items (AWS CUR docs, as of 2026-11).
 That asymmetry is invisible in a single-account cost view and is a frequent source of "who owns this cost" disputes in shared-services models.
 
 Three consequences follow from metering at the ENI and not at the physical link:
 
-1. The private/public address choice matters. Traffic between two instances in the same AZ over private IPs is free, but the same flow addressed via a public or Elastic IP is generally charged at the regional rate in each direction even when both endpoints are in one AZ (AWS EC2 pricing page, behavior not re-verified in this session, UNVERIFIED). Hairpinning through a public DNS name that resolves to an Elastic IP is the classic way to pay for intra-AZ traffic.
+1. The private/public address choice matters. Traffic between two instances in the same AZ over private IPs is free, but the same flow addressed via a public or Elastic IPv4 address is charged at $0.01 per GB in each direction, a rule the pricing page states without an AZ exception (AWS EC2 pricing, as of 2026-11). Hairpinning through a public DNS name that resolves to an Elastic IP is the classic way to pay for intra-AZ traffic.
 2. Billing counts bytes the provider metering point sees. Compression, protocol overhead, and retransmits at the application or TLS layer change the bill linearly. Compressing before the byte hits the ENI is the highest-leverage, lowest-risk lever.
-3. AZ names are per-account aliases. `us-east-1a` in account X and account Y can map to different physical AZs, while the AZ ID (for example `use1-az1`) is stable. Any cross-account design that tries to keep traffic in one AZ (PrivateLink consumers and providers, shared RAM subnets) must compare AZ IDs, not names, or it will silently cross AZs.
+3. AZ names are per-account aliases. `us-east-1a` in account X and account Y can map to different physical AZs, while the AZ ID (for example `use1-az1`) is stable (AWS RAM docs, as of 2026-11). Any cross-account design that tries to keep traffic in one AZ (PrivateLink consumers and providers, shared RAM subnets) must compare AZ IDs, not names, or it will silently cross AZs.
 
 ### Stacked per-GB meters
 
 A NAT gateway carries two independent charges.
-The VPC pricing page states the hourly charge is $0.045 per hour in the example region and the data processing charge is $0.045 per GB, and that the standard EC2 data transfer charge applies on top (AWS VPC pricing, as of 2026-10).
-The worked example on that page sends 1 GB from an instance in a private subnet to S3 through NAT and bills the processing fee on it, even though S3 in the same region would have been free through a gateway endpoint.
+The VPC pricing page states the hourly charge is $0.045 per hour in the example region and the data processing charge is $0.045 per GB, and that the standard EC2 data transfer charge applies on top (AWS VPC pricing, as of 2026-11).
+The worked example on that page sends 1 GB from an instance in a private subnet to S3 through NAT and bills the processing fee on it with no transfer charge, even though a gateway endpoint for S3 has no hourly or processing fee (AWS VPC pricing, as of 2026-11).
+A regional NAT gateway is a separate mode that follows workloads across AZs from one gateway ID, billed at $0.045 per hour per AZ it occupies plus the same $0.045 per GB, and it can take up to 60 minutes to expand to a new AZ, during which traffic is processed across zones (AWS VPC docs and pricing, as of 2026-11).
 Because processing is metered on bytes traversing the gateway, a download that is free of internet egress charges, such as pulling a 1 TB model from a public hub, still costs about $45 in NAT processing at $0.045 per GB.
 If the NAT gateway sits in a different AZ than the instance, the instance-to-NAT hop also crosses an AZ and adds the inter-AZ meters.
 
-Interface VPC endpoints (PrivateLink) charge an hourly fee per endpoint network interface plus a per-GB processing fee, reported at $0.01 per hour per ENI and $0.01 per GB (secondary source, as of 2026-10, UNVERIFIED against the AWS pricing page this session).
-A Transit Gateway adds an attachment-hour fee and a per-GB data processing fee on every byte that crosses it (rates UNVERIFIED this session).
+Interface VPC endpoints (PrivateLink) charge an hourly fee per endpoint network interface plus a per-GB processing fee, at $0.01 per hour per ENI and $0.01 per GB for the first 1 PB per month, then $0.006 for the next 4 PB and $0.004 above 5 PB (AWS PrivateLink pricing, us-east-1 example, as of 2026-11).
+A Transit Gateway adds an attachment-hour fee and a per-GB data processing fee on every byte sent to it, at $0.05 per VPC attachment-hour in the us-east-2 example and $0.02 per GB in the us-east-1 example (AWS Transit Gateway pricing, as of 2026-11).
 The general rule is that every managed hop that terminates and re-originates a flow adds a meter, so path length in "managed boxes" is a cost variable as much as a latency variable.
 
 ### Replication and routing multiply bytes
@@ -99,10 +126,12 @@ It is about fan-out inside your own system.
 Two mechanisms dominate.
 
 **Uniform endpoint selection.**
-Kubernetes `kube-proxy` selects a Service endpoint uniformly at random by default.
+Kubernetes `kube-proxy` selects a Service endpoint uniformly at random by default in iptables mode, the default mode in Kubernetes 1.37 (Kubernetes docs, as of 2026-11).
 With N equal-sized zones and uniformly distributed backends, a fraction (N-1)/N of east-west bytes crosses a zone boundary: 2/3 with three zones.
-Zone-aware routing (EndpointSlice hints and the Service `trafficDistribution` field, with exact version and GA status UNVERIFIED this session) steers to same-zone endpoints and falls back when a zone has too few endpoints.
-The trade-off is load skew: if one zone has more clients than backends, same-zone preference overloads its backends, so the control loop disables hints when it predicts imbalance.
+Zone-aware routing comes in two forms: Topology Aware Routing (annotation `service.kubernetes.io/topology-mode: Auto`, which populates EndpointSlice hints) and the Service `spec.trafficDistribution` field, stable since Kubernetes 1.33, with `PreferSameZone` and `PreferSameNode` stable since 1.35 and `PreferClose` now a deprecated alias (Kubernetes docs and feature gates, as of 2026-11).
+Both steer to same-zone endpoints, and `PreferSameZone` falls back cluster-wide only when a client's zone has no available endpoints.
+The trade-off is load skew: if one zone has more clients than backends, same-zone preference overloads its backends.
+Only `topology-mode: Auto` has a safeguard, withholding hints when it cannot allocate endpoints without predicted overload; `trafficDistribution` ignores capacity and makes you responsible for avoiding overload, for example with topology spread constraints (Kubernetes docs, as of 2026-11).
 See [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_02_Advanced_Scheduling_and_Topology_Aware_Placement|Advanced Scheduling and Topology-Aware Placement]].
 
 **Leader-based replication.**
@@ -113,16 +142,16 @@ With RF=3 and replicas spread across 3 AZs, each ingested byte causes:
 - 2 full crossings for replication, because the two followers are in the two other AZs.
 - 2/3 of a crossing per consumer group when consumers fetch from the leader.
 
-KIP-392 ("fetch from closest replica", Kafka 2.4) lets a consumer fetch from a follower in its own AZ via `broker.rack`, `client.rack`, and the `RackAwareReplicaSelector` replica selector, which removes the consumer term.
+KIP-392 ("fetch from closest replica", shipped in Kafka 2.4.0 per its release notes) lets a consumer fetch from a follower in its own AZ via `broker.rack`, `client.rack`, and the `RackAwareReplicaSelector` replica selector (non-default; `replica.selector.class` defaults to the leader), which removes the consumer term.
 The producer and replication terms remain, because the replication term is the cost of AZ-level durability and cannot be removed without giving up the failure-domain property.
 See [[04-System-Design/06-Messaging-and-Streaming/Apache-Kafka|Apache Kafka]] and [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_13_Messaging_and_Streaming_SQS_SNS_EventBridge_and_MSK|Messaging and Streaming: SQS, SNS, EventBridge, and MSK]].
 
 ### Direct Connect economics
 
 Direct Connect replaces the per-GB internet rate with a lower per-GB rate plus a fixed port charge.
-The AWS pricing example bills data transfer out at an illustrative $0.02 per GB for a US location, and states that data transferred into AWS over Direct Connect is $0.00 per GB regardless of volume and location (AWS Direct Connect pricing, as of 2026-10).
-Port-hour rates in the same material include $0.30 per hour for a 1 Gbps dedicated port and $2.25 per hour for a 10 Gbps dedicated port, with 730 hours per month used in the calculations (AWS Direct Connect pricing, as of 2026-10).
-The DTO rate depends on the Direct Connect location's pricing region and the source region of the data, so an Asia Pacific (Tokyo) source to a US location is reported at about $0.0491 per GB, and South America to a US location at $0.15 per GB (CloudZero summary, as of 2026-10).
+The AWS pricing example bills data transfer out at $0.02 per GB from the contiguous US to a US location, and states that data transferred into AWS over Direct Connect is $0.00 per GB in all locations (AWS Direct Connect pricing, as of 2026-11).
+Port-hour rates in the same material include $0.30 per hour for a 1 Gbps dedicated port and $2.25 per hour for a 10 Gbps dedicated port, with 730 hours per month used in the calculations (AWS Direct Connect pricing, as of 2026-11).
+The DTO rate depends on the Direct Connect location's pricing region and the source region of the data, so an Asia Pacific (Tokyo, Osaka) source to a US location is $0.09 per GB, and South America (Sao Paulo, Mexico) to a US location is $0.15 per GB (AWS Direct Connect pricing, as of 2026-11).
 You pay the carrier circuit, cross-connect, and colo costs separately, and none of those appear on the AWS bill.
 
 Because ingress is already free over the internet, Direct Connect never saves money on on-prem to cloud training data loads.
@@ -141,26 +170,28 @@ Pricing is therefore a steering signal first and a cost recovery mechanism secon
 
 | Item | Value | Source |
 |---|---|---|
-| AWS internet egress, first 10 TB per month | $0.09 per GB | CloudZero summary of EC2 pricing (as of 2026-10) |
-| AWS internet egress tiers | $0.085 next 40 TB, $0.07 next 100 TB, $0.05 next 150 TB | CloudZero summary of EC2 pricing (as of 2026-10) |
-| AWS free internet egress | 100 GB per month aggregated | CloudZero summary (as of 2026-10) |
-| AWS inter-AZ | $0.01 per GB each direction, so $0.02 per GB crossed | CloudZero summary (as of 2026-10) |
-| AWS inter-region (typical US pair) | $0.02 per GB | CloudZero summary (as of 2026-10) |
-| AWS data into AWS from internet | $0.00 | CloudZero and AWS Direct Connect pricing (as of 2026-10) |
-| EC2 to S3 same region | $0.00 transfer | Cloudoptimo summary (as of 2026-10) |
-| NAT gateway hourly | $0.045 per hour per gateway (example region) | AWS VPC pricing (as of 2026-10) |
-| NAT gateway processing | $0.045 per GB | AWS VPC pricing (as of 2026-10) |
-| Interface endpoint | $0.01 per hour per ENI plus $0.01 per GB | Secondary source (as of 2026-10), UNVERIFIED |
-| Direct Connect DTO, US location | $0.02 per GB | AWS Direct Connect pricing (as of 2026-10) |
-| Direct Connect DTO, Tokyo to US location | $0.0491 per GB | CloudZero summary (as of 2026-10) |
-| Direct Connect 1 Gbps dedicated port | $0.30 per hour, about $219 per month | AWS Direct Connect pricing and CloudZero (as of 2026-10) |
-| Direct Connect 1 Gbps hosted port | $0.33 per hour | CloudZero (as of 2026-10) |
-| Direct Connect 10 Gbps dedicated port | $2.25 per hour, $1,642.50 per month | AWS Direct Connect pricing (as of 2026-10) |
-| Direct Connect port-hours example | 2 locations x 2 ports x 10G x 730 h = $6,570 per month | AWS Direct Connect pricing (as of 2026-10) |
-| GCP Premium Tier internet egress, first tier | about $0.12 per GiB | Google Cloud docs, not re-verified in this session (UNVERIFIED) |
-| GCP inter-zone, same region | about $0.01 per GiB | Google Cloud docs, not re-verified in this session (UNVERIFIED) |
-| GCP Interconnect egress | about $0.02 per GiB | Google Cloud docs, not re-verified in this session (UNVERIFIED) |
-| GCP Cloud NAT processing | about $0.045 per GiB | Google Cloud docs, not re-verified in this session (UNVERIFIED) |
+| AWS internet egress, first 10 TB per month | $0.09 per GB | AWS price list, us-east-1 (as of 2026-11) |
+| AWS internet egress tiers | $0.085 next 40 TB, $0.07 next 100 TB, $0.05 above 150 TB; contact AWS above 500 TB per month | AWS price list, us-east-1, and EC2 pricing (as of 2026-11) |
+| AWS free internet egress | 100 GB per month aggregated across services and regions, excluding China and GovCloud | AWS EC2 pricing (as of 2026-11) |
+| AWS inter-AZ | $0.01 per GB each direction, so $0.02 per GB crossed | AWS EC2 pricing and CUR docs (as of 2026-11) |
+| AWS inter-region (typical US pair) | $0.02 per GB, sender only; us-east-1 to us-east-2 is $0.01 | AWS price list and CUR docs (as of 2026-11) |
+| AWS data into AWS from internet | $0.00 | AWS CUR docs (as of 2026-11) |
+| EC2 to S3 same region | $0.00 transfer, but NAT, PrivateLink, or Transit Gateway processing still applies if in the path | AWS EC2 pricing (as of 2026-11) |
+| NAT gateway hourly | $0.045 per hour per gateway (example region); regional mode $0.045 per hour per AZ | AWS VPC pricing (as of 2026-11) |
+| NAT gateway processing | $0.045 per GB | AWS VPC pricing (as of 2026-11) |
+| NAT gateway limits | 5 Gbps scaling to 100 Gbps; 1M scaling to 10M packets per second; 55,000 connections per IP per unique destination | AWS VPC docs (as of 2026-11) |
+| Interface endpoint | $0.01 per hour per ENI plus $0.01 per GB for the first 1 PB per month | AWS PrivateLink pricing (as of 2026-11) |
+| Transit Gateway | $0.05 per VPC attachment-hour (us-east-2 example) plus $0.02 per GB (us-east-1 example) | AWS Transit Gateway pricing (as of 2026-11) |
+| Direct Connect DTO, US location | $0.02 per GB from the contiguous US | AWS Direct Connect pricing (as of 2026-11) |
+| Direct Connect DTO, Tokyo to US location | $0.09 per GB | AWS Direct Connect pricing (as of 2026-11) |
+| Direct Connect 1 Gbps dedicated port | $0.30 per hour, about $219 per month | AWS Direct Connect pricing (as of 2026-11) |
+| Direct Connect 1 Gbps hosted port | $0.33 per hour | AWS Direct Connect pricing (as of 2026-11) |
+| Direct Connect 10 Gbps dedicated port | $2.25 per hour, $1,642.50 per month | AWS Direct Connect pricing (as of 2026-11) |
+| Direct Connect port-hours example | 2 locations x 2 ports x 10G x 730 h = $6,570 per month | AWS Direct Connect pricing (as of 2026-11) |
+| GCP Premium Tier internet egress, first tier | $0.12 per GiB (Iowa to North America, 1 GiB to 1 TiB) | Google Cloud docs (as of 2026-11) |
+| GCP inter-zone, same region | $0.01 per GiB, attributed to the sender's project | Google Cloud docs (as of 2026-11) |
+| GCP Interconnect egress | $0.02 per GiB (US or Canada location and attachment region) | Google Cloud docs (as of 2026-11) |
+| GCP Cloud NAT processing | $0.045 per GiB, inbound and outbound | Google Cloud docs (as of 2026-11) |
 
 Derived constants used in this chapter:
 
@@ -170,27 +201,26 @@ Derived constants used in this chapter:
 | 10 Gbps port, 100 percent utilization | 10 Gbit/s x 730 x 3600 / 8 | about 3,285 TB per month |
 | Effective $/GB at full 10G utilization | 0.02 + 1,642.50 / 3,285,000 | about $0.0205 |
 | Breakeven, 2 x 1G ports | 438 / (0.09 - 0.02) | about 6.3 TB per month |
-| Breakeven, 2 x 10G ports | 3,285 / (0.09 - 0.02) | about 46.9 TB per month |
+| Breakeven, 2 x 10G ports | 3,285 / (0.09 - 0.02) | about 46.9 TB per month at the flat first-tier rate; about 49.9 TB with the published tiers |
 
 ## AWS vs GCP Mechanism Parity
 
-All GCP rows in this table are structural and from prior knowledge of the product docs.
-Any GCP number is UNVERIFIED in this session and must be rechecked against the [Google Cloud VPC pricing page](https://cloud.google.com/vpc/network-pricing) before use.
+GCP rates below come from the [Google Cloud VPC pricing page](https://cloud.google.com/vpc/network-pricing), the Cloud NAT and Cloud Interconnect pricing pages, and the Cloud Storage pricing page (as of 2026-11), and vary by source region.
 
 | Dimension | AWS | GCP |
 |---|---|---|
-| Metering point | ENI or service endpoint; inter-AZ billed on both sender out and receiver in (CloudZero summary, as of 2026-10) | Metered on egress from the sender; ingress generally free (UNVERIFIED) |
-| Inter-AZ rate | $0.01 per GB each way, effective $0.02 | Inter-zone same-region egress, about $0.01 per GiB (UNVERIFIED) |
-| Same-zone private traffic | Free over private IP | Free over internal IP (UNVERIFIED) |
-| Public IP hairpin inside one AZ | Billed at regional rates (UNVERIFIED this session) | Billed as external traffic when using external IP (UNVERIFIED) |
-| Internet egress tiers | Volume tiers by month and destination region, 100 GB free | Premium Tier (Google backbone, cold-potato) and Standard Tier (hot-potato) with separate rate cards (UNVERIFIED) |
-| Object store to compute, same region | Free | Free within same location (UNVERIFIED) |
-| NAT | NAT gateway: hourly plus $0.045 per GB, per AZ (AWS VPC pricing, as of 2026-10) | Cloud NAT: per-VM-hour plus per-GiB processing (UNVERIFIED); regional and not AZ-pinned |
+| Metering point | ENI or service endpoint; inter-AZ billed on both sender out and receiver in (AWS CUR docs, as of 2026-11) | VM-to-VM cost is attributed to the sending VM's project; ingress is free (Google Cloud docs, as of 2026-11) |
+| Inter-AZ rate | $0.01 per GB each way, effective $0.02 | Inter-zone same-region, $0.01 per GiB on the sender only, so about half the AWS effective rate (Google Cloud docs, as of 2026-11) |
+| Same-zone private traffic | Free over private IP | Free over internal IPv4 or any IPv6 within the same VPC network (Google Cloud docs, as of 2026-11) |
+| Public IP hairpin inside one AZ | $0.01 per GB each direction (AWS EC2 pricing, as of 2026-11) | External IPv4 traffic always leaves the zone: $0.01 per GiB within the same VPC network, internet rates between different VPC networks (Google Cloud docs, as of 2026-11) |
+| Internet egress tiers | Volume tiers by month and destination region, 100 GB free | Premium Tier (default, Google backbone) from Iowa to North America is $0.12, $0.11, then $0.08 per GiB; Standard Tier (public internet) is $0.085, $0.065, then $0.045 per GiB after 200 GiB free (Google Cloud docs, as of 2026-11) |
+| Object store to compute, same region | Free | Free within the same location; a region is not the same location as a multi-region (Google Cloud Storage pricing, as of 2026-11) |
+| NAT | Zonal NAT gateway: hourly plus $0.045 per GB, per AZ; regional mode: $0.045 per hour per AZ plus $0.045 per GB (AWS VPC pricing, as of 2026-11) | Cloud NAT: $0.0014 per VM-hour capped at $0.044 per hour above 32 VMs, plus $0.045 per GiB inbound and outbound and $0.005 per IP-hour; configured per region and not AZ-pinned (Google Cloud docs, as of 2026-11) |
 | Private path to managed APIs | Gateway endpoints for S3 and DynamoDB (no hourly or per-GB fee); interface endpoints for most other services | Private Google Access and Private Service Connect |
-| Dedicated link | Direct Connect: port hours plus DTO per GB; inbound free (AWS Direct Connect pricing, as of 2026-10) | Dedicated, Partner, and Cross-Cloud Interconnect with per-GiB egress (UNVERIFIED) |
+| Dedicated link | Direct Connect: port hours plus DTO per GB; inbound free (AWS Direct Connect pricing, as of 2026-11) | Dedicated, Partner, and Cross-Cloud Interconnect with per-GiB egress; 10 Gbps Dedicated circuit $2.328 per hour plus VLAN attachment fees (Google Cloud docs, as of 2026-11) |
 | VPC scope | Regional VPC; cross-region needs peering or Transit Gateway with per-GB meters | Global VPC; cross-region traffic inside one VPC avoids a gateway meter but still pays inter-region egress |
-| Cross-account AZ alignment | AZ ID versus AZ name mapping is per account | Zone names are global and consistent across projects (UNVERIFIED) |
-| Link to hardware | Nitro cards meter and shape at the host | Andromeda host-based virtualization meters at the VM |
+| Cross-account AZ alignment | AZ ID versus AZ name mapping is per account (AWS RAM docs, as of 2026-11) | Zones are logical abstractions of physical resources (Google Cloud docs, as of 2026-11); UNVERIFIED that a zone name maps to the same physical location across projects: not stated in current docs, and secondary sources report per-organization mapping |
+| Link to hardware | Nitro cards implement the VPC data path at the host | Andromeda host-based virtualization implements the virtual network data path at the host (NSDI 2018) |
 
 The structural difference that changes design: AWS lets you cut the bill by removing a managed hop (NAT, TGW, interface endpoint), while GCP's global VPC removes whole classes of gateway fees but not the physical inter-region rate.
 For cross-cloud network design see [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_02_Networking_and_Load_Balancing_Translation|Networking and Load Balancing Translation]] and [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_07_Multi_Cloud_and_Hybrid_Architecture_Reality|Multi-Cloud and Hybrid Architecture Reality]].
@@ -199,7 +229,7 @@ For cross-cloud network design see [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GC
 
 ### Step 1 - Capacity and cost arithmetic
 
-Use these AWS rates: $0.02 per GB crossed between AZs, $0.02 per GB inter-region, $0.045 per GB NAT processing, $0.09 per GB internet (first tier), $0.02 per GB Direct Connect DTO (rates sourced in Numbers to Know, as of 2026-10).
+Use these AWS rates: $0.02 per GB crossed between AZs, $0.02 per GB inter-region, $0.045 per GB NAT processing, $0.09 per GB internet (first tier), $0.02 per GB Direct Connect DTO (rates sourced in Numbers to Know, as of 2026-11).
 
 **Kafka at 100 MB/s ingest.**
 Ingest per 30-day month is 100 MB/s x 86,400 x 30 = 259,200 GB.
@@ -224,8 +254,8 @@ One cross-region pull to a regional cache, then intra-region fan-out over privat
 **Direct Connect breakeven.**
 Two 1 Gbps dedicated ports cost 2 x $0.30 x 730 = $438 per month.
 Savings per GB over the first internet tier are $0.09 - $0.02 = $0.07, so breakeven is 438 / 0.07 = about 6.3 TB per month.
-Two 10 Gbps ports cost $3,285 per month and break even at about 46.9 TB per month.
-Above 10 TB per month the internet blended rate falls, so recompute with the actual tier, and add carrier and cross-connect costs.
+Two 10 Gbps ports cost $3,285 per month and break even at about 46.9 TB per month at the flat first-tier rate.
+Above 10 TB per month the internet blended rate falls, which moves that breakeven to about 49.9 TB with the published tiers, so recompute with the actual tier, and add carrier and cross-connect costs.
 
 ### Step 2 - Runnable model
 
@@ -313,7 +343,7 @@ Running it prints the figures used above: $24,192 and $13,824 for Kafka, $6,667 
 ### Step 3 - Attribute real spend
 
 Use the Cost and Usage Report in Athena.
-The usage-type substrings below are from prior knowledge and should be checked against your own CUR before relying on them (UNVERIFIED).
+The usage-type substrings below match the AWS CUR docs and the EC2 price list (`NatGateway-Bytes`), and a region prefix such as `USE2-` appears outside us-east-1 (as of 2026-11).
 
 ```sql
 SELECT line_item_usage_type,
@@ -333,12 +363,12 @@ LIMIT 50;
 ```
 
 The CUR tells you which resource and how many dollars, but not which peer.
-Enable VPC Flow Logs on the NAT gateway ENI and on top-talker ENIs with the custom fields for source, destination, bytes, and AZ ID to attribute a bill line to a peer (field names UNVERIFIED this session).
+Enable VPC Flow Logs on the NAT gateway ENI and on top-talker ENIs with the custom fields `srcaddr`, `dstaddr`, `pkt-srcaddr`, `pkt-dstaddr`, `bytes`, `az-id`, and `next-hop-az-id` to attribute a bill line to a peer (AWS VPC docs, as of 2026-11).
 
 ### Step 4 - Free fix: S3 gateway endpoint plus budget guardrail
 
-Cost estimate: gateway endpoints for S3 have no hourly or per-GB charge, and an AWS Budget is free for the first budgets in an account (budget pricing UNVERIFIED this session), so the expected cost of this lab is $0.
-The `UsageTypeGroup` filter values below must be checked against the Cost Explorer filter list in your account (UNVERIFIED).
+Cost estimate: gateway endpoints for S3 have no hourly or per-GB charge (AWS VPC pricing, as of 2026-11), and monitoring and notifying on an AWS Budget without actions is free (AWS Budgets pricing, as of 2026-11), so the expected cost of this lab is $0.
+The `UsageTypeGroup` filter name is a valid provider value, and both group names below appear in the Cost Explorer filter list, though the groups available depend on the services you have used (Terraform AWS provider and AWS Cost Explorer docs, as of 2026-11).
 
 ```hcl
 terraform {
@@ -389,24 +419,24 @@ Teardown, exact command:
 terraform destroy -auto-approve -var "vpc_id=$VPC_ID" -var 'route_table_ids=["rtb-0123456789abcdef0"]' -var "alert_email=$ALERT_EMAIL"
 ```
 
-Verification: after apply, run `aws ec2 describe-route-tables --route-table-ids <id>` and confirm a route whose destination is the S3 managed prefix list points at the endpoint, then confirm NAT `BytesOutToDestination` for the S3 flow drops to zero in CloudWatch.
+Verification: after apply, run `aws ec2 describe-route-tables --route-table-ids <id>` and confirm a route whose destination is the S3 managed prefix list points at the endpoint, then confirm NAT `BytesOutToDestination` falls by the S3 volume in CloudWatch; the metric is per gateway and not per flow, so it reaches zero only if S3 was the gateway's only traffic.
 
 ## Failure Modes and Pitfalls
 
 ### Cost failure modes
 
 **NAT as default egress for AWS APIs.**
-Container image pulls from ECR, S3 object reads, and DynamoDB calls routed through NAT pay $0.045 per GB for traffic that would be free via a gateway endpoint.
+Container image pulls from ECR, S3 object reads, and DynamoDB calls routed through NAT pay $0.045 per GB for traffic that would be free via a gateway endpoint; for ECR this covers the image layers, which come from S3, while the registry API calls need interface endpoints (AWS ECR docs, as of 2026-11).
 A 500-node scale-out pulling a 10 GB image through NAT moves 5 TB and pays about $225 in processing per event.
 Autoscaling flaps turn this into a recurring cost, and the cost correlates with incidents, so the bill spikes exactly when everyone is busy.
 
 **Cross-AZ NAT or endpoint placement.**
 A single NAT gateway shared by three AZs saves $0.045 per hour per gateway but makes two thirds of egress cross an AZ first.
-Per-AZ NAT is also what you want for static stability, so the correct trade is one NAT per AZ and routing each subnet to its own AZ's gateway.
+Per-AZ NAT is also what you want for static stability, so the correct trade is one NAT per AZ and routing each subnet to its own AZ's gateway (AWS VPC docs, as of 2026-11), or a regional NAT gateway that keeps zonal affinity for you except during its expansion window.
 See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]].
 
 **Public-address hairpin.**
-Services that resolve each other via public DNS names pay regional charges for traffic that stays in an AZ (UNVERIFIED this session, see Internals).
+Services that resolve each other via public DNS names pay $0.01 per GB in each direction for traffic that stays in an AZ (AWS EC2 pricing, as of 2026-11, see Internals).
 
 **Replication topology amplification.**
 Kafka, Cassandra, Elasticsearch, and any quorum store at RF=3 across three AZs produce at least 2 crossings per written byte by construction.
@@ -416,7 +446,7 @@ See [[04-System-Design/05-Data-Stores/Apache-Cassandra|Apache Cassandra]] and [[
 **Cross-region training data and checkpoints.**
 GPU capacity is often available in a region that does not hold the dataset.
 Each epoch streamed cross-region costs the full dataset size times $0.02 per GB, which equals the one-time cost of copying it, so any job with more than about one epoch should copy.
-Synchronous cross-region checkpoint replication at high frequency is the largest single line item in many training budgets, as the $144,000 per month example shows.
+High-frequency cross-region checkpoint replication can become the largest network line item in a training budget, as the $144,000 per month example shows.
 
 **Failover re-seed.**
 A regional failover or a rebuilt replica can trigger a full inter-region copy.
@@ -427,13 +457,13 @@ Disaster recovery plans that were costed on steady-state delta traffic omit the 
 **Zone-affinity hot spots.**
 Same-zone routing makes each zone a closed loop.
 If one zone has 50 percent of clients and 33 percent of backends, those backends saturate while others idle.
-Controllers that disable hints under predicted imbalance protect you, but only if endpoints are evenly spread, which requires topology spread constraints.
+`topology-mode: Auto` withholds hints under predicted imbalance, but that check is not real-time feedback, and `trafficDistribution` has no such check at all, so even endpoint spread through topology spread constraints is on you (Kubernetes docs, as of 2026-11).
 
 **Removing cross-AZ capacity to save money.**
 Static stability requires that each AZ can absorb a failed neighbor's load without a control-plane action.
 Spreading replicas across AZs is deliberately paid for through inter-AZ fees.
 Do not attribute that fee to waste.
-The AWS public event summary for the December 7, 2021 us-east-1 event is the relevant public analysis of how retry and client behavior amplify an internal network congestion event, and is a reminder that capacity decisions in one failure domain interact with traffic behavior in others (details UNVERIFIED this session).
+The [AWS public event summary for the December 7, 2021 us-east-1 event](https://aws.amazon.com/message/12721/) is the relevant public analysis of how retry and client behavior amplify an internal network congestion event: an automated scaling task triggered a connection surge that overwhelmed the devices linking the internal and main networks, and a latent issue kept clients from backing off, and it is a reminder that capacity decisions in one failure domain interact with traffic behavior in others.
 I did not locate a public post-incident review whose root cause was egress billing itself; egress cost incidents are typically published as customer postmortems and not as provider PIRs.
 
 **Direct Connect as a single point of failure.**
@@ -441,7 +471,7 @@ A single port or a single location removes provider-side redundancy that the int
 The resiliency design (two locations, two devices) is what pushes the fixed cost to the $438 and $3,285 per month figures used in the breakeven.
 
 **Quota and limit interactions.**
-NAT gateways have per-gateway bandwidth and port-allocation limits, and exceeding them shows up as connection errors and `ErrorPortAllocation` metrics (limits UNVERIFIED this session), so a cost fix of "route everything through one NAT" also becomes a reliability bug.
+NAT gateways have per-gateway limits of 100 Gbps, 10 million packets per second, and 55,000 connections per IP per unique destination (up to 8 IPs on a zonal gateway, 32 per AZ on a regional one), and exceeding them shows up as dropped packets, connection errors, and the `ErrorPortAllocation` metric (AWS VPC docs, as of 2026-11), so a cost fix of "route everything through one NAT" also becomes a reliability bug.
 
 ## Security and Cost Angles
 
@@ -451,19 +481,19 @@ NAT gateways have per-gateway bandwidth and port-allocation limits, and exceedin
 - Replace the NAT-to-internet path for AWS APIs with private paths, and let only a small, audited egress VPC reach the internet. On GCP use Private Google Access and VPC Service Controls to the same effect. See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls: Security Perimeters]].
 - Egress is the exfiltration channel. A budget alarm on internet-out bytes is a weak but real detection signal, because exfiltration looks like a spike in the `DataTransfer-Out-Bytes` line.
 - Encrypting traffic does not change the billed bytes meaningfully, but TLS termination placement matters for where compression can happen. Compress before encrypting, since ciphertext does not compress.
-- Direct Connect is not encrypted by default. MACsec on supported ports or IPsec over a VIF are the options, and either one affects the effective payload per packet (feature availability UNVERIFIED this session).
+- The Direct Connect cross-connect to your router is not encrypted by default, though AWS encrypts at the physical layer between Direct Connect locations and Regions. MACsec on 10, 100, and 400 Gbps dedicated connections at selected points of presence (not 1 Gbps and not hosted connections, no extra charge) or IPsec over a VIF are the options, and either one affects the effective payload per packet (AWS Direct Connect docs, as of 2026-11).
 - Customer-managed keys for replicated buckets add KMS request charges in the destination region. Price this next to the transfer fee for cross-region replication of encrypted objects. See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 
 ### Cost levers, in order of return on effort
 
 1. **Co-locate.** Put compute in the region and AZ of the data. Free same-region object reads make this the biggest single lever for AI jobs.
-2. **Remove managed hops.** Gateway endpoints instead of NAT for S3 and DynamoDB, per-AZ NAT for the rest, and IPv6 egress where supported to avoid NAT entirely (egress-only gateway pricing UNVERIFIED this session).
+2. **Remove managed hops.** Gateway endpoints instead of NAT for S3 and DynamoDB, per-AZ NAT for the rest, and IPv6 egress where supported to avoid NAT entirely (an egress-only internet gateway has no charge of its own, though data transfer charges still apply; AWS VPC docs, as of 2026-11).
 3. **Compress at the source.** Producer-side zstd or lz4 on Kafka cuts replication, producer, and consumer terms together, because brokers store and forward the producer's compressed batch. Compression ratios are workload dependent, so measure.
-4. **Zone-aware routing and follower fetch.** Typically 30 to 60 percent of east-west cost in the Kafka example (43 percent in the model above), with a latency and skew trade-off.
+4. **Zone-aware routing and follower fetch.** 43 percent of east-west cost in the Kafka model above, with a latency and skew trade-off.
 5. **Cache and fan out locally.** One cross-region pull plus a regional cache beats N pulls, as in the weight fan-out example.
-6. **CDN in front of internet egress.** CloudFront is reported at $0.085 per GB for the first 10 TB per month in North America with a larger free allowance than EC2, and origin fetches from AWS origins are free (CloudZero and Cloudoptimo summaries, as of 2026-10, origin-fetch rule UNVERIFIED this session).
+6. **CDN in front of internet egress.** CloudFront pay-as-you-go is free for the first 1 TB per month, then $0.085 per GB for the next 9 TB in the US, Mexico, and Canada, and origin fetches from AWS origins are free (AWS CloudFront pricing, as of 2026-11).
 7. **Dedicated links.** Only after the previous six, and only above the computed breakeven.
-8. **Commercial terms.** Private pricing agreements and committed spend often discount transfer lines, and both major providers announced waivers of egress fees for customers fully leaving the platform (announcements in early 2024, UNVERIFIED this session).
+8. **Commercial terms.** Private pricing agreements and committed spend often discount transfer lines, and both major providers announced waivers of egress fees for customers moving off the platform: Google on January 11, 2024, and AWS on March 5, 2024, with AWS covering all data or all data for a particular service, by request to Support with credits after approval (Google Cloud and AWS blogs, as of 2026-11).
 
 ### Unit economics
 
@@ -484,13 +514,13 @@ Show why that is wrong and how you would find the real number for a service.
 #### Model Answer
 
 AWS bills AZ crossings on both ends.
-The sender is charged $0.01 per GB out and the receiver $0.01 per GB in (CloudZero summary of AWS pricing, as of 2026-10), so the effective rate is $0.02 per GB crossed.
+The sender is charged $0.01 per GB out and the receiver $0.01 per GB in (AWS EC2 pricing and CUR docs, as of 2026-11), so the effective rate is $0.02 per GB crossed.
 That already doubles the figure in the teammate's head.
 The second error is volume. Quorum systems cross AZs by construction. With RF=3 across 3 AZs, a written byte causes at least two crossings for replication, which is $0.04 per written GB before reads.
 For a 100 MB/s write stream, that replication floor alone is 259,200 GB x 2 x $0.02 = $10,368 per month.
 To find the real number, I query the Cost and Usage Report for the regional-bytes usage type grouped by resource ID, then use VPC Flow Logs with AZ ID fields to see which peer pairs generate it.
 Name-to-ID mapping matters. I compare AZ IDs, not AZ names, when reasoning across accounts.
-I would also check for public-IP or Elastic-IP addressing between same-AZ peers, since that path is billed regionally even when it never leaves the AZ (UNVERIFIED in this session, so I would confirm it in the CUR first).
+I would also check for public-IP or Elastic-IP addressing between same-AZ peers, since public or Elastic IPv4 traffic is billed at $0.01 per GB in each direction with no same-AZ exception on the pricing page (AWS EC2 pricing, as of 2026-11), and I would confirm the volume in the CUR.
 
 #### Follow-up Interviewer Question
 
@@ -503,11 +533,11 @@ Walk through the diagnosis and the fix.
 
 #### Model Answer
 
-NAT has two meters: an hourly fee of $0.045 and processing of $0.045 per GB (AWS VPC pricing, as of 2026-10).
+NAT has two meters: an hourly fee of $0.045 and processing of $0.045 per GB (AWS VPC pricing, as of 2026-11).
 Hourly cost is flat, so a 6x jump is processing, meaning bytes.
 I group the CUR NAT bytes line by gateway resource ID to find which gateway, then enable flow logs on its ENI and aggregate by destination address and port.
 The usual suspects are traffic to AWS services that could use a gateway endpoint, image pulls from the registry during scale-out, a data job that started reading object storage from a private subnet, and a model download from a public hub.
-Fixes in order: S3 and DynamoDB gateway endpoints, which carry no hourly or per-GB fee for the endpoint itself; interface endpoints for ECR and other APIs where the volume justifies $0.01 per hour per ENI plus $0.01 per GB (secondary source, UNVERIFIED); a pull-through cache or mirror for public artifacts; and one NAT per AZ so the instance-to-NAT hop does not cross AZs.
+Fixes in order: S3 and DynamoDB gateway endpoints, which carry no hourly or per-GB fee for the endpoint itself; interface endpoints for ECR and other APIs where the volume justifies $0.01 per hour per ENI plus $0.01 per GB (AWS PrivateLink pricing, as of 2026-11); a pull-through cache or mirror for public artifacts; and one NAT per AZ so the instance-to-NAT hop does not cross AZs.
 I would put the endpoint policy in place at the same time, to keep it from becoming an exfiltration path.
 Then I add a budget on the NAT usage type so a regression is caught within a day.
 
@@ -530,7 +560,7 @@ At 259,200 GB per month that is $24,192.
 Enabling KIP-392 follower fetching removes the consumer term. Brokers set `broker.rack` and `replica.selector.class=org.apache.kafka.common.replica.RackAwareReplicaSelector`, and consumers set `client.rack`. Crossings drop to 2.67 and cost to $13,824, a 43 percent saving.
 The cost is latency. A follower serves only data up to the high watermark and lags the leader by about one fetch cycle, so end-to-end latency rises.
 Replication's two crossings are the price of surviving an AZ loss, so I do not remove them. Dropping to RF=2 or placing a partition's replicas in one AZ trades availability for dollars, which needs an explicit sign-off from the owners.
-Next lever is producer compression. Brokers store and replicate the producer's compressed batch, so a 3x ratio cuts every term by a third. The ratio is workload dependent, so I measure it on production payloads.
+Next lever is producer compression. Brokers store and replicate the producer's compressed batch, so a 3x ratio cuts every term to a third, a two-thirds saving. The ratio is workload dependent, so I measure it on production payloads.
 A third lever is an AZ-aware partitioner that prefers a leader in the producer's AZ, which cuts the producer term at the price of skew if AZ producer volumes are uneven.
 Tiered storage for long retention moves cold data off broker disks to object storage, which has no cross-AZ replication meter for same-region reads, but it changes failure behavior and should be assessed separately.
 
@@ -546,7 +576,7 @@ What is your analysis?
 #### Model Answer
 
 Breakeven is fixed cost divided by the per-GB saving.
-The saving at the first internet tier is $0.09 - $0.02 = $0.07 per GB (CloudZero summary and AWS Direct Connect pricing, as of 2026-10).
+The saving at the first internet tier is $0.09 - $0.02 = $0.07 per GB (AWS price list and AWS Direct Connect pricing, as of 2026-11).
 At 80 TB per month the internet path would cost a tiered amount, about 10,000 x 0.09 + 40,000 x 0.085 + 30,000 x 0.07 = $6,400 (my model), while Direct Connect DTO is 80,000 x $0.02 = $1,600.
 Hence the gross saving is about $4,800 per month.
 Fixed cost for a resilient design is two locations, so two 10 Gbps ports is 2 x $2.25 x 730 = $3,285 per month, leaving about $1,500 before carrier circuits, cross-connects, and colo cross-connect fees, which are not on the AWS bill.
@@ -554,7 +584,7 @@ That is thin. The 80 TB would use only about 2.4 percent of the 3,285 TB per mon
 Peak rate matters. 80 TB per month averages 247 Mbps, but bursts to many Gbps for a nightly export would require sizing for the burst or accepting a longer transfer window.
 Also, if the on-prem to cloud direction is the larger flow, Direct Connect saves nothing on it, since inbound is free over the internet and over Direct Connect.
 The case then has to rest on predictability, jitter, and security, not on cost.
-My recommendation depends on the quote for the carrier circuit. I would also price a Transit Gateway if traffic goes through one, because it adds a per-GB processing meter (rate UNVERIFIED this session) that can erase much of the saving.
+My recommendation depends on the quote for the carrier circuit. I would also price a Transit Gateway if traffic goes through one, because it adds a per-GB processing meter ($0.02 per GB in the us-east-1 example, so $1,600 per month on 80 TB; AWS Transit Gateway pricing, as of 2026-11) that can erase much of the saving.
 
 #### Follow-up Interviewer Question
 
@@ -569,7 +599,7 @@ Evaluate this.
 #### Model Answer
 
 Streaming means every epoch re-pays the transfer.
-At $0.02 per GB, one epoch of 200 TB is $4,000, and so is a one-time copy of the dataset (inter-region rate, CloudZero summary, as of 2026-10).
+At $0.02 per GB, one epoch of 200 TB is $4,000, and so is a one-time copy of the dataset (inter-region rate, AWS price list, as of 2026-11).
 That makes breakeven about one epoch, plus the monthly storage cost of the second copy.
 For any job with more than one pass, copy once to the GPU region and read locally, where same-region object reads incur no transfer charge.
 Cost is not the only axis.
@@ -621,7 +651,7 @@ Design the distribution and quantify the cost.
 #### Model Answer
 
 The naive approach is each node pulling from a single source, which pays the transfer rate per node.
-Across regions at $0.02 per GB that is 140 x 500 x $0.02 = $1,400 per update inside AWS, and much more across clouds at internet-class rates, which at $0.09 per GB is $6,300 for 500 internet-class pulls (rates AWS tiered, as of 2026-10; the GCP leg is UNVERIFIED).
+Across regions at $0.02 per GB that is 140 x 500 x $0.02 = $1,400 per update inside AWS, and much more across clouds at internet-class rates, which at $0.09 per GB is $6,300 for 500 internet-class pulls, or about $5,700 with the published volume tiers (AWS price list, as of 2026-11); the GCP side charges nothing for ingress when AWS is the source (Google Cloud docs, as of 2026-11).
 The structural fix is to pay the expensive hop once per destination region and not once per node.
 One authoritative copy is published. A replication job copies it once to each destination region, which costs 140 x $0.02 = $2.80 per AWS region, or 140 x $0.09 = $12.60 to leave AWS at the first internet tier.
 Within each region, nodes read from regional object storage at no transfer fee, or from a per-AZ cache populated once, so same-AZ reads over private IPs are free and avoid the cross-AZ meters.
@@ -641,14 +671,14 @@ How do you decide, and what additional data do you want before committing?
 - [AWS Amazon VPC pricing](https://aws.amazon.com/vpc/pricing/) - the authoritative source for NAT gateway hourly and processing rates, including the worked example that stacks data transfer on top of NAT processing.
 - [AWS Direct Connect pay-as-you-go pricing](https://aws.amazon.com/directconnect/pricing/pay-as-you-go/) - port-hour rates, DTO rate examples, and the worked multi-port calculation used in the breakeven analysis.
 - [AWS Direct Connect pricing guide](https://docs.aws.amazon.com/directconnect/latest/PricingGuide/pricing-overview.html) - how dedicated and hosted connection billing works and how rates depend on location and source region.
-- [Amazon EC2 on-demand pricing, data transfer section](https://aws.amazon.com/ec2/pricing/on-demand/) - the primary rate card for internet egress tiers and regional transfer; recheck the numbers in this chapter against it.
+- [Amazon EC2 on-demand pricing, data transfer section](https://aws.amazon.com/ec2/pricing/on-demand/) - the primary rate card for internet egress tiers and regional transfer; the rates also appear in the machine-readable AWSDataTransfer price list.
 - [AWS Architecture Blog: Overview of Data Transfer Costs for Common Architectures](https://aws.amazon.com/blogs/architecture/overview-of-data-transfer-costs-for-common-architectures/) - AWS's own walk-through of which topologies incur which transfer meters.
-- [Google Cloud VPC network pricing](https://cloud.google.com/vpc/network-pricing) - the primary source for GCP inter-zone, inter-region, and internet egress rates; required before using any GCP figure in this chapter.
+- [Google Cloud VPC network pricing](https://cloud.google.com/vpc/network-pricing) - the primary source for GCP inter-zone, inter-region, and internet egress rates used in this chapter.
 - [Google Cloud Interconnect pricing](https://cloud.google.com/network-connectivity/docs/interconnect/pricing) - the GCP counterpart to Direct Connect port and egress pricing.
 - [KIP-392: Allow consumers to fetch from closest replica](https://cwiki.apache.org/confluence/display/KAFKA/KIP-392%3A+Allow+consumers+to+fetch+from+closest+replica) - the design behind follower fetching, including the replica selector interface and the latency trade-off.
-- [Andromeda: Performance, Isolation, and Velocity at Scale in Cloud Network Virtualization (NSDI 2018)](https://www.usenix.org/conference/nsdi18/presentation/dalton) - the host-based network virtualization stack that explains where GCP meters traffic and why intra-datacenter bandwidth is cheap.
-- "Skyplane: Optimizing Transfer Cost and Throughput Using Cloud-Aware Overlays" (NSDI 2023) - shows how cost-aware overlay routing across regions and clouds changes the egress cost and time trade-off.
-- "Cloudcast: High-Throughput, Cost-Aware Overlay Multicast in the Cloud" (NSDI 2024) - extends the overlay idea to one-to-many distribution, which is the weight and dataset distribution case in AI fleets.
+- [Andromeda: Performance, Isolation, and Velocity at Scale in Cloud Network Virtualization (NSDI 2018)](https://www.usenix.org/conference/nsdi18/presentation/dalton) - the host-based network virtualization stack that explains where GCP's virtual network data path runs and why intra-datacenter bandwidth is cheap.
+- [Skyplane: Optimizing Transfer Cost and Throughput Using Cloud-Aware Overlays (NSDI 2023)](https://www.usenix.org/conference/nsdi23/presentation/jain) - shows how cost-aware overlay routing across regions and clouds changes the egress cost and time trade-off.
+- [Cloudcast: High-Throughput, Cost-Aware Overlay Multicast in the Cloud (NSDI 2024)](https://www.usenix.org/conference/nsdi24/presentation/wooders) - extends the overlay idea to one-to-many distribution, which is the weight and dataset distribution case in AI fleets.
 - "Jupiter Evolving: Transforming Google's Datacenter Network via Optical Circuit Switches and Software-Defined Networking" (SIGCOMM 2022) - explains the physical fabric whose economics make same-datacenter traffic effectively free.
 - [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_06_High_Throughput_Checkpointing_to_Object_Storage|High-Throughput Checkpointing to Object Storage]] - the checkpoint write path whose replication frequency drives the largest AI egress line items.
 - [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_03_VPC_Networking_Internals|VPC Networking Internals]] - route tables, endpoints, and Transit Gateway mechanics referenced throughout this chapter.

@@ -16,6 +16,35 @@ sources:
   - "https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/"
   - "https://queue.acm.org/detail.cfm?id=2898444"
   - "https://aws.amazon.com/message/101925/"
+  - "https://karpenter.sh/docs/reference/settings/"
+  - "https://karpenter.sh/docs/concepts/disruption/"
+  - "https://karpenter.sh/docs/concepts/nodepools/"
+  - "https://karpenter.sh/docs/concepts/nodeclasses/"
+  - "https://karpenter.sh/docs/concepts/scheduling/"
+  - "https://karpenter.sh/docs/getting-started/getting-started-with-karpenter/"
+  - "https://raw.githubusercontent.com/aws/karpenter-provider-aws/main/website/content/en/docs/faq.md"
+  - "https://raw.githubusercontent.com/kubernetes-sigs/karpenter/main/pkg/controllers/disruption/multinodeconsolidation.go"
+  - "https://raw.githubusercontent.com/aws/karpenter-provider-aws/main/pkg/cache/cache.go"
+  - "https://raw.githubusercontent.com/awslabs/amazon-eks-ami/main/nodeadm/internal/kubelet/config.go"
+  - "https://raw.githubusercontent.com/argoproj/argo-cd/stable/docs/operator-manual/argocd-cm.yaml"
+  - "https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/"
+  - "https://docs.cilium.io/en/stable/cmdref/cilium-agent/"
+  - "https://docs.cilium.io/en/stable/network/ebpf/maps/"
+  - "https://docs.cilium.io/en/stable/installation/taints/"
+  - "https://docs.cilium.io/en/stable/security/policy/layer3/"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/eks-architecture.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/choosing-instance-type.html"
+  - "https://aws.amazon.com/eks/pricing/"
+  - "https://docs.aws.amazon.com/ec2/latest/instancetypes/gp.html"
+  - "https://docs.aws.amazon.com/AmazonECR/latest/userguide/vpc-endpoints.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html"
+  - "https://cloud.google.com/kubernetes-engine/pricing"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/cluster-upgrades"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/flexible-pod-cidr"
+  - "https://docs.cloud.google.com/compute/docs/instances/spot"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://www.datadoghq.com/blog/2023-03-08-multiregion-infrastructure-connectivity-issue/"
 ---
 
 # Capstone 2: Production EKS and GKE Platform with GitOps
@@ -71,8 +100,9 @@ Its output is the substrate for [[17-Cloud-AI-Engineering/Volume_15_Capstones_Pr
 ### Control plane versus data plane on each cloud
 
 In both managed offerings the Kubernetes API server and etcd are provider-operated and sit outside your account or project network.
-AWS documents the EKS control plane as API servers and a three-member etcd ensemble spread across Availability Zones (UNVERIFIED, recalled from AWS docs).
-GKE regional clusters replicate control plane instances across three zones, while zonal clusters have a single control plane replica that is unavailable during upgrades.
+AWS documents the EKS control plane as at least two API server instances and three etcd instances across three Availability Zones ([AWS docs](https://docs.aws.amazon.com/eks/latest/userguide/eks-architecture.html), as of 2026-11).
+GKE regional clusters replicate the control plane across multiple zones, while zonal clusters have a single control plane that is unavailable during upgrades ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/cluster-upgrades), as of 2026-11).
+GKE stores cluster state in either etcd or Spanner behind an etcd API, so the Raft reasoning that follows applies to etcd-backed clusters ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/cluster-architecture), as of 2026-11).
 etcd is a Raft group, so a write needs a majority and loses availability if it loses two of three members.
 See [[08-Distinguished-Engineering/02-Distributed-Systems-Internals/Raft-Consensus|Raft Consensus]] and [[04-System-Design/07-Infrastructure-and-Orchestration/Kubernetes-Architecture|Kubernetes Architecture]].
 Controllers (Argo CD, Karpenter, Cilium operator) are clients of this API and use optimistic concurrency through `resourceVersion`, the same shared-state pattern as Omega ([Omega, EuroSys 2013](https://research.google/pubs/omega-flexible-scalable-schedulers-for-large-compute-clusters/)).
@@ -91,7 +121,7 @@ The application-controller maintains a cluster cache of live objects fed by Kube
 The API server and UI sit on top.
 
 Two timers are often conflated.
-The refresh timer (default 3 minutes, `timeout.reconciliation`, UNVERIFIED for 2026-10 defaults) decides how often Git is re-checked for each application.
+The refresh timer (default 120 s from `timeout.reconciliation` plus up to 60 s from `timeout.reconciliation.jitter`, [argocd-cm reference](https://raw.githubusercontent.com/argoproj/argo-cd/stable/docs/operator-manual/argocd-cm.yaml), as of 2026-11) decides how often Git is re-checked for each application.
 Watch events on live objects trigger a comparison immediately, so drift (a manual `kubectl edit`) is detected in seconds while a new commit can take up to a refresh interval unless a webhook fires.
 Cost scales with the number of watched resource types and objects in the cluster cache, not with the application count, which is why CRD-heavy clusters (Karpenter, Cilium, Gateway API) inflate controller memory.
 The controller can be sharded across clusters, so a per-cluster Argo CD never needs sharding in this design.
@@ -100,7 +130,8 @@ The operator manual's [high availability](https://argo-cd.readthedocs.io/en/stab
 Resource tracking is the second non-obvious mechanism.
 Argo must decide which live objects belong to which Application.
 The label-based method writes `app.kubernetes.io/instance`, which collides with Helm charts and other tools that set the same label and produces phantom ownership and surprise pruning.
-The annotation-based method (annotation, or annotation plus label) records an explicit `application-name:group/kind/namespace/name` identifier and is the safer choice.
+The annotation-based method (annotation, or annotation plus label) records an explicit `application-name:group/kind:namespace/name` identifier in `argocd.argoproj.io/tracking-id` and is the safer choice.
+`annotation` is the current default, so the label collision applies to installs that still set `label` explicitly (Argo CD docs, as of 2026-11).
 See [resource tracking](https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/).
 
 Diffing is where GitOps meets controllers that mutate objects.
@@ -117,14 +148,14 @@ The per-cluster model costs one more control loop to operate and loses the singl
 
 Karpenter is a controller that watches pods the kube-scheduler has marked unschedulable and creates `NodeClaim` objects directly against the EC2 API.
 There are no Auto Scaling groups in the loop.
-The v1 APIs are `karpenter.sh/v1` `NodePool` and `karpenter.k8s.aws/v1` `EC2NodeClass` (Karpenter docs, as of 2026-10; v1 migration notes at [karpenter.sh](https://karpenter.sh/docs/upgrading/v1-migration/)).
+The v1 APIs are `karpenter.sh/v1` `NodePool` and `karpenter.k8s.aws/v1` `EC2NodeClass` (Karpenter docs, as of 2026-11; v1 migration notes at [karpenter.sh](https://karpenter.sh/docs/upgrading/v1-migration/)).
 
 The provisioning path:
 
-1. A batching window collects pending pods. Defaults are about 1 s idle and 10 s maximum (UNVERIFIED, recalled from Karpenter settings docs).
+1. A batching window collects pending pods. Defaults are 1 s idle (`BATCH_IDLE_DURATION`) and 10 s maximum (`BATCH_MAX_DURATION`) ([Karpenter settings](https://karpenter.sh/docs/reference/settings/), as of 2026-11).
 2. Karpenter runs its own scheduling simulation. It sorts pods largest first, tries to place each on existing nodes and in-flight NodeClaims, then opens a new NodeClaim whose requirements are the intersection of the pods' constraints and the NodePool's requirements.
-3. Each NodeClaim is mapped to the set of instance types that satisfy those constraints and is submitted to EC2 `CreateFleet` with many overrides (UNVERIFIED: a 60-type cap in the request, recalled). Spot uses a price-capacity-optimized allocation strategy and on-demand uses lowest-price (UNVERIFIED, recalled).
-4. The kubelet registers the node. The kube-scheduler, not Karpenter, binds pods (UNVERIFIED for current versions).
+3. Each NodeClaim is mapped to the set of instance types that satisfy those constraints and is submitted to EC2 `CreateFleet` with up to 60 instance types ([Karpenter FAQ](https://raw.githubusercontent.com/aws/karpenter-provider-aws/main/website/content/en/docs/faq.md), `maxInstanceTypes = 60` in the [AWS provider source](https://raw.githubusercontent.com/aws/karpenter-provider-aws/main/pkg/providers/instance/instance.go), as of 2026-11). Fleet requests use price-capacity-optimized allocation, which the FAQ says is effectively lowest-price for on-demand.
+4. The kubelet registers the node. The kube-scheduler, not Karpenter, binds pods ([Karpenter scheduling docs](https://karpenter.sh/docs/concepts/scheduling/), as of 2026-11).
 
 The consequence of step 4 is that Karpenter's simulation and the real scheduler are two implementations of the same constraints.
 Where they disagree (topology spread `minDomains`, scheduler plugins, dynamic resource allocation), Karpenter can launch a node the pod will not use.
@@ -133,11 +164,11 @@ Treat unexplained "launched but pod still Pending" as a simulator-versus-schedul
 The disruption path is where production incidents originate.
 Consolidation evaluates candidates by disruption cost.
 It first removes empty nodes.
-It then tries multi-node consolidation, which searches for the largest set of nodes whose pods fit on the remaining capacity plus at most one cheaper replacement (the search is a binary search over the sorted candidate list, UNVERIFIED).
+It then tries multi-node consolidation, which searches for the largest set of nodes whose pods fit on the remaining capacity plus at most one cheaper replacement (the docs call this a heuristic, and the [controller source](https://raw.githubusercontent.com/kubernetes-sigs/karpenter/main/pkg/controllers/disruption/multinodeconsolidation.go) implements it as a binary search over the sorted candidate list, as of 2026-11).
 Last it tries single-node replacement.
 For each decision Karpenter taints the node `karpenter.sh/disrupted`, launches replacements first, waits for readiness, then drains through the Eviction API, which honors PodDisruptionBudgets.
 The `NodePool.spec.disruption.budgets` field rate-limits voluntary disruption.
-The default budget is 10 percent of nodes in the pool when none is defined, `nodes: "0"` blocks voluntary disruption, and budgets can be scoped by reason (`Empty`, `Drifted`, `Underutilized`) and by cron schedule (secondary summary of Karpenter docs, [Cast AI](https://cast.ai/blog/karpenter-disruption-drift/), as of 2026-10).
+The default budget is 10 percent of nodes in the pool when none is defined, `nodes: "0"` blocks voluntary disruption, and budgets can be scoped by reason (`Empty`, `Drifted`, `Underutilized`, `Unhealthy`) and by cron schedule ([Karpenter disruption docs](https://karpenter.sh/docs/concepts/disruption/), as of 2026-11).
 `expireAfter` is not voluntary disruption in this sense.
 A node past its expiry is drained regardless of budgets, so a fleet launched at the same instant (for example after an AMI roll) expires at the same instant.
 Set `terminationGracePeriod` to bound how long a stuck PDB can hold a node, and stagger `expireAfter` across NodePools.
@@ -151,26 +182,29 @@ Pin `al2023@v<release>` in Git and promote the pin through a canary NodePool, so
 NAP extends the Cluster Autoscaler.
 When pending pods do not fit any existing node pool, NAP computes a machine shape from the pods' requests and selectors, creates a node pool, and the autoscaler then resizes the managed instance group.
 The unit of provisioning is therefore a node pool with a fixed machine type, not an individual instance.
-The consequences are slower shape diversity than Karpenter's per-claim selection and an extra object (the pool) to garbage-collect, with empty pools deleted automatically (UNVERIFIED).
-Cluster-wide `--min-cpu/--max-cpu/--min-memory/--max-memory` limits cap NAP and are the equivalent of `NodePool.spec.limits`.
+The consequences are slower shape diversity than Karpenter's per-claim selection and an extra object (the pool) to garbage-collect, with empty auto-created pools deleted automatically ([GKE docs](https://cloud.google.com/kubernetes-engine/docs/concepts/node-auto-provisioning), as of 2026-11).
+Cluster-wide `--min-cpu/--max-cpu/--min-memory/--max-memory` limits cap NAP, but unlike `NodePool.spec.limits` they apply to the sum of all resource capacity in the cluster, including manually created pools (GKE docs, as of 2026-11).
 
-ComputeClass (`cloud.google.com/v1`, UNVERIFIED for the current API version) is the declarative layer.
-It carries an ordered `priorities` list (machine family, Spot or on-demand, optionally reservations), `nodePoolAutoCreation`, a `whenUnsatisfiable` policy, and `activeMigration` to move workloads back to a higher-priority rule when it becomes available (all UNVERIFIED, recalled from GKE docs; see [custom compute classes](https://cloud.google.com/kubernetes-engine/docs/concepts/about-custom-compute-classes) and [node auto-provisioning](https://cloud.google.com/kubernetes-engine/docs/concepts/node-auto-provisioning)).
+ComputeClass (`cloud.google.com/v1`, GKE docs, as of 2026-11) is the declarative layer.
+It carries an ordered `priorities` list (machine family, Spot or on-demand, optionally reservations), `nodePoolAutoCreation`, a `whenUnsatisfiable` policy, and `activeMigration` to move workloads back to a higher-priority rule when it becomes available (see [custom compute classes](https://cloud.google.com/kubernetes-engine/docs/concepts/about-custom-compute-classes), the [ComputeClass reference](https://docs.cloud.google.com/kubernetes-engine/docs/reference/crds/computeclass), and [node auto-provisioning](https://cloud.google.com/kubernetes-engine/docs/concepts/node-auto-provisioning), as of 2026-11).
+`whenUnsatisfiable` defaults to `DoNotScaleUp` from GKE 1.33 and to `ScaleUpAnyway` before it, so set it explicitly.
+From GKE 1.33.3-gke.1136000, `nodePoolAutoCreation` works without enabling cluster-level NAP.
 Pods opt in with `nodeSelector: cloud.google.com/compute-class: <name>`.
 The fallback list is the closest GKE analogue to Karpenter's multi-type, multi-capacity-type NodePool requirements.
 The scale-down side follows OSS Cluster Autoscaler semantics: it removes underutilized nodes but does not replace a node with a cheaper one, which is the main behavioral difference from Karpenter consolidation.
 
-AWS also offers EKS Auto Mode, which runs a managed Karpenter-derived node lifecycle with an additional per-instance fee (UNVERIFIED: GA status and fee not re-checked).
+AWS also offers EKS Auto Mode, which runs a managed Karpenter-derived node lifecycle with an additional fee based on the duration and type of instances it manages ([AWS docs](https://docs.aws.amazon.com/eks/latest/userguide/automode.html) and [EKS pricing](https://aws.amazon.com/eks/pricing/), as of 2026-11).
 GKE Autopilot is the managed counterpart on GCP.
 This capstone uses the self-managed paths because they expose the mechanisms an L6 candidate must reason about.
 
 ### Network dataplane: Cilium eBPF
 
 On GKE, Dataplane V2 is the Cilium-based managed dataplane.
-It is chosen at cluster creation with `--enable-dataplane-v2` and you do not run your own agent (GKE docs, as of 2026-10, [Dataplane V2](https://cloud.google.com/kubernetes-engine/docs/concepts/dataplane-v2)).
+It is chosen at cluster creation with `--enable-dataplane-v2` and you do not run your own agent (GKE docs, as of 2026-11, [Dataplane V2](https://cloud.google.com/kubernetes-engine/docs/concepts/dataplane-v2)).
 On EKS this capstone runs open-source Cilium in CNI-chaining mode over the AWS VPC CNI (`cni.chainingMode=aws-cni`, [Cilium docs](https://docs.cilium.io/en/stable/installation/cni-chaining-aws-cni/)).
 The VPC CNI keeps IP address management, so pods get VPC-routable ENI secondary IPs and the maximum pods per node remains bounded by the instance's ENI and IP limits.
 Cilium adds identity-based policy, Hubble flow visibility, and optional kube-proxy replacement.
+The chaining page warns that L7 policy and IPsec may be limited in this mode ([Cilium docs](https://docs.cilium.io/en/stable/installation/cni-chaining-aws-cni/), as of 2026-11), and `toFQDNs` depends on an L7 DNS rule, so test FQDN policy on your exact version before relying on it.
 The alternative, Cilium in ENI IPAM mode, replaces the VPC CNI and gives Cilium ownership of ENI attachment, at the price of giving the Cilium operator EC2 ENI permissions and owning the IP-exhaustion failure mode yourself.
 
 The datapath mechanics a getting-started guide omits:
@@ -178,38 +212,39 @@ The datapath mechanics a getting-started guide omits:
 - **Identity, not IP.** Each distinct set of pod labels is assigned a numeric security identity. The agent keeps an IP-to-identity map (`ipcache`) in a BPF LPM trie. Policy is compiled into a per-endpoint policy map keyed on (remote identity, destination port, protocol, direction). Pod churn changes map entries and does not rewrite iptables rules, which is why policy update cost does not grow with the number of pods the way an iptables ruleset does.
 - **Enforcement point.** Programs attached with tc to the pod's host-side virtual interface evaluate egress policy for traffic leaving the pod and ingress policy for traffic arriving at the destination pod. The packet is dropped in the kernel before any socket or userspace proxy sees it.
 - **Service load balancing at connect time.** With kube-proxy replacement, a `cgroup/connect4` BPF hook rewrites the destination from the ClusterIP to a backend pod IP before the first packet is sent. The packet on the wire already carries the backend address, so policy evaluates against the backend's identity and there is no per-packet DNAT for pod-originated traffic.
-- **Connection tracking in BPF maps.** Stateful allow decisions and NAT state live in a bounded BPF hash map. Default capacities are of the order of 500 thousand TCP entries per map (UNVERIFIED, version dependent). When the map fills, new connections are dropped even though CPU and policy are fine (Little's law sizing is in the worked example).
-- **FQDN policy.** `toFQDNs` rules require a DNS rule so that DNS responses pass through the agent's DNS proxy. The proxy learns name-to-IP mappings and inserts them into the ipcache as CIDR identities before the answer is returned to the pod (UNVERIFIED ordering guarantee, recalled from Cilium docs). Established connections survive after the DNS TTL expires but new connections to a rotated IP are dropped until the pod re-resolves.
+- **Connection tracking in BPF maps.** Stateful allow decisions and NAT state live in a bounded BPF hash map. The agent flag `--bpf-ct-global-tcp-max` defaults to 524288, while `--bpf-map-dynamic-size-ratio` (default 0.0025) sizes these maps from node memory with a floor of 131072 entries, so read the real size from the node ([agent reference](https://docs.cilium.io/en/stable/cmdref/cilium-agent/) and [eBPF maps](https://docs.cilium.io/en/stable/network/ebpf/maps/), as of 2026-11). When the map fills, new connections are dropped even though CPU and policy are fine (Little's law sizing is in the worked example).
+- **FQDN policy.** `toFQDNs` rules require a DNS rule so that DNS responses pass through the agent's DNS proxy. The proxy learns name-to-IP mappings and generates L3 CIDR rules from them ([Cilium L3 policy docs](https://docs.cilium.io/en/stable/security/policy/layer3/), as of 2026-11). The ordering is bounded and not absolute: the proxy holds the response until the datapath is updated, but only for up to `--tofqdns-proxy-response-max-delay` (default 100 ms), so a slow agent can release the answer first ([agent reference](https://docs.cilium.io/en/stable/cmdref/cilium-agent/), as of 2026-11). Active connections survive after the DNS TTL expires, idle ones get no extra time by default (`--tofqdns-idle-connection-grace-period` is 0 s), and new connections to a rotated IP are dropped until the pod re-resolves.
 
 The node startup race matters on autoscaled fleets.
 A node becomes `Ready` as soon as the kubelet and a CNI config exist, which can be before the Cilium agent has loaded its programs.
 Pods scheduled in that window get no policy enforcement or a failed sandbox.
-Cilium documents a startup taint, `node.cilium.io/agent-not-ready`, that the agent removes once it is ready (UNVERIFIED for the exact effect).
+Cilium documents a startup taint, `node.cilium.io/agent-not-ready`, that the agent removes once it is ready, and recommends the `NoExecute` effect ([Cilium docs](https://docs.cilium.io/en/stable/installation/taints/), as of 2026-11).
 Karpenter's `startupTaints` field is designed for this: Karpenter assumes startup taints are temporary and does not require pods to tolerate them when simulating placement.
 
 ### Trust loop: workload identity
 
 **EKS Pod Identity** (AWS docs, [Pod Identity](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html)):
 
-1. The Pod Identity Agent runs as a hostNetwork DaemonSet that listens on a link-local address, `169.254.170.23` (UNVERIFIED, recalled).
+1. The Pod Identity Agent runs as a hostNetwork DaemonSet that listens on ports 80 and 2703 of a link-local address, `169.254.170.23` for IPv4 and `[fd00:ec2::23]` for IPv6 (AWS docs, as of 2026-11).
 2. A mutating webhook injects `AWS_CONTAINER_CREDENTIALS_FULL_URI` and a token file path into pods whose service account has an association.
 3. The token is a projected service account token with audience `pods.eks.amazonaws.com`.
 4. The agent calls the EKS Auth API (`eks-auth:AssumeRoleForPodIdentity`) using the node role and returns role credentials to the pod's SDK through the container credential provider.
 5. The IAM role trust policy names the service principal `pods.eks.amazonaws.com` with `sts:AssumeRole` and `sts:TagSession`. The credentials carry session tags such as cluster name and namespace, which enables attribute-based access control.
 
 Compared with IRSA, there is no per-cluster OIDC provider, no cluster-specific condition in the trust policy, and no pod-side call to STS.
-This removes the per-account OIDC provider count and trust policy size ceilings that large multi-cluster fleets hit (UNVERIFIED: specific quota values not re-checked).
+This removes the per-account OIDC provider count (default 100, maximum 700) and role trust policy length (default 2,048, maximum 8,192 characters) ceilings that large multi-cluster fleets hit ([IAM quotas](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html), as of 2026-11).
 
 **GKE Workload Identity Federation:**
 
 1. The cluster gets a workload pool `PROJECT_ID.svc.id.goog`.
 2. A node-local GKE metadata server intercepts requests to the metadata IP and maps the caller pod to its Kubernetes service account.
 3. It exchanges the service account token through Google STS for a federated token.
-4. IAM policies bind directly to the principal `principal://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/PROJECT_ID.svc.id.goog/subject/ns/NAMESPACE/sa/KSA`. Alternatively, the pod impersonates a Google service account (all UNVERIFIED in detail, [GKE docs](https://cloud.google.com/kubernetes-engine/docs/concepts/workload-identity)).
+4. IAM policies bind directly to the principal `principal://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/PROJECT_ID.svc.id.goog/subject/ns/NAMESPACE/sa/KSA`. Alternatively, the pod impersonates a Google service account ([GKE docs](https://cloud.google.com/kubernetes-engine/docs/concepts/workload-identity), as of 2026-11).
 
 Both designs share an invariant: the node's own cloud credential must be unreachable from pods.
-On EC2, Karpenter's `EC2NodeClass.spec.metadataOptions` should require IMDSv2 with a response hop limit of 1 (UNVERIFIED defaults, recalled).
-On GKE, node pools must run with `GKE_METADATA` workload metadata mode, which NAP pools inherit when the cluster has a workload pool (UNVERIFIED inheritance).
+On EC2, Karpenter's `EC2NodeClass.spec.metadataOptions` should require IMDSv2 with a response hop limit of 1, which are also its defaults when `metadataOptions` is omitted ([Karpenter NodeClass docs](https://karpenter.sh/docs/concepts/nodeclasses/), as of 2026-11).
+On GKE, node pools must run with `GKE_METADATA` workload metadata mode, and all new node pools default to it when the cluster has Workload Identity Federation enabled ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/workload-identity), as of 2026-11).
+Whether that default covers NAP pools is UNVERIFIED: the docs do not name auto-created pools, so check them with `gcloud container node-pools describe`.
 
 ### Failure-domain boundaries
 
@@ -225,23 +260,23 @@ On GKE, node pools must run with `GKE_METADATA` workload metadata mode, which NA
 
 | Quantity | Value | Source and date |
 |---|---|---|
-| EKS control plane fee, standard support | $0.10 per cluster per hour | ([AWS Containers blog](https://aws.amazon.com/blogs/containers/amazon-eks-extended-support-for-kubernetes-versions-pricing/), as of 2026-10) |
-| EKS control plane fee, extended support | $0.60 per cluster per hour, 12 extra months of support | ([AWS Containers blog](https://aws.amazon.com/blogs/containers/amazon-eks-extended-support-for-kubernetes-versions-pricing/), as of 2026-10) |
-| EKS standard support window | 14 months per minor version | UNVERIFIED (recalled from AWS docs, as of 2026-10) |
-| GKE cluster management fee | $0.10 per cluster per hour, one-second billing | (secondary summaries of the GKE pricing page, as of 2026-10; verify on the Google pricing page) |
-| GKE free tier | $74.40 per month credit per billing account, covers one Autopilot or zonal Standard cluster, not regional clusters | (secondary summaries of the GKE pricing page, as of 2026-10; verify) |
-| Karpenter v1 API groups | `karpenter.sh/v1` NodePool, `karpenter.k8s.aws/v1` EC2NodeClass | (Karpenter docs, as of 2026-10) |
-| Karpenter default disruption budget | 10 percent of nodes in the NodePool | (secondary summary of Karpenter docs, as of 2026-10) |
-| Karpenter budget `nodes: "0"` | Blocks voluntary disruption only, not `expireAfter` | (secondary summary of Karpenter docs, as of 2026-10) |
-| Karpenter batching window | about 1 s idle, 10 s max | UNVERIFIED (recalled from Karpenter settings, as of 2026-10) |
-| EKS max pods per node, VPC CNI without prefix delegation | ENIs x (IPv4 per ENI - 1) + 2 | UNVERIFIED (AWS `eni-max-pods` reference, as of 2026-10) |
-| m6i.large / xlarge / 2xlarge / 4xlarge ENIs x IPv4 per ENI | 3x10 / 4x15 / 4x15 / 8x30, so 29 / 58 / 58 / 234 max pods | UNVERIFIED (EC2 docs, as of 2026-10) |
-| m6i.large / xlarge on-demand, us-east-1 | $0.096 / $0.192 per hour | UNVERIFIED (AWS pricing, as of 2026-10) |
-| GKE Standard default max pods per node, Autopilot default | 110, 32 | UNVERIFIED (GKE docs, as of 2026-10) |
-| Cilium conntrack default TCP map size | about 524288 entries | UNVERIFIED (Cilium docs, version dependent, as of 2026-10) |
-| Argo CD default refresh interval | 180 s | UNVERIFIED (Argo CD docs, as of 2026-10) |
-| AWS NAT gateway | $0.045 per hour plus $0.045 per GB processed, us-east-1 | UNVERIFIED (AWS pricing, as of 2026-10) |
-| Spot interruption signal | about 2 min on AWS, about 30 s on GCE Spot | UNVERIFIED here; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_03_Spot_Economics_and_Interruption_Handling\|Spot Economics]] |
+| EKS control plane fee, standard support | $0.10 per cluster per hour | ([EKS pricing](https://aws.amazon.com/eks/pricing/), as of 2026-11) |
+| EKS control plane fee, extended support | $0.60 per cluster per hour, 12 extra months of support | ([EKS pricing](https://aws.amazon.com/eks/pricing/), as of 2026-11) |
+| EKS standard support window | 14 months per minor version | ([AWS docs](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html), as of 2026-11) |
+| GKE cluster management fee | $0.10 per cluster per hour, one-second billing | ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing), as of 2026-11) |
+| GKE free tier | $74.40 per month credit per billing account, covers one Autopilot or zonal Standard cluster, not regional clusters | ([GKE pricing](https://cloud.google.com/kubernetes-engine/pricing), as of 2026-11) |
+| Karpenter v1 API groups | `karpenter.sh/v1` NodePool, `karpenter.k8s.aws/v1` EC2NodeClass | (Karpenter docs, as of 2026-11) |
+| Karpenter default disruption budget | 10 percent of nodes in the NodePool | ([Karpenter docs](https://karpenter.sh/docs/concepts/disruption/), as of 2026-11) |
+| Karpenter budget `nodes: "0"` | Blocks voluntary disruption only, not `expireAfter` | ([Karpenter docs](https://karpenter.sh/docs/concepts/disruption/), as of 2026-11) |
+| Karpenter batching window | 1 s idle, 10 s max | ([Karpenter settings](https://karpenter.sh/docs/reference/settings/), as of 2026-11) |
+| EKS max pods per node, VPC CNI without prefix delegation | ENIs x (IPv4 per ENI - 1) + 2 by default; managed node groups without a custom AMI cap this at 110 below 30 vCPUs and 250 above | ([AWS docs](https://docs.aws.amazon.com/eks/latest/userguide/choosing-instance-type.html), as of 2026-11) |
+| m6i.large / xlarge / 2xlarge / 4xlarge ENIs x IPv4 per ENI | 3x10 / 4x15 / 4x15 / 8x30, so 29 / 58 / 58 / 234 max pods before any managed node group cap | ([EC2 docs](https://docs.aws.amazon.com/ec2/latest/instancetypes/gp.html), as of 2026-11) |
+| m6i.large / xlarge on-demand, us-east-1 | $0.096 / $0.192 per hour | (AWS public price feed for the EC2 pricing page, as of 2026-11) |
+| GKE Standard default max pods per node, Autopilot range | 110, chosen per cluster from 8 to 256 | ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/flexible-pod-cidr), as of 2026-11) |
+| Cilium conntrack default TCP map size | 524288 entries by flag default, sized from node memory when dynamic sizing applies (floor 131072) | ([Cilium agent reference](https://docs.cilium.io/en/stable/cmdref/cilium-agent/), version dependent, as of 2026-11) |
+| Argo CD default refresh interval | 120 s plus up to 60 s jitter | ([argocd-cm reference](https://raw.githubusercontent.com/argoproj/argo-cd/stable/docs/operator-manual/argocd-cm.yaml), as of 2026-11) |
+| AWS NAT gateway | $0.045 per hour plus $0.045 per GB processed, us-east-1 | ([AWS VPC pricing](https://aws.amazon.com/vpc/pricing/) example for Ohio, plus $0.045 N. Virginia rates in the AWS price feed, as of 2026-11) |
+| Spot interruption signal | 2 min on AWS; on GCE Spot a preemption notice of 0 s (default) or 120 s, then a best-effort shutdown period of up to 30 s | ([AWS docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html), [Google docs](https://docs.cloud.google.com/compute/docs/instances/spot), as of 2026-11); see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_03_Spot_Economics_and_Interruption_Handling\|Spot Economics]] |
 
 Derived numbers from this chapter's capacity model are in the worked example.
 
@@ -249,14 +284,14 @@ Derived numbers from this chapter's capacity model are in the worked example.
 
 | Concern | EKS on AWS | GKE on GCP | Critical difference |
 |---|---|---|---|
-| Control plane | Provider-run API servers and etcd across AZs, per-cluster fee | Regional (3-zone) or zonal control plane, per-cluster fee with free tier credit | Zonal GKE control plane is a single replica and is unavailable during its own upgrades |
+| Control plane | Provider-run API servers and etcd across AZs, per-cluster fee | Regional (multi-zone) or zonal control plane, per-cluster fee with free tier credit | Zonal GKE control plane is a single replica and is unavailable during its own upgrades |
 | Node supply | Karpenter: NodeClaim to `CreateFleet`, per-instance selection, cost-aware replacement | NAP: creates node pools, Cluster Autoscaler resizes MIGs; ComputeClass gives priority fallback | Karpenter replaces nodes with cheaper ones, CA scale-down only removes underutilized nodes |
 | Node disruption controls | NodePool budgets by reason and schedule, `expireAfter`, `terminationGracePeriod` | Maintenance windows and exclusions, surge upgrade settings, PDBs | `expireAfter` bypasses Karpenter budgets, GKE auto-upgrade honors maintenance exclusions |
-| Pod networking | VPC CNI IPAM (ENI secondary IPs) plus chained Cilium, or Cilium ENI mode | Dataplane V2 (managed Cilium), alias IP ranges per node | EKS pod density is ENI-limited, GKE pod density is bounded by a per-node pod CIDR, 110 pods per node by default (UNVERIFIED) |
-| Network policy | Cilium identity policy and Hubble, L3/L4 plus L7 and FQDN | Dataplane V2 enforcement, policy logging, FQDN policy (UNVERIFIED feature set) | On GKE you cannot tune the agent, on EKS you own agent upgrades and map sizing |
+| Pod networking | VPC CNI IPAM (ENI secondary IPs) plus chained Cilium, or Cilium ENI mode | Dataplane V2 (managed Cilium), alias IP ranges per node | EKS pod density is ENI-limited, GKE pod density is bounded by a per-node pod CIDR, 110 pods per node by default on Standard (GKE docs, as of 2026-11) |
+| Network policy | Cilium identity policy and Hubble, L3/L4, with L7 and FQDN subject to the chaining-mode limits in the Cilium docs | Dataplane V2 enforcement, policy logging, `FQDNNetworkPolicy` (`networking.gke.io/v1alpha1`; the docs state no release stage, as of 2026-11) | On GKE you cannot tune the agent, on EKS you own agent upgrades and map sizing |
 | Workload identity | Pod Identity: agent + `AssumeRoleForPodIdentity`, session tags; IRSA as legacy | WIF: node metadata server + STS exchange, direct principal binding or SA impersonation | AWS trust is a role trust policy with a service principal, GCP trust is an IAM binding on a workload pool principal |
 | Private API access | Public and private endpoint toggles, CIDR allowlist, access entries replace `aws-auth` | Private nodes, authorized networks, optional private endpoint | GKE private nodes need Cloud NAT for internet pulls, EKS private subnets need NAT or VPC endpoints |
-| Image pull path | ECR via interface endpoints plus S3 gateway endpoint for layers | Artifact Registry via Private Google Access or restricted VIP | ECR layer fetches go through S3, so the S3 endpoint policy must allow the ECR layer bucket (UNVERIFIED) |
+| Image pull path | ECR via interface endpoints plus S3 gateway endpoint for layers | Artifact Registry via Private Google Access or restricted VIP | ECR layer fetches go through S3, so the S3 endpoint policy must allow the ECR layer bucket ([ECR docs](https://docs.aws.amazon.com/AmazonECR/latest/userguide/vpc-endpoints.html), as of 2026-11) |
 | Data perimeter | SCP/RCP, VPC endpoint policies, `aws:PrincipalOrgID` and `aws:ResourceOrgID` keys | VPC Service Controls perimeters, access levels, ingress and egress rules, dry-run mode | VPC-SC is a service-level perimeter on API calls, AWS builds the equivalent from several independent policy layers |
 | GitOps controller auth | Argo CD uses in-cluster service account, no remote credentials | Same | Hub-and-spoke would add exec-plugin credentials for each remote cluster |
 | Secrets at rest | KMS envelope encryption via `encryptionConfig` | Application-layer secrets encryption with Cloud KMS | Both encrypt a per-object data key under a KMS key, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption\|Encryption Key Hierarchies]] |
@@ -268,7 +303,7 @@ Derived numbers from this chapter's capacity model are in the worked example.
 The workload is 1,000 pods requesting 0.25 vCPU and 0.5 GiB each.
 Each node runs five DaemonSet pods (Cilium, VPC CNI, kube-proxy or node exporter, log agent, Pod Identity Agent) that request 0.40 vCPU and 0.5 GiB in total.
 Allocatable CPU uses the tiered reservation formula (6 percent of core 1, 1 percent of core 2, 0.5 percent of cores 3-4, 0.25 percent above 4).
-Allocatable memory subtracts 255 MiB plus 11 MiB per max pod plus a 100 MiB eviction threshold (both formulas UNVERIFIED for exact current values).
+Allocatable memory subtracts 255 MiB plus 11 MiB per max pod plus a 100 MiB eviction threshold (both formulas from the [EKS AMI nodeadm source](https://raw.githubusercontent.com/awslabs/amazon-eks-ami/main/nodeadm/internal/kubelet/config.go), as of 2026-11).
 Running `capacity_model.py` below yields:
 
 | Instance | Max pods (ENI) | Pods per node (limiter) | Nodes | On-demand $/month | Spot $/month at 60 percent discount |
@@ -278,18 +313,18 @@ Running `capacity_model.py` below yields:
 | m6i.2xlarge | 58 | 30 (cpu) | 34 | 9,531 | 3,812 |
 | m6i.4xlarge | 234 | 61 (cpu) | 17 | 9,531 | 3,812 |
 
-Prices are the UNVERIFIED on-demand figures above, 730 hours per month, and the 60 percent Spot discount is an assumption and not a quote.
+Prices are the on-demand figures above (the 2xlarge and 4xlarge rates of $0.384 and $0.768 per hour come from the same AWS price feed, as of 2026-11), 730 hours per month, and the 60 percent Spot discount is an assumption and not a quote.
 The reading is that the DaemonSet tax dominates small nodes: 0.40 vCPU is 20 percent of an m6i.large and 2.5 percent of an m6i.4xlarge.
 Moving from m6i.large to m6i.2xlarge saves (11,703 - 9,531) / 11,703, about 18.6 percent, with no change in workload.
-Pods per node never hit the ENI ceiling for these small pods, so the IP limit becomes the constraint only for tiny pods (below about 0.05 vCPU).
+Pods per node never hit the ENI ceiling for these small pods, so the IP limit becomes the constraint only for tiny pods (below about 0.065 vCPU on most of these sizes and about 0.14 vCPU on m6i.2xlarge, from allocatable CPU divided by the remaining pod slots, and only if memory requests are small enough not to bind first).
 This is why Karpenter's `instance-size` and `instance-cpu` requirements are a cost lever and not only a safety limit.
 
 Conntrack sizing uses Little's law: entries equal new connections per second times average entry lifetime.
 At 20,000 new connections per second and a 60 s average tracked lifetime the node-level need is 1,200,000 entries.
-Against an assumed 524,288-entry TCP map this is a headroom ratio of 0.44, so the node drops new connections under that load.
+Against an assumed 524,288-entry TCP map (the flag default, and dynamic sizing can make the real map smaller or larger) this is a headroom ratio of 0.44, so the node drops new connections under that load.
 The fix is to raise the map size through Helm values and to shorten idle timeouts, and to alarm on the agent's map pressure metrics.
 
-Argo CD refresh load at 300 applications and a 180 s interval is about 1.67 Git checks per second before webhooks and the repo-server cache.
+Argo CD refresh load at 300 applications and the default 120 s to 180 s interval is about 1.67 to 2.5 Git checks per second before webhooks and the repo-server cache.
 That is trivial, which confirms the earlier point: scale limits come from the live object cache, not the application count.
 
 ### capacity_model.py
@@ -347,17 +382,18 @@ for n in EC2:
 entries = 20000 * 60
 print("\nconntrack entries needed (Little's law): %d" % entries)
 print("vs assumed default TCP map size 524288 -> headroom ratio %.2f" % (524288.0 / entries))
-print("\nargo refresh checks: %.2f per second" % (300 / 180.0))
+print("\nargo refresh checks: %.2f to %.2f per second" % (300 / 180.0, 300 / 120.0))
 
 H = 4
 eks = H * 0.10 + 2 * H * 0.096 + H * 0.045 + 1 * H * 0.192 * (1 - SPOT_DISCOUNT)
-gke = H * 0.10 + 2 * H * 0.134  # zonal, 2 x e2-standard-4, placeholder price
+gke = H * 0.10 + 2 * H * 0.134  # zonal, 2 x e2-standard-4, us-central1 list price
 print("\nlab estimate for %d h: EKS ~ $%.2f, GKE ~ $%.2f (excl. NAT data)" % (H, eks, gke))
 ```
 
 ### Cost estimate and budget alarms
 
-The four-hour lab costs about $1.66 on EKS and $1.47 on GKE at the placeholder prices in the script, excluding NAT data processing and any load balancers (UNVERIFIED prices, so check the AWS and Google calculators before running).
+The four-hour lab costs about $1.66 on EKS and $1.47 on GKE at the list prices in the script, excluding NAT data processing, Cloud NAT, EBS, persistent disks, and any load balancers, and before the GKE free-tier credit offsets the $0.40 management fee.
+The e2-standard-4 rate of $0.134 per hour in us-central1 comes from [gcloud-compute.com](https://gcloud-compute.com/e2-standard-4.html), a secondary source, because Google's pricing page did not expose it to a static fetch (as of 2026-11), so check the Google calculator before running.
 Budgets are alerts and not caps, and billing data lags, so the real control is the teardown script plus a calendar reminder.
 
 ```bash
@@ -376,8 +412,8 @@ gcloud billing budgets create --billing-account="$BILLING_ACCOUNT" \
 ### Step 1: EKS cluster, Karpenter, Cilium, Argo CD
 
 Pin `K8S_VERSION` to a version in standard support, and pin `KARPENTER_VERSION`, `CILIUM_VERSION`, and `ARGOCD_VERSION` to current releases.
-The CloudFormation template path below follows Karpenter's getting-started layout and is UNVERIFIED for your chosen version.
-Check it against the Karpenter getting-started guide before running.
+The CloudFormation template path below and its six split controller policies match the [Karpenter getting-started guide](https://karpenter.sh/docs/getting-started/getting-started-with-karpenter/) (as of 2026-11).
+Older tags can ship different policy names, so check the template for your pinned version before running.
 
 ```bash
 #!/usr/bin/env bash
@@ -435,8 +471,10 @@ cat > /tmp/trust.json <<'EOF'
 {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"pods.eks.amazonaws.com"},"Action":["sts:AssumeRole","sts:TagSession"]}]}
 EOF
 aws iam create-role --role-name "KarpenterController-${CLUSTER}" --assume-role-policy-document file:///tmp/trust.json
-aws iam attach-role-policy --role-name "KarpenterController-${CLUSTER}" \
-  --policy-arn "arn:aws:iam::${ACCOUNT_ID}:policy/KarpenterControllerPolicy-${CLUSTER}"
+for P in NodeLifecycle IAMIntegration EKSIntegration Interruption ZonalShift ResourceDiscovery; do
+  aws iam attach-role-policy --role-name "KarpenterController-${CLUSTER}" \
+    --policy-arn "arn:aws:iam::${ACCOUNT_ID}:policy/KarpenterController${P}Policy-${CLUSTER}"
+done
 aws eks create-pod-identity-association --cluster-name "$CLUSTER" --namespace kube-system \
   --service-account karpenter --role-arn "arn:aws:iam::${ACCOUNT_ID}:role/KarpenterController-${CLUSTER}"
 
@@ -444,7 +482,7 @@ aws eks create-pod-identity-association --cluster-name "$CLUSTER" --namespace ku
 helm repo add cilium https://helm.cilium.io && helm repo update
 helm upgrade --install cilium cilium/cilium --version "$CILIUM_VERSION" -n kube-system \
   --set cni.chainingMode=aws-cni --set cni.exclusive=false --set enableIPv4Masquerade=false \
-  --set routingMode=native --set endpointRoutes.enabled=true --set hubble.relay.enabled=true
+  --set routingMode=native --set hubble.relay.enabled=true
 helm upgrade --install karpenter oci://public.ecr.aws/karpenter/karpenter --version "$KARPENTER_VERSION" \
   -n kube-system --set settings.clusterName="$CLUSTER" --set settings.interruptionQueue="$CLUSTER" \
   --set controller.resources.requests.cpu=500m --set controller.resources.requests.memory=512Mi
@@ -488,7 +526,7 @@ kubectl apply -n argocd --server-side --force-conflicts \
   -f "https://raw.githubusercontent.com/argoproj/argo-cd/${ARGOCD_VERSION}/manifests/install.yaml"
 ```
 
-The lab uses a zonal cluster so the management fee is covered by the free-tier credit (secondary source, see Numbers to Know).
+The lab uses a zonal cluster so the management fee is covered by the free-tier credit (GKE pricing page, see Numbers to Know).
 A production cluster is regional, which removes the single control plane replica and costs the full management fee.
 A $74.40 per month credit is not a design input.
 
@@ -615,14 +653,14 @@ spec:
 ```
 
 On GKE, the equivalent baseline is a standard Kubernetes `NetworkPolicy` that allows DNS and the metadata server.
-The metadata server address and port that Dataplane V2 needs for Workload Identity are in the GKE Workload Identity documentation, and the exact tuple should be taken from there (UNVERIFIED in this chapter, recalled as `169.254.169.252` port `988` for Dataplane V2).
+For Workload Identity, Dataplane V2 clusters allow egress to `169.254.169.254/32` on port `80`, and strict policies on other clusters allow `169.254.169.252/32` on port `988` ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/workload-identity), as of 2026-11).
 Validate every baseline in audit mode before enforcement.
-Run `hubble observe --verdict DROPPED -n payments` on EKS, and use GKE network policy logging on Dataplane V2 (UNVERIFIED feature name).
+Run `hubble observe --verdict DROPPED -n payments` on EKS, and use [network policy logging](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/network-policy-logging), which requires Dataplane V2, on GKE (as of 2026-11).
 
 ### Step 4: Perimeter snippets
 
 ```bash
-# GCP: VPC Service Controls perimeter in dry-run first (flag names UNVERIFIED, check gcloud reference)
+# GCP: VPC Service Controls perimeter in dry-run first (flags per the gcloud reference, as of 2026-11)
 gcloud access-context-manager perimeters dry-run create capstone_perimeter --policy="$POLICY_ID" \
   --perimeter-title=capstone --perimeter-type=regular \
   --perimeter-resources="projects/$PROJECT_NUMBER" \
@@ -644,7 +682,7 @@ gcloud access-context-manager perimeters dry-run enforce capstone_perimeter --po
 ```
 
 The second statement lets image pulls through an S3 gateway endpoint reach ECR's layer bucket, which is AWS-owned and outside your organization.
-The bucket naming is recalled from ECR documentation (UNVERIFIED).
+The bucket naming, `prod-<region>-starport-layer-bucket`, is from the [ECR docs](https://docs.aws.amazon.com/AmazonECR/latest/userguide/vpc-endpoints.html) (as of 2026-11).
 
 ### Teardown (exact order)
 
@@ -655,9 +693,12 @@ kubectl delete nodepools.karpenter.sh --all --wait=true --timeout=15m
 kubectl wait --for=delete nodeclaims.karpenter.sh --all --timeout=15m
 kubectl delete svc -A -l app.kubernetes.io/managed-by!=none --field-selector spec.type=LoadBalancer || true
 helm uninstall karpenter -n kube-system
-aws cloudformation delete-stack --stack-name "Karpenter-${CLUSTER}"
-aws iam detach-role-policy --role-name "KarpenterController-${CLUSTER}" --policy-arn "arn:aws:iam::${ACCOUNT_ID}:policy/KarpenterControllerPolicy-${CLUSTER}" || true
+# Detach before deleting the stack: IAM will not delete a managed policy that is still attached
+for P in NodeLifecycle IAMIntegration EKSIntegration Interruption ZonalShift ResourceDiscovery; do
+  aws iam detach-role-policy --role-name "KarpenterController-${CLUSTER}" --policy-arn "arn:aws:iam::${ACCOUNT_ID}:policy/KarpenterController${P}Policy-${CLUSTER}" || true
+done
 aws iam delete-role --role-name "KarpenterController-${CLUSTER}" || true
+aws cloudformation delete-stack --stack-name "Karpenter-${CLUSTER}"
 eksctl delete cluster --name "$CLUSTER" --region "$AWS_REGION" --wait
 # Orphan sweep: should print nothing
 aws ec2 describe-instances --region "$AWS_REGION" \
@@ -710,20 +751,20 @@ Size maps from measured connection rates with Little's law, and alarm on map occ
 ### Default deny that breaks identity and DNS
 
 A default-deny egress policy blocks the node-local credential endpoints, so SDKs fall through to errors that look like IAM denials.
-On EKS the Pod Identity Agent link-local address must be allowed, and whether Cilium classifies it as the `host` entity or a CIDR on your version is UNVERIFIED, so test both with Hubble.
+On EKS the Pod Identity Agent link-local address must be allowed, and whether Cilium classifies it as the `host` entity or a CIDR on your version is UNVERIFIED: the docs say CIDR rules do not apply to node IPs or host-networking pods but do not address this address, so test both with Hubble.
 DNS must be allowed to kube-dns with DNS visibility, or `toFQDNs` rules will never match.
 
 ### IP and CIDR exhaustion
 
 EKS pods consume VPC IPs from subnets, so a /24 private subnet per AZ caps the whole zone at roughly 250 addresses regardless of instance size.
 With prefix delegation the ceiling moves but the planning problem remains.
-GKE gives each node a pod CIDR block sized by max pods per node, so a /16 pod range yields 256 nodes at 110 pods per node (/24 per node, UNVERIFIED mapping).
+GKE gives each node a pod CIDR block sized by max pods per node, so a /16 pod range yields 256 nodes at 110 pods per node (/24 per node, [GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/flexible-pod-cidr), as of 2026-11).
 Secondary ranges cannot be resized freely after the fact, so size them for the 3-year node count.
 
 ### Quota and capacity errors
 
 Karpenter and NAP encounter insufficient capacity and regional vCPU quotas as asynchronous failures.
-Karpenter caches unavailable offerings briefly after an insufficient-capacity error and moves to the next instance type (UNVERIFIED duration).
+Karpenter caches unavailable offerings for 3 minutes after an insufficient-capacity error and moves to the next instance type (`UnavailableOfferingsTTL` in the [AWS provider source](https://raw.githubusercontent.com/aws/karpenter-provider-aws/main/pkg/cache/cache.go), as of 2026-11).
 Requirement sets that are too narrow turn a transient shortage into a pending-pod outage.
 GKE returns zone resource-pool exhaustion errors for the same reason, which ComputeClass fallbacks and multi-zone node pools mitigate.
 Set cloud quotas as a platform-owned, monitored resource and not as a surprise.
@@ -737,11 +778,11 @@ Use annotation tracking, `AppProject` source and destination allowlists, and res
 
 ### Public post-incident reviews to study
 
-- **AWS us-east-1, October 2025.** AWS's [post-event summary](https://aws.amazon.com/message/101925/) describes a DynamoDB DNS automation race that cascaded into EC2 instance launch impairment and load balancer health issues (UNVERIFIED in detail; link and details recalled). The lesson for this platform is that autoscaling was itself impaired, so any design that needs new nodes during a regional event is not statically stable. Pre-provisioned headroom and capacity reservations are the mitigation.
-- **Google Cloud, June 2025.** A global Service Control issue (null pointer in a quota policy path, UNVERIFIED in detail) degraded API surfaces broadly. Workload identity exchanges and registry pulls depend on Google APIs, so cached credentials and pre-pulled images are availability features.
-- **Datadog, March 2023.** An unattended OS update restarted a networking service on many nodes and removed routes that Cilium managed, causing a multi-cloud outage (UNVERIFIED in detail, recalled from Datadog's public postmortem). The lesson is that node OS and CNI interactions must be tested together and that fleet-wide OS updates must be staged. This is the same hazard as `al2023@latest` drift in Karpenter.
-- **Reddit, March 2023.** A Kubernetes upgrade interacted with node role labels used by a routing component (UNVERIFIED in detail, recalled from Reddit's engineering postmortem). Upgrades need canary clusters and a rollback path that does not depend on the upgraded component.
-- **OpenAI, December 2024.** A new telemetry deployment overloaded Kubernetes API servers and DNS-based service discovery failed (UNVERIFIED in detail, recalled from the public status postmortem). Large-fleet controllers (Argo CD, Karpenter, Cilium operator, new observability agents) are API load, and the data plane must not depend on live API or DNS resolution of the control plane.
+- **AWS us-east-1, October 19-20, 2025.** AWS's [post-event summary](https://aws.amazon.com/message/101925/) describes a race between DynamoDB DNS Enactors that emptied the regional endpoint record and cascaded into EC2 instance launch failures and Network Load Balancer health check failures. The lesson for this platform is that autoscaling was itself impaired, so any design that needs new nodes during a regional event is not statically stable. Pre-provisioned headroom and capacity reservations are the mitigation.
+- **Google Cloud, June 12, 2025.** A policy change with blank fields hit an unguarded Service Control quota code path, and the resulting null pointer crash looped in every region ([Google incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)), which degraded API surfaces broadly. Workload identity exchanges and registry pulls depend on Google APIs, so cached credentials and pre-pulled images are availability features.
+- **Datadog, March 8, 2023.** An automatic systemd update restarted `systemd-networkd` on running nodes, which deleted routes that Cilium managed and took those nodes offline ([Datadog postmortem](https://www.datadoghq.com/blog/2023-03-08-multiregion-infrastructure-connectivity-issue/)). The lesson is that node OS and CNI interactions must be tested together and that fleet-wide OS updates must be staged. This is the same hazard as `al2023@latest` drift in Karpenter.
+- **Reddit, March 2023.** A Kubernetes 1.23 to 1.24 upgrade removed the `node-role.kubernetes.io/master` label that Calico route reflector selectors targeted, which broke cluster routing ([Reddit postmortem](https://www.reddit.com/r/RedditEng/comments/11xx5o0/you_broke_reddit_the_piday_outage/), read through a web archive copy). Upgrades need canary clusters and a rollback path that does not depend on the upgraded component.
+- **OpenAI, December 11, 2024.** A new telemetry deployment overloaded Kubernetes API servers and DNS-based service discovery failed ([OpenAI postmortem](https://status.openai.com/incidents/ctrsv3lwd797)). Large-fleet controllers (Argo CD, Karpenter, Cilium operator, new observability agents) are API load, and the data plane must not depend on live API or DNS resolution of the control plane.
 
 Cross-reference the general catalog in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
@@ -942,8 +983,8 @@ GitOps also cannot create capacity.
 Prebuilt resilience: N+1 headroom per zone.
 With three zones and one lost, survivors must carry 3/2, so steady state must run at no more than about 67 percent of per-zone capacity to absorb an AZ loss without scaling, and more if the event is regional.
 Use low-priority placeholder pods (pause pods with a low PriorityClass) so headroom is real, preemptible, and visible to the autoscaler, instead of hidden idle nodes.
-Hold capacity reservations for the baseline tier, because reserved capacity does not depend on the launch path's marginal availability, and Karpenter has reservation-selection support (UNVERIFIED for your version).
-The GKE analogue is reservations as top-priority entries in a ComputeClass (UNVERIFIED).
+Hold capacity reservations for the baseline tier, because reserved capacity does not depend on the launch path's marginal availability, and Karpenter's reservation selection (`capacityReservationSelectorTerms`) is available but still Beta ([Karpenter docs](https://karpenter.sh/docs/concepts/nodeclasses/), as of 2026-11).
+The GKE analogue is a `reservations` block on a top-priority rule in a ComputeClass ([ComputeClass reference](https://docs.cloud.google.com/kubernetes-engine/docs/reference/crds/computeclass), as of 2026-11).
 Pre-pull images and keep node-local caches so replacement pods do not depend on registry availability.
 
 During the event: freeze voluntary disruption (set budgets to zero for all reasons via an emergency commit, or a direct patch with Argo `selfHeal` suspended), because consolidating nodes you cannot replace converts a launch problem into a capacity loss.
