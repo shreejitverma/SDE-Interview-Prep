@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/whitepapers/latest/building-a-data-perimeter-on-aws/building-a-data-perimeter-on-aws.html"
@@ -13,6 +13,38 @@ sources:
   - "https://cloud.google.com/vpc-service-controls/docs/overview"
   - "https://cloud.google.com/resource-manager/docs/organization-policy/org-policy-constraints"
   - "https://status.cloud.google.com/summary"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_delegate_policies.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/security_iam_resource-based-policy-examples.html"
+  - "https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-endpoints-access.html"
+  - "https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-limits-endpoints.html"
+  - "https://docs.aws.amazon.com/general/latest/gr/s3.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-overview.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/requests-per-second.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html"
+  - "https://docs.aws.amazon.com/AmazonECR/latest/userguide/vpc-endpoints.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/access-analyzer-custom-policy-checks.html"
+  - "https://docs.aws.amazon.com/IAM/latest/APIReference/API_SimulateCustomPolicy.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html"
+  - "https://aws.amazon.com/blogs/security/how-to-use-policies-to-restrict-where-ec2-instance-credentials-can-be-used-from/"
+  - "https://aws.amazon.com/blogs/security/protect-sensitive-data-in-the-cloud-with-automated-reasoning-zelkova/"
+  - "https://aws.amazon.com/iam/access-analyzer/pricing/"
+  - "https://aws.amazon.com/transit-gateway/pricing/"
+  - "https://aws.amazon.com/directconnect/pricing/"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSDataTransfer/current/us-east-1/index.json"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/manage-service-perimeters"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/set-up-private-connectivity"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/audit-logging"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/enable-internal-ip-access"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/folder-membership"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/ingress-egress-rules"
+  - "https://docs.cloud.google.com/vpc/docs/configure-private-google-access"
+  - "https://docs.cloud.google.com/vpc/docs/configure-private-service-connect-apis"
+  - "https://docs.cloud.google.com/iam/docs/release-notes"
+  - "https://cloud.google.com/vpc-service-controls/pricing"
 ---
 
 # Constructing an Impenetrable Data Perimeter
@@ -81,6 +113,7 @@ First, SCPs only constrain principals in your member accounts, and they never ap
 An SCP therefore cannot stop an outside principal from reading a bucket whose policy is too permissive.
 Resource control policies, launched in November 2024, close that gap: an RCP attaches to resources in your accounts and applies regardless of who the caller is, including principals outside your organization.
 RCPs are Deny-only guardrails like SCPs, they do not apply to resources in the management account, and they were launched for a limited set of services (S3, STS, KMS, SQS, and Secrets Manager at launch; later additions include ECR, OpenSearch Serverless, CloudWatch Logs, Cognito, and DynamoDB, and the list keeps growing, so check the current list) (AWS Organizations docs, as of 2026-10).
+RCPs also do not apply to calls made by service-linked roles or to AWS managed KMS keys (AWS Organizations docs, as of 2026-11).
 
 Second, the VPC endpoint policy is evaluated as an additional gate and never grants anything.
 Its default is "Allow all", so an endpoint with no policy provides a private path but no perimeter.
@@ -151,9 +184,10 @@ Pair exempted service roles with confused-deputy keys (`aws:SourceAccount`, `aws
 ### Non-obvious mechanism 3: binding credentials to the instance that owns them
 
 The network perimeter on role sessions is only as good as the keys available.
-For EC2 instance-profile credentials specifically, AWS added condition keys `aws:EC2InstanceSourceVPC` and `aws:EC2InstanceSourcePrivateIPv4` (launched November 2022, AWS docs; GA status UNVERIFIED as of 2026-10).
+For EC2 instance-profile credentials specifically, AWS added condition keys `aws:Ec2InstanceSourceVpc` and `aws:Ec2InstanceSourcePrivateIPv4` (launched 6 March 2023 in all Regions with no configuration needed, [AWS Security Blog](https://aws.amazon.com/blogs/security/how-to-use-policies-to-restrict-where-ec2-instance-credentials-can-be-used-from/); spelling per the IAM condition key docs, as of 2026-11).
 These record the VPC and private IP of the instance that the credentials were issued to, which lets a policy deny use of those credentials from anywhere else even when the attacker routes through a different VPC endpoint inside the org.
-The pattern is a Deny when `aws:EC2InstanceSourceVPC` differs from `aws:SourceVpc`, guarded by `Null` checks so that non-EC2 principals are unaffected.
+The pattern is a Deny when `aws:Ec2InstanceSourceVpc` differs from `aws:SourceVpc`, guarded by `Null` checks so that non-EC2 principals are unaffected.
+Use the private IP key only together with the VPC key, because private addresses are unique only within a VPC (IAM docs, as of 2026-11).
 This is the control that would directly have made the Capital One credentials unusable off-instance.
 
 ### Non-obvious mechanism 4: how a gateway endpoint actually works, and what that implies
@@ -163,15 +197,15 @@ It is a route-table target: the VPC route table gets an entry for the AWS-manage
 S3 then identifies the endpoint from the VPC mapping and populates `aws:SourceVpc` and `aws:SourceVpce` in the request context.
 The practical consequences are:
 
-- `aws:SourceIp` is not meaningful for requests that traverse a gateway endpoint, because the S3 service sees a private VPC address. Use `aws:VpcSourceIp`, which is only present for endpoint traffic.
+- `aws:SourceIp` is not in the request context when the requester uses a VPC endpoint, and it only works with public IP ranges (IAM docs, as of 2026-11). Use `aws:VpcSourceIp`, which is only present for endpoint traffic.
 - Gateway endpoints are regional and non-transitive. They do not serve on-premises clients over Direct Connect, peered VPCs, or Transit Gateway attachments, which need an interface endpoint for S3 instead.
 - A gateway endpoint carries no hourly or per-GB charge (AWS pricing, as of 2026-10), which makes it both a security control and a large cost lever compared with NAT.
-- Interface endpoints (PrivateLink) are ENIs in your subnets backed by the Hyperplane flow-tracking data plane, with private DNS that overrides the public service name inside the VPC. If private DNS is disabled, clients resolve the public address, traffic leaves via NAT, `aws:SourceVpce` is absent, and any network-perimeter Deny fires. See the AWS re:Invent talk on VPC internals and Hyperplane (talk ID UNVERIFIED) and the Reachability Analyzer paper (Backes et al., "Reachability Analysis for AWS-based Networks", CAV 2019).
+- Interface endpoints (PrivateLink) are ENIs in your subnets backed by the Hyperplane flow-tracking data plane, with private DNS that overrides the public service name inside the VPC. If private DNS is disabled, clients resolve the public address, traffic leaves via NAT, `aws:SourceVpce` is absent, and any network-perimeter Deny fires. See the AWS re:Invent 2017 talk on VPC internals and Hyperplane, "Another Day, Another Billion Flows" (NET405; session ID per [Classmethod's write-up](https://dev.classmethod.jp/articles/devio-connect-2020-chibayuki-vpc/), as of 2026-11) and the Reachability Analyzer paper (Backes et al., "Reachability Analysis for AWS-based Networks", CAV 2019).
 
 ### Non-obvious mechanism 5: endpoint policies and AWS-owned buckets
 
 Several AWS features fetch artifacts from S3 buckets that AWS owns, using your instance's credentials, through your S3 gateway endpoint.
-The documented example is ECR: image layers are served from an AWS-owned S3 bucket, and pulling through an interface ECR endpoint in a private subnet still touches S3 via the gateway endpoint, so the endpoint policy must allow the regional layer bucket (`prod-<region>-starport-layer-bucket` per ECR docs, UNVERIFIED as of 2026-10).
+The documented example is ECR: image layers are served from an AWS-owned S3 bucket, and pulling through an interface ECR endpoint in a private subnet still touches S3 via the gateway endpoint, so the endpoint policy must allow the regional layer bucket (`arn:aws:s3:::prod-<region>-starport-layer-bucket/*`, Amazon ECR docs, as of 2026-11).
 Operating-system package repositories, CloudFormation custom resource response buckets, and agent download buckets follow the same pattern.
 An endpoint policy that enforces `aws:ResourceOrgID` blocks all of them, because AWS-owned buckets carry no organization of yours.
 The failure presents as "image pull hangs" or "yum times out" in a subnet with no NAT, which is why first-time perimeter rollouts hit it within hours.
@@ -180,10 +214,11 @@ The structural fix is a `NotResource` carve-out on the resource-perimeter Deny, 
 ### Non-obvious mechanism 6: policy size is a design constraint, not a footnote
 
 SCPs are limited to 10,240 characters per policy (raised from 5,120 in 2026) and RCPs are limited to 5,120 characters per policy, and up to ten SCPs (raised from five) or five RCPs can be attached to any one root, OU, or account (AWS Organizations docs, as of 2026-10).
+The undetachable `RCPFullAWSAccess` policy counts toward the five RCPs, which leaves four slots for your own (AWS Organizations docs, as of 2026-11).
 A full network-perimeter statement with a service list, CIDR list, VPC list, exemption clauses, and tag exceptions routinely consumes 800 to 1,200 characters.
-You therefore split perimeters across multiple policies by objective, push resource-side conditions into RCPs and endpoint policies (endpoint policies allow up to 20,480 characters, UNVERIFIED as of 2026-10), and keep exceptions in tags rather than in enumerated ARNs.
+You therefore split perimeters across multiple policies by objective, push resource-side conditions into RCPs and endpoint policies (endpoint policies allow up to 20,480 characters including white space, AWS PrivateLink docs, as of 2026-11), and keep exceptions in tags rather than in enumerated ARNs.
 Tag-based exceptions trade policy size for a new attack surface in the tagging API, which is why the tag-the-tagger SCP above is mandatory rather than optional.
-Always minify JSON before measuring, because the exact whitespace accounting is a detail I could not verify (UNVERIFIED).
+Always minify JSON before measuring and before submitting, because the console strips extra white space on save while the CLI and SDKs store the document exactly as provided, so that white space counts against the limit (AWS Organizations docs, as of 2026-11).
 
 ### Google Cloud: VPC Service Controls enforce at the API layer
 
@@ -196,10 +231,10 @@ I cannot verify which exact internal component evaluates perimeters, so treat cl
 
 A perimeter has these elements:
 
-- Resources: the projects (and, in newer configurations, other resource types; UNVERIFIED as of 2026-10) inside the boundary.
+- Resources: the projects, VPC networks, and folders inside the boundary, where a folder covers its nested projects and folders and a perimeter bridge accepts only projects (Google Cloud VPC-SC docs, as of 2026-11).
 - Restricted services: the APIs whose resources are protected. A service not on the list, or not supported by VPC-SC at all, remains unprotected even for projects inside the perimeter.
 - VPC accessible services: an optional allow-list of which APIs a VPC network inside the perimeter may reach, usually set to `RESTRICTED-SERVICES`.
-- Access levels, defined in Access Context Manager: conditions on public IP ranges, device posture, geography, and identities. Private RFC 1918 ranges cannot be used in access levels because the originating address of internal traffic is not visible, so internal traffic is admitted by project or VPC-network source in ingress rules instead.
+- Access levels, defined in Access Context Manager: conditions on IP ranges, device posture, geography, and identities. Internal ranges cannot appear as bare CIDRs: they must name a VPC network plus IP range in the `vpcNetworkSources` field of a basic access level (not a custom one), and this does not work for Google-managed services such as Cloud SQL (Google Cloud VPC-SC docs, as of 2026-11). Internal traffic can otherwise be admitted by project or VPC-network source in ingress rules.
 - Ingress rules and egress rules: explicit, attribute-based exceptions. A rule specifies `from` (identity or identity type, and sources such as access level or project) and `to` (target projects or resources, and operations per service with method or permission selectors).
 
 The evaluation matrix is symmetric and two-sided.
@@ -207,22 +242,23 @@ Traffic inside a perimeter is allowed.
 A call from outside into a perimeter needs a matching ingress rule or access level.
 A call from inside to a resource outside needs a matching egress rule.
 A call that touches resources in two perimeters, such as a copy from a bucket in perimeter A to a bucket in perimeter B, needs an egress rule on the source side and an ingress rule on the destination side, and the violation can come from either leg.
-Perimeter bridges are the legacy way to connect perimeters; Google's current guidance is to use ingress and egress rules because bridges are coarse (UNVERIFIED as of 2026-10).
+Perimeter bridges are the older, bidirectional way to connect perimeters; Google's docs say ingress and egress rules "can replace and simplify" use cases that previously required bridges, and bridges cannot span scoped policies (Google Cloud VPC-SC docs, as of 2026-11).
 
 ### Non-obvious mechanism 7: dry-run is a separate config, and propagation is slow
 
 Every perimeter holds two configurations: the enforced `status` and a dry-run `spec`.
 The dry-run spec is evaluated in parallel with the enforced config on every request.
-A request that the dry-run spec would block but the enforced config allows succeeds, and the platform writes an audit entry flagged as dry-run, in the policy audit log (`cloudaudit.googleapis.com%2Fpolicy`, UNVERIFIED), with a `vpcServiceControlsUniqueId` that the VPC-SC Troubleshooter can resolve into the specific rule that failed.
+A request that the dry-run spec would block but the enforced config allows succeeds, and the platform writes an audit entry flagged as dry-run, in the Policy Denied audit log (`cloudaudit.googleapis.com%2Fpolicy`, Google Cloud VPC-SC docs, as of 2026-11), with a `vpcServiceControlsUniqueId` that the VPC-SC Troubleshooter can resolve into the specific rule that failed.
+Google's docs now call this diagnostic the violation analyzer, and its IAM role is still named VPC Service Controls Troubleshooter Viewer (as of 2026-11).
 This gives you the observability that AWS SCPs and RCPs lack: a real-traffic shadow evaluation before enforcement.
-Two operational facts matter: perimeter changes take on the order of minutes (documented as up to 30 minutes, UNVERIFIED as of 2026-10) to propagate everywhere, and dry-run violation logs from busy projects can be very high volume, so route them to a dedicated log bucket or BigQuery dataset with a retention cap before you turn dry-run on.
+Two operational facts matter: perimeter changes take on the order of minutes (documented as up to 30 minutes, Google Cloud VPC-SC docs, as of 2026-11) to propagate everywhere, and dry-run violation logs from busy projects can be very high volume, so route them to a dedicated log bucket or BigQuery dataset with a retention cap before you turn dry-run on.
 
 ### Non-obvious mechanism 8: the private API path on Google Cloud
 
 For VPC-SC to see traffic from a VPC as originating inside the perimeter, clients must reach Google APIs over a private path that preserves network context.
-The two classical VIPs are `restricted.googleapis.com` (199.36.153.4/30), which serves only VPC-SC-supported APIs, and `private.googleapis.com` (199.36.153.8/30), which serves all APIs (Google Cloud docs, UNVERIFIED as of 2026-10).
+The two classical VIPs are `restricted.googleapis.com` (199.36.153.4/30), which serves only VPC-SC-supported APIs, and `private.googleapis.com` (199.36.153.8/30), which serves most Google APIs regardless of VPC-SC support (Google Cloud docs, as of 2026-11).
 You publish a private Cloud DNS zone that maps `*.googleapis.com` as a CNAME to `restricted.googleapis.com`, and route the /30 through the VPC (the default internet gateway route's next hop is used for these Google-internal addresses).
-Private Service Connect for Google APIs provides the same function with a consumer-controlled IP address and a `vpc-sc` bundle (UNVERIFIED as of 2026-10).
+Private Service Connect for Google APIs provides the same function with a consumer-controlled IP address and a `vpc-sc` bundle (Google Cloud PSC docs, as of 2026-11).
 For on-premises clients over Cloud Interconnect or HA VPN, you advertise the VIP over BGP and resolve to it with DNS forwarding, so the on-premises traffic is attributed to the VPC network it enters through.
 This is the Google counterpart of the AWS interface endpoint with private DNS, and it fails in the same way: break the DNS override and requests go out over the public path where the perimeter treats them as external.
 
@@ -235,7 +271,7 @@ The identity perimeter uses Organization Policy and IAM:
 - `constraints/storage.publicAccessPrevention` and `constraints/storage.uniformBucketLevelAccess` remove public ACL paths.
 - `constraints/iam.disableServiceAccountKeyCreation` removes the long-lived credential that makes stolen-credential replay possible, as in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]].
 - `constraints/gcp.restrictNonCmekServices` and `constraints/gcp.restrictCmekCryptoKeyProjects` force customer-managed keys from approved projects.
-- IAM deny policies and Principal Access Boundary policies (GA status UNVERIFIED as of 2026-10) bound which resources a principal can ever be granted access to, which is the closest analogue to the AWS resource perimeter on the SCP side.
+- IAM deny policies and Principal Access Boundary policies (generally available since 16 December 2024, Google Cloud IAM release notes, as of 2026-11) bound which resources a principal can ever be granted access to, which is the closest analogue to the AWS resource perimeter on the SCP side.
 
 See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_01_Resource_Hierarchy_and_Organization_Policies|Resource Hierarchy and Organization Policies]], [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions|Cloud IAM]], and [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]] for the baseline.
 
@@ -243,47 +279,46 @@ See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_01_Resource_Hierar
 
 AWS builds Access Analyzer and the Reachability Analyzer on SMT-based automated reasoning.
 The Zelkova engine translates IAM policies and their condition semantics into satisfiability queries (Backes et al., "Semantic-based Automated Reasoning for AWS Access Policies using SMT", FMCAD 2018).
-This is how Access Analyzer decides that a bucket is "public" or "externally shared" in the presence of `aws:PrincipalOrgID` conditions, and how custom policy checks such as `CheckNoNewAccess` and `CheckAccessNotGranted` work (IAM Access Analyzer docs, UNVERIFIED as of 2026-10).
+This is how Access Analyzer decides that a bucket is "public" or "externally shared" in the presence of `aws:PrincipalOrgID` conditions, and how custom policy checks such as `CheckNoNewAccess` and `CheckAccessNotGranted` work (API names per IAM Access Analyzer docs, as of 2026-11; AWS describes Access Analyzer for S3 as "powered by Zelkova" in its [Security Blog](https://aws.amazon.com/blogs/security/protect-sensitive-data-in-the-cloud-with-automated-reasoning-zelkova/) and its current docs say only "provable security" for the wider product).
 For perimeter engineering the takeaway is operational: policy diffs can be checked in CI with a solver rather than by reviewer eyeballs, and the cost of a false negative in a deny perimeter is an outage rather than a breach, so you want that check before merge.
 For the identity foundations on the Google side, BeyondCorp (Ward and Beyer, ";login:", 2014) and Zanzibar (Pang et al., USENIX ATC 2019) describe the "authorize every request against identity and context" model that VPC-SC access levels descend from.
 
 ## Numbers to Know
 
-Rows still marked UNVERIFIED are figures I recalled from official documentation but could not re-verify.
-Each of those must be re-checked against the cited source before the note moves to `status: solid`.
-Rows without an UNVERIFIED mark were checked in the 2026-10 pass.
+Every row was checked against the cited source in the 2026-10 or 2026-11 pass.
+Prices and quotas change, so re-check them before relying on them.
 
 | Item | Value | Source and date |
 |---|---|---|
 | SCP maximum document size | 10,240 characters (raised from 5,120) | AWS Organizations docs, as of 2026-10 |
 | RCP maximum document size | 5,120 characters | AWS Organizations docs, as of 2026-10 |
 | SCPs attachable per root, OU, or account | 10 (raised from 5) | AWS Organizations docs, as of 2026-10 |
-| RCPs attachable per root, OU, or account | 5 | AWS Organizations docs, as of 2026-10 |
+| RCPs attachable per root, OU, or account | 5, including the undetachable `RCPFullAWSAccess` | AWS Organizations docs, as of 2026-11 |
 | RCP launch service coverage | S3, STS, KMS, SQS, Secrets Manager at launch; later additions include ECR, OpenSearch Serverless, CloudWatch Logs, Cognito, DynamoDB | AWS launch post (Nov 2024) and AWS Organizations docs, as of 2026-10 |
-| VPC endpoint policy maximum size | 20,480 characters | AWS PrivateLink docs, UNVERIFIED as of 2026-10 |
-| S3 bucket policy maximum size | 20 KB | S3 docs, UNVERIFIED as of 2026-10 |
-| KMS key policy maximum size | 32 KB | KMS docs, UNVERIFIED as of 2026-10 |
+| VPC endpoint policy maximum size | 20,480 characters including white space, not adjustable | AWS PrivateLink docs, as of 2026-11 |
+| S3 bucket policy maximum size | 20 KB, not adjustable | AWS S3 service quotas, as of 2026-11 |
+| KMS key policy maximum size | 32 KB (32,768 bytes) | AWS KMS docs, as of 2026-11 |
 | S3 gateway endpoint charge | no hourly or data charge | AWS VPC pricing, as of 2026-10 |
 | Interface endpoint price, us-east-1 | $0.01 per AZ-hour plus $0.01 per GB processed (first PB) | AWS PrivateLink pricing, as of 2026-10 |
 | NAT gateway price, us-east-1 | $0.045 per hour plus $0.045 per GB processed | AWS VPC pricing, as of 2026-10 |
 | NAT gateway throughput ceiling | up to 100 Gbps; 55,000 simultaneous connections per unique destination tuple | AWS NAT docs, as of 2026-10 |
-| Interface endpoint bandwidth | 10 Gbps per AZ baseline, scales to 100 Gbps | AWS PrivateLink docs, UNVERIFIED as of 2026-10 |
-| VPC-SC perimeter change propagation | up to about 30 minutes | Google Cloud VPC-SC docs, UNVERIFIED as of 2026-10 |
+| Interface endpoint bandwidth | 10 Gbps per AZ by default, scales automatically to 100 Gbps | AWS PrivateLink docs, as of 2026-11 |
+| VPC-SC perimeter change propagation | up to 30 minutes | Google Cloud VPC-SC docs, as of 2026-11 |
 | IAM policy change propagation (GCP) | typically 2 minutes, potentially 7 minutes or longer | Google Cloud IAM docs, as of 2026-10 |
-| restricted.googleapis.com VIP | 199.36.153.4/30 | Google Cloud docs, UNVERIFIED as of 2026-10 |
-| private.googleapis.com VIP | 199.36.153.8/30 | Google Cloud docs, UNVERIFIED as of 2026-10 |
-| S3 Bucket Keys KMS request reduction | up to 99% | S3 docs, UNVERIFIED as of 2026-10 |
-| VPC-SC and Access Context Manager direct charge | no separate charge I know of | Google Cloud pricing, UNVERIFIED as of 2026-10 |
+| restricted.googleapis.com VIP | 199.36.153.4/30 | Google Cloud docs, as of 2026-11 |
+| private.googleapis.com VIP | 199.36.153.8/30 | Google Cloud docs, as of 2026-11 |
+| S3 Bucket Keys KMS request cost reduction | up to 99% | S3 docs, as of 2026-11 |
+| VPC-SC direct charge | no separate charge | Google Cloud VPC-SC pricing, as of 2026-11 |
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
 | Enforcement point | IAM authorization in each service's regional data plane, with context keys per request | API front end evaluates VPC-SC against project perimeters | AWS expresses the perimeter as conditions inside IAM policy language. GCP expresses it as a separate object that sits outside IAM |
-| Identity perimeter on your principals | SCP (identity and resource conditions), permission boundaries | Organization Policy domain restriction, IAM deny, Principal Access Boundary (GA status UNVERIFIED) | AWS SCPs are an arbitrary condition language. GCP gives curated constraints plus deny and boundary policies |
+| Identity perimeter on your principals | SCP (identity and resource conditions), permission boundaries | Organization Policy domain restriction, IAM deny, Principal Access Boundary (GA since December 2024) | AWS SCPs are an arbitrary condition language. GCP gives curated constraints plus deny and boundary policies |
 | Identity perimeter on your resources | RCP, bucket and key policies with `aws:PrincipalOrgID` | VPC-SC ingress rules, resource-level IAM with domain restriction | RCP covers a limited service list. VPC-SC covers every supported API in a restricted-service list |
 | Resource perimeter (stop writes to foreign resources) | SCP or endpoint policy with `aws:ResourceOrgID` | VPC-SC egress rules, which deny by default | GCP's default is deny and you add egress rules. AWS requires you to write the deny |
-| Network perimeter | `aws:SourceVpc`, `aws:SourceVpce`, `aws:SourceIp` conditions plus endpoint policies | VPC-SC access levels (public IP only), ingress rules by VPC network or project source | GCP cannot express private CIDRs in access levels. AWS cannot see packet source IP for endpoint traffic and must use endpoint IDs |
+| Network perimeter | `aws:SourceVpc`, `aws:SourceVpce`, `aws:SourceIp` conditions plus endpoint policies | VPC-SC access levels (public IP, or VPC network plus internal range via `vpcNetworkSources`), ingress rules by VPC network or project source | GCP cannot express bare private CIDRs in access levels and must name the VPC network. AWS has no `aws:SourceIp` for endpoint traffic and uses endpoint or VPC IDs and `aws:VpcSourceIp` |
 | Private API path | Gateway endpoint (route table) for S3 and DynamoDB, interface endpoint (ENI plus private DNS) for the rest | restricted VIP or PSC for Google APIs, with DNS CNAME override | Both fail the same way when DNS is wrong |
 | Observation before enforcement | None native for SCP and RCP. Use CloudTrail denies, Access Analyzer policy generation, and Reachability checks | Per-perimeter dry-run spec with audit logs and a unique violation ID | GCP has a first-class shadow mode. AWS needs process discipline |
 | Exception model | Tag-based exemptions and `aws:PrincipalIsAWSService`, `aws:ViaAWSService` clauses | Ingress and egress rules with identity type, method selectors, and access levels | AWS exceptions live in policy text. GCP exceptions are structured and queryable |
@@ -307,7 +342,7 @@ Assume a training fleet reads a 20 TB dataset per epoch (20,000 GB), with 30 epo
 2. With a gateway endpoint, the same traffic costs $0 in processing charges (AWS VPC pricing, as of 2026-10). The perimeter is cheaper than the leak path it replaces.
 3. Throughput: 16 nodes each reading at 25 Gbps need 400 Gbps aggregate. A NAT gateway tops out around 100 Gbps (AWS NAT docs, as of 2026-10), so NAT is also the throughput bottleneck. Check current gateway-endpoint throughput guidance before relying on it as unbounded.
 4. Interface endpoints for the control plane: assume eight services (STS, KMS, ECR API, ECR DKR, CloudWatch Logs, Secrets Manager, Bedrock runtime, SSM) across 3 AZs. 8 x 3 x 730 h x $0.01 = $175.20 per month per VPC, plus about 2 TB of API traffic at $0.01 per GB = $20.48. Total about $196 per month per VPC (PrivateLink pricing, as of 2026-10).
-5. Break-even on endpoint consolidation: a hub VPC with shared endpoints saves the per-VPC hourly charge but adds Transit Gateway data processing at about $0.02 per GB (UNVERIFIED). With more than about 10 spoke VPCs and low API traffic, the hub wins. With heavy API traffic, per-VPC endpoints win. See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]].
+5. Break-even on endpoint consolidation: a hub VPC with shared endpoints saves the per-VPC hourly charge but adds Transit Gateway data processing at $0.02 per GB and $0.05 per attachment-hour (the attachment rate is AWS's published Ohio example; Transit Gateway pricing, as of 2026-11). Each spoke then costs 730 x $0.05 = $36.50 plus 2,048 GB x $0.02 = $40.96, or $77.46, against $175.20 for its own endpoints, and the hub carries one set of endpoints ($175.20) plus its own attachment ($36.50), so the hub wins from about 3 spokes at 2 TB each (211.70 / 97.74 = 2.2). Above about 7 TB per spoke per month ((175.20 - 36.50) / 0.02 = 6,935 GB), the data charge alone cancels the savings and per-VPC endpoints win. See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]].
 6. Lab cost: VPC, route table, S3 gateway endpoint, and an empty bucket are free or pennies. Expected lab cost is under $1 for a one-day run, and the budget alarm below caps surprises at $5.
 
 ### Step 1: AWS workload account (OpenTofu or Terraform)
@@ -585,6 +620,8 @@ pol_file, bucket, vpce, org, bg = sys.argv[1:6]
 resource_policy = open(pol_file).read()
 iam = boto3.client("iam")
 me = boto3.client("sts").get_caller_identity()["Arn"]
+if ":assumed-role/" in me:  # CallerArn rejects session ARNs; this mapping assumes a role with no path
+    me = me.replace(":sts:", ":iam:").replace(":assumed-role/", ":role/").rsplit("/", 1)[0]
 identity_allow = json.dumps({"Version": "2012-10-17", "Statement": [
     {"Effect": "Allow", "Action": "s3:*", "Resource": "*"}]})
 
@@ -628,7 +665,8 @@ sys.exit(1 if failed else 0)
 ```
 
 The simulator evaluates identity and resource policies with the context you supply.
-It does not model SCPs, RCPs, or endpoint policies, and it warns about missing context values, so treat it as a regression smoke test for the resource-policy layer and not as proof that the whole perimeter holds.
+This call does not model RCPs or endpoint policies, and it includes SCPs only if you pass them in `OrderedOrganizationPolicyInputList` (IAM API docs, as of 2026-11), which this script does not.
+It also reports missing context values, and AWS warns that simulator results can differ from the live environment, so treat it as a regression smoke test for the resource-policy layer and not as proof that the whole perimeter holds.
 
 ### Step 4: Live canary (proves the resource perimeter with a real API call)
 
@@ -715,7 +753,7 @@ gcloud logging read \
 
 When the violation stream is empty or fully explained by rules, promote the dry-run spec to enforced (copy `spec` to a `status` block in the Terraform and apply, or use the dry-run enforce command in `gcloud access-context-manager perimeters dry-run`).
 The dry-run enforce command is `gcloud access-context-manager perimeters dry-run enforce PERIMETER_NAME` (Google Cloud VPC-SC docs, as of 2026-10).
-The log filter field names are UNVERIFIED as of 2026-10.
+The filter's `metadata.dryRun` and `metadata.vpcServiceControlsUniqueId` fields and the `cloudaudit.googleapis.com%2Fpolicy` log name match the VPC-SC audit logging docs (as of 2026-11).
 
 DNS for the private path, so that VPC clients reach the restricted VIP:
 
@@ -781,12 +819,12 @@ Otherwise, a leftover RCP or SCP can deny the teardown's own API calls and leave
 ### Stolen credentials replayed from outside (Capital One, 2019)
 
 The pattern is an application SSRF yielding instance-role credentials, followed by use from an external IP.
-Controls that break the chain are IMDSv2 with a hop limit of one, `aws:EC2InstanceSourceVPC` binding, an SCP network perimeter keyed on `aws:SourceVpc`, and least-privilege on the role itself.
+Controls that break the chain are IMDSv2 with a hop limit of one, `aws:Ec2InstanceSourceVpc` binding, an SCP network perimeter keyed on `aws:SourceVpc`, and least-privilege on the role itself.
 The lesson for perimeter design is that identity policy was the only gate and it answered "may this role read S3?" without asking "from where?".
 
 ### Central policy plane failure (Google Cloud, June 2025)
 
-Google's public incident report for 12 June 2025 describes a null-pointer crash in the Service Control component, triggered by a quota-policy change with blank fields that replicated globally in seconds without a feature flag, producing widespread API errors for a period of hours (Google Cloud status incident history, details UNVERIFIED as of 2026-10).
+Google's public incident report for 12 June 2025 describes a null-pointer crash in the Service Control binary, in code added on 29 May 2025 without a feature flag, triggered by a quota policy with blank fields that replicated globally in seconds, producing widespread API errors for a period of hours (the status page lists 10:51 to 18:18 PDT) ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-11).
 The incident report does not say VPC-SC evaluation failed.
 It matters for perimeter design because it demonstrates the structural risk: a policy plane that sits on every API request path and fails closed turns a bad config push into a global outage.
 See also [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
@@ -811,7 +849,7 @@ Repair: add the specific AWS-owned bucket ARN to the carve-out, and prefer a nam
 
 SageMaker training, Bedrock batch inference, Glue, and Athena run as your role from AWS infrastructure, with no VPC context and no `aws:ViaAWSService=true`.
 A network-perimeter SCP without the tag-based exemption denies them, and the failure appears as a job-level "access denied reading input" rather than anything that names the perimeter.
-The same applies to Bedrock cross-region inference profiles when an SCP denies `aws:RequestedRegion` outside a home region: the destination regions must be allowed for inference to work (Bedrock docs, UNVERIFIED as of 2026-10).
+The same applies to Bedrock cross-region inference profiles when an SCP denies `aws:RequestedRegion` outside a home region: all destination Regions in a geographic profile must be allowed, and global profiles need `"aws:RequestedRegion": "unspecified"` allowed (Bedrock docs, as of 2026-11).
 
 ### RCPs and third parties
 
@@ -833,7 +871,7 @@ Manage the endpoint and bucket policy in the same stack, or use `aws:SourceVpc` 
 
 ### Propagation windows during incidents
 
-Guardrail changes propagate over minutes on AWS and up to tens of minutes on VPC-SC (UNVERIFIED).
+Guardrail changes propagate over minutes on AWS (endpoint policy updates "can take a few minutes", AWS PrivateLink docs, as of 2026-11) and up to 30 minutes on VPC-SC (Google Cloud VPC-SC docs, as of 2026-11).
 During an incident, an emergency "loosen the perimeter" change does not take effect immediately, and a half-propagated change produces confusing partial behavior.
 Runbooks must state the expected delay, and the first mitigation should be the break-glass exemption, not an edit to the guardrail.
 
@@ -861,7 +899,7 @@ See [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms
 ### IAM scoping for the perimeter itself
 
 The perimeter is only as strong as the set of identities allowed to change it.
-Define a single perimeter-admin role per cloud, held in the management or security account (or in a delegated administrator account for Organizations policies, UNVERIFIED as of 2026-10), and deny `organizations:AttachPolicy`, `organizations:DetachPolicy`, `organizations:UpdatePolicy`, and `ec2:ModifyVpcEndpoint` to everyone else through an SCP guarded by `aws:PrincipalArn`.
+Define a single perimeter-admin role per cloud, held in the management or security account (or in a delegated administrator account, since Organizations resource-based delegation policies can delegate policy actions including `AttachPolicy` and `DetachPolicy`, and SCPs and RCPs still apply to that member account; AWS Organizations docs, as of 2026-11), and deny `organizations:AttachPolicy`, `organizations:DetachPolicy`, `organizations:UpdatePolicy`, and `ec2:ModifyVpcEndpoint` to everyone else through an SCP guarded by `aws:PrincipalArn`.
 On Google Cloud, restrict `accesscontextmanager.*` and `orgpolicy.*` permissions to a dedicated group and require approval through change management.
 Protect the exemption tags from tampering with the tag-the-tagger SCP described in Internals.
 
@@ -870,7 +908,8 @@ Protect the exemption tags from tampering with the tag-the-tagger SCP described 
 Envelope encryption with customer-managed keys gives a second, independent chokepoint.
 If a bucket policy fails open, an object still cannot be decrypted unless the caller can use the KMS key, and the key policy plus a KMS interface-endpoint policy (with `aws:PrincipalOrgID` and `kms:ViaService` conditions) is a separate layer.
 Use `kms:CallerAccount`, `aws:PrincipalOrgID`, and grants to scope key use, and keep key administrators distinct from key users, as in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
-Enable S3 Bucket Keys to cut KMS request volume by up to 99% (UNVERIFIED), which matters because KMS has per-key request rate quotas that a 400 Gbps training fleet can hit.
+Enable S3 Bucket Keys to cut KMS request costs by up to 99% by reducing request traffic (S3 docs, as of 2026-11), which matters because KMS symmetric request quotas are shared per account and Region (100,000 per second by default in us-east-1, AWS KMS docs, as of 2026-11) and a 400 Gbps training fleet can hit them.
+The trade-off is that requests served by the bucket-level key make no KMS call and do not re-validate the key policy, though S3 fetches a unique bucket-level key at least once per requester (S3 docs, as of 2026-11).
 On Google Cloud, CMEK keys must live in an approved project that is itself inside the perimeter or reachable by an ingress rule, and `constraints/gcp.restrictCmekCryptoKeyProjects` enforces which projects may hold them.
 
 ### Private network boundaries
@@ -885,7 +924,7 @@ On Google Cloud, route all `*.googleapis.com` to the restricted VIP or a PSC `vp
 - Interface endpoints cost about $22 per service per month in a 3-AZ VPC (3 x 730 x $0.01, PrivateLink pricing, as of 2026-10). Count them before copy-pasting a "one endpoint per service" module into 40 VPCs.
 - Shared hub endpoints trade hourly charges for Transit Gateway data charges and a larger blast radius, as the sizing above shows.
 - VPC-SC dry-run logging can generate large audit-log volume. Set retention, route to a dedicated bucket, and exclude known-good traffic with a log exclusion once explained.
-- Access Analyzer unused-access and external-access analyzers have their own pricing (UNVERIFIED), so enable them per account selectively rather than blanket.
+- Access Analyzer external-access analyzers are free, while unused-access analyzers cost $0.20 per IAM role or user per month, internal-access analyzers cost $9.00 per monitored resource per Region per month, and custom policy checks cost $0.002 per call (Access Analyzer pricing, as of 2026-11), so enable the paid analyzers selectively rather than blanket.
 - Policy-as-code CI runs (see [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_04_Policy_as_Code_OPA_Sentinel_and_Guardrails|Policy as Code]]) are far cheaper than one hour of perimeter-induced outage on a training cluster that costs thousands of dollars per hour.
 
 Auditing and evidence for the perimeter, including CloudTrail and Cloud Audit Logs integrity, continue in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_07_Compliance_Auditing_and_Non_Repudiation|Compliance, Auditing, and Non-Repudiation]].
@@ -967,7 +1006,7 @@ First, inventory: which projects hold the data, which services they use, and whi
 Second, create the perimeter with a dry-run spec only, in a scoped access policy limited to a folder or project so a mistake does not touch other teams, and route dry-run violation logs to a dedicated log bucket with capped retention because busy projects produce high volume.
 Third, fix the private path: a private DNS zone that maps `*.googleapis.com` to the restricted VIP (or a PSC endpoint with the `vpc-sc` bundle), so VPC traffic keeps its network context.
 Fourth, mine the violations by `vpcServiceControlsUniqueId`, resolve each with the Troubleshooter, and decide per violation whether it is a legitimate flow that needs an ingress or egress rule, or a flow that should be killed.
-Typical findings are CI systems outside the perimeter calling Cloud Storage, cross-project BigQuery or Cloud Storage copies that need an egress rule on the source side and an ingress rule on the destination side, Cloud Build and Artifact Registry in a project outside the boundary, and on-premises clients on private ranges that cannot be expressed in access levels and must be admitted by source project or network.
+Typical findings are CI systems outside the perimeter calling Cloud Storage, cross-project BigQuery or Cloud Storage copies that need an egress rule on the source side and an ingress rule on the destination side, Cloud Build and Artifact Registry in a project outside the boundary, and on-premises clients on private ranges, which cannot be bare CIDRs in an access level and must be admitted by source project, by VPC network, or by a `vpcNetworkSources` access level.
 Fifth, enforce on a Tuesday morning with the break-glass ingress rule tested, and expect propagation to take as long as about 30 minutes, so I schedule a hold before declaring success.
 What goes wrong is rules written too broadly to get to green: an ingress rule with any identity and any method defeats the point, so I review rules by identity type, service, and method selectors in code review.
 
@@ -1005,7 +1044,7 @@ Three realities make it a shared dependency.
 Guardrails attached at the organization root apply to all accounts at nearly the same instant, with eventually consistent propagation that makes partial application visible.
 There is no native dry-run for SCPs and RCPs, so the first real-traffic evaluation is the production one.
 The management account is exempt from SCPs, which is both the recovery path and a single-point-of-control risk.
-The public record supports the concern in structure: Google's June 2025 incident report describes a global policy-layer crash from a blank-field config replicated everywhere in seconds without a feature flag (UNVERIFIED details), and AWS's own Builders' Library guidance on static stability and cell-based design says control-plane changes should be incremental and region- or cell-scoped.
+The public record supports the concern in structure: Google's June 2025 incident report describes a global policy-layer crash from a blank-field config replicated everywhere in seconds, hitting code that shipped without a feature flag (Google Cloud incident report, as of 2026-11), and AWS's own Builders' Library guidance on static stability and cell-based design says control-plane changes should be incremental and region- or cell-scoped.
 Safeguards are the same as for any global config: stage by blast radius, with a canary OU and then waves, gated on automated checks.
 CI runs a solver-backed analysis, using Access Analyzer custom policy checks against a corpus of recorded legitimate requests, so a policy change that would deny known-good flows is blocked before merge.
 Synthetic canaries run in each wave, one positive (a legitimate call must succeed) and one negative (an exfil call must fail), and they alert on both.
@@ -1026,7 +1065,7 @@ Your company runs training on AWS and serving on Google Cloud, and needs to move
 The mistake is to punch a hole in each perimeter for the pipeline's identity.
 The better design is an airlock: a dedicated transfer account on AWS and a dedicated transfer project on Google Cloud, each outside the production perimeters but strictly one-way and heavily instrumented, with no human access.
 On the AWS side, production exports into a bucket in the transfer account over a gateway endpoint, and the resource-perimeter SCP admits that single account explicitly by an `aws:ResourceAccount` allowance rather than relaxing `aws:ResourceOrgID` for everyone.
-Data moves across clouds over private connectivity, such as a dedicated Interconnect or Direct Connect pairing through a colocation provider, since internet egress would cost about $0.09 per GB at list (UNVERIFIED), or roughly $45,000 per month for 500 TB, and the dedicated link has a flat cost that amortizes at that volume.
+Data moves across clouds over private connectivity, such as a dedicated Interconnect or Direct Connect pairing through a colocation provider, since tiered AWS internet egress from us-east-1 ($0.09 falling to $0.05 per GB) would cost about $29,000 per month for 500 TB, while Direct Connect is not flat: $0.02 per GB ($10,000) plus a 10 Gbps port at $2.25 per hour ($1,643) comes to about $11,600 per month before colocation and Google-side interconnect charges, and 500 TB per month averages only about 1.5 Gbps (AWS price list and Direct Connect pricing, as of 2026-11).
 See [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_07_Multi_Cloud_and_Hybrid_Architecture_Reality|Multi-Cloud and Hybrid Architecture Reality]] for the break-even math.
 Identity crossing uses workload identity federation with short-lived tokens, never exported keys, as in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]].
 On the Google side, production's VPC-SC perimeter admits the transfer project through one ingress rule scoped to a single identity, one service (`storage.googleapis.com`), and one destination bucket, with method selectors limited to object reads.

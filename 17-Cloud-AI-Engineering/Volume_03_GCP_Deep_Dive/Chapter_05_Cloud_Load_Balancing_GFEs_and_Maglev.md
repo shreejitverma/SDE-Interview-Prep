@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://research.google.com/pubs/archive/44824.pdf"
@@ -14,6 +14,27 @@ sources:
   - "https://docs.cloud.google.com/load-balancing/docs/network/networklb-backend-service"
   - "https://aws.amazon.com/builders-library/implementing-health-checks/"
   - "https://aws.amazon.com/builders-library/workload-isolation-using-shuffle-sharding/"
+  - "https://docs.cloud.google.com/load-balancing/docs/release-notes"
+  - "https://docs.cloud.google.com/load-balancing/docs/network/global-networklb-architecture"
+  - "https://docs.cloud.google.com/load-balancing/docs/network/ext-netlb-traffic-distribution"
+  - "https://docs.cloud.google.com/load-balancing/docs/backend-service"
+  - "https://docs.cloud.google.com/load-balancing/docs/firewall-rules"
+  - "https://docs.cloud.google.com/load-balancing/docs/org-policy-constraints"
+  - "https://docs.cloud.google.com/iam/docs/roles-permissions/compute"
+  - "https://docs.cloud.google.com/compute/docs/troubleshooting/general-tips"
+  - "https://docs.cloud.google.com/service-mesh/docs/reference/network-services/rest/v1/projects.locations.serviceLbPolicies"
+  - "https://cloud.google.com/load-balancing/pricing"
+  - "https://cloud.google.com/products/compute/pricing/general-purpose"
+  - "https://status.cloud.google.com/incident/cloud-networking/19009"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://research.google/pubs/taking-the-edge-off-with-espresso-scale-reliability-and-programmability-for-global-internet-peering/"
+  - "https://aws.amazon.com/elasticloadbalancing/pricing/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://aws.amazon.com/builders-library/reliability-and-constant-work/"
+  - "https://aws.amazon.com/blogs/networking-and-content-delivery/routing-udp-to-on-premises-network-load-balancer-targets/"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/update-idle-timeout.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/edit-target-group-attributes.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html"
 ---
 
 # Cloud Load Balancing: GFEs and Maglev
@@ -62,7 +83,7 @@ Google Cloud ships several load balancer families, and each one is a different c
 - **Regional and cross-region internal Application Load Balancers**: also Envoy-based. The cross-region variant fails over automatically to healthy backends in other regions and returns HTTP 503 when every backend is unhealthy (Google Cloud docs, as of 2026-10).
 - **Backend service-based regional external passthrough Network Load Balancer**: carries TCP, UDP, ESP, GRE, ICMP, and ICMPv6, supports IPv6, and offers connection tracking, draining, traffic steering, weighted balancing, and failover policies (Google Cloud docs, as of 2026-10).
 - **Target pool-based passthrough NLB**: the legacy form, which ignores established connections when distributing load (Google Cloud docs, as of 2026-10).
-- **Global external passthrough Network Load Balancer**: a newer L4 variant whose backends can span multiple regions. It supports only `PER_CONNECTION` tracking (UNVERIFIED: tracking-mode restriction not confirmed in this session), and its `RATE` mode is measured in incoming packets per second, not requests (Google Cloud docs, as of 2026-10). Google Cloud release notes announced it in Preview (Google Cloud release notes, as of 2026-10), and its current launch stage is UNVERIFIED, so treat it as Preview until you confirm it is GA.
+- **Global external passthrough Network Load Balancer**: a newer L4 variant whose backends can span multiple regions. It supports only `PER_CONNECTION` tracking, and its `RATE` mode is measured in incoming packets per second, not requests ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/network/global-networklb-architecture), as of 2026-11). Google Cloud announced it in Preview on July 31, 2026, and the overview page still carries the Preview banner, so it is not GA ([release notes](https://docs.cloud.google.com/load-balancing/docs/release-notes), as of 2026-11).
 - **Internal passthrough Network Load Balancer**: has no proxy and no Maglev hop. It is a virtual network function of Andromeda, whose controllers program backend health into the host dataplane (third-party summary of Google's Cloud Next '18 Andromeda talk). See [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_12_Andromeda_Network_Virtualization|Andromeda]].
 
 ### Control plane versus data plane
@@ -141,7 +162,7 @@ Two independent mechanisms protect established flows, and each covers exactly on
 | Backend added or removed, Maglev set stable | Entry exists on the same Maglev, so the old backend is reused | Table changed for ~0.7% of slots | Safe, unless the tracking table overflowed or the entry expired |
 | Maglev added or removed, backend set stable | ECMP rehashes the flow to a different Maglev that has no entry | Every Maglev computes the same slot, so the same backend | Safe |
 | Both change in the same window | No entry on the new Maglev | Slot moved | The flow lands on a new backend and gets a TCP RST |
-| SYN flood fills the tracking table | Entries evicted | Falls back to the table | Safe only while the backend set is stable |
+| SYN flood fills the tracking table | Entries are evicted only on expiry, so packets that do not fit get no entry | Backend is selected per packet from the table | Safe only while the backend set is stable (Eisenbud et al., NSDI 2016) |
 
 The design point is that neither mechanism has to be perfect, because they fail under uncorrelated events.
 The operational consequence is that you should never let the provider's maintenance and your own backend churn coincide.
@@ -157,7 +178,7 @@ You set it with `gcloud compute backend-services update ... --tracking-mode=... 
 The console cannot configure it (Google Cloud docs, as of 2026-10).
 Session affinity controls which tuple is hashed: 5-tuple, 3-tuple with protocol, or 2-tuple client IP.
 Tracking mode controls whether the tracking key is per connection or per session.
-The relevant enum values are `PER_CONNECTION`, `PER_SESSION`, `DEFAULT_FOR_PROTOCOL`, `NEVER_PERSIST`, and `ALWAYS_PERSIST` (UNVERIFIED: enum spellings not re-checked in this session).
+The tracking modes are `PER_CONNECTION` (the default) and `PER_SESSION`, and the persistence options are `DEFAULT_FOR_PROTOCOL` (the default), `NEVER_PERSIST`, and `ALWAYS_PERSIST` ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/network/ext-netlb-traffic-distribution), as of 2026-11).
 The 60-second idle timeout is the trap.
 A UDP flow, such as game state or a VoIP stream with silence suppression, that sends nothing for 60 seconds loses its tracking entry.
 Its next packet is hashed fresh.
@@ -179,21 +200,21 @@ The 90 ms figure is an illustrative transatlantic RTT, not a published number.
 
 Timers are layered and asymmetric.
 The GFE's client-side HTTP keepalive defaults to 610 s and is configurable from 5 to 1200 s, while its backend-side keepalive is fixed at 600 s (Google Cloud docs, as of 2026-10).
-The regional Envoy-based Application Load Balancer defaults to 610 s on the client side and 600 s on the backend side (Google Cloud docs, as of 2026-10).
-The backend service `timeout` is a response timeout for HTTP(S), with a default of 30 s.
-For TCP and SSL proxy load balancers it behaves as an idle timeout (Google Cloud community forum answer citing docs, as of 2026-10).
-For global and classic Application Load Balancers the effective maximum is 86400 s, and active WebSockets are cut at 24 h (third-party summary of Google Cloud docs, as of 2026-10).
+The regional Envoy-based Application Load Balancer has a fixed 600 s backend keepalive, and the same docs page gives its client-side default as 610 s in the timeouts table but 600 s in the Envoy prose, so set it explicitly rather than relying on either ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/https/request-distribution), as of 2026-11).
+The backend service `timeout` is a request and response timeout for HTTP(S), with a default of 30 s, or 60 minutes for serverless NEGs ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/https/request-distribution), as of 2026-11).
+For proxy Network Load Balancers it behaves as an idle timeout, and passthrough load balancers ignore it ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/backend-service), as of 2026-11).
+For global and classic Application Load Balancers the effective maximum is 86400 s, and active WebSockets are cut at 24 h ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/https/request-distribution), as of 2026-11).
 
 ### Cross-region traffic steering
 
-Each backend declares a balancing mode (`RATE`, `UTILIZATION`, or `CONNECTION`) and a target, such as `maxRatePerInstance`.
-`capacityScaler` multiplies that target and ranges from 0 to 1.
+Each backend declares a balancing mode (`RATE`, `UTILIZATION`, `CONNECTION`, `IN_FLIGHT`, or `CUSTOM_METRICS`) and a target, such as `maxRatePerInstance` ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/backend-service), as of 2026-11).
+`capacityScaler` multiplies that target and accepts 0, which drains the backend, or a value from 0.1 to 1.0 ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/backend-service), as of 2026-11).
 The default algorithm is `WATERFALL_BY_REGION`.
 Under it, the proxies in the region closest to the user collectively fill backends in proportion to their configured capacity, as modified by the scalers (Google Cloud docs, as of 2026-10).
 Each individual proxy prefers backends in the zone closest to it by network RTT.
 At low request rates, a proxy may therefore send all of its traffic to its own zone (Google Cloud docs, as of 2026-10).
 Traffic spills to the next region only when the closest region is at its configured capacity or unhealthy.
-Since May 2025 you can block that spillover with traffic isolation, which was in Preview at launch (Google Cloud release notes, as of 2026-10).
+Since May 14, 2025 global and cross-region load balancers can block that spillover with traffic isolation, which is still in Preview ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/service-lb-policy), as of 2026-11).
 
 The `serviceLbPolicy` resource adds four more controls (Google Cloud docs, as of 2026-10):
 
@@ -202,7 +223,7 @@ The `serviceLbPolicy` resource adds four more controls (Google Cloud docs, as of
 - A failover health threshold.
 - Preferred backends.
 
-In July 2026 (UNVERIFIED: date not confirmed) this resource was extended to regional external and regional internal Application Load Balancers, and the docs list the regional internal variant as Preview (Google Cloud docs, as of 2026-10).
+On July 27, 2026 this resource was extended to regional external and regional internal Application Load Balancers, and the docs list both regional variants as Preview ([release notes](https://docs.cloud.google.com/load-balancing/docs/release-notes), as of 2026-11).
 `SPRAY_TO_REGION` sends each client's requests across all MIGs and NEGs in the region.
 `WATERFALL_BY_REGION` keeps MIGs evenly loaded in aggregate, but an individual client may not reach all of them (Cloud Service Mesh API reference, as of 2026-10).
 
@@ -210,7 +231,7 @@ Declared capacity is the input to the steering algorithm, not a measurement it t
 If `maxRatePerInstance` is twice what an instance can actually serve, the nearest region looks "not full" while its p99 latency climbs, and the waterfall never spills.
 If it is half the true value, you waste capacity and send users across oceans for no reason.
 Treat the max rate as a steering target, not as admission control.
-When every region is full, the load balancer still forwards traffic, and you need [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control|load shedding]] in the backend (UNVERIFIED: exact over-capacity distribution behavior not re-checked in this session).
+The docs state that the target maximum RPS can be exceeded when all backends are at or above capacity, so the load balancer does not reject the excess, and you need [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control|load shedding]] in the backend ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/https/request-distribution), as of 2026-11).
 
 ### Failure domains
 
@@ -234,17 +255,17 @@ When every region is full, the load balancer still forwards traffic, and you nee
 | Table churn when 1 of 1000 backends is removed, M=65537 | 0.68% of slots (minimum 0.10%) | This chapter's simulation, 2026-10 |
 | GFE client HTTP keepalive | 610 s default, configurable 5-1200 s | Google Cloud docs, as of 2026-10 |
 | GFE backend keepalive | 600 s, fixed | Google Cloud docs, as of 2026-10 |
-| Regional Envoy ALB client / backend keepalive | 610 s / 600 s defaults | Google Cloud docs, as of 2026-10 |
-| Backend service timeout default | 30 s | Google Cloud community forum citing docs, as of 2026-10 |
-| Max effective backend timeout, global/classic ALB | 86400 s; active WebSockets closed at 24 h | Third-party summary of Google Cloud docs, as of 2026-10 |
+| Regional Envoy ALB client / backend keepalive | 610 s in the timeouts table, 600 s in the prose, of the same page / 600 s, fixed | Google Cloud docs, as of 2026-11 |
+| Backend service timeout default | 30 s (60 min for serverless NEGs) | Google Cloud docs, as of 2026-11 |
+| Max effective backend timeout, global/classic ALB | 86400 s; active WebSockets closed at 24 h | Google Cloud docs, as of 2026-11 |
 | Regional external passthrough NLB conntrack idle timeout | 60 s, not configurable | Google Cloud docs, as of 2026-10 |
-| Compute Engine idle TCP connection timeout | 10 min | Google Cloud community forum quoting docs, as of 2026-10 |
-| Global external passthrough NLB tracking modes | `PER_CONNECTION` only (UNVERIFIED); `RATE` counts packets/s | Google Cloud docs, as of 2026-10 |
-| Forwarding rule price | ~$0.025/h each for the first 5, ~$0.01/h each additional | Third-party pricing summaries, as of 2026-10, UNVERIFIED against the official page |
-| Data processed by the load balancer | ~$0.008/GiB in typical regions | Third-party pricing summaries, as of 2026-10, UNVERIFIED |
-| Envoy-based regional proxy instance | ~$0.025 per proxy-hour | Third-party summary, UNVERIFIED |
-| AWS ALB / NLB hourly | ~$0.0225/h plus LCU / NLCU | UNVERIFIED |
-| AWS NLB TCP idle timeout | 350 s default, configurable | UNVERIFIED |
+| Cloud NGFW connection tracking idle timeout on Compute Engine | 10 min | [Google Cloud docs](https://docs.cloud.google.com/compute/docs/troubleshooting/general-tips), as of 2026-11 |
+| Global external passthrough NLB (Preview) tracking modes | `PER_CONNECTION` only; `RATE` counts packets/s | Google Cloud docs, as of 2026-11 |
+| Forwarding rule price | $0.025/h flat for up to 5 rules, $0.01/h each additional, US regions | [Google Cloud pricing](https://cloud.google.com/load-balancing/pricing), as of 2026-11 |
+| Data processed by the load balancer | $0.008/GiB inbound and outbound, US regions | [Google Cloud pricing](https://cloud.google.com/load-balancing/pricing), as of 2026-11 |
+| Internal ALB proxy instance (regional and cross-region) | $0.025 per proxy-hour, minimum 3 proxies in us-central1; regional external ALB bills forwarding rules instead | [Google Cloud pricing](https://cloud.google.com/load-balancing/pricing), as of 2026-11 |
+| AWS ALB / NLB hourly | $0.0225/h plus $0.008 per LCU-hour / $0.006 per NLCU-hour, pricing examples in us-east-1 | [AWS pricing](https://aws.amazon.com/elasticloadbalancing/pricing/), as of 2026-11 |
+| AWS NLB TCP idle timeout | 350 s default, configurable 60-6000 s (TLS listeners fixed at 350 s) | [AWS docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/update-idle-timeout.html), as of 2026-11 |
 
 For fleet-wide cheat sheets see [[17-Cloud-AI-Engineering/Volume_14_Staff_Plus_Interview_Arena/Chapter_06_Cloud_AI_Numbers_Every_Staff_Engineer_Must_Know|Cloud AI Numbers Every Staff Engineer Must Know]].
 
@@ -253,14 +274,14 @@ For fleet-wide cheat sheets see [[17-Cloud-AI-Engineering/Volume_14_Staff_Plus_I
 | Concern | Google Cloud | AWS | Critical difference |
 | --- | --- | --- | --- |
 | Global entry point | One anycast VIP advertised from Google edge sites into Maglev and first-layer GFEs | CloudFront (L7, DNS-resolved PoPs) or Global Accelerator (anycast static IPs, L4) | GCP gives one IP with global L7 policy in one object, while AWS composes CloudFront or Global Accelerator with regional ALBs |
-| L4 forwarding | Maglev (external) and Andromeda host dataplane (internal), with consistent hashing and per-machine tracking | Hyperplane-based NLB, flow hash per AZ node (UNVERIFIED: internals only described in re:Invent talks) | NLB exposes a static IP per AZ, while GCP external passthrough exposes one regional IP |
-| Return path | Direct server return, with the client IP preserved | NLB preserves the client IP for instance targets, and the return path transits the NLB (UNVERIFIED) | DSR makes GCP ingress cost independent of response size |
+| L4 forwarding | Maglev (external) and Andromeda host dataplane (internal), with consistent hashing and per-machine tracking | NLB runs on AWS Hyperplane ([AWS Builders' Library](https://aws.amazon.com/builders-library/reliability-and-constant-work/), as of 2026-11), and the receiving node selects a target by flow hash ([AWS docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html), as of 2026-11) | NLB exposes a static IP per AZ, while GCP external passthrough exposes one regional IP |
+| Return path | Direct server return, with the client IP preserved | NLB preserves the client IP for instance targets ([AWS docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/edit-target-group-attributes.html), as of 2026-11); targets address replies to the client, but the NLB's rewrite must be reversed in the VPC, which works only for targets with an ENI there ([AWS networking blog](https://aws.amazon.com/blogs/networking-and-content-delivery/routing-udp-to-on-premises-network-load-balancer-targets/) on UDP, as of 2026-11) | DSR makes GCP ingress cost independent of response size |
 | Regional L7 | Envoy fleet in a Google-managed proxy-only subnet | ALB nodes placed in your subnets, scaled by AWS, with IPs that change behind DNS | Never pin an ALB IP; GCP regional ALB IPs are stable forwarding-rule IPs |
 | Cross-region steering | Waterfall by declared capacity, `capacityScaler`, `serviceLbPolicy`, traffic isolation | Route 53 latency/weighted/failover records, Global Accelerator traffic dials and endpoint weights | GCP steers per request inside the proxy, AWS steers per DNS resolution or per Global Accelerator flow |
 | Spillover trigger | Backend capacity full or unhealthy | Route 53 health check failure, or a manual Global Accelerator dial change | AWS does not spill over on "full" without your automation |
 | Health checking | Centralized Google probers, one probe set per forwarding rule IP for passthrough NLBs | Each LB node probes its targets | GCP probe sources are well-known ranges, so firewalls must allow them |
-| Connection tracking | Configurable mode and unhealthy persistence; 60 s idle on regional external passthrough NLB | NLB idle timeout configurable (UNVERIFIED range) | UDP sessions on GCP need sub-60-s keepalives |
-| Draining | Backend service connection draining timeout | Target group deregistration delay (UNVERIFIED default 300 s) | Both only protect in-flight requests, not long-lived streams |
+| Connection tracking | Configurable mode and unhealthy persistence; 60 s idle on regional external passthrough NLB | NLB TCP idle timeout configurable 60-6000 s (AWS docs, as of 2026-11) | UDP sessions on GCP need sub-60-s keepalives |
+| Draining | Backend service connection draining timeout | Target group deregistration delay, default 300 s (AWS docs, as of 2026-11) | Both only protect in-flight requests, not long-lived streams |
 | Config blast radius | GFE config is global and multi-tenant | ALB and NLB config is regional; CloudFront config is global | AWS regional load balancers contain a bad config push to one region |
 | Pricing shape | Forwarding-rule hours plus GiB processed | Hours plus capacity units | High-request, low-byte APIs can be cheaper on GCP and the reverse for bulk transfer, so compute both |
 
@@ -324,11 +345,11 @@ if __name__ == "__main__":
 ```
 
 Run it with `python3 maglev_sim.py`.
-It takes about 9 s on one core (measured, as of 2026-10) and reproduces the table in Internals.
+It takes about 3 s of CPU time on one core (measured, as of 2026-11) and reproduces the table in Internals.
 
 ### Part B - Global external ALB across two regions
 
-Cost estimate: four `e2-small` VMs at roughly $0.017/h each (UNVERIFIED list price), plus one forwarding rule at about $0.025/h (UNVERIFIED), comes to about $0.10/h.
+Cost estimate: four `e2-small` VMs at roughly $0.017/h each ([Google Cloud pricing](https://cloud.google.com/products/compute/pricing/general-purpose), as of 2026-11), plus one forwarding rule at $0.025/h ([Google Cloud pricing](https://cloud.google.com/load-balancing/pricing), as of 2026-11), comes to about $0.10/h.
 A 3-hour lab therefore costs under $0.50, plus negligible data processing.
 
 ```bash
@@ -372,7 +393,7 @@ for R in "$R1" "$R2"; do
     --region="$R" --named-ports=http:80
 done
 
-# 2. Allow GFE and health-check source ranges only (ranges UNVERIFIED in this session).
+# 2. Allow GFE and health-check source ranges only (Google Cloud firewall docs, as of 2026-11).
 gcloud compute firewall-rules create lb-lab-allow-gfe \
   --network=default --allow=tcp:80 \
   --source-ranges=130.211.0.0/22,35.191.0.0/16 \
@@ -468,8 +489,8 @@ With `WATERFALL_BY_REGION`, Americas traffic spills to the next-closest region t
 Pre-scaling EMEA rather than APAC therefore minimizes the added RTT.
 
 Step 5 estimates data processing: 50k x 15 KB = 750 MB/s, which is about 1.84M GiB/month.
-At about $0.008/GiB (UNVERIFIED) that is about $14.7k/month, before internet egress, which is billed separately and usually dominates.
-Forwarding rules cost about $18/month each and are noise at this scale.
+At $0.008/GiB, inbound and outbound ([Google Cloud pricing](https://cloud.google.com/load-balancing/pricing), as of 2026-11), that is about $14.7k/month, before internet egress, which is billed separately and usually dominates.
+Forwarding rules cost about $18/month for up to five and about $7/month for each one beyond that, which is noise at this scale.
 
 Step 6 sizes the timers: backend keepalive at 620 s or more, backend service timeout at the p99.9 of the slowest legitimate route plus margin, and client retries capped as described in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Retries, Jitter, and Circuit Breakers]].
 
@@ -504,15 +525,15 @@ Remember that client-IP affinity concentrates carrier-grade-NAT populations onto
 ### Health-check-driven capacity collapse
 
 The AWS us-east-1 event of 2025-10-19/20 ([AWS summary](https://aws.amazon.com/message/101925/)) is the public example of a health-check subsystem making things worse.
-Network state for new EC2 capacity propagated late, NLB health checks failed spuriously, and healthy capacity was pulled out of service while demand rose (UNVERIFIED: details summarized from memory of the public post-event summary).
+Network state for new EC2 capacity propagated late, NLB health checks failed even though nodes and targets were healthy, and automatic AZ DNS failover took capacity out of service until AWS disabled that failover (AWS post-event summary).
 The general lesson applies equally to GCP.
 A health checker must fail open when an implausible fraction of backends turns unhealthy at once, and backends should not report unhealthy because a downstream dependency is unhealthy.
 See [AWS Builders' Library: Implementing health checks](https://aws.amazon.com/builders-library/implementing-health-checks/).
 
 ### Global config plane blast radius
 
-The 2019-06-02 Google Cloud networking incident ([status report](https://status.cloud.google.com/incident/cloud-networking/19009)) shows how a configuration change scoped wider than intended can remove network control-plane capacity across several regions at once (UNVERIFIED: link and details from memory).
-Several later Google Cloud incidents also involved globally replicated configuration or policy data, which every proxy consumes at once (UNVERIFIED: specific incident IDs omitted).
+The 2019-06-02 Google Cloud networking incident ([status report](https://status.cloud.google.com/incident/cloud-networking/19009)) shows how maintenance automation with a wider scope than intended can deschedule network control-plane jobs in several locations at once, after which BGP routes were withdrawn and capacity fell across six regions (Google Cloud incident report).
+The [2025-06-12 Google Cloud incident](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW) involved globally replicated policy data: blank fields replicated within seconds and crash-looped Service Control in every region (Google Cloud incident report).
 The customer-side mitigation is a pre-provisioned bypass path.
 That can be a regional load balancer, or a second provider's CDN, reachable through a low-TTL DNS record that has been rehearsed in a game day, as covered in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_05_Chaos_Engineering_and_Game_Days|Chaos Engineering and Game Days]].
 
@@ -524,7 +545,7 @@ Rate-limit deploys, set connection draining, and make long-lived clients reconne
 
 ### Other pitfalls
 
-- **Forwarding-rule sprawl.** Every forwarding rule bills hourly whether or not it carries traffic. One load balancer per microservice per environment adds up, and URL-map host and path routing on a shared load balancer avoids it.
+- **Forwarding-rule sprawl.** Forwarding rules bill hourly whether or not they carry traffic, with up to five sharing one $0.025/h charge and each additional rule at $0.01/h (Google Cloud pricing, as of 2026-11). One load balancer per microservice per environment adds up, and URL-map host and path routing on a shared load balancer avoids it.
 - **Steering forwarding rule mismatch.** When both parent and steering forwarding rules point to backend services, Google Cloud does not reject mismatched session affinity or tracking policies, so flows silently diverge (Google Cloud docs, as of 2026-10).
 - **Firewall gaps.** Missing allow rules for GFE and probe source ranges make every backend look unhealthy. Overly broad rules let clients bypass Cloud Armor by hitting backend IPs directly.
 
@@ -533,9 +554,9 @@ Rate-limit deploys, set connection draining, and make long-lived clients reconne
 ### IAM
 
 - Separate who can change routing from who can change certificates and edge security.
-- `roles/compute.loadBalancerAdmin` covers load balancer resources (UNVERIFIED: exact permission set not re-checked).
+- `roles/compute.loadBalancerAdmin` covers load balancer resources and also SSL certificates and SSL policies, so this separation needs a custom role ([Google Cloud IAM docs](https://docs.cloud.google.com/iam/docs/roles-permissions/compute), as of 2026-11).
 - Cloud Armor and SSL policy changes belong to a security role, not to application teams.
-- Restrict which load balancer types each folder may create with the organization policy constraint `constraints/compute.restrictLoadBalancerCreationForTypes` (UNVERIFIED).
+- Restrict which load balancer types each folder may create with the organization policy constraint `constraints/compute.restrictLoadBalancerCreationForTypes` ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/org-policy-constraints), as of 2026-11).
 - This stops teams from exposing internal services through external passthrough load balancers that bypass Cloud Armor.
 - See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_01_Resource_Hierarchy_and_Organization_Policies|Resource Hierarchy and Organization Policies]].
 
@@ -554,7 +575,7 @@ Rate-limit deploys, set connection draining, and make long-lived clients reconne
 ### Cost levers
 
 - **Consolidate.** Put many services behind one load balancer with URL maps to cut forwarding-rule hours.
-- **Offload to the CDN.** Cacheable responses served by Cloud CDN never reach the data-processing meter (third-party summary, as of 2026-10).
+- **Offload to the CDN.** Cacheable responses served by Cloud CDN never reach the data-processing meter (Google Cloud pricing, as of 2026-11).
 - **Choose the tier.** The global external ALB requires Premium Tier (Google Cloud docs, as of 2026-10). Regional load balancers can use Standard Tier where cold-potato routing is acceptable; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics]].
 - **Avoid spillover.** Calibrate declared capacity so the waterfall does not create avoidable inter-region traffic.
 - **Use DSR for big payloads.** Passthrough load balancers do not process response bytes, which matters for large downloads such as model artifacts.
@@ -620,7 +641,7 @@ In my simulation with 1000 backends, removing one moves 0.68% of slots against a
 The table must be identical on all Maglevs, which it is, because it is a pure function of the backend list.
 An established flow resets under three conditions.
 The first is when ECMP moves it to a different Maglev while the backend set changed and its slot moved.
-The second is when its tracking entry was evicted or expired and the slot moved.
+The second is when its tracking entry expired, or never fit because the table was full, and the slot moved.
 The third is when its backend itself is removed.
 Each layer covers the other's failure, so only correlated churn on both sides breaks flows.
 That is why the operational control is to rate-limit backend churn and use draining, not to fear Maglev maintenance.
@@ -733,7 +754,7 @@ Partners now require mTLS with per-partner client certificates and per-partner r
 
 - [Eisenbud et al., "Maglev: A Fast and Reliable Software Network Load Balancer", NSDI 2016](https://research.google.com/pubs/archive/44824.pdf) - the primary source for the hashing algorithm, connection tracking, fragment handling, and kernel-bypass forwarding. Companion note: [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_11_Maglev_Network_Load_Balancer|Maglev]].
 - [Dalton et al., "Andromeda: Performance, Isolation, and Velocity at Scale in Cloud Network Virtualization", NSDI 2018](https://www.usenix.org/conference/nsdi18/presentation/dalton) - explains the host dataplane that implements internal passthrough load balancing and delivers every load balancer's packets.
-- Yap et al., "Taking the Edge off with Espresso", SIGCOMM 2017 - Google's peering-edge architecture that decides where anycast traffic enters before Maglev sees it (link omitted, UNVERIFIED URL).
+- [Yap et al., "Taking the Edge off with Espresso", SIGCOMM 2017](https://research.google/pubs/taking-the-edge-off-with-espresso-scale-reliability-and-programmability-for-global-internet-peering/) - Google's SDN-based peering-edge routing system, which applies fine-grained traffic engineering to traffic from Google to the Internet, the outbound complement to the anycast ingress path in this chapter.
 - [Google SRE Book, "Load Balancing at the Frontend"](https://sre.google/sre-book/load-balancing-frontend/) - the DNS-versus-anycast-VIP reasoning behind the GFE front door.
 - [Google SRE Book, "Load Balancing in the Datacenter"](https://sre.google/sre-book/load-balancing-datacenter/) - subsetting, weighted round robin, and lame-duck states that inform how second-layer proxies choose backends.
 - [Google Cloud docs, "Advanced load balancing optimizations"](https://docs.cloud.google.com/load-balancing/docs/service-lb-policy) - the authoritative description of waterfall, spray, auto-capacity drain, and failover thresholds.

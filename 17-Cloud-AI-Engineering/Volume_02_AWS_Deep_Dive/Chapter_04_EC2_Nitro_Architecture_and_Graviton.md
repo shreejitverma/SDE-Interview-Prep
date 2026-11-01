@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/security-design-of-aws-nitro-system.html"
@@ -19,6 +19,32 @@ sources:
   - "https://www.usenix.org/conference/nsdi18/presentation/dalton"
   - "https://www.usenix.org/conference/nsdi18/presentation/firestone"
   - "https://aws.amazon.com/message/101925/"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/monitoring-network-performance-ena.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ena-express.html"
+  - "https://docs.aws.amazon.com/ec2/latest/instancetypes/ec2-nitro-instances.html"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/AmazonDNS-concepts.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-metadata-v2-how-it-works.html"
+  - "https://aws.amazon.com/vpc/pricing/"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/timeout-nvme-ebs-volumes.html"
+  - "https://github.com/aws/aws-graviton-getting-started/blob/main/c-c++.md"
+  - "https://gcc.gnu.org/onlinedocs/gcc-10.1.0/gcc/AArch64-Options.html"
+  - "https://learn.arm.com/learning-paths/servers-and-cloud-computing/lse/intro/"
+  - "https://old.hotchips.org/hc31/HC31_1.2_20190816_Arm_Neoverse_N1_CPU.pdf"
+  - "https://www.aboutamazon.com/news/aws/aws-graviton-5-cpu-amazon-ec2"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/06/ec2-c9g-c9gd-instances-graviton5-processors-available/"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/08/amazon-ec2-r9g-and-r9gd-memory-optimized-instances-are-now-available/"
+  - "https://d1.awsstatic.com/onedam/marketing-channels/website/aws/en_US/whitepapers/compliance/nitro-isolation-engine-whitepaper.pdf"
+  - "https://aws.amazon.com/blogs/compute/aws-nitro-system-gets-independent-affirmation-of-its-confidential-compute-capabilities/"
+  - "https://aws.amazon.com/service-terms/"
+  - "https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/the-ec2-approach-to-preventing-side-channels.html"
+  - "https://b0.p.awsstatic.com/pricing/2.0/meteredUnitMaps/ec2/USD/current/ec2-ondemand-without-sec-sel/US%20East%20(N.%20Virginia)/Linux/index.json"
+  - "https://docs.cloud.google.com/compute/docs/cpu-platforms"
+  - "https://docs.cloud.google.com/compute/docs/instances/host-maintenance-overview"
+  - "https://docs.cloud.google.com/compute/docs/network-bandwidth"
+  - "https://docs.cloud.google.com/assured-workloads/access-transparency/docs/overview"
+  - "https://cloud.google.com/blog/products/compute/titanium-underpins-googles-workload-optimized-infrastructure/"
+  - "https://cloud.google.com/blog/products/gcp/7-ways-we-harden-our-kvm-hypervisor-at-google-cloud-security-in-plaintext"
 ---
 
 # EC2, Nitro Architecture, and Graviton
@@ -27,7 +53,7 @@ sources:
 
 Nitro moves every I/O function (VPC networking, EBS, instance storage, management, and root of trust) off the host CPU and onto dedicated PCIe cards, so the hypervisor is reduced to partitioning CPU and memory and handing out SR-IOV virtual functions.
 The guest data plane runs through rings, doorbells, and DMA on the Nitro Card for VPC and the Nitro Card for EBS, so running instances keep working even when the EC2 control plane (placement, leases, network-state propagation) is degraded.
-Network performance is set by per-instance token-bucket allowances on the Nitro card (bandwidth, PPS, conntrack, link-local), and sub-second micro-bursts can exhaust them even when 1-minute CloudWatch averages look healthy, so `ethtool -S` allowance counters are the ground truth.
+Network performance is set by instance-level allowances (bandwidth, PPS, conntrack) and a per-ENI link-local limit, enforced by queueing and then dropping packets, and micro-bursts can exceed them even when 1-minute CloudWatch averages look healthy, so `ethtool -S` allowance counters are the ground truth.
 On Graviton one vCPU is one physical core with no SMT, so CPU-percent, rightsizing, and autoscaling thresholds tuned on x86 hyperthreads do not carry over linearly, and you should size by throughput at your latency SLO.
 Graviton performance depends on the toolchain: LSE atomics instead of LL/SC loops, correct acquire/release ordering under Arm's weak memory model, vector-length-agnostic SVE code, and page-size-aware allocators decide whether a migration saves 20-30% or regresses p99.
 
@@ -98,18 +124,20 @@ The security boundary for network and storage sits on the cards and the security
 
 ### Nitro Isolation Engine: a separation kernel inside the hypervisor
 
-On the sixth-generation Nitro System, first shipped with Graviton5-based M9g and M9gd instances in June 2026, AWS added the Nitro Isolation Engine ([AWS What's New, as of 2026-10](https://aws.amazon.com/about-aws/whats-new/2026/06/ec2-m9g-m9gd-instances-graviton5-processors-available/)).
+AWS introduced the Nitro Isolation Engine with Graviton5, first shipping it on M9g and M9gd instances, which run on the sixth-generation Nitro System, in June 2026 ([AWS What's New, as of 2026-10](https://aws.amazon.com/about-aws/whats-new/2026/06/ec2-m9g-m9gd-instances-graviton5-processors-available/)).
+Nitro v6 as a generation also covers non-Graviton5 families such as C8gn and M8i ([AWS EC2 docs, as of 2026-11](https://docs.aws.amazon.com/ec2/latest/instancetypes/ec2-nitro-instances.html)), while AWS describes the engine as generally available on all Graviton5-based instances ([AWS Compute Blog, as of 2026-11](https://aws.amazon.com/blogs/compute/aws-nitro-isolation-engine-formally-verifying-the-hypervisor-in-the-aws-nitro-system/)).
 The engine mediates all access to VM memory, CPU register state, and I/O devices, and it exposes only a minimal API to the rest of the Nitro Hypervisor ([AWS Compute Blog, as of 2026-10](https://aws.amazon.com/blogs/compute/aws-nitro-isolation-engine-formally-verifying-the-hypervisor-in-the-aws-nitro-system/)).
 The design idea is Rushby's separation kernel from "Design and Verification of Secure Systems" (SOSP 1981), which splits policy from enforcement.
 The rest of the hypervisor still decides which VMs exist, how memory is allocated, and what gets scheduled.
 The Isolation Engine only enforces that whatever is decided cannot break isolation ([Amazon Science, as of 2026-10](https://www.amazon.science/blog/ec2s-formally-verified-isolation-engine-provides-mathematical-assurance-of-virtual-machine-isolation)).
 It is written in Rust and verified in the Isabelle/HOL theorem prover.
 The verified properties are functional correctness (including VM creation, memory mapping, and abort handling), confidentiality as noninterference, and integrity, plus memory safety, termination, and absence of runtime errors ([HCSS 2026 abstract, as of 2026-10](https://sos-vo.org/group/hcss_conference/2026/chong-dockins)).
-The proof effort is roughly 260,000 lines according to the HCSS abstract and roughly 330,000 lines according to the later Amazon Science post, and the gap reflects the proof growing over time (as of 2026-10).
+The proof effort is roughly 260,000 lines according to the HCSS abstract and roughly 330,000 lines according to the later Amazon Science post and the June 2026 whitepaper, so treat 330,000 as the current figure (as of 2026-11).
 The useful comparison is seL4 (Klein et al., "seL4: Formal Verification of an OS Kernel", SOSP 2009).
 The trick is the same: shrink the part that must be trusted until it is small enough to prove, and leave the large, fast-changing logic outside the proof boundary.
 What the proof covers depends on its model of the hardware.
-Treat microarchitectural timing channels and firmware below the engine as outside the proven claim unless the AWS publications say otherwise (UNVERIFIED).
+The proofs use an architectural model, so AWS states that side channels through micro-architectural state such as caches, branch predictors, and speculative execution are not addressed by the proofs and are mitigated by design instead ([Nitro Isolation Engine whitepaper, June 2026](https://d1.awsstatic.com/onedam/marketing-channels/website/aws/en_US/whitepapers/compliance/nitro-isolation-engine-whitepaper.pdf)).
+The same whitepaper assumes the correctness of bootloaders, firmware, and the hardware against its architectural specification, places the Rust compiler and LLVM in the trust boundary, reasons sequentially about concurrent execution with a locking discipline as mitigation, and notes that the formal model does not yet cover all of the implementation (as of 2026-11).
 
 ### Packet path through the Nitro Card for VPC
 
@@ -118,13 +146,14 @@ Here is a mechanism you will not find in a getting-started guide: what happens b
 2. The card fetches the descriptor and the payload by DMA through the IOMMU, so it can only reach memory the hypervisor mapped for that VF.
 3. The card looks up the flow in its connection-tracking table and evaluates security group rules on the first packet of a tracked flow, then creates a conntrack entry.
 4. The card resolves the destination VPC IP to a physical host through its cached view of the VPC mapping, wraps the packet in the AWS overlay encapsulation, and stamps it with the source ENI identity so the receiving card can reject spoofed packets.
-5. Before transmit, the packet must draw tokens from several per-instance buckets: aggregate bandwidth, packets per second, new tracked connections, and link-local traffic to services such as the Route 53 Resolver, IMDS, and Amazon Time Sync.
+5. Before transmit, the packet must fit within several allowances: per-instance aggregate bandwidth, packets per second, and tracked connections, plus a per-ENI limit on link-local traffic to services such as the Route 53 Resolver, IMDS, and Amazon Time Sync.
 6. On receive, the destination card decapsulates, checks that the source mapping is valid, applies stateful SG evaluation, DMAs into a guest RX ring, and raises an MSI-X interrupt, unless the guest uses a poll-mode driver such as DPDK.
 
-When a bucket is empty, the card drops or queues the packet and increments an ENA counter that is visible only from inside the guest: `bw_in_allowance_exceeded`, `bw_out_allowance_exceeded`, `pps_allowance_exceeded`, `conntrack_allowance_exceeded`, and `linklocal_allowance_exceeded` ([AWS EC2 docs, UNVERIFIED 2026-10](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/monitoring-network-performance-ena.html)).
-The buckets refill on sub-second intervals, so a 50 ms burst at line rate can overflow them even if the 1-minute average is 20% of the advertised bandwidth.
+When traffic exceeds an allowance, AWS shapes it by queueing and then dropping packets, and increments an ENA counter that you read from inside the guest or export through the CloudWatch agent: `bw_in_allowance_exceeded`, `bw_out_allowance_exceeded`, `pps_allowance_exceeded`, `conntrack_allowance_exceeded`, and `linklocal_allowance_exceeded` ([AWS EC2 docs, as of 2026-11](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/monitoring-network-performance-ena.html)).
+AWS does not document the shaper's algorithm, so treat token buckets as a mental model, but the docs do warn that a microburst can exceed an allowance and drop packets while CloudWatch metrics show nothing ([AWS EC2 docs, as of 2026-11](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-network-bandwidth.html)).
+So a 50 ms burst at line rate can overflow an allowance even if the 1-minute average is 20% of the advertised bandwidth.
 That is why the counters, and not CloudWatch `NetworkOut`, are the diagnostic of record.
-AWS publishes aggregate bandwidth per instance type but does not publish PPS or conntrack allowances, so you have to measure them, and you can watch the conntrack headroom through `conntrack_allowance_available` (UNVERIFIED 2026-10).
+AWS publishes aggregate bandwidth per instance type but does not publish PPS or conntrack allowances, so you have to measure them, and you can watch the conntrack headroom through `conntrack_allowance_available`, which needs a Nitro-based instance and ENA driver 2.8.1 or later (AWS EC2 docs, as of 2026-11).
 
 ### ENA Express and SRD
 
@@ -132,7 +161,8 @@ ENA Express runs TCP and UDP flows between two Nitro cards over Scalable Reliabl
 SRD is described in Shalev et al., "A Cloud-Optimized Transport Protocol for Elastic and Scalable HPC" (IEEE Micro 2020).
 A single TCP flow is normally hashed to one ECMP path and so inherits that path's congestion and tail latency.
 SRD instead spreads one flow across paths and lets the receiving card restore order before delivery, so the guest TCP stack still sees an in-order stream.
-The trade-off is that both endpoints must be supported instance types in the same Availability Zone with ENA Express enabled, so it is a data-plane optimization within an AZ and not a WAN feature.
+The trade-off is that both endpoints must be supported instance types in the same Region with ENA Express enabled on both attachments, and the path cannot cross a middlebox, so it is a data-plane optimization within a Region and not a WAN feature ([AWS EC2 docs, as of 2026-11](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ena-express.html)).
+The single-flow bandwidth gain now reaches across AZs in most Regions, while the docs scope the tail-latency gain to the same AZ and warn of a slightly higher median latency (tens of microseconds) under light load (as of 2026-11).
 The same transport underlies the Elastic Fabric Adapter (EFA), covered in [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI|Interconnect Technologies: NVLink, EFA, and TPU ICI]].
 
 ### Storage path through the Nitro Card for EBS
@@ -142,8 +172,8 @@ The card turns each NVMe command into network requests to the EBS storage server
 The EBS control plane that tracks replica membership is Physalia (Brooker et al., "Millions of Tiny Databases", NSDI 2020), which is covered in [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_03_Physalia_EBS_Control_Plane|Physalia]].
 For encrypted volumes, encryption and decryption happen on the card with a data key unwrapped through KMS at attach time, so plaintext keys never enter guest memory.
 The failure-mode consequence is that EBS latency during replica failover appears to the guest as slow NVMe completions.
-If the Linux NVMe I/O timeout is shorter than the failover window, the kernel resets the controller and the filesystem may remount read-only.
-This is why AWS guidance and Amazon Linux AMIs raise `nvme_core.io_timeout` far above the upstream default (UNVERIFIED 2026-10).
+If the Linux NVMe I/O timeout is shorter than the failover window, the driver fails the I/O and returns an error, and the filesystem may remount read-only.
+This is why AWS recommends setting `nvme_core.io_timeout` to the highest value possible (4294967295 on current kernels, 255 on earlier ones) against a 30-second default, and Amazon Linux AMIs since 2017.09.01 ship with the maximum ([Amazon EBS docs, as of 2026-11](https://docs.aws.amazon.com/ebs/latest/userguide/timeout-nvme-ebs-volumes.html)).
 See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_09_Elastic_Block_Store_and_Network_Storage|Elastic Block Store and Network Storage]] for the storage-side mechanics.
 
 ### Control plane versus data plane and static stability
@@ -165,13 +195,12 @@ The design lesson is that your recovery plan must not depend on launching new ca
 |---|---|---|---|---|---|---|
 | Graviton2 | Neoverse N1 | Armv8.2-A | 64 | 2.5 GHz | 8-channel DDR4 | First with LSE atomics; no SVE |
 | Graviton3 | Neoverse V1 | Armv8.4-A | 64 | 2.6 GHz | 8-channel DDR5 | SVE with 256-bit vectors, bfloat16 |
-| Graviton4 | Neoverse V2 | Armv9.0-A | 96 | 2.8 GHz (2.7 GHz on 48xlarge) | 12-channel DDR5 | SVE2 with 128-bit vectors, 2 MB L2 per core, two-socket coherent on largest sizes |
-| Graviton5 | Neoverse V3 | Armv9.2-A | 192 | 3.3 GHz | DDR5 | 3 nm, 5x L3 versus Graviton4, PCIe Gen6 |
+| Graviton4 | Neoverse V2 | Armv9.0-A | 96 | 2.8 GHz (2.7 GHz on 48xlarge) | 12-channel DDR5 (24 on 48xlarge) | SVE2 with 128-bit vectors, 2 MB L2 per core, two-socket on 48xlarge |
+| Graviton5 | Neoverse V3 | Armv9.2-A | 192 | 3.3 GHz | 12-channel DDR5-8800 | 3 nm, 5x L3 versus Graviton4, PCIe Gen6 |
 
-Graviton5 row: [AWS News Blog](https://aws.amazon.com/blogs/aws/now-available-amazon-ec2-m9g-and-m9gd-instances-powered-by-new-aws-graviton5-processors/) and [Phoronix](https://www.phoronix.com/review/aws-graviton5), as of 2026-10.
-Graviton2 to Graviton4 core and clock figures come from the AWS launch posts as tabulated by [Wikipedia](https://en.wikipedia.org/wiki/AWS_Graviton) and Phoronix, as of 2026-10.
-The Graviton4 clock of 2.7 GHz on 48xlarge sizes comes from the [AWS Graviton technical guide](https://aws.github.io/graviton/), as of 2026-10.
-The Graviton4 vector width, L2 size, and two-socket topology were not re-verified against primary sources in this pass (UNVERIFIED 2026-10).
+Graviton5 row: [AWS News Blog](https://aws.amazon.com/blogs/aws/now-available-amazon-ec2-m9g-and-m9gd-instances-powered-by-new-aws-graviton5-processors/), [About Amazon](https://www.aboutamazon.com/news/aws/aws-graviton-5-cpu-amazon-ec2) for the 3 nm process, and the [AWS Graviton technical guide](https://github.com/aws/aws-graviton-getting-started/blob/main/README.md), as of 2026-11.
+Graviton2 to Graviton4 core, clock, ISA, memory channel, vector, and L2 figures come from the same [AWS Graviton technical guide](https://github.com/aws/aws-graviton-getting-started/blob/main/README.md), as of 2026-11.
+The guide also lists the Graviton4 48xlarge as a 2.7 GHz two-socket system with 192 cores, two NUMA nodes, and 24 DDR5 channels, as of 2026-11.
 
 #### No SMT: a vCPU is a core
 
@@ -189,10 +218,11 @@ Armv8.0 has only load-exclusive and store-exclusive (LDXR/STXR) for atomic read-
 The core marks the cache line in a local exclusive monitor, and STXR fails if any other agent touched the line in between, so the compiler wraps it in a retry loop.
 Under contention, each successful increment needs the line to migrate into the winning core's L1 in unique state, and every loser's monitor is cleared and must retry, so retries and coherence traffic grow with the number of contenders.
 Armv8.1 Large System Extensions (LSE) add single-instruction atomics such as `LDADD`, `CAS`, and `SWP`.
-The coherent mesh interconnect can execute these at the line's home node as "far" atomics instead of pulling the line into the requester's cache.
-That turns a cache-line ping-pong into a stream of requests to one place, and the effect is largest on 96-core and 192-core parts with a long mesh diameter (mechanism per Arm CMN documentation, UNVERIFIED 2026-10).
-GCC 10 and later default to `-moutline-atomics` on aarch64 Linux, which calls a helper that checks `HWCAP_ATOMICS` at runtime and picks LSE when present (default behavior UNVERIFIED 2026-10).
-Older toolchains, statically linked binaries built with `-march=armv8-a`, and some JIT runtimes still emit LL/SC loops.
+Arm's Neoverse N1 and CMN-600 material lists support for both near and far atomics over CHI, so the interconnect can execute these away from the requester, at the line's home node, instead of pulling the line into the requester's cache ([Arm, Hot Chips 2019](https://old.hotchips.org/hc31/HC31_1.2_20190816_Arm_Neoverse_N1_CPU.pdf)), although AWS does not document which atomics run far on Graviton.
+That can turn a cache-line ping-pong into a stream of requests to one place.
+Arm describes LSE as faster and less variable than exclusive sequences, with fair completion of exclusives getting harder as processor count grows ([Arm Learning Path, as of 2026-11](https://learn.arm.com/learning-paths/servers-and-cloud-computing/lse/intro/)), but no source found gives a per-core-count measurement on Graviton's meshes, so measure the size of the effect on 96-core and 192-core parts.
+GCC 10.1 and later default to `-moutline-atomics` when compiling for base Armv8.0, which calls helpers that detect LSE at runtime and fall back to load-exclusive and store-exclusive ([GCC 10.1 docs](https://gcc.gnu.org/onlinedocs/gcc-10.1.0/gcc/AArch64-Options.html), as of 2026-11).
+Older toolchains, binaries built with `-march=armv8-a -mno-outline-atomics`, and some JIT runtimes still emit LL/SC loops.
 You can check with `objdump -d binary | grep -cE 'ldxr|ldaxr'` against `grep -c ldadd`.
 The worked example below measures this difference directly.
 
@@ -208,60 +238,60 @@ Hand-written C and C++ lock-free code, inline assembly, and vendored concurrency
 #### Vectors: SVE is vector-length agnostic for a reason
 
 SVE (Stephens et al., "The ARM Scalable Vector Extension", IEEE Micro 2017) lets the same binary run on any hardware vector length between 128 and 2048 bits.
-Graviton3 implements 256-bit SVE and Graviton4 implements 128-bit SVE2 with more vector pipelines (UNVERIFIED 2026-10).
+Graviton3 implements two 256-bit SVE vector units, and Graviton4 and Graviton5 implement four 128-bit Neon/SVE vector units with SVE2 ([AWS Graviton technical guide](https://github.com/aws/aws-graviton-getting-started/blob/main/README.md), as of 2026-11).
 Kernels hand-tuned on Graviton3 with an assumed 256-bit width can see little or no gain on Graviton4, while vector-length-agnostic loops that use `svcntw()` and predication keep working correctly and pick up the extra pipelines.
-For a portable build that runs on Graviton3 and later, the Graviton getting-started guide recommends `-mcpu=neoverse-512tvb`, which tunes for 512 bits of total vector bandwidth per cycle instead of a fixed vector width ([aws-graviton-getting-started](https://github.com/aws/aws-graviton-getting-started), UNVERIFIED 2026-10).
+For a portable build that runs on Graviton3 and later, the Graviton getting-started guide recommends `-mcpu=neoverse-512tvb` as its balanced flag, which tunes for SVE Neoverse cores with 512 bits of total vector bandwidth per cycle instead of a fixed vector width ([aws-graviton-getting-started](https://github.com/aws/aws-graviton-getting-started/blob/main/c-c++.md) and [GCC docs](https://gcc.gnu.org/onlinedocs/gcc/AArch64-Options.html), as of 2026-11).
 
 #### Pages, NUMA, and hardening
 
 Arm64 Linux kernels can use 4 KB or 64 KB pages.
 A 64 KB kernel cuts TLB misses for large heaps, but it breaks allocators built with a fixed 4 KB page assumption, such as jemalloc configured with `--with-lg-page=12`, and it wastes memory on small mappings.
-On the largest Graviton4 sizes that span two sockets, NUMA appears where single-socket Graviton had none, so thread and memory pinning matters again (UNVERIFIED 2026-10).
-Graviton3 and later support Armv8.3 pointer authentication and Armv8.5 BTI, which you enable with `-mbranch-protection=standard` to make ROP and JOP attacks harder at a cost of a few percent.
+On the Graviton4 48xlarge, which spans two sockets, NUMA appears where earlier single-socket Graviton had none, and Graviton5 also exposes two NUMA nodes on 16xlarge and 48xlarge sizes, so thread and memory pinning matters again ([AWS Graviton technical guide](https://github.com/aws/aws-graviton-getting-started/blob/main/README.md), as of 2026-11).
+Graviton3 and later support Armv8.3 pointer authentication, and Graviton4 and later also support BTI (same guide, as of 2026-11), which you enable with `-mbranch-protection=standard` to make ROP and JOP attacks harder at a performance cost you should measure.
 
 ## Numbers to Know
 
 | Quantity | Value | Source and date |
 |---|---|---|
 | Graviton5 cores per chip | 192 Neoverse V3 | AWS News Blog, as of 2026-10 |
-| Graviton5 clock | 3.3 GHz (Graviton4: 2.8 GHz) | Phoronix review, as of 2026-10 |
-| Graviton5 L3 cache | 5x Graviton4; reported as 180 MB | AWS News Blog; Tom's Hardware, as of 2026-10 |
-| Graviton5 claimed compute uplift | Up to 25% over Graviton4 | AWS announcement via Techzine, as of 2026-10 |
-| Graviton5 inter-core latency | Up to 33% lower than Graviton4 | AWS News Blog, as of 2026-10 |
-| Graviton5 memory | DDR5-8800 reported | Phoronix; InfoQ, as of 2026-10 |
-| M9g and M9gd GA | June 2026; C9g and R9g announced for 2026 (UNVERIFIED) | AWS What's New; Tom's Hardware, as of 2026-10 |
-| M9gd local NVMe | Up to 11.4 TB per instance | About Amazon, as of 2026-10 |
-| Nitro generation on M9g | Sixth generation, first with Nitro Isolation Engine | AWS What's New, as of 2026-10 |
-| Isolation Engine proof size | ~260K lines (HCSS 2026) to ~330K lines (Amazon Science) | as of 2026-10 |
-| Single-flow bandwidth | 5 Gbps outside a cluster placement group, 10 Gbps inside | AWS EC2 docs, UNVERIFIED 2026-10 |
-| ENA Express single-flow bandwidth | Up to 25 Gbps within an AZ | AWS EC2 docs, UNVERIFIED 2026-10 |
-| Bandwidth to internet or other Regions | 50% of instance bandwidth at 32 or more vCPUs, else 5 Gbps | AWS EC2 docs, UNVERIFIED 2026-10 |
-| Link-local allowance | 1024 PPS per ENI to DNS, IMDS, Time Sync | AWS EC2 docs, UNVERIFIED 2026-10 |
-| Conntrack TCP established idle timeout | Default 432,000 s (5 days), configurable down to 60 s per ENI | AWS EC2 docs, UNVERIFIED 2026-10 |
-| PPS and conntrack allowances per type | Not published; measure with ENA counters | AWS EC2 docs, UNVERIFIED 2026-10 |
-| IMDSv2 token TTL | 1 s to 21,600 s | AWS EC2 docs, UNVERIFIED 2026-10 |
-| Spot interruption notice | 2 minutes | AWS EC2 docs, UNVERIFIED 2026-10 |
-| Public IPv4 address charge | USD 0.005 per hour per address | AWS VPC pricing, UNVERIFIED 2026-10 |
-| m7i.2xlarge on-demand, us-east-1 | USD 0.4032 per hour | AWS pricing, UNVERIFIED 2026-10 |
-| m8g.2xlarge on-demand, us-east-1 | USD 0.35904 per hour | AWS pricing, UNVERIFIED 2026-10 |
+| Graviton5 clock | 3.3 GHz (Graviton4: 2.8 GHz) | AWS Graviton technical guide, as of 2026-11 |
+| Graviton5 L3 cache | 5x Graviton4 per chip, 2.6x per core; 48 MB per NUMA node up to 16xlarge, 96 MB per NUMA node on 24xlarge and 48xlarge | About Amazon; AWS Graviton technical guide, as of 2026-11 |
+| Graviton5 claimed compute uplift | Up to 25% over Graviton4 | AWS News Blog, as of 2026-11 |
+| Graviton5 inter-core latency | Up to 33% lower than Graviton4 | AWS News Blog, as of 2026-11 |
+| Graviton5 memory | DDR5-8800 | AWS News Blog, as of 2026-11 |
+| Graviton5 instance GA | M9g and M9gd June 2026; C9g and C9gd 30 June 2026; R9g and R9gd 31 August 2026 | AWS News Blog; AWS What's New, as of 2026-11 |
+| M9gd local NVMe | Up to 11.4 TB per instance | AWS News Blog, as of 2026-11 |
+| Nitro generation on M9g | Sixth generation (Nitro v6); Isolation Engine introduced with Graviton5 | AWS EC2 docs; AWS News Blog, as of 2026-11 |
+| Isolation Engine proof size | ~260K lines (HCSS 2026) to ~330K lines (Amazon Science, June 2026 whitepaper) | as of 2026-11 |
+| Single-flow bandwidth | 5 Gbps outside a cluster placement group, 10 Gbps inside | AWS EC2 docs, as of 2026-11 |
+| ENA Express single-flow bandwidth | Up to 25 Gbps within a Region, capped by the instance aggregate limit | AWS EC2 docs, as of 2026-11 |
+| Bandwidth through an internet or local gateway | 5 Gbps below 32 vCPUs, 50% of instance bandwidth above 32 vCPUs; full baseline on C8in, C8ine, M8in, M8ine, M8idn, R8in, R8idn | AWS EC2 docs, as of 2026-11 |
+| Link-local allowance | 1024 PPS per ENI, aggregate of DNS, IMDS, Time Sync, and Windows licensing; cannot be increased | AWS VPC and EC2 docs, as of 2026-11 |
+| Conntrack TCP established idle timeout | Default 350 s on Nitro v6 (except P6e-GB200), 432,000 s (5 days) on other types; configurable from 60 s to 432,000 s per ENI | AWS EC2 docs, as of 2026-11 |
+| PPS and conntrack allowances per type | Not published; measure with ENA counters | AWS EC2 docs, as of 2026-11 |
+| IMDSv2 token TTL | 1 s to 21,600 s | AWS EC2 docs, as of 2026-11 |
+| Spot interruption notice | 2 minutes, best effort; no two-minute warning when the interruption behavior is hibernate | AWS EC2 docs, as of 2026-11 |
+| Public IPv4 address charge | USD 0.005 per hour per address | AWS VPC pricing, as of 2026-11 |
+| m7i.2xlarge on-demand, us-east-1 | USD 0.4032 per hour | AWS public price list published 2026-10-29, as of 2026-11 |
+| m8g.2xlarge on-demand, us-east-1 | USD 0.35904 per hour | AWS public price list published 2026-10-29, as of 2026-11 |
 
-Run the pricing script in the worked example to replace every UNVERIFIED price with a live value before you use it for a decision.
+Run the pricing script in the worked example to refresh every price with a live value before you use it for a decision.
 For the cross-cloud cheat sheet, see [[17-Cloud-AI-Engineering/Volume_14_Staff_Plus_Interview_Arena/Chapter_06_Cloud_AI_Numbers_Every_Staff_Engineer_Must_Know|Cloud AI Numbers Every Staff Engineer Must Know]].
 
 ## AWS vs GCP Mechanism Parity
 
-Rows without an explicit date tag were not re-verified against official documentation in the 2026-10 research pass and should be treated as UNVERIFIED for currency.
+The mechanism claims in this table were checked against AWS and Google Cloud documentation in a 2026-11 pass, except that the Google VMM detail rests on a January 2017 Google blog post and may have evolved.
 
 | Dimension | AWS (Nitro, Graviton) | Google Cloud (Titanium, Axion) | Critical difference |
 |---|---|---|---|
 | I/O offload | Dedicated Nitro Cards for VPC, EBS, instance storage, and management | Titanium offload silicon plus tiered offload to scale-out storage and networking services | Both remove I/O from host cores; AWS splits functions across cards, Google combines on-host offload with fabric services |
 | Root of trust | Nitro Controller plus Nitro Security Chip on the mainboard | Titan security chip lineage | Both verify firmware before the host runs tenant code |
-| Hypervisor | KVM-based Nitro Hypervisor, no dom0, quiescent; Isolation Engine formally verified on Graviton5 (as of 2026-10) | KVM-based with a Google-built VMM | AWS has a published machine-checked isolation proof for one platform; Google publishes no equivalent proof (UNVERIFIED) |
+| Hypervisor | KVM-based Nitro Hypervisor, no dom0, quiescent; Isolation Engine formally verified on Graviton5 (as of 2026-10) | KVM-based with a Google-built VMM | AWS has a published machine-checked isolation proof for one platform; no equivalent Google proof turned up in Google Cloud docs or a web search (as of 2026-11) |
 | Host maintenance | Live updates of Nitro components; hardware retirement through scheduled events and stop/start | Live migration by default for most VM types; accelerator VMs typically terminate on maintenance | On GCE, plan for migration blackouts; on EC2, plan for scheduled-event reboots |
 | Virtual NIC | ENA through SR-IOV VF | gVNIC (virtio-net on older types) | Different drivers, so AMIs and images must include the right one |
 | Per-VM network limits | Published bandwidth; unpublished PPS and conntrack allowances visible through ENA counters | Per-vCPU egress caps with Tier_1 options on selected types | AWS failures show up as allowance-exceeded counters; GCE failures show up as egress caps |
 | Multipath transport | SRD for ENA Express and EFA | Andromeda virtual network (Dalton et al., NSDI 2018); RDMA fabrics on accelerator types | SRD sprays one flow across paths, while standard ECMP pins a flow to one path |
-| Arm CPU | Graviton2 to Graviton5; Graviton5 M9g GA (as of 2026-10) | Axion (Neoverse V2) in C4A; Tau T2A (Ampere Altra) | Both are SMT-free; Graviton is one generation newer on core IP as of 2026-10 |
+| Arm CPU | Graviton2 to Graviton5; Graviton5 M9g GA (as of 2026-10) | Axion (Neoverse V2) in C4A; Axion (Neoverse N3) in N4A; Tau T2A (Ampere Altra) | Both are SMT-free; Graviton is one generation newer on V-series core IP as of 2026-11 |
 | Confidential computing | Nitro isolation by default, Nitro Enclaves, NitroTPM, AMD SEV-SNP on selected types | Confidential VMs (AMD SEV, SEV-SNP, Intel TDX), Shielded VM vTPM | AWS treats isolation from the operator as a platform property; Google exposes memory encryption as a per-VM option |
 | Operator access | Contractual and design commitment that no operator can access the host, independently reviewed | Access Transparency and Access Approval logs and gates | AWS removes the access mechanism, while Google audits and gates it |
 | Instance metadata | IMDSv2 session token (PUT) with hop limit | Metadata server requiring the `Metadata-Flavor: Google` header | The IMDSv2 hop limit blocks container and SSRF relay paths at the network layer |
@@ -276,7 +306,7 @@ For the full GCE side, see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Cha
 The lab launches one Graviton4 `m8g.xlarge` and one Intel `m7i.xlarge` in the default VPC with no inbound ports.
 Access goes through SSM Session Manager, IMDSv2 is required with hop limit 1, and root volumes are encrypted gp3.
 Cost estimate: about USD 0.18 per hour for `m8g.xlarge` plus about USD 0.20 per hour for `m7i.xlarge`, plus two 8 GiB gp3 volumes and two public IPv4 addresses.
-That comes to about USD 0.40 per hour, or under USD 1 for a one-hour session (prices UNVERIFIED 2026-10; confirm with the pricing script below).
+That comes to about USD 0.40 per hour, or under USD 1 for a one-hour session (USD 0.17952 and USD 0.2016 per hour from the AWS public price list published 2026-10-29, as of 2026-11; confirm with the pricing script below).
 For a clearer contention gap between LL/SC and LSE, set `arm_type = "m8g.4xlarge"` (16 cores), which roughly quadruples the Graviton line item.
 
 ### Budget alarm (create before apply)
@@ -549,14 +579,14 @@ In this illustrative example, load tests give 1,800 rps per `m7i.2xlarge` (8 vCP
 These throughput numbers are assumptions for the arithmetic, not benchmarks.
 Step 2: base count = ceil(120,000 / 1,800) = 67 for x86, and ceil(120,000 / 2,300) = 53 for Graviton.
 Step 3: for static stability against losing one of three AZs, the surviving two-thirds must carry peak, so multiply by 1.5 and round up to a multiple of three: 100.5 becomes 102 instances, and 79.5 becomes 81 instances.
-Step 4: monthly on-demand cost at 730 hours is 102 x 0.4032 x 730 = USD 30,022 for x86 and 81 x 0.35904 x 730 = USD 21,230 for Graviton (prices UNVERIFIED 2026-10).
+Step 4: monthly on-demand cost at 730 hours is 102 x 0.4032 x 730 = USD 30,022 for x86 and 81 x 0.35904 x 730 = USD 21,230 for Graviton (AWS public price list published 2026-10-29, as of 2026-11).
 Step 5: the difference is USD 8,792 per month, or 29.3%, before commitments, which apply to both architectures under Compute Savings Plans (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Commitment Discounts]]).
 Step 6: network check per Graviton instance: 2,300 rps x 8 KB responses = 18.4 MB/s, about 147 Mbps, which is far below published bandwidth.
 At about 10 packets per request including ACKs, that is roughly 23,000 PPS, which should be within allowance but must be confirmed with `pps_allowance_exceeded` under a synthetic burst.
 Step 7: conntrack check with Little's law: tracked entries = arrival rate x time each entry stays tracked.
-If 50 clients per second silently abandon connections, for example behind a NAT that drops idle mappings without a FIN, then at the default 432,000 s established timeout the steady state is 50 x 432,000 = 21.6 million entries per instance.
-No instance allowance is that large, so `conntrack_allowance_exceeded` will eventually climb.
-The fix is to lower `TcpEstablishedTimeout` on the ENI (for example to 350 s, just above a typical 5-minute client keepalive) or to make the rules untracked.
+If 50 clients per second silently abandon connections, for example behind a NAT that drops idle mappings without a FIN, then at the 432,000 s established timeout that `m8g` (Nitro v5) still defaults to, the steady state is 50 x 432,000 = 21.6 million entries per instance.
+Per-type allowances are unpublished, but the AWS docs sample output shows `conntrack_allowance_available: 136812`, so expect 21.6 million to be far past any real allowance and `conntrack_allowance_exceeded` to climb eventually.
+The fix is to lower `TcpEstablishedTimeout` on the ENI (for example to 350 s, the default on Nitro v6 types such as `m9g` and just above a typical 5-minute client keepalive) or to make the rules untracked.
 Step 8: re-tune autoscaling with the new throughput-per-utilization curve, because a 50% CPU target that was right for SMT x86 leaves Graviton cores under-used.
 
 ## Failure Modes and Pitfalls
@@ -564,31 +594,31 @@ Step 8: re-tune autoscaling with the new throughput-per-utilization curve, becau
 ### Micro-burst shaping disguised as application latency
 
 Symptom: p99 latency spikes and TCP retransmits while CloudWatch `NetworkOut` shows 30% of instance bandwidth.
-Mechanism: the Nitro card's bandwidth or PPS bucket drains during sub-second bursts, such as cache-fill fan-out or synchronized batch flushes, and drops packets, and TCP then backs off.
+Mechanism: sub-second bursts, such as cache-fill fan-out or synchronized batch flushes, exceed the bandwidth or PPS allowance, packets are queued and then dropped, and TCP then backs off.
 Detection: `bw_out_allowance_exceeded` or `pps_allowance_exceeded` incrementing in `ethtool -S`, exported through the CloudWatch agent.
 Fix: smooth the burst with pacing (`fq` qdisc), add jitter to synchronized work as described in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_05_Constant_Work_and_Workload_Smoothing|Constant Work and Workload Smoothing]], or move up to a larger size for more allowance.
 
 ### Link-local exhaustion from DNS amplification in Kubernetes
 
 Kubernetes' default `ndots:5` turns one external lookup into up to five or more resolver queries, and on a dense node all of them go to the VPC resolver through one ENI.
-Once that exceeds the link-local allowance (1024 PPS per ENI, UNVERIFIED 2026-10), DNS queries drop silently and show up as sporadic 5-second resolution timeouts.
+Once that exceeds the link-local allowance (1024 PPS per ENI, AWS VPC docs, as of 2026-11), DNS queries drop silently and show up as sporadic 5-second resolution timeouts.
 Fix: a node-local DNS cache, lower `ndots`, and fully qualified names with a trailing dot.
 The same allowance covers IMDS, so SDKs that fetch credentials on every call instead of caching them can starve DNS on the same ENI.
 
 ### Conntrack table exhaustion
 
 Security groups are stateful, and a rule that is not fully open in both directions forces tracking.
-Long default idle timeouts combined with abandoned connections fill the table, as the Little's-law calculation above shows, and new connections are dropped while existing ones survive, so the outage looks partial and confusing.
+Long idle timeouts, such as the 5-day default on types before Nitro v6, combined with abandoned connections fill the table, as the Little's-law calculation above shows, and new connections are dropped while existing ones survive, so the outage looks partial and confusing.
 Fix: per-ENI conntrack timeouts, untracked rule design for high-fan-in tiers, and alarms on `conntrack_allowance_available`.
 
 ### Single-flow ceilings
 
-A replication or backup stream using one TCP connection tops out at the single-flow limit regardless of instance size (5 Gbps outside a cluster placement group, UNVERIFIED 2026-10).
-Fix: parallel streams, ENA Express inside an AZ, or tools that shard transfers across connections.
+A replication or backup stream using one TCP connection tops out at the single-flow limit regardless of instance size (5 Gbps outside a cluster placement group, AWS EC2 docs, as of 2026-11).
+Fix: parallel streams, Multipath TCP, ENA Express between supported instances in the same Region, or tools that shard transfers across connections.
 
 ### NVMe timeout too short for EBS failover
 
-When `nvme_core.io_timeout` is too short, a transient EBS latency event escalates into controller resets and an `ext4` remount read-only, and that converts a seconds-long storage blip into a host outage.
+When `nvme_core.io_timeout` is too short, a transient EBS latency event escalates into failed I/O and possibly a filesystem remount read-only, and that converts a seconds-long storage blip into a host outage.
 Custom AMIs built from upstream distributions often miss the AWS-recommended value, so check it in image CI.
 
 ### Arm porting bugs that pass CI
@@ -662,15 +692,15 @@ Endpoint policies and resource policies with `aws:SourceVpce` complete the perim
 
 ### Hardening Graviton binaries
 
-Build with `-mbranch-protection=standard` to use pointer authentication and BTI on Graviton3 and later.
-Prefer Graviton for multi-tenant isolation-sensitive workloads, since the lack of SMT removes the sibling-hyperthread side-channel class entirely.
+Build with `-mbranch-protection=standard` to use pointer authentication on Graviton3 and later, and BTI on Graviton4 and later.
+EC2 never shares a core between customers through SMT on any CPU ([AWS Nitro whitepaper, as of 2026-11](https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/the-ec2-approach-to-preventing-side-channels.html)), so Graviton's lack of SMT does not change cross-customer exposure, and its added benefit is removing sibling-hyperthread channels between your own tenants inside one instance.
 On Graviton5 you also get the formally verified Isolation Engine (as of 2026-10).
 
 ### Unit-economics levers
 
 Graviton price-performance is the biggest single lever for CPU-bound tiers, but only if you resize by throughput and re-tune autoscaling.
 Compute Savings Plans follow you across architectures and generations, while EC2 Instance Savings Plans lock you into a family and can strand commitment during a migration.
-Public IPv4 addresses are billed hourly (UNVERIFIED 2026-10), so lab and fleet designs should prefer private subnets with endpoints or IPv6.
+Public IPv4 addresses are billed at USD 0.005 per hour ([AWS VPC pricing, as of 2026-11](https://aws.amazon.com/vpc/pricing/)), so lab and fleet designs should prefer private subnets with endpoints or IPv6.
 Cross-AZ traffic is billed in both directions, so chatty microservices spread across AZs pay a hidden tax that Nitro bandwidth headroom does not show you; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]].
 
 ## Interview Questions and Model Answers
@@ -681,12 +711,12 @@ A service on a 12.5 Gbps instance shows TCP retransmits and p99 spikes, but Clou
 
 #### Model Answer
 
-First, CloudWatch network metrics are per-minute averages, and the Nitro card enforces allowances with sub-second token buckets, so the average cannot rule out shaping.
+First, CloudWatch network metrics are per-minute averages, and AWS documents that microbursts can exceed allowances without showing in those metrics, so the average cannot rule out shaping.
 I would read the ENA counters from inside the guest with `ethtool -S` and look at `bw_out_allowance_exceeded`, `pps_allowance_exceeded`, `conntrack_allowance_exceeded`, and `linklocal_allowance_exceeded`, ideally exported every 10 seconds through the CloudWatch agent so I can line them up with the latency spikes.
 If the bandwidth counter moves, the cause is micro-bursts: synchronized fan-out, cache refills, or batch flushes that hit line rate for tens of milliseconds.
 The fix is pacing with the `fq` qdisc, jittering synchronized work, or a larger instance.
 If PPS moves while bandwidth does not, the workload is small-packet heavy, so I would batch at the application layer, enable GRO and GSO, or consider DPDK.
-If conntrack moves, I would check for abandoned connections and the 5-day default established timeout, and either set a per-ENI timeout or redesign SG rules to be untracked.
+If conntrack moves, I would check for abandoned connections and the established timeout (5 days by default before Nitro v6, 350 s on Nitro v6), and either set a per-ENI timeout or redesign SG rules to be untracked.
 If no counter moves, I would check single-flow limits for long-lived streams and then the guest itself: IRQ affinity, RX ring size, and softirq saturation on one core.
 Throughout, I would keep the key point in mind: AWS does not publish PPS or conntrack allowances, so the counters are the only source of truth.
 
@@ -726,7 +756,7 @@ I would confirm with `objdump` counts of `ldxr` versus `ldadd` and `cas`, and wi
 The fix is a rebuild with `-mcpu=neoverse-v2` or a known-good portable target with LSE.
 Then I would re-measure, because LSE far atomics move the bottleneck to the home node and true sharing is still a design smell, so per-core counters and sharded queues are the real fix.
 Branch two is topology.
-The largest Graviton4 sizes span two sockets, so if they do, an allocator that interleaves memory and threads that migrate across sockets would add remote-memory latency that single-socket benchmarks never showed.
+The Graviton4 48xlarge spans two sockets, so an allocator that interleaves memory and threads that migrate across sockets would add remote-memory latency that single-socket benchmarks never showed.
 I would check with `lscpu` and `numactl --hardware`, then pin the matching engine's threads and memory to one node.
 Branch three is correctness-motivated over-synchronization.
 During the port, someone may have "fixed" sporadic weak-memory bugs by adding full `dmb ish` barriers or `seq_cst` everywhere, which serializes the pipeline.
@@ -793,9 +823,9 @@ A regulator asks you to justify running sensitive workloads on EC2 rather than o
 I would split the argument into three claims with different evidence.
 The first is proven: on Graviton5 instances on sixth-generation Nitro, the Nitro Isolation Engine is a Rust separation kernel with Isabelle/HOL proofs of functional correctness, noninterference-style confidentiality, integrity, and memory safety for VM isolation (as of 2026-10).
 That proof holds only within its model.
-It covers the component that enforces isolation and not the policy code that decides allocations, and its hardware assumptions mean microarchitectural channels and firmware are outside it unless stated.
+It covers the component that enforces isolation and not the policy code that decides allocations, it assumes correct firmware and hardware, and per the June 2026 whitepaper micro-architectural side channels are mitigated by design rather than proven.
 The second is asserted and independently reviewed: there is no operator access mechanism to Nitro hosts.
-That rests on an architecture with no shell, no SSH, and authenticated APIs that cannot read customer memory, plus an external review and contractual service terms.
+That rests on an architecture with no shell, no SSH, and authenticated APIs that cannot read customer memory, plus an external review (NCC Group, May 2023) and contractual service terms (the Nitro System clause of the AWS Service Terms, as of 2026-11).
 I would present it as strong design assurance, not a proof.
 The third is the customer's responsibility: identity, network perimeter, key policy, patching the guest, and the integrity of what we deploy.
 Dedicated hardware does not remove any of these, and it adds physical-security and firmware-patching burdens we currently inherit from AWS.
