@@ -244,7 +244,7 @@ The validated script prints the same answer, `20`, for `add 010 010` in all of t
 
 > [!warning] Width and overflow are not portable
 > Trigger: hashing, timestamps in nanoseconds, or `2147483647 + 1` style counters computed in the shell.
-> Symptom: mksh wraps at 32 bits, ksh93u+m returns 2^63 instead of wrapping, ksh93u+ 2012 saturates, yash raises an error, the rest wrap at 64 bits - and ISO C leaves overflow undefined, so POSIX gives none of this.
+> Symptom: mksh wraps at 32 bits, ksh93u+m leaves the integer range instead of wrapping (`9223372036854775808` on aarch64, the float text `9.22337203685477581e+18` on x86-64), ksh93u+ 2012 saturates, yash raises an error, the rest wrap at 64 bits - and ISO C leaves overflow undefined, so POSIX gives none of this.
 > Fix: bound the inputs for the operator in use (the lab's 9 digits protect sums only; a product of two operands needs at most 4 digits each), or do the work in `bc`, or in `awk` while results stay under 2^53.
 
 ## Security and robustness
