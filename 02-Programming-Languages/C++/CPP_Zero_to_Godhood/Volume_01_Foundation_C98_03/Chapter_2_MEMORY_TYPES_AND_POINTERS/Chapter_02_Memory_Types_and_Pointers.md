@@ -958,13 +958,13 @@ int main() {
 ## Professional Insights: Arrays
 
 Arrays are elements of the same type placed in adjoining memory locations. The elements can be individually
-referenced by a unique identiﬁer with an added index.
-This allows you to declare multiple variable values of a speciﬁc type and access them individually without needing
+referenced by a unique identifier with an added index.
+This allows you to declare multiple variable values of a specific type and access them individually without needing
 to declare a variable for each value.
 Section 8.1: Array initialization
-An array is just a block of sequential memory locations for a speciﬁc type of variable. Arrays are allocated the same
+An array is just a block of sequential memory locations for a specific type of variable. Arrays are allocated the same
 way as normal variables, but with square brackets appended to its name [] that contain the number of elements
-that ﬁt into the array memory.
+that fit into the array memory.
 The following example of an array uses the typ int, the variable name arrayOfInts, and the number of elements
  that the array has space for:
 int arrayOfInts;
@@ -973,7 +973,7 @@ int arrayOfInts = {10, 20, 30, 40, 50};
 When initializing an array by listing all of its members, it is not necessary to include the number of elements inside
 the square brackets. It will be automatically calculated by the compiler. In the following example, it's 5:
 int arrayOfInts[] = {10, 20, 30, 40, 50};
-It is also possible to initialize only the ﬁrst elements while allocating more space. In this case, deﬁning the length in
+It is also possible to initialize only the first elements while allocating more space. In this case, defining the length in
 brackets is mandatory. The following will allocate an array of length 5 with partial initialization, the compiler
 initializes all remaining elements with the standard value of the element type, in this case zero.
 int arrayOfInts = {10,20}; // means 10, 20, 0, 0, 0
@@ -990,7 +990,7 @@ int array = { 10/*Element no.0*/, 20/*Element no.1*/, 30, 40, 50/*Element no.4*/
 std::cout << array[4]; //outputs 50
 std::cout << array[0]; //outputs 10
 
-Section 8.2: A ﬁxed size raw array matrix (that is, a 2D raw
+Section 8.2: A fixed size raw array matrix (that is, a 2D raw
 array)
 // A fixed size raw array matrix (that is, a 2D raw array).
 #include <iostream>
@@ -1023,12 +1023,12 @@ array of arrays (possibly of arrays, and so on), and the ordinary single index n
 the example above m[y] refers to row y of m, where y is a zero-based index. Then this row can be indexed in turn,
 e.g. m[y][x], which refers to the xth item – or column – of row y.
 I.e. the last index varies fastest, and in the declaration the range of this index, which here is the number of columns
-per row, is the last and “innermost” size speciﬁed.
+per row, is the last and “innermost” size specified.
 Since C++ doesn't provide built-in support for dynamic size arrays, other than dynamic allocation, a dynamic size
 matrix is often implemented as a class. Then the raw array matrix indexing notation m[y][x] has some cost, either
 by exposing the implementation (so that e.g. a view of a transposed matrix becomes practically impossible) or by
 adding some overhead and slight inconvenience when it's done by returning a proxy object from operator[]. And
-so the indexing notation for such an abstraction can and will usually be diﬀerent, both in look-and-feel and in the
+so the indexing notation for such an abstraction can and will usually be different, both in look-and-feel and in the
 order of indices, e.g. m(x,y) or m.at(x,y) or m.item(x,y).
 Section 8.3: Dynamically sized raw array
 // Example of raw dynamic size array. It's generally better to use std::vector.
@@ -1059,7 +1059,7 @@ A program that declares an array T a[n]; where n is determined a run-time, can c
 that support C99 variadic length arrays (VLAs) as a language extension. But VLAs are not supported by standard C++.
 This example shows how to manually allocate a dynamic size array via a new[]-expression,
 int*        a   = new int[n];       // ← Allocation of array of n items.
-… then use it, and ﬁnally deallocate it via a delete[]-expression:
+… then use it, and finally deallocate it via a delete[]-expression:
 delete[] a;
 The array allocated here has indeterminate values, but it can be zero-initialized by just adding an empty
 parenthesis (), like this: new int[n](). More generally, for arbitrary item type, this performs a value-initialization.
@@ -1131,20 +1131,20 @@ int main()
     cout << '\\n';
 }
 std::vector is a standard library class template that provides the notion of a variable size array. It takes care of all
-the memory management, and the buﬀer is contiguous so a pointer to the buﬀer (e.g. &v[0] or v.data()) can be
+the memory management, and the buffer is contiguous so a pointer to the buffer (e.g. &v[0] or v.data()) can be
 passed to API functions requiring a raw array. A vector can even be expanded at run time, via e.g. the push_back
 member function that appends an item.
 The complexity of the sequence of n push_back operations, including the copying or moving involved in the vector
 expansions, is amortized O(n). “Amortized”: on average.
 ```
 
-Internally this is usually achieved by the vector doubling its buﬀer size, its capacity, when a larger buﬀer is needed.
-E.g. for a buﬀer starting out as size 1, and being repeatedly doubled as needed for n=17 push_back calls, this
+Internally this is usually achieved by the vector doubling its buffer size, its capacity, when a larger buffer is needed.
+E.g. for a buffer starting out as size 1, and being repeatedly doubled as needed for n=17 push_back calls, this
 involves 1 + 2 + 4 + 8 + 16 = 31 copy operations, which is less than 2×n = 34. And more generally the sum of this
 sequence can't exceed 2×n.
 Compared to the dynamic size raw array example, this vector-based code does not require the user to supply (and
 know) the number of items up front. Instead the vector is just expanded as necessary, for each new item value
-speciﬁed by the user.
+specified by the user.
 Section 8.6: A dynamic size matrix using std::vector for
 storage
 Unfortunately as of C++14 there's no dynamic size matrix class in the C++ standard library. Matrix classes that
@@ -1154,10 +1154,10 @@ If you don't want a dependency on Boost or some other library, then one poor man
 just like
 vector<vector<int>> m( 3, vector<int>( 7 ) );
 … where vector is std::vector. The matrix is here created by copying a row vector n times where n is the number
-of rows, here 3. It has the advantage of providing the same m[y][x] indexing notation as for a ﬁxed size raw array
-matrix, but it's a bit ineﬃcient because it involves a dynamic allocation for each row, and it's a bit unsafe because
+of rows, here 3. It has the advantage of providing the same m[y][x] indexing notation as for a fixed size raw array
+matrix, but it's a bit inefficient because it involves a dynamic allocation for each row, and it's a bit unsafe because
 it's possible to inadvertently resize a row.
-A more safe and eﬃcient approach is to use a single vector as storage for the matrix, and map the client code's (x, y)
+A more safe and efficient approach is to use a single vector as storage for the matrix, and map the client code's (x, y)
 to a corresponding index in that vector:
 // A dynamic size matrix using std::vector for storage.
 //--------------------------------------------- Machinery:
@@ -1244,7 +1244,7 @@ The above code is not industrial grade: it's designed to show the basic principl
 learning C++.
 ```
 
-For example, one may deﬁne operator() overloads to simplify the indexing notation.
+For example, one may define operator() overloads to simplify the indexing notation.
 
 ***
 
@@ -1768,13 +1768,13 @@ int main() {
 # Professional Notes: Chapter 8: Arrays
 
 Arrays are elements of the same type placed in adjoining memory locations. The elements can be individually
-referenced by a unique identiﬁer with an added index.
-This allows you to declare multiple variable values of a speciﬁc type and access them individually without needing
+referenced by a unique identifier with an added index.
+This allows you to declare multiple variable values of a specific type and access them individually without needing
 to declare a variable for each value.
 Section 8.1: Array initialization
-An array is just a block of sequential memory locations for a speciﬁc type of variable. Arrays are allocated the same
+An array is just a block of sequential memory locations for a specific type of variable. Arrays are allocated the same
 way as normal variables, but with square brackets appended to its name [] that contain the number of elements
-that ﬁt into the array memory.
+that fit into the array memory.
 The following example of an array uses the typ int, the variable name arrayOfInts, and the number of elements
  that the array has space for:
 int arrayOfInts;
@@ -1783,7 +1783,7 @@ int arrayOfInts = {10, 20, 30, 40, 50};
 When initializing an array by listing all of its members, it is not necessary to include the number of elements inside
 the square brackets. It will be automatically calculated by the compiler. In the following example, it's 5:
 int arrayOfInts[] = {10, 20, 30, 40, 50};
-It is also possible to initialize only the ﬁrst elements while allocating more space. In this case, deﬁning the length in
+It is also possible to initialize only the first elements while allocating more space. In this case, defining the length in
 brackets is mandatory. The following will allocate an array of length 5 with partial initialization, the compiler
 initializes all remaining elements with the standard value of the element type, in this case zero.
 int arrayOfInts = {10,20}; // means 10, 20, 0, 0, 0
@@ -1797,7 +1797,7 @@ from 0.
 int array = { 10/*Element no.0*/, 20/*Element no.1*/, 30, 40, 50/*Element no.4*/};
 std::cout << array[1]; //outputs 50
 std::cout << array; //outputs 10
-Section 8.2: A ﬁxed size raw array matrix (that is, a 2D raw
+Section 8.2: A fixed size raw array matrix (that is, a 2D raw
 array)
 // A fixed size raw array matrix (that is, a 2D raw array).
 # include <iostream>
@@ -1829,12 +1829,12 @@ array of arrays (possibly of arrays, and so on), and the ordinary single index n
 the example above m[y] refers to row y of m, where y is a zero-based index. Then this row can be indexed in turn,
 e.g. m[y][x], which refers to the xth item – or column – of row y.
 I.e. the last index varies fastest, and in the declaration the range of this index, which here is the number of columns
-per row, is the last and “innermost” size speciﬁed.
+per row, is the last and “innermost” size specified.
 Since C++ doesn't provide built-in support for dynamic size arrays, other than dynamic allocation, a dynamic size
 matrix is often implemented as a class. Then the raw array matrix indexing notation m[y][x] has some cost, either
 by exposing the implementation (so that e.g. a view of a transposed matrix becomes practically impossible) or by
 adding some overhead and slight inconvenience when it's done by returning a proxy object from operator[]. And
-so the indexing notation for such an abstraction can and will usually be diﬀerent, both in look-and-feel and in the
+so the indexing notation for such an abstraction can and will usually be different, both in look-and-feel and in the
 order of indices, e.g. m(x,y) or m.at(x,y) or m.item(x,y).
 Section 8.3: Dynamically sized raw array
 // Example of raw dynamic size array. It's generally better to use std::vector.
@@ -1863,7 +1863,7 @@ A program that declares an array T a[n]; where n is determined a run-time, can c
 that support C99 variadic length arrays (VLAs) as a language extension. But VLAs are not supported by standard C++.
 This example shows how to manually allocate a dynamic size array via a new[]-expression,
 int*        a   = new int[n];       // ← Allocation of array of n items.
-… then use it, and ﬁnally deallocate it via a delete[]-expression:
+… then use it, and finally deallocate it via a delete[]-expression:
 delete[] a;
 The array allocated here has indeterminate values, but it can be zero-initialized by just adding an empty
 parenthesis (), like this: new int[n](). More generally, for arbitrary item type, this performs a value-initialization.
@@ -1930,18 +1930,18 @@ int main()
     cout << '\n';
 }
 std::vector is a standard library class template that provides the notion of a variable size array. It takes care of all
-the memory management, and the buﬀer is contiguous so a pointer to the buﬀer (e.g. &v or v.data()) can be
+the memory management, and the buffer is contiguous so a pointer to the buffer (e.g. &v or v.data()) can be
 passed to API functions requiring a raw array. A vector can even be expanded at run time, via e.g. the push_back
 member function that appends an item.
 The complexity of the sequence of n push_back operations, including the copying or moving involved in the vector
 expansions, is amortized O(n). “Amortized”: on average.
-Internally this is usually achieved by the vector doubling its buﬀer size, its capacity, when a larger buﬀer is needed.
-E.g. for a buﬀer starting out as size 1, and being repeatedly doubled as needed for n=17 push_back calls, this
+Internally this is usually achieved by the vector doubling its buffer size, its capacity, when a larger buffer is needed.
+E.g. for a buffer starting out as size 1, and being repeatedly doubled as needed for n=17 push_back calls, this
 involves 1 + 2 + 4 + 8 + 16 = 31 copy operations, which is less than 2×n = 34. And more generally the sum of this
 sequence can't exceed 2×n.
 Compared to the dynamic size raw array example, this vector-based code does not require the user to supply (and
 know) the number of items up front. Instead the vector is just expanded as necessary, for each new item value
-speciﬁed by the user.
+specified by the user.
 Section 8.6: A dynamic size matrix using std::vector for
 storage
 Unfortunately as of C++14 there's no dynamic size matrix class in the C++ standard library. Matrix classes that
@@ -1951,10 +1951,10 @@ If you don't want a dependency on Boost or some other library, then one poor man
 just like
 vector<vector<int>> m( 3, vector<int>( 7 ) );
 … where vector is std::vector. The matrix is here created by copying a row vector n times where n is the number
-of rows, here 3. It has the advantage of providing the same m[y][x] indexing notation as for a ﬁxed size raw array
-matrix, but it's a bit ineﬃcient because it involves a dynamic allocation for each row, and it's a bit unsafe because
+of rows, here 3. It has the advantage of providing the same m[y][x] indexing notation as for a fixed size raw array
+matrix, but it's a bit inefficient because it involves a dynamic allocation for each row, and it's a bit unsafe because
 it's possible to inadvertently resize a row.
-A more safe and eﬃcient approach is to use a single vector as storage for the matrix, and map the client code's (x, y)
+A more safe and efficient approach is to use a single vector as storage for the matrix, and map the client code's (x, y)
 to a corresponding index in that vector:
 // A dynamic size matrix using std::vector for storage.
 //--------------------------------------------- Machinery:
@@ -2034,7 +2034,7 @@ Output:
 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21
 The above code is not industrial grade: it's designed to show the basic principles, and serve the needs of students
 learning C++.
-For example, one may deﬁne operator() overloads to simplify the indexing notation.
+For example, one may define operator() overloads to simplify the indexing notation.
 
 ***
 
