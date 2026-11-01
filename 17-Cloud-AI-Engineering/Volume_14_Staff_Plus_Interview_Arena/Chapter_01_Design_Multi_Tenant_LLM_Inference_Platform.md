@@ -472,7 +472,7 @@ spec:
     group: "inference.networking.k8s.io"
 ```
 
-Cost estimate: the tutorial's GPU node pool dominates cost, so look up the on-demand hourly rate for your chosen GPU machine type and region on the Compute Engine GPU pricing page, multiply by the planned session length, and raise the budget below if that product exceeds it.
+Cost estimate: the tutorial's GPU node pool dominates cost, about USD 10.92 per hour for a one-GPU a3-highgpu-1g node or about USD 88.49 per hour for an eight-GPU a3-highgpu-8g node in us-central1 on demand (third-party Holori price tracker, [1g](https://calculator.holori.com/gcp/vm/a3-highgpu-1g/us-central1) and [8g](https://calculator.holori.com/gcp/vm/a3-highgpu-8g/us-central1), as of 2026-11; check the Compute Engine pricing page for your region), so a 2-hour session costs about USD 22 on one GPU or about USD 177 on a full 8-GPU node; raise the budget below if you use the 8-GPU shape.
 
 Budget alarm on GCP, created before the cluster:
 

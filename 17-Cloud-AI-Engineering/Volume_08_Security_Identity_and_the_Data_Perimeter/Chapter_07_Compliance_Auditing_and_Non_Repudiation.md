@@ -368,7 +368,7 @@ Use advanced event selectors to scope data events to the PHI bucket only, or exc
 **Lab cost.**
 One KMS key (about $1 per month, prorated), a single multi-region trail (first management copy free if no other trail exists), a few MB of S3.
 Expect under $2 for a day.
-The budget alarm caps surprise at $10.
+The budget alarm only notifies as spend nears its $10 limit and does not stop spend, so the teardown is what stops it.
 
 ### Terraform: archive bucket, key, trail, budget
 

@@ -265,7 +265,9 @@ Adding `--allreduce-us 15` raises the B = 1 step from 6.65 to 9.05 ms, which sho
 
 ### Step 2 - Validate the model against a real GPU (billable, about 1 to 2 hours)
 
-Cost estimate: one g2-standard-8 (8 vCPU, 32 GB, 1x L4 with 24 GB GDDR6, per Google's accelerator-optimized machine docs as of 2026-11) on demand plus a 200 GB balanced boot disk, so a 2-hour lab costs 2 x the hourly rate for your region from the Compute Engine pricing page plus a small disk charge, and the $20 budget alarm below bounds the worst case.
+Cost estimate: one g2-standard-8 (8 vCPU, 32 GB, 1x L4 with 24 GB GDDR6, per Google's accelerator-optimized machine docs as of 2026-11) on demand plus a 200 GB balanced boot disk.
+The third-party [Holori price tracker](https://calculator.holori.com/gcp/vm/g2-standard-8/us-central1) lists g2-standard-8 at about $0.85/hour in us-central1 (as of 2026-11; check the Compute Engine pricing page for your region), so a 2-hour lab costs about $2 including a small disk charge.
+The $20 budget alarm below only notifies at 50, 90 and 100 percent and does not stop the VM, so the teardown is what stops spend.
 
 ```bash
 export PROJECT=my-lab-project ZONE=us-central1-a BILLING_ACCOUNT=XXXXXX-XXXXXX-XXXXXX

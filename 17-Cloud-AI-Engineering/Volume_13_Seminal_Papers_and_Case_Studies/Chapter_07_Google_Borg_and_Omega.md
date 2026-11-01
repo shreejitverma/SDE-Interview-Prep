@@ -431,7 +431,7 @@ Segregation cost is the fourth. Applying Borg's 20-30% prod/non-prod segregation
 ### Part C - GKE lab: priority bands, preemption, PDB violation, quota-at-priority
 
 Estimated cost: two `e2-standard-2` nodes plus the zonal cluster fee for about one hour.
-The GKE cluster management fee is a flat USD 0.10 per cluster-hour for every mode and topology (GKE pricing page, as of 2026-11); check the `e2-standard-2` rate for your region on the Compute Engine pricing page before running.
+The GKE cluster management fee is a flat USD 0.10 per cluster-hour for every mode and topology (GKE pricing page, as of 2026-11), and `e2-standard-2` lists at about USD 0.067 per hour in us-central1 (third-party [Holori price tracker](https://calculator.holori.com/gcp/vm/e2-standard-2/us-central1), as of 2026-11; check the Compute Engine pricing page for your region), so the hour costs about USD 0.23 before disks (0.10 + 2 x 0.067).
 The GKE Free Tier gives USD 74.40 per month per billing account, which covers the cluster charge of one Autopilot or zonal Standard cluster per month, but not compute or networking (GKE pricing page and Google Cloud Free Tier docs, as of 2026-11).
 
 ```bash

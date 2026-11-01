@@ -357,9 +357,9 @@ def bedrock():
     from botocore.exceptions import ClientError
 
     profile = os.environ["BEDROCK_PROFILE_ID"]
-    # max_attempts=1 disables SDK retries so throttles are visible to our own policy.
+    # total_max_attempts=1 counts the initial request, so the SDK never retries and throttles stay visible to our own policy.
     client = boto3.client("bedrock-runtime",
-                          config=Config(retries={"max_attempts": 1, "mode": "standard"},
+                          config=Config(retries={"total_max_attempts": 1, "mode": "standard"},
                                         read_timeout=120))
     extra = {}
     tier = os.environ.get("BEDROCK_SERVICE_TIER")  # "priority", "default" or "flex"

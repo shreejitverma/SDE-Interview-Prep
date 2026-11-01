@@ -45,8 +45,6 @@ sources:
   - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
   - "https://www.crowdstrike.com/wp-content/uploads/2024/08/Channel-File-291-Incident-Root-Cause-Analysis-08.06.2024.pdf"
   - "https://usenix.org/conference/lisa-02/why-order-matters-turing-equivalence-automated-systems-administration"
-  - "https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/"
-  - "https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html"
 ---
 
 # GitOps Delivery: Argo CD and Flux

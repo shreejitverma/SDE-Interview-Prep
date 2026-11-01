@@ -44,7 +44,6 @@ sources:
   - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
   - "https://aws.amazon.com/message/101925/"
   - "https://docs.aws.amazon.com/bedrock/latest/userguide/api-inference-examples-claude-messages-code-examples.html"
-  - "https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_PayloadPart.html"
   - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/prompt-caching"
 ---
 
@@ -616,7 +615,7 @@ The zero-operator-access property is documented for the new Bedrock integration 
 3. Choosing the TTL. Use the 1-hour TTL only when the same prefix recurs at least twice per hour with gaps longer than 5 minutes; otherwise the 5-minute TTL with refresh-on-hit is cheaper.
 4. Right-sizing `max_tokens`. It costs nothing in dollars but directly buys quota headroom, which delays the need for quota increases or provisioned capacity.
 5. Output length discipline. On Bedrock's `bedrock-runtime` endpoint, each output token consumes 5x, 10x, or 15x quota (AWS docs, as of 2026-10), so instructing terse output pays twice: once in price and again in admitted concurrency.
-6. Batch interfaces for offline work. Bedrock batch inference, available only on `bedrock-runtime`, is priced at 50% of on-demand for select models including Anthropic's (AWS announcement and AWS docs, as of 2026-10), and Anthropic's own Batch API is 50% off (Anthropic pricing docs, as of 2026-10). Anthropic lists its Message Batches API, which carries that 50% discount, as unsupported on the Google-managed Claude surface (Anthropic docs, as of 2026-11).
+6. Batch interfaces for offline work. Bedrock batch inference, available only on `bedrock-runtime`, is priced at 50% of on-demand for select models including Anthropic's (AWS announcement and AWS docs, as of 2026-10), and Anthropic's own Batch API is 50% off (Anthropic pricing docs, as of 2026-10). Anthropic lists its Message Batches API, which carries that 50% discount, as unsupported on the Google-managed Claude surface (Anthropic docs, as of 2026-11), but Google offers Claude batch predictions through its own interface, with BigQuery or Cloud Storage input and output ([Google Claude batch docs](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/batch), as of 2026-11).
 
 Cost allocation and showback for these levers belong in [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cloud_Billing_Models_and_Unit_Cost_Allocation|Cloud Billing Models and Unit Cost Allocation]].
 

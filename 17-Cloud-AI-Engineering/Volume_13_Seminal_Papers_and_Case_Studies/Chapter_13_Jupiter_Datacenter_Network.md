@@ -534,8 +534,8 @@ Interpret it with care.
 In practice the binding constraint is usually the per-VM egress shaping in the virtual NIC (see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_12_Andromeda_Network_Virtualization|Andromeda]]), not the Jupiter fabric.
 
 Cost estimate:
-the lab bills 2 x n2-standard-8 for the session, plus two ephemeral external IPv4 addresses at 0.005 USD/hour each ([Google Cloud network pricing](https://cloud.google.com/vpc/network-pricing), as of 2026-11) and two 10 GB boot disks.
-Look up the current n2-standard-8 hourly rate for us-central1 on the Compute Engine pricing page before running, and delete the VMs as soon as the measurement finishes.
+the lab bills 2 x n2-standard-8 for the session, about USD 0.78 per hour at USD 0.3885 per VM-hour in us-central1 (third-party [Holori price tracker](https://calculator.holori.com/gcp/vm/n2-standard-8/us-central1), as of 2026-11; check the Compute Engine pricing page), plus two ephemeral external IPv4 addresses at 0.005 USD/hour each ([Google Cloud network pricing](https://cloud.google.com/vpc/network-pricing), as of 2026-11) and two 10 GB boot disks.
+That is about USD 0.80 per hour (this chapter's arithmetic: 0.78 + 0.01 plus a small disk charge), so delete the VMs as soon as the measurement finishes.
 Same-zone traffic over internal IPv4 addresses in one VPC has no charge (same source, as of 2026-11).
 
 ```bash

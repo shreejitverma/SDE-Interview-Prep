@@ -45,7 +45,6 @@ sources:
   - "https://projectcapsule.dev/docs/tenants/quotas/"
   - "https://github.com/projectcapsule/capsule/blob/main/internal/controllers/tenant/resourcequotas.go"
   - "https://github.com/kubernetes-retired/hierarchical-namespaces"
-  - "https://docs.cloud.google.com/kubernetes-engine/fleet-management/docs/team-management"
 ---
 
 # Multi-Tenancy, Isolation, and Resource Quotas
@@ -326,7 +325,7 @@ Rows carry their source.
 | Network policy enforcement | VPC CNI network policy (eBPF) or Calico or Cilium | Dataplane V2 (Cilium) or legacy Calico enforcement | Enforcement is a CNI choice on EKS and a cluster mode on GKE | (EKS and GKE docs, as of 2026-11) |
 | Sandboxed pods | Fargate (compute boundary per pod, built on Firecracker); Kata self-managed on bare metal | GKE Sandbox (gVisor or microVM) via RuntimeClass | Fargate is a different compute model with its own limitations (no DaemonSets, no GPUs, no privileged containers) | (EKS and GKE docs, as of 2026-11) |
 | Per-tenant node capacity | Karpenter NodePool with taints and `limits` | Node pools or ComputeClasses, node auto-provisioning limits | Karpenter limits are a native cloud-layer cap | (Karpenter and GKE docs, as of 2026-11) |
-| Fleet and team management | Accounts, GitOps projects, operators, policy engines | Fleet teams and scopes | GKE fleets have a first-party team construct (fleet team management with team scopes) | (GKE fleet team management docs, as of 2026-11) |
+| Fleet and team management | Accounts, GitOps projects, operators, policy engines | Fleet teams and scopes | GKE fleets have a first-party team construct (fleet team management with team scopes) | ([GKE fleet team management docs](https://docs.cloud.google.com/kubernetes-engine/fleet-management/docs/team-management), as of 2026-11) |
 | Hierarchical config | Capsule, GitOps; HNC is retired | Config Sync hierarchical format (Google recommends unstructured), Capsule; HNC is retired | Config Sync is the first-party route on GKE | (Google Cloud and Capsule docs, GitHub, as of 2026-11) |
 | Cost allocation by namespace | Split cost allocation data for EKS, OpenCost | GKE cost allocation exports namespace and labels to billing export | Both need opt-in and tagging discipline | (AWS CUR and GKE docs, as of 2026-11) |
 | Hard-isolation unit | AWS account, enforced with SCPs and RCPs | Project, enforced with Org Policy and VPC Service Controls | Same idea, different hierarchy, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter\|Data Perimeter]] | Design level |

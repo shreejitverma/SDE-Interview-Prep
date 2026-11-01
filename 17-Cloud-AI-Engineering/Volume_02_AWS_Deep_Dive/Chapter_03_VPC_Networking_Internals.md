@@ -45,7 +45,6 @@ sources:
   - "https://aws.amazon.com/blogs/compute/announcing-improved-vpc-networking-for-aws-lambda-functions/"
   - "https://docs.cloud.google.com/vpc/docs/multiple-interfaces-concepts"
   - "https://docs.cloud.google.com/nat/docs/tune-nat-configuration"
-  - "https://docs.aws.amazon.com/vpc/latest/reachability/how-reachability-analyzer-works.html"
 ---
 
 # VPC Networking Internals
@@ -440,7 +439,7 @@ resource "aws_security_group" "probe" {
   }
 }
 
-# Network interfaces are valid Reachability Analyzer sources and destinations (AWS Reachability Analyzer docs, as of 2026-11)
+# Network interfaces are valid Reachability Analyzer sources and destinations (https://docs.aws.amazon.com/vpc/latest/reachability/how-reachability-analyzer-works.html, as of 2026-11)
 resource "aws_network_interface" "probe" {
   for_each        = local.vpcs
   subnet_id       = aws_subnet.work[each.key].id

@@ -8,8 +8,8 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 17369 |
-| Markdown notes | 2946 |
+| Tracked files | 17367 |
+| Markdown notes | 2944 |
 | Internal links checked | 22743 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
@@ -21,7 +21,7 @@ Re-run the script after every structural change; this file is its output and sho
 | Note folders without README (depth <= 3) | 0 |
 | Notes with emojis / total emojis | 0 / 0 |
 | Notes with em dashes / total em dashes | 0 / 0 |
-| Identical-content groups / redundant MB | 307 / 41.9 |
+| Identical-content groups / redundant MB | 306 / 41.9 |
 | Vendored or imported repos | 10 |
 | Tracked build junk | 0 |
 | Files >= 5 MB / total MB | 1 / 5.1 |
@@ -30,7 +30,7 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Folder | Files | Notes | Code | Papers | Other | MB | Last touched |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `(root)` | 13 | 8 | 0 | 0 | 5 | 0.1 | 2026-11-01 |
+| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-11-01 |
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-10-25 |
 | `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-21 |
 | `00-Start-Here` | 6 | 5 | 0 | 0 | 1 | 0.0 | 2026-10-25 |

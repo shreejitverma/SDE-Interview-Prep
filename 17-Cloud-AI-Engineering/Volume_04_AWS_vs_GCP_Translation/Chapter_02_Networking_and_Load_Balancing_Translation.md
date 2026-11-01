@@ -412,7 +412,7 @@ terraform destroy -auto-approve -var alert_email=you@example.com
 ### Step 3: GCP lab, one VPC, two regions, no hub
 
 Cost estimate: the VPC, subnets and firewall rules are free.
-Two e2-micro VMs are small shared-core instances, so the lab compute cost is small, but read the current rate on the [Compute Engine VM pricing page](https://cloud.google.com/compute/vm-instance-pricing) before you rely on a figure.
+The two e2-micro VMs run about USD 0.0084 per hour in us-central1 and USD 0.0092 per hour in europe-west4 (third-party [gcloud-compute.com tracker](https://gcloud-compute.com/e2-micro.html), as of 2026-11; check the [Compute Engine VM pricing page](https://cloud.google.com/compute/vm-instance-pricing)), so a two-hour lab costs about USD 0.04 in compute.
 IAP tunnels carry no extra charge for this use.
 
 ```bash

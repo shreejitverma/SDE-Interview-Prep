@@ -45,8 +45,6 @@ sources:
   - "https://newsroom.ibm.com/2025-02-27-IBM-Completes-Acquisition-of-HashiCorp,-Creates-Comprehensive,-End-to-End-Hybrid-Cloud-Platform"
   - "https://about.codecov.io/security-update/"
   - "https://circleci.com/blog/january-4-2023-security-alert/"
-  - "https://www.postgresql.org/docs/current/catalog-pg-authid.html"
-  - "https://www.postgresql.org/docs/current/sql-droprole.html"
 ---
 
 # Secrets Management and Dynamic Credentials
