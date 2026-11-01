@@ -31,6 +31,9 @@ sources:
   - "https://docs.aws.amazon.com/bedrock/latest/userguide/vpc-interface-endpoints.html"
   - "https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html"
   - "https://docs.aws.amazon.com/bedrock/latest/userguide/geographic-cross-region-inference.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/security-iam-awsmanpol.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_iam-condition-keys.html"
   - "https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ConverseStream.html"
   - "https://docs.aws.amazon.com/transcribe/latest/dg/streaming-setting-up.html"
   - "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/application-load-balancers.html"
@@ -564,7 +567,9 @@ Use token-bucket retry budgets and full jitter, as in the AWS Builders' Library 
 
 ### SCPs and residency conflicts with cross-Region profiles
 
-An organization-wide SCP that denies all Regions except two causes `AccessDenied` errors from a geographic profile whose destination set includes a third Region. AWS documents that cross-Region inference "will fail when trying to route to" a Region the SCP blocks (AWS docs, as of 2026-10); that the failures are intermittent, because only some requests route there, is UNVERIFIED (AWS also says it evaluates authorization for every candidate destination Region, which may make the failure consistent).
+An organization-wide SCP that denies all Regions except two causes `AccessDenied` errors from a geographic profile whose destination set includes a third Region. AWS documents that cross-Region inference "will fail when trying to route to" a Region the SCP blocks (AWS docs, as of 2026-10).
+Expect the failure on every call rather than only on the calls routed to the blocked Region: AWS says the request "will fail even if other Regions remain allowed" ([AWS inference profile docs](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html), as of 2026-11) and that it evaluates authorization for each candidate destination Region (AWS docs, as of 2026-11).
+That reading comes from the AWS wording; it was not tested against a live account.
 The fix is to carve out the inference profile and model ARNs explicitly, for example with a `bedrock:InferenceProfileArn` exception in the Region-deny SCP, or to use in-Region IDs where residency must be exact (AWS docs, as of 2026-10).
 
 ### Integration and lifecycle drift
@@ -585,7 +590,8 @@ Google's June 12, 2025 Service Control incident showed that a global admission a
 ### IAM scoping
 
 On the legacy Bedrock integration, grant `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` only on the specific inference-profile ARNs and foundation-model ARNs your workload uses, never on `*`.
-On the new integration, the documented pattern is a service role that developers pass with `iam:PassRole` (Anthropic docs, as of 2026-10). Constrain `iam:PassRole` with an `iam:PassedToService` condition so the role can only be handed to Bedrock (UNVERIFIED as of 2026-10).
+On the new integration, the documented pattern is a service role that developers pass with `iam:PassRole` (Anthropic docs, as of 2026-10). Constrain `iam:PassRole` with an `iam:PassedToService` condition so the role can only be handed to the service you name; AWS documents the key for this purpose and warns that some services do not support it ([IAM condition keys](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_iam-condition-keys.html), as of 2026-11), and `AmazonBedrockFullAccess` sets it to `bedrock.amazonaws.com` ([AWS managed policies for Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/security-iam-awsmanpol.html), as of 2026-11).
+That `bedrock.amazonaws.com` is also the right value for the `bedrock-mantle` service role is UNVERIFIED as of 2026-11: the Anthropic and AWS pages read do not name the service principal for that role, so test the condition before relying on it.
 Add an SCP that denies invocation of any model ARN outside an approved list. This is how you enforce model governance across an organization, because model access grants are made per account. See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_02_AWS_Organizations_and_Account_Governance|AWS Organizations and Account Governance]].
 On GCP, bind the narrowest predefined Vertex AI role that grants prediction, such as `roles/aiplatform.user` with `aiplatform.endpoints.predict` (Anthropic docs, as of 2026-10), or a custom role carrying only that permission, to a dedicated service account, and use Workload Identity instead of keys.
 
@@ -700,7 +706,7 @@ A regulated tenant requires that prompts never cross the public internet, never 
 #### Model Answer
 
 On AWS, the transport control is an interface VPC endpoint for `bedrock-runtime` in an EU Region with private DNS. The authorization controls are an endpoint policy that lists approved EU model and profile ARNs, identity policies conditioned on `aws:SourceVpce`, and an SCP that denies Bedrock invocation outside approved ARNs and approved Regions.
-For residency, I would use in-Region IDs or an EU geographic profile, never a global profile. I would also verify that the SCP's Region restriction includes every destination Region of the EU profile, because AWS documents that routing to a destination Region missing from the SCP fails (AWS docs, as of 2026-10), and I would expect those failures to be intermittent rather than clean (UNVERIFIED as of 2026-10), unless I add a `bedrock:InferenceProfileArn` exception.
+For residency, I would use in-Region IDs or an EU geographic profile, never a global profile. I would also verify that the SCP's Region restriction includes every destination Region of the EU profile, because AWS documents that routing to a destination Region missing from the SCP fails (AWS docs, as of 2026-10), and I would expect that failure on every call rather than only on calls routed to the missing Region, because AWS says the request fails even if other Regions remain allowed ([AWS inference profile docs](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html), as of 2026-11), unless I add a `bedrock:InferenceProfileArn` exception.
 If the tenant needs models served only through the new Claude in Amazon Bedrock integration, I would add a second interface endpoint, because it runs on `bedrock-mantle`, a separate VPC endpoint service from `bedrock-runtime` (AWS docs, as of 2026-10). Its documented zero-operator-access property is useful evidence for the tenant's risk review (Anthropic docs, as of 2026-10).
 On GCP, the transport control is a PSC endpoint for Google APIs with private DNS for `aiplatform.googleapis.com` and regional hosts. The exfiltration control is a VPC-SC perimeter around the inference project and its logging destinations. Residency means calling a regional EU location or the `eu` multi-region endpoint, never `global`; for models newer than Sonnet 4.6, `eu` is the only option because regional endpoints serve only Sonnet 4.6 and earlier (Anthropic docs, as of 2026-10).
 On both clouds, the persisted prompt surface (invocation logs, request-response logs, application traces) sits under customer-managed keys, with retention limits and separate reader roles, because that is where a compromised credential would actually find the data.
