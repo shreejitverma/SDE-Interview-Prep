@@ -15,6 +15,24 @@ sources:
   - "https://cloud.google.com/blog/products/data-analytics/dataflow-at-least-once-vs-exactly-once-streaming-modes"
   - "https://www.oreilly.com/radar/the-world-beyond-batch-streaming-102/"
   - "https://aws.amazon.com/message/11201/"
+  - "https://www.vldb.org/awards_10year.html"
+  - "https://docs.cloud.google.com/dataflow/docs/guides/common-errors"
+  - "https://docs.cloud.google.com/dataflow/docs/guides/customer-managed-encryption-keys"
+  - "https://docs.cloud.google.com/dataflow/docs/guides/stopping-a-pipeline"
+  - "https://docs.cloud.google.com/dataflow/docs/concepts/streaming-with-cloud-pubsub"
+  - "https://docs.cloud.google.com/dataflow/docs/release-notes"
+  - "https://cloud.google.com/dataflow/pricing"
+  - "https://docs.cloud.google.com/pubsub/architecture"
+  - "https://docs.cloud.google.com/bigquery/docs/continuous-queries-introduction"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/billing/budgets/create"
+  - "https://docs.aws.amazon.com/streams/latest/dev/service-sizes-and-limits.html"
+  - "https://aws.amazon.com/managed-service-apache-flink/pricing/"
+  - "https://docs.aws.amazon.com/managed-flink/latest/java/how-creating-apps-beam.html"
+  - "https://docs.aws.amazon.com/managed-flink/latest/java/examples-beam.html"
+  - "https://docs.aws.amazon.com/managed-flink/latest/java/key-management-flink.html"
+  - "https://docs.aws.amazon.com/managed-flink/latest/java/how-fault.html"
+  - "https://raw.githubusercontent.com/apache/beam/master/sdks/java/core/src/main/java/org/apache/beam/sdk/values/WindowingStrategy.java"
+  - "https://beam.apache.org/documentation/runners/capability-matrix/"
 ---
 
 # MillWheel (2013 VLDB) and The Dataflow Model (2015 VLDB)
@@ -82,8 +100,8 @@ A dip is hard because the system has to tell "these queries are delayed on the w
 That single requirement forces both event-time progress tracking (watermarks) and exactly-once counting, because a duplicate looks like a spike.
 The Dataflow Model paper (PVLDB Vol. 8, VLDB 2015) generalized MillWheel's primitives and FlumeJava's batch primitives into one programming model ([paper](https://www.vldb.org/pvldb/vol8/p1792-Akidau.pdf)).
 That model became the Cloud Dataflow SDK and later Apache Beam.
-It received the VLDB Test of Time Award in 2026 ([VLDB awards page](https://www.vldb.org/awards_10year.html), as of 2026-10).
-The original authors published a retrospective, "The Dataflow Model Revisited", in PVLDB 19(12), 2026 ([paper](https://www.vldb.org/pvldb/vol19/p4953-fernandez-moctezuma.pdf)).
+It received the VLDB Test of Time Award in 2026 ([VLDB awards page](https://www.vldb.org/awards_10year.html), as of 2026-11).
+Four of the original authors (Akidau, Fernandez-Moctezuma, Lax, and Mills) published a retrospective, "The Dataflow Model Revisited", in PVLDB 19(12), 2026 ([paper](https://www.vldb.org/pvldb/vol19/p4953-fernandez-moctezuma.pdf)).
 This chapter covers both papers and the retrospective, because the retrospective is now the best guide to which parts of the model to treat as load-bearing.
 
 ### MillWheel computation model
@@ -122,9 +140,9 @@ Dedup lookups would cost one storage read per record, which is too slow.
 MillWheel keeps an in-memory Bloom filter of seen IDs and reads the store only when the filter answers "maybe".
 Record IDs are garbage collected once every sender that could retry them has confirmed it will not.
 Cloud Dataflow kept this design.
-Every message between stages carries a unique ID, each receiver keeps a catalog of IDs it has seen, and every stage's output is checkpointed so the IDs are stable across retries (Google Cloud docs, as of 2026-10).
+Every message between stages carries a unique ID, each receiver keeps a catalog of IDs it has seen, and every stage's output is checkpointed so the IDs are stable across retries (Google Cloud docs, as of 2026-11).
 Dataflow keeps a set of rolling Bloom filters bucketed by system time.
-This stops any one filter from saturating, lets old filters be garbage collected whole, and limits how much must be scanned at worker startup (Google Cloud docs, as of 2026-10).
+This stops any one filter from saturating, lets old filters be garbage collected whole, and limits how much must be scanned at worker startup (Google Cloud docs, as of 2026-11).
 
 ### Weak productions and the ACK-chain problem
 
@@ -163,10 +181,11 @@ Those records are late, and computations must either drop them or correct for th
 
 Mechanically, each worker aggregates oldest-work timestamps over the key intervals it owns and reports them, bucketed by key interval, to a central authority.
 The authority journals the values to persistent storage and broadcasts each stage's watermark back to workers.
-For the result to be correct, the authority must have a report covering every key interval of a stage before it can advance that stage's watermark.
-It must also ignore reports from intervals that have moved to a new owner.
-Without those two rules, a key interval in the middle of migration could drop out of the minimum, and the watermark would jump ahead of work that is still pending (paper Section 6; exact report format UNVERIFIED).
-The authority is shardable, so the central design does not become a throughput ceiling.
+Consumers then compute their own input minimum over their senders' values, so the authority's value never leads the workers'.
+For the result to be correct, the authority tracks completeness with an interval map per computation, and a missing interval keeps its last known value until it reports again.
+It also rejects reports from intervals that have moved to a new owner, because low-watermark updates carry sequencers just as state writes do.
+Without those two rules, a key interval in the middle of migration could drop out of the minimum, and the watermark would jump ahead of work that is still pending (MillWheel paper, Section 7.2).
+The authority is shardable, so the central design does not become a throughput ceiling; the paper reports scaling to 500,000 key intervals with no loss in performance.
 Two consequences matter in production.
 First, watermark lag adds up stage by stage, because each stage adds its own reporting and processing delay to the minimum it inherits.
 Second, one stuck key holds back the watermark for its entire stage and every stage after it, because a minimum has no notion of "most keys are fine".
@@ -212,7 +231,9 @@ Accumulation mode defines what each pane means:
 - Accumulating and retracting: each pane emits the new value plus a retraction of the previous one. This is needed when the output feeds a second grouping on a different key, because otherwise the old and new values are both counted downstream.
 
 The paper described retractions as part of the model.
-Beam never shipped user-facing retractions as a general feature (UNVERIFIED as of 2026-10), and the 2026 retrospective calls the user-facing retraction protocol one of the parts that aged poorly.
+Beam never shipped user-facing retractions as a general feature.
+The Java SDK's `AccumulationMode` enum still lists `RETRACTING_FIRED_PANES`, with a source comment that it "has unclear and incomplete semantics and should not be used", and the Python SDK exposes only `DISCARDING` and `ACCUMULATING` ([Beam source](https://raw.githubusercontent.com/apache/beam/master/sdks/java/core/src/main/java/org/apache/beam/sdk/values/WindowingStrategy.java); Python checked on Beam 2.77.0, as of 2026-11).
+The 2026 retrospective says retractions as a user-visible protocol were "barely implemented and almost never used as designed", and it lists the user-facing retraction protocol among the parts that aged poorly.
 
 ### Batch as a special case, and what "unified" really means
 
@@ -220,7 +241,7 @@ The paper's implementation ran the same model on FlumeJava for batch and MillWhe
 In batch, the bounded source's watermark moves to infinity once input is exhausted, so each window fires one on-time pane and there is no late data.
 The pipeline graph stays the same between the two modes.
 What changes is the physical execution: batch can sort and shuffle huge amounts of data with no per-record commits, while streaming pays per-key commits for low latency.
-On Dataflow, batch always runs exactly-once, and streaming runs exactly-once by default with an optional at-least-once mode (Google Cloud docs, as of 2026-10).
+On Dataflow, batch always runs exactly-once, and streaming runs exactly-once by default with an optional at-least-once mode (Google Cloud docs, as of 2026-11).
 The 2026 retrospective takes a provocative line: streaming analytics is really a materialized-view maintenance problem.
 It argues that windowing is "just another grouping dimension" and should not have been the foundation of the consistency model.
 It proposes declared constraints on change instead: finalization, ordering, monotonicity, and partitioning ([Revisited](https://www.vldb.org/pvldb/vol19/p4953-fernandez-moctezuma.pdf)).
@@ -229,11 +250,12 @@ A staff engineer should be able to argue both sides: the original model is what 
 ### Modern managed implementation on Google Cloud
 
 Dataflow Streaming Engine moves shuffle and per-key state out of the worker VMs and into a service backend, so workers become mostly stateless compute that can be autoscaled without moving state through their disks.
-Exactly-once on Streaming Engine still follows the MillWheel shape: stable IDs, a per-receiver ID catalog, checkpointed outputs, Bloom filters, and garbage collection (Google Cloud docs, as of 2026-10).
-Sources that are not deterministic, such as Pub/Sub, must give the runner a record ID, because the runner cannot invent a stable one when a redelivered message may look different from the original (Google Cloud docs, as of 2026-10).
-At-least-once mode is turned on with the `streaming_mode_at_least_once` service option, and setting it automatically enables Streaming Engine with resource-based billing (Google Cloud docs, as of 2026-10).
+Exactly-once on Streaming Engine still follows the MillWheel shape: stable IDs, a per-receiver ID catalog, checkpointed outputs, Bloom filters, and garbage collection (Google Cloud docs, as of 2026-11).
+Sources that are not deterministic, such as Pub/Sub, must give the runner a record ID, because the runner cannot invent a stable one when a redelivered message may look different from the original (Google Cloud docs, as of 2026-11).
+By default Dataflow deduplicates Pub/Sub on message ID, but publisher retries can create new message IDs, so a stable custom ID attribute is what catches them, and only for messages published within 10 minutes of each other (Google Cloud docs, as of 2026-11).
+At-least-once mode is turned on with the `streaming_mode_at_least_once` service option, and setting it automatically enables Streaming Engine with resource-based billing (Google Cloud docs, as of 2026-11).
 The streaming mode changes how Streaming Engine processes records but not the semantics of I/O connectors.
-For example, at-least-once mode should be paired with BigQuery `STORAGE_API_AT_LEAST_ONCE` writes, and it is incompatible with the BigQueryIO `FILE_LOADS` method (Google Cloud docs, as of 2026-10).
+For example, at-least-once mode should be paired with BigQuery `STORAGE_API_AT_LEAST_ONCE` writes, and it is incompatible with the BigQueryIO `FILE_LOADS` method (Google Cloud docs, as of 2026-11).
 
 ### Contrast: Flink's global snapshots
 
@@ -253,20 +275,20 @@ The choice is between cost per record and both the blast radius of recovery and 
 
 | Quantity | Value | Source |
 |---|---|---|
-| MillWheel median record delay, single-stage, 200 CPUs | 3.6 ms | MillWheel paper, VLDB 2013 |
+| MillWheel median record delay, single-stage, 200 CPUs, strong productions and exactly-once disabled | 3.6 ms | MillWheel paper, VLDB 2013 |
 | MillWheel 95th-percentile record delay, same experiment | 30 ms | MillWheel paper, VLDB 2013 |
 | MillWheel median latency scaling, 20 to 2000 CPUs | roughly flat; p99 worsens but stays on the order of 100 ms | MillWheel paper, VLDB 2013 |
 | CPU saving from framework state caching (enabled by single-writer fencing) | about 2x lower normalized CPU | MillWheel paper, VLDB 2013 |
-| Latency penalty of strong productions plus exactly-once vs weak/off | about one order of magnitude at median | MillWheel paper, VLDB 2013 (UNVERIFIED exact figure) |
-| Dataflow batch semantics | always exactly-once | Google Cloud docs, as of 2026-10 |
-| Dataflow streaming default mode | exactly-once; at-least-once is opt-in | Google Cloud docs, as of 2026-10 |
-| At-least-once savings claim for streaming ETL | "up to 70%" (vendor claim, workload dependent) | Google Cloud blog, as of 2026-10 |
-| Dataflow streaming bundle retry on persistent error | retried indefinitely; can stall the pipeline | Google Cloud docs, as of 2026-10 |
+| Same experiment with strong productions and exactly-once enabled | median 33.7 ms (about 9.4x), p95 93.8 ms (about 3.1x) | MillWheel paper, VLDB 2013, Section 8.1 |
+| Dataflow batch semantics | always exactly-once | Google Cloud docs, as of 2026-11 |
+| Dataflow streaming default mode | exactly-once; at-least-once is opt-in | Google Cloud docs, as of 2026-11 |
+| At-least-once savings claim for streaming ETL | "up to 70%" (vendor headline claim from 2024-03-22, workload dependent) | Google Cloud blog, as of 2026-11 |
+| Dataflow streaming bundle retry on persistent error | retried indefinitely; can stall the pipeline | Google Cloud docs, as of 2026-11 |
 | Bloom filter bits per element at 1% false-positive rate | 9.59 bits (`-ln(0.01)/ln(2)^2`) | derived |
-| Kinesis Data Streams provisioned shard write limit | 1 MB/s or 1000 records/s | AWS docs (UNVERIFIED as of 2026-10) |
-| Kinesis Data Streams provisioned shard read limit | 2 MB/s shared per shard | AWS docs (UNVERIFIED as of 2026-10) |
-| Managed Service for Apache Flink KPU | 1 vCPU, 4 GB memory per KPU, billed per KPU-hour | AWS docs (UNVERIFIED as of 2026-10) |
-| Dataflow streaming vCPU, memory, and Streaming Engine unit prices | see [pricing](https://cloud.google.com/dataflow/pricing) | UNVERIFIED as of 2026-10 |
+| Kinesis Data Streams provisioned shard write limit | 1 MB/s or 1000 records/s | AWS docs, as of 2026-11 |
+| Kinesis Data Streams provisioned shard read limit | 2 MB/s shared per shard, 5 GetRecords transactions/s | AWS docs, as of 2026-11 |
+| Managed Service for Apache Flink KPU | 1 vCPU, 4 GB memory per KPU; 0.11 USD per KPU-hour in us-east-1, plus one orchestration KPU per application and 50 GB of running storage per KPU at 0.10 USD per GB-month | [AWS pricing](https://aws.amazon.com/managed-service-apache-flink/pricing/), as of 2026-11 |
+| Dataflow streaming unit prices, us-central1 list | 0.069 USD per vCPU-hour, 0.003557 USD per GiB-hour, 0.089 USD per Streaming Engine Compute Unit | [Dataflow pricing](https://cloud.google.com/dataflow/pricing), as of 2026-11 |
 
 Bloom filter sizing check (derived): at 200,000 records/s with a 10-minute dedup horizon, about 120 million IDs are live.
 A 1% false-positive filter for them takes about 144 MB, compared with 1.92 GB for the raw 16-byte IDs.
@@ -276,7 +298,7 @@ Storage lookups then fall from 200,000/s to about 2,000/s.
 
 | Concern | Google Cloud | AWS | Critical difference |
 |---|---|---|---|
-| Programming model | Apache Beam on Dataflow (native runner) | Flink DataStream/Table/SQL on Managed Service for Apache Flink; Beam Flink runner possible (UNVERIFIED support scope) | Beam keeps What/Where/When/How as first-class concepts; Flink exposes watermarks and timers directly, and triggers are a Beam-layer concept |
+| Programming model | Apache Beam on Dataflow (native runner) | Flink DataStream/Table/SQL on Managed Service for Apache Flink; Beam Flink runner supported, with the Flink runner's capabilities, Beam metrics absent from the console, and an AWS tutorial note that Beam is not compatible with Flink 1.19 or later (AWS docs, as of 2026-11) | Beam keeps What/Where/When/How as first-class concepts; Flink exposes watermarks and timers directly, and triggers are a Beam-layer concept |
 | Exactly-once mechanism | Per-key atomic commit plus record-ID catalog and rolling Bloom filters (MillWheel lineage) | Asynchronous barrier snapshots of all operator state (Chandy-Lamport lineage) | Dataflow pays per-record storage I/O for local recovery; Flink pays a global rewind on failure |
 | Output visibility under exactly-once | As soon as the per-key commit lands | Transactional sinks commit at checkpoint completion, so latency is at least the checkpoint interval | Do not promise sub-second end-to-end exactly-once on Flink with a Kafka transactional sink |
 | State location | Streaming Engine backend, off the worker VM | RocksDB or heap on the worker, plus durable checkpoints | Dataflow autoscaling does not move state through worker disks; Flink rescaling restores from a checkpoint or savepoint |
@@ -465,9 +487,9 @@ if __name__ == "__main__":
     run()
 ```
 
-Expected local output: possibly an EARLY pane with total 2, then an ON_TIME pane with total 3, then a LATE pane with total 4, and nothing for the record at event time 5.
+Verified local output on Beam 2.77.0 with Python 3.12 (run 2026-11-01): an EARLY pane with total 2, then an ON_TIME pane with total 3, then a LATE pane with total 4, and nothing for the record at event time 5.
 The ON_TIME and LATE panes follow directly from the trigger definition.
-Whether the EARLY pane fires depends on how the DirectRunner advances processing time, so treat it as illustrative (UNVERIFIED against a specific Beam release).
+Whether the EARLY pane fires depends on how the runner advances processing time, so treat that pane as specific to the runner and release.
 The dropped record is the lesson: there is no error and no exception, only a dropped-due-to-lateness counter.
 
 ### Part C - run on Dataflow, with budget alarm and teardown
@@ -521,18 +543,18 @@ gcloud billing budgets delete "$BUDGET_ID" --billing-account="$BILLING"
 ```
 
 Use `cancel` in the lab, because `drain` would fire every open window as incomplete and keep the job running until the drain finishes.
-Lab cost estimate: one or two n2-standard-2 workers plus Streaming Engine usage for one hour, on the order of 1 USD (UNVERIFIED as of 2026-10; check the [Dataflow pricing page](https://cloud.google.com/dataflow/pricing)).
+Lab cost estimate (derived): two n2-standard-2 workers for one hour cost about `2 x (2 x 0.069 + 8 x 0.003557) = 0.33 USD` at us-central1 list rates, and Streaming Engine usage at 0.089 USD per compute unit is workload dependent, so budget on the order of 1 USD ([Dataflow pricing page](https://cloud.google.com/dataflow/pricing), as of 2026-11).
 
 ### Part D - back-of-the-envelope sizing for a production pipeline
 
 Workload: 200,000 events/s, 1 KB each, 10 million active users, 1-minute fixed windows, 2 minutes of allowed lateness, 3 stages.
 
 1. Ingest bandwidth is `200,000 x 1 KB = 200 MB/s`, which is 17.3 TB/day.
-2. Kinesis provisioned equivalent: `max(200 MB/s / 1 MB/s, 200,000 / 1000) = 200` shards, or 260 with 30% headroom (shard limits UNVERIFIED as of 2026-10). That is also the ceiling on Flink source parallelism.
+2. Kinesis provisioned equivalent: `max(200 MB/s / 1 MB/s, 200,000 / 1000) = 200` shards, or 260 with 30% headroom (shard limits: AWS docs, as of 2026-11). That is also the ceiling on Flink source parallelism.
 3. Dedup catalog: a 10-minute retry horizon gives 120 million live IDs. The Bloom filter takes 144 MB at 1% false positives, split into ten rolling 1-minute filters of about 14.4 MB each, and backing-store lookups fall to about 2,000/s.
 4. Window state: each key holds at most `(60 + 120) / 60 + 1 = 4` live windows. That is 40 million accumulators, and at 64 bytes each about 2.6 GB of state before overhead.
 5. Latency budget for the on-time pane: 60 s window, plus about 5 s of source watermark lag, plus about 3 x 1 s of per-stage lag, gives about 68 s from window start. Early panes every 10 s give dashboards a speculative number in the meantime. Per-stage lag values are assumptions; measure them with the data watermark lag metrics.
-6. Compute: assume a measured 5,000 events/s per vCPU in exactly-once mode for parse plus a combiner-lifted sum (a planning assumption, UNVERIFIED; benchmark your own DoFns). That gives 40 vCPU. At an assumed all-in 0.10 USD per vCPU-hour including memory and Streaming Engine (UNVERIFIED), the cost is about `40 x 730 x 0.10 = 2,920 USD/month`.
+6. Compute: assume a measured 5,000 events/s per vCPU in exactly-once mode for parse plus a combiner-lifted sum (UNVERIFIED: planning assumption, no published figure; benchmark your own DoFns). That gives 40 vCPU. At an assumed all-in 0.10 USD per vCPU-hour including memory and Streaming Engine (UNVERIFIED: the Streaming Engine share is workload dependent; list worker rates alone are about 0.082 USD per vCPU-hour at 3.75 GiB per vCPU in us-central1, Dataflow pricing, as of 2026-11), the cost is about `40 x 730 x 0.10 = 2,920 USD/month`.
 7. Mode decision: this pipeline aggregates counts, so at-least-once would inflate totals. Keep exactly-once, and use the at-least-once discount only on the separate raw-event ETL branch.
 
 ## Failure Modes and Pitfalls
@@ -540,7 +562,7 @@ Workload: 200,000 events/s, 1 KB each, 10 million active users, 1-minute fixed w
 ### Watermark stalls
 
 A poison-pill record stalls the pipeline.
-In Dataflow streaming, a bundle that throws is retried indefinitely, which can stall the pipeline permanently (Google Cloud docs, as of 2026-10).
+In Dataflow streaming, a bundle that throws is retried indefinitely, which can stall the pipeline permanently (Google Cloud docs, as of 2026-11).
 Because the failing record stays pending, the stage's oldest work never advances, so the watermark freezes for every downstream stage, and every event-time window stops firing.
 Mitigation: catch per-element exceptions, route the bad records to a dead-letter output, and alert on the dead-letter rate.
 Do not let the runner's retry loop be your error handling.
@@ -566,7 +588,7 @@ For low-volume, high-value late data, route it to a correction path in batch.
 
 ### Exactly-once misread as end-to-end
 
-Dataflow's guarantee is that results which stay inside the pipeline are reflected at most once, and records are processed at least once (Google Cloud docs, as of 2026-10).
+Dataflow's guarantee is that results which stay inside the pipeline are reflected at most once, and records are processed at least once (Google Cloud docs, as of 2026-11).
 A DoFn that calls a payment API, sends an email, or posts to an HTTP webhook will repeat that side effect on every bundle retry.
 Mitigation: make the external call idempotent with a deterministic request ID derived from the record ID.
 Put a `Reshuffle` or `@RequiresStableInput` checkpoint before the side effect, so a retry replays the same input.
@@ -616,21 +638,23 @@ On Google Cloud, run each Dataflow job as a dedicated worker service account wit
 For example, give `roles/pubsub.subscriber` on the one subscription and `roles/bigquery.dataEditor` on the one dataset, not project-wide Editor.
 The identity that launches the job needs `roles/dataflow.developer` and `iam.serviceAccounts.actAs` on the worker service account.
 `actAs` is the privilege-escalation edge to audit.
-On AWS, give the Managed Flink application a service execution role scoped to specific stream ARNs, specific MSK cluster or topic resources, and the checkpoint bucket prefix.
+On AWS, give the Managed Flink application a service execution role scoped to specific stream ARNs, specific MSK cluster or topic resources, and the S3 object that holds the application code.
 See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]].
 
 ### Encryption
 
 Streaming state is a copy of your data at rest that teams often forget about.
-Dataflow supports CMEK for job state, and the key must be in the job's region, with the Dataflow service agent granted encrypter/decrypter permissions on it (UNVERIFIED scope of CMEK coverage for Streaming Engine state as of 2026-10).
-On AWS, encrypt Kinesis with SSE-KMS, MSK at rest with KMS, and Flink checkpoints with SSE-KMS on the S3 bucket.
-Every checkpoint write then becomes a KMS call or a cached data key, so check KMS request quotas at high checkpoint frequency.
+Dataflow CMEK covers Streaming Engine state, and for streaming jobs created after 2024-03-07 it also covers data keys used in key-based operations such as windowing, grouping, and joining; older jobs must be drained or cancelled and restarted to get that ([Dataflow CMEK docs](https://docs.cloud.google.com/dataflow/docs/guides/customer-managed-encryption-keys), as of 2026-11).
+The key must be in the job's region, multi-region and global keys are not supported, and both the Dataflow and Compute Engine service agents need the Encrypter/Decrypter role on it (same docs).
+On AWS, encrypt Kinesis with SSE-KMS and MSK at rest with KMS.
+Managed Flink keeps checkpoints and snapshots in service-managed durable application storage, encrypted by default with AWS owned keys, and you can configure a customer managed KMS key instead ([AWS docs](https://docs.aws.amazon.com/managed-flink/latest/java/key-management-flink.html), as of 2026-11).
+A customer managed key needs permissions such as `kms:GenerateDataKey` and `kms:Decrypt`, so check the key policy and KMS request quotas at high checkpoint frequency.
 See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 
 ### Network perimeter
 
 Run Dataflow workers without public IPs (`--no_use_public_ips` in Python) on a subnet with Private Google Access, inside a VPC Service Controls perimeter that includes Dataflow, Pub/Sub, BigQuery, and Cloud Storage.
-Run Managed Flink in VPC mode, with interface VPC endpoints for Kinesis, KMS, and CloudWatch, and an S3 gateway endpoint for checkpoints.
+Run Managed Flink in VPC mode, with interface VPC endpoints for Kinesis, KMS, and CloudWatch, and an S3 gateway endpoint for any S3 sources or sinks, because checkpoints go to service-managed storage rather than your bucket.
 See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]] and [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
 
 ### Unit-economics levers
@@ -672,7 +696,7 @@ Dataflow says it is exactly-once. A DoFn in your pipeline calls a payments API. 
 #### Model Answer
 
 Yes.
-Dataflow's guarantee is that each record is processed at least once and that results which stay inside the pipeline are committed at most once.
+Dataflow's guarantee is that each record is processed at least once and that results which stay inside the pipeline are reflected at most once, which the docs summarize as processed at least once, committed exactly once.
 That holds for shuffled data, state, and timers, through the ID catalog and checkpointed outputs.
 A bundle that fails after the HTTP call but before its commit is retried, and the API is called again.
 The fix has two parts.
@@ -693,6 +717,7 @@ Design an ad-billing aggregation: per-advertiser spend per minute, written to Bi
 #### Model Answer
 
 Events carry event time and a unique impression ID from the ad server, which I pass as the source record ID so publisher retries are deduplicated.
+That source dedup covers only publishes within 10 minutes of each other (Google Cloud docs, as of 2026-11), so a longer publisher retry horizon needs dedup on the impression ID downstream.
 Use exactly-once streaming mode, because this is a sum.
 At-least-once would inflate revenue, and dedup in the sink cannot recover from duplicates once they have been summed.
 Use 1-minute fixed windows keyed by advertiser.
@@ -767,7 +792,8 @@ Event time, watermarks as a completeness estimate, per-key state with timers, an
 The retrospective's point is about the user-facing interface.
 It argues that windows are just grouping keys, that triggers and retractions asked users questions they should never have been asked, and that streaming analytics is really incremental view maintenance with declared constraints such as finalization, ordering, and monotonicity.
 For my platform, that suggests a direction, not a migration.
-New analytical workloads, such as aggregations, joins, and dashboards, should default to a declarative SQL or table layer: Beam SQL or Dataflow SQL-style surfaces, BigQuery continuous queries, or Flink SQL on AWS.
+New analytical workloads, such as aggregations, joins, and dashboards, should default to a declarative SQL or table layer: Beam SQL, BigQuery continuous queries, or Flink SQL on AWS.
+Two product caveats apply: Dataflow SQL is not an option, because Google deprecated it in June 2024, removed CLI use on 2025-01-31, and names Beam SQL as the replacement ([Dataflow release notes](https://docs.cloud.google.com/dataflow/docs/release-notes)), and the stateful JOIN, aggregation, and windowing operations of BigQuery continuous queries are still Preview ([BigQuery docs](https://docs.cloud.google.com/bigquery/docs/continuous-queries-introduction), as of 2026-11).
 There, finalization is a declared property and the engine chooses triggers.
 Pipelines with stateful business logic, such as fraud rules, sessionization with custom merging, or pipelines with external side effects, stay on the low-level state and timer API, because that is the part the authors call unrepentant.
 I would not rewrite 400 working pipelines, since rewrite risk dominates any interface elegance.
@@ -789,7 +815,9 @@ Dataflow jobs and their Streaming Engine state are regional, so the state does n
 Exactly-once inside one job does not carry over to a second job in another region.
 Start from the durable log.
 Pub/Sub keeps acknowledged-publish messages independently of the consumer job, so the RPO for accepted events is a property of the ingest log's replication, not of the pipeline.
-That is where the RPO of 0 is won or lost (UNVERIFIED per-region durability specifics as of 2026-10).
+That is where the RPO of 0 is won or lost.
+Pub/Sub acknowledges a publish once the message is written to a majority of N clusters, but any individual message is stored in a single region ([Pub/Sub architecture](https://docs.cloud.google.com/pubsub/architecture), as of 2026-11).
+So an acknowledged message survives a cluster failure, but Pub/Sub alone does not give an RPO of 0 for the loss of that region, and meeting that target means the publisher confirms writes to logs in two regions before it treats an event as accepted.
 For RTO, run a warm standby job in the second region on its own subscription, either fully active or processing with outputs suppressed.
 Make the sink tolerate both jobs: writes keyed by `(event_id)` or `(key, window, pane_index)` with last-writer-wins, so duplicate processing across regions is idempotent by design.
 Cross-region exactly-once is impossible without a global commit, so you engineer idempotence instead.

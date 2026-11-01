@@ -12,6 +12,29 @@ sources:
   - "https://www.usenix.org/system/files/nsdi21-ferguson.pdf"
   - "https://dl.acm.org/doi/10.5555/3691825.3691934"
   - "https://web.stanford.edu/class/cs244/papers/poutievski-sigcomm22.pdf"
+  - "https://engineering.purdue.edu/~vshriva/courses/papers/jupiter_2022.pdf"
+  - "https://arxiv.org/pdf/2208.10041"
+  - "https://www.usenix.org/conference/nsdi24/presentation/liu-bingzhe"
+  - "https://research.google/pubs/capa-an-architecture-for-operating-cluster-networks-with-high-availability/"
+  - "https://research.google/people/leonpoutievski/"
+  - "https://research.google/pubs/plb-congestion-signals-are-simple-and-effective-for-network-load-balancing/"
+  - "https://research.google/pubs/swift-delay-is-simple-and-effective-for-congestion-control-in-the-datacenter/"
+  - "https://www.amazon.science/publications/a-cloud-optimized-transport-protocol-for-elastic-and-scalable-hpc"
+  - "https://www.aboutamazon.com/news/aws/aws-infrastructure-generative-ai"
+  - "https://aws.amazon.com/blogs/machine-learning/powering-innovation-at-scale-how-aws-is-tackling-ai-infrastructure-challenges/"
+  - "https://status.cloud.google.com/incident/cloud-networking/19009"
+  - "https://cloud.google.com/blog/topics/inside-google-cloud/an-update-on-sundays-service-disruption"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-network-bandwidth.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ena-express.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/data-protection.html"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSDataTransfer/current/us-east-1/index.json"
+  - "https://aws.amazon.com/blogs/architecture/overview-of-data-transfer-costs-for-common-architectures/"
+  - "https://docs.cloud.google.com/compute/docs/network-bandwidth"
+  - "https://docs.cloud.google.com/compute/docs/instances/placement-policies-overview"
+  - "https://docs.cloud.google.com/docs/security/encryption-in-transit"
+  - "https://docs.cloud.google.com/compute/docs/access/iam"
+  - "https://cloud.google.com/vpc/network-pricing"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/billing/budgets/create"
 ---
 
 # Jupiter: Multi-Terabit Datacenter Network (2015 SIGCOMM)
@@ -20,13 +43,13 @@ sources:
 
 Jupiter is Google's fifth-generation datacenter fabric, first deployed in 2012.
 It is a multi-stage Clos network built from 16x40G merchant-silicon chips, and it reaches 1.3 Pbps of bisection bandwidth across 64 aggregation blocks and 256 spine blocks ([Singh et al., SIGCOMM 2015](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p183.pdf)).
-The routing design centralizes topology state and distributes forwarding computation.
+The routing design the paper details (Firepath, used on the pre-Jupiter Firehose, Watchtower and Saturn fabrics) centralizes topology state and distributes forwarding computation.
 Every switch boots with the intended topology, learns actual link state through neighbor discovery, and reports it to an elected master over an out-of-band control network.
 The master sends global link-state deltas to every switch, and each switch computes its own ECMP tables.
 BGP runs only at the fabric edge.
 Having more bandwidth did not remove packet loss.
 Shallow merchant-silicon buffers, incast, deliberate ToR oversubscription and imperfect ECMP hashing caused congestion drops starting at about 25% average utilization, so host and QoS tuning mattered as much as raw bandwidth.
-In 2022 Jupiter dropped the spine layer and replaced it with MEMS optical circuit switches (OCS) that connect aggregation blocks directly.
+By its 2022 paper, Jupiter had dropped the spine layer and replaced it with MEMS optical circuit switches (OCS) that connect aggregation blocks directly.
 Traffic engineering and topology engineering together match Clos throughput for Google's traffic, with 5x speed and capacity, 30% lower capex and 41% lower power ([Poutievski et al., SIGCOMM 2022](https://research.google/pubs/jupiter-evolving-transforming-googles-datacenter-network-via-optical-circuit-switches-and-software-defined-networking/)).
 The core trade-off: a Clos fabric is oblivious to the traffic matrix but forces you to pre-build the spine and pins every block to the spine's speed.
 A direct-connect fabric is cheap and supports mixed speeds, but without topology engineering it pays a roughly 2x transit tax on permutation traffic.
@@ -36,7 +59,7 @@ A direct-connect fabric is cheap and supports mixed speeds, but without topology
 ```mermaid
 flowchart TB
   subgraph CP["Control plane - out of band"]
-    M["Firepath master 2015 / Orion SDN 2021+<br/>global link-state DB, TE, ToE"]
+    M["Firepath pre-Jupiter / Onix, then Orion on Jupiter<br/>global link-state DB, TE, ToE"]
   end
   subgraph AB1["Aggregation block A - 40G"]
     T1["ToRs - Centauri, 4 chips"] --> MB1["8 Middle Blocks"]
@@ -65,9 +88,9 @@ Think of the fabric as three separable layers.
 ToRs and aggregation blocks are electrical packet switches that do the per-packet work: lookup, ECMP hashing and buffering.
 Above them sits a layer whose only job is to connect blocks to each other.
 In 2015 that layer was itself a packet-switched Clos stage, the spine, so any block could reach any other through any spine without anyone knowing the traffic matrix.
-In 2022 that layer became passive mirrors, an OCS that switches light without decoding it.
-The OCS is therefore agnostic to data rate and wavelength, but it only offers fixed point-to-point circuits that are reconfigured on a timescale of milliseconds to hours.
-Intelligence moved upward into a logically centralized controller, which first only distributed link state (Firepath) and later also chose WCMP weights and the block-to-block topology itself (Orion with traffic and topology engineering).
+By the 2022 paper that layer had become passive mirrors, an OCS that switches light without decoding it.
+The OCS is therefore agnostic to data rate and wavelength, but it only offers fixed point-to-point circuits: the mirrors switch in milliseconds, while a logical topology change takes on the order of an hour to finish ([SIGCOMM 2022 PDF](https://engineering.purdue.edu/~vshriva/courses/papers/jupiter_2022.pdf)).
+Intelligence moved upward into a logically centralized controller, which first only distributed link state (Firepath), then moved to SDN on Jupiter (Onix, then Orion), and later also chose WCMP weights and the block-to-block topology itself (traffic and topology engineering).
 The out-of-band control plane network is the boundary that makes this safe: the data plane forwards on its last-known state even when the controller is unhealthy.
 That boundary is the same control/data split covered in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
 
@@ -99,7 +122,8 @@ In the first generation, each aggregation block hosted 16 ToRs and exposed 32x10
 Each spine block exposed 32x10G to 32 aggregation blocks.
 The resulting fabric scaled to 10K machines at 1G average bandwidth to any machine ([CACM reprint](https://cacm.acm.org/research/jupiter-rising/)).
 The intermediate generations (Firehose 1.1, Watchtower, Saturn) are described in the paper.
-This chapter does not repeat their per-generation numbers because they could not be re-verified in this research pass.
+Table 2 of the paper gives first deployment, chip and bisection for each: Firehose 1.1 (2006, 8x10G, 10T), Watchtower (2008, 16x10G, 82T), Saturn (2009, 24x10G, 207T) and Jupiter (2012, 16x40G, 1.3P) ([SIGCOMM 2015 PDF](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p183.pdf)).
+Firehose 1.0 itself never carried production traffic, and Firehose 1.1 was the first production Clos (same source).
 
 ### Jupiter building blocks and the arithmetic that falls out
 
@@ -122,8 +146,9 @@ From those inputs the rest is arithmetic (derived values, computed in the Worked
 - Links per aggregation-spine pair = 128 / 64 = 2, which is the dual-redundancy constraint that set the 64-block cap.
 - Aggregate aggregation-to-spine capacity = 64 x 512 x 40 Gbps = 1.311 Pbps, which matches the paper's 1.3 Pbps figure.
 - Inside an aggregation block, ToR-facing capacity is 8 MBs x 256 x 10G = 20.48 Tbps and spine-facing capacity is 512 x 40G = 20.48 Tbps.
-  The aggregation layer is 1:1, so oversubscription lives only at the ToR.
+  The aggregation layer is 1:1 by capacity, so oversubscription lives only at the ToR.
   In the 48-down, 16-up configuration that ratio is 3:1.
+  Capacity is not the same as non-blocking: Table 2 of the paper labels the Jupiter aggregation block blocking, and each Middle Block is a 2-stage blocking network ([SIGCOMM 2015 PDF](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p183.pdf)).
 
 One subtlety matters in interviews.
 The 1.3 Pbps figure equals the sum of all aggregation-to-spine link capacity.
@@ -146,20 +171,22 @@ They are a design decision that pushes congestion control onto hosts.
 ### Control plane: Firepath, a centralized link-state IGP
 
 Firepath was the routing architecture for the Firehose, Watchtower and Saturn fabrics, and it anticipated several SDN principles ([CACM](https://cacm.acm.org/research/jupiter-rising/)).
+The 2015 paper says Jupiter's own control architecture is beyond its scope, and the [Orion paper](https://www.usenix.org/system/files/nsdi21-ferguson.pdf) states that Jupiter was initially developed with Onix, Google's first-generation SDN controller.
+So the steps below describe the pre-Jupiter design, which the 2015 paper says informed Jupiter's control architecture.
 It is the mechanism most readers have never seen spelled out, so here it is step by step.
 
 1. Intended topology first.
    Every switch is configured with the baseline, planned topology of the whole cluster, because each switch plays a role fixed by its position in the cluster plan.
 2. Pairwise neighbor discovery (ND).
    Each port runs ND to learn its peer's identity and to verify that the cabling matches the plan.
-   As summarized from Section 5.2, a port is declared up only when both the PHY and ND report up ([secondary summary of the paper](https://www.adrian.idv.hk/2019-09-15-s15-jupiter/)).
+   Per Section 5.2.1, a port is declared up to the routing process only when it is both PHY UP and ND UP ([SIGCOMM 2015 PDF](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p183.pdf)).
    This gating turns a miscabled port into a down port rather than a silent black hole.
 3. Report to the master.
    A Firepath client on each fabric switch sends its local view of connectivity to the elected Firepath master.
    Redundant master candidates run on a selected subset of spine switches.
    They talk to clients over a separate, out-of-band Control Plane Network (CPN) ([Google paper PDF](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/43837.pdf)).
 4. Global link-state database (LSD).
-   The master assembles a versioned LSD and sends it to clients: a full copy first, then deltas ([secondary summary](https://medium.com/@orr101/iigr-jupiter-rising-a-decade-of-clos-topologies-and-centralized-control-in-googles-datacenter-618bbb5c48fe)).
+   The master assembles a versioned LSD and multicasts it to clients over the CPN: a full copy first, then deltas ([SIGCOMM 2015 PDF](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p183.pdf)).
 5. Local computation.
    Each switch computes shortest paths with ECMP from the LSD.
    It expresses forwarding tables as deltas against the known static topology, which is cheap because the topology barely changes ([SIGCOMM 2015 PDF](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p183.pdf)).
@@ -169,16 +196,18 @@ It is the mechanism most readers have never seen spelled out, so here it is step
    Firepath routes at Layer 3 all the way to the ToR, and each ToR is one Layer 2 broadcast domain.
    ToR subnets are aligned so they aggregate well in the small forwarding tables of merchant silicon ([Google paper PDF](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/43837.pdf)).
 
-Google chose this over running OSPF, IS-IS or BGP on hundreds of switches for three reasons.
-First, maintaining hundreds of independent switch stacks and BGP configurations "seemed daunting" (SIGCOMM 2015 PDF).
-Second, the topology was static with massive multipath, so flooding-based discovery solved a problem Google did not have.
-Third, the team was inspired by large storage systems with a centralized manager, namely GFS (see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_09_GFS_and_Colossus|GFS and Colossus]]).
+Google chose this over running OSPF, IS-IS or BGP on hundreds of switches for several reasons.
+The paper's "first, and most important" reason is that existing routing protocols lacked good support for multipath, equal-cost forwarding (SIGCOMM 2015 PDF).
+Maintaining hundreds of independent switch stacks and BGP configurations also "seemed daunting" (same source).
+The topology was static with massive multipath, so flooding-based discovery solved a problem Google did not have.
+The team was also inspired by large storage systems with a centralized manager, namely GFS (see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_09_GFS_and_Colossus|GFS and Colossus]]).
 Churn is low.
 The paper measured about 2,000 LSD-changing events per month in a typical cluster, roughly 70 a day or 3 an hour ([CACM](https://cacm.acm.org/research/jupiter-rising/)).
 At that rate, a central node that sends deltas is far cheaper than O(N^2) flooding across tens of thousands of ports.
 
 Why this is not a single point of failure in the forwarding path:
-when a link fails, the two endpoint switches detect it locally through PHY or ND and react locally first, then notify the master ([secondary summary](https://medium.com/@orr101/iigr-jupiter-rising-a-decade-of-clos-topologies-and-centralized-control-in-googles-datacenter-618bbb5c48fe)).
+when a link fails, the two endpoint switches detect it locally through PHY or ND, and most failures need only local convergence that prunes the failed next hop from its ECMP group ([SIGCOMM 2015 PDF](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p183.pdf)).
+The exception is a ToR-to-S2 link failure, which needs non-local convergence: 4000 ms in the paper's Saturn table, against 125 ms for a local S2-S3 link failure (same source).
 A master failure triggers election among candidates, but forwarding tables already installed keep working.
 Master election should be read with the same lens as leader election in [[08-Distinguished-Engineering/02-Distributed-Systems-Internals/Raft-Consensus|Raft]]: the candidate set and the recency of its state are what matter.
 
@@ -198,14 +227,16 @@ They were:
 - QoS-aware drop in switch schedulers, so lower-priority traffic is discarded first;
 - bounding the host TCP congestion window for intra-cluster traffic, so a sender cannot overrun the small buffers;
 - link-level pause at ToRs in early fabrics;
+- ECN on switches, with an optimized host response;
 - repopulating spine links when a depopulated fabric was congesting;
 - shared-buffer tuning;
 - careful configuration of the switch hash functions for ECMP balance.
 
-The last three are in [the Cambridge-hosted copy](https://www.cl.cam.ac.uk/teaching//1819/R02/papers/p183.pdf).
+All of these are in Section 6.1 of the [SIGCOMM 2015 PDF](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p183.pdf), which also lists provisioning ToRs with more uplinks where applications needed them.
 Together these cut the packet discard rate at 25% average utilization from 1% to below 0.01% (CACM).
 The lesson: average utilization is a misleading SLI in a shallow-buffer fabric.
 The relevant quantities are microburst occupancy at the ToR and the variance of ECMP load.
+In the paper's representative Saturn cluster, host fan-in was the largest source of loss, ToR fan-in came next, and ToR uplink oversubscription was a relatively small fraction (SIGCOMM 2015 PDF).
 
 Why ECMP variance is worse than intuition suggests: hash N equal elephant flows onto N equal paths.
 The probability that at least two flows collide is 1 - N!/N^N, which is 99.76% for N = 8.
@@ -221,10 +252,11 @@ By 2022 the spine had become the constraint for three reasons ([Poutievski et al
   Refreshing compute is incremental (drain a rack and replace it), but refreshing the spine is not.
 - Speed pinning.
   A new 200G aggregation block attached to a 100G spine runs every uplink at 100G and strands half its optics.
+  The paper's own example is a 100G block on a 40G spine, derated from 51.2 Tbps to 20 Tbps.
   See the heterogeneity calculation in the Worked Example.
 - Predictable traffic.
-  Google's production traffic matrix is predictable over long timescales.
-  Analytics found peak alignment, stable ranking and gravity-model structure ([Google Research, OFC 2023 abstract](https://research.google/people/leonpoutievski/)).
+  Google's production traffic is relatively predictable, with uncertainty far from worst-case permutation ([SIGCOMM 2022 PDF](https://engineering.purdue.edu/~vshriva/courses/papers/jupiter_2022.pdf)).
+  An invited OFC 2023 paper names peak alignment, stable ranking and the gravity model as the traffic features guiding the fabric design ([Google Research listing](https://research.google/people/leonpoutievski/)).
   A gravity model means demand between blocks i and j is roughly proportional to egress(i) x ingress(j).
 
 The redesign has three parts ([Google Research abstract](https://research.google/pubs/jupiter-evolving-transforming-googles-datacenter-network-via-optical-circuit-switches-and-software-defined-networking/)).
@@ -248,7 +280,7 @@ It has three co-designed parts:
 - Optical circulators that make each OCS port bidirectional, effectively doubling the OCS radix.
 - WDM transceivers co-designed for the impairments of circulator links, delivered over four generations and speeds of optics ([arXiv PDF](https://arxiv.org/pdf/2208.10041)).
 
-Secondary summaries of the paper describe Palomar as a 136x136 strictly non-blocking switch with millisecond-scale switching and typical insertion loss below 2 dB ([alphaXiv summary](https://www.alphaxiv.org/abs/2208.10041)).
+The paper describes Palomar as a non-blocking 136x136 switch with millisecond-scale switching, insertion loss typically below 2 dB, a stated worst case of 2 dB, and a nominal return-loss spec of -38 dB ([arXiv PDF](https://arxiv.org/pdf/2208.10041)).
 
 Why WDM and circulators are load-bearing rather than incidental:
 an OCS port is a mirror, so it carries whatever light arrives.
@@ -273,19 +305,23 @@ Under a full permutation, every block sends everything to one partner.
 The direct path carries only d links' worth, and the rest must transit an intermediate block, consuming two link-hops per byte.
 The link budget per block is d + 2(T - d) <= U, so T <= (U + d) / 2.
 That is 50.8% of the Clos-equivalent throughput for n = 64 (derived; see the Worked Example).
+This agrees with the paper, which says direct-connect is n:1 oversubscribed for worst-case permutations with shortest paths and needs non-shortest paths to reach 2:1 ([SIGCOMM 2022 PDF](https://engineering.purdue.edu/~vshriva/courses/papers/jupiter_2022.pdf)).
 A Clos fabric serves any permutation at full rate, because the spine is the transit layer and was paid for up front.
 
 Topology engineering removes the penalty when demand is predictable.
 If a block pair carries 25% of a block's traffic, ToE can give that pair about 128 of the 512 uplinks instead of 8.
 Most bytes then go direct, and TE only has to absorb the residual mismatch with transit.
 The two engineering loops run on different clocks.
-TE adjusts weights quickly as demand shifts.
-ToE moves circuits rarely and carefully, because reconfiguring a live circuit drains traffic from it.
-This is why the 2022 paper insists on combining TE and ToE: either alone loses to Clos on some traffic matrices.
+TE is the inner loop and adjusts weights at O(seconds) to O(minutes) as demand shifts.
+ToE is the outer loop and moves circuits rarely and carefully, because reconfiguring a live circuit drains traffic from it.
+A new logical topology takes O(hour) to finish, ToE does not respond to failures or drains, and simulations found limited benefit from block-level reconfiguration more often than every few weeks (same source).
+The paper credits the combination of TE and ToE for matching Clos throughput on production traffic, but routing does most of that work.
+A uniform direct-connect topology already reached maximum throughput in most fabrics studied, while traffic-aware topology lifted two heterogeneous-speed fabrics to the upper bound and lowered stretch (same source).
 
 The ML implication is direct.
 Ring and hierarchical all-reduce produce near-permutation traffic, which is the worst case for an untuned direct-connect mesh.
 It is also the best case for topology engineering if the job is long-lived and its communication pattern is known in advance.
+The 2022 paper expects large-scale ML workloads to change the weeks-long ToE cadence, because of their high bandwidth requirements and relatively predictable traffic.
 TPU v4 slices exploit exactly this by building per-job torus topologies through OCS (see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_15_Google_TPU_Architecture_Evolution|Google TPU Architecture Evolution]] and [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI|Interconnect Technologies]]).
 
 ### Orion: the successor control plane
@@ -300,13 +336,14 @@ The paper reports:
 - a 50x reduction in data-plane unavailable time in Jupiter (100x in B4);
 - a bi-weekly release cadence.
 
-These figures are from the [Semantic Scholar abstract](https://www.semanticscholar.org/paper/Orion:-Google's-Software-Defined-Networking-Control-Ferguson-Gribble/ee2f645efd64d421485ada0fcfc5e0ed8188a766).
+These figures are from the [paper's abstract](https://www.usenix.org/system/files/nsdi21-ferguson.pdf).
 The progression from Firepath to Orion is a progression in what is centralized.
 Firepath centralized only link-state distribution.
+Jupiter started on Onix, Google's first-generation SDN controller, and Orion is the second iteration built on lessons from that deployment (same source).
 Orion centralizes intent, TE decisions and, with ToE, the physical topology.
 Each step raises the blast radius of a controller bug, which is why the domain partitioning of control matters (see Failure Modes).
-Google has since published CAPA, an architecture for operating cluster networks with high availability ([ACM DL](https://dl.acm.org/doi/10.5555/3691825.3691934)).
-Its venue and details were not re-verified for this chapter.
+Google has since published CAPA, an architecture for operating cluster networks with high availability ([USENIX NSDI 2024](https://www.usenix.org/conference/nsdi24/presentation/liu-bingzhe)).
+It regulates management operations through a thin layer and reports an 82% reduction in the cumulative duration of management-plane-related incidents, normalized to fleet size, over five years ([Google Research abstract](https://research.google/pubs/capa-an-architecture-for-operating-cluster-networks-with-high-availability/)).
 
 ### Failure domains
 
@@ -316,8 +353,8 @@ Its venue and details were not re-verified for this chapter.
 | ToR | One rack's machines | Accepted; schedulers spread replicas across racks |
 | Aggregation block | All ToRs in the block | The scheduler places replicas across blocks; the 2022 design drains blocks for refresh |
 | Spine block (2015) | 1/256 of inter-block capacity | ECMP spreads load over the remaining spines |
-| OCS (2022) | The circuits through that device | Many OCSes, each carrying a small slice of each block's uplinks |
-| CPN | Control reachability | Dual redundant links per chassis; the 2015 paper notes the standby was initially unmonitored |
+| OCS (2022) | The circuits through that device | Many OCSes, each carrying a small slice of each block's uplinks; an OCS fails static on control loss but drops cross-connects on power loss, so power domains limit a building-level power issue to 25% of OCSes (SIGCOMM 2022) |
+| CPN | Control reachability | Dual redundant links per chassis; the 2015 paper notes that the health of both links was initially not actively monitored |
 | Controller domain | Route and TE updates | The data plane keeps last-known state; domains are kept small |
 
 ## Numbers to Know
@@ -341,29 +378,32 @@ Its venue and details were not re-verified for this chapter.
 | Jupiter 2022 vs. prior | 5x speed and capacity, -30% capex, -41% power | (Poutievski et al., SIGCOMM 2022) |
 | Traffic on the direct block-to-block path | ~60% | (Poutievski et al., SIGCOMM 2022) |
 | Block speeds supported side by side | 40G, 100G, 200G and beyond | (Poutievski et al., SIGCOMM 2022) |
-| Palomar OCS radix | 136x136, 3D MEMS | (Urata et al., arXiv 2022, via secondary summary) |
-| OCS switching time | milliseconds | (Urata et al., arXiv 2022, via secondary summary) |
+| Palomar OCS radix | 136x136, 3D MEMS | (Urata et al., arXiv 2022) |
+| Palomar insertion loss | typically <2 dB, stated worst case 2 dB | (Urata et al., arXiv 2022) |
+| OCS switching time | millisecond-scale | (Urata et al., arXiv 2022) |
+| TE reaction time | O(seconds) to O(minutes) | (Poutievski et al., SIGCOMM 2022) |
+| Logical topology change | O(hour) to finish; limited benefit if more often than every few weeks | (Poutievski et al., SIGCOMM 2022) |
 | Generations of WDM optics through OCS | 4 | (Urata et al., arXiv 2022) |
 | Orion convergence improvement | up to 40x | (Ferguson et al., NSDI 2021) |
 | Orion update throughput | up to 1.16M updates/s | (Ferguson et al., NSDI 2021) |
 | Orion data-plane unavailability reduction, Jupiter | 50x | (Ferguson et al., NSDI 2021) |
-| Uniform direct-connect, permutation throughput vs. Clos | ~50.8% for 64 blocks | derived: (U + d) / 2U |
+| Uniform direct-connect, permutation throughput vs. Clos | ~50.8% for 64 blocks | derived: (U + d) / 2U; consistent with the 2:1 worst case in (Poutievski et al., SIGCOMM 2022) |
 | ECMP hottest path, 8 elephants on 8 paths | ~2.6x mean | derived by simulation in this chapter |
-| AWS single-flow cap outside a cluster placement group | 5 Gbps | UNVERIFIED (AWS docs, as of 2026-10) |
-| GCP per-VM egress cap | scales with vCPU count; higher with Tier_1 networking | UNVERIFIED for exact values (Google Cloud docs, as of 2026-10) |
+| AWS single-flow cap outside a cluster placement group | 5 Gbps; up to 10 Gbps inside one; up to 25 Gbps with ENA Express | (AWS docs, as of 2026-11) |
+| GCP per-VM egress cap | generally 2 Gbps per vCPU; N2 maximum 32 Gbps, 100 Gbps with Tier_1 networking | (Google Cloud docs, as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | Google Cloud (Jupiter lineage) | AWS | Critical difference |
 | --- | --- | --- | --- |
-| Public evidence about the fabric | Peer-reviewed papers: SIGCOMM 2015, SIGCOMM 2022, Apollo on arXiv 2022, Orion at NSDI 2021 | Mostly re:Invent talks plus the SRD transport paper; this research pass found no peer-reviewed AWS paper on fabric topology | On AWS you infer fabric behavior from instance-level limits; on GCP you can reason from the published design |
-| Physical topology | Clos (2005-2012 generations) moving to direct-connect aggregation blocks through MEMS OCS | Clos-style fabric built from AWS-designed switches; UNVERIFIED in detail | Google publicly removed the spine; no equivalent public AWS claim was found |
-| Routing control | Centralized link-state distribution (Firepath), then Orion SDN with TE and ToE | Not publicly specified in comparable detail (UNVERIFIED) | Google's control-plane blast radius is documented; AWS's has to be assumed |
-| Multipath at the host edge | ECMP flow hashing in switches; host-side repathing such as PLB (UNVERIFIED citation) | SRD on the Nitro card sprays packets across many paths for EFA, and ENA Express extends SRD to TCP/UDP (UNVERIFIED limits, as of 2026-10) | SRD moves multipathing to per-packet in the NIC, while Jupiter's ECMP is per-flow in switches |
-| Congestion control | Shallow buffers plus host-side control: TCP cwnd bounds in 2015, later delay-based Swift (UNVERIFIED citation) | SRD rate control implemented in Nitro (UNVERIFIED detail) | Both clouds push congestion response onto the host or NIC, not switch buffers |
-| Customer placement primitive | Compact placement policy (UNVERIFIED supported machine families, as of 2026-10) | Cluster placement groups | Both expose "same low-latency domain" without naming the physical tier |
-| Per-flow and per-VM ceilings | Per-VM egress cap that scales with vCPUs; Tier_1 raises it (UNVERIFIED values) | Per-instance bandwidth, with a single-flow cap outside cluster placement groups (UNVERIFIED values) | A single TCP flow rarely reaches NIC line rate on either cloud |
-| AI scale-out fabric | TPU ICI with OCS-built slices; GPU VMs on Jupiter plus GPU-specific NICs | EFA on EC2 UltraClusters; AWS announced a "10p10u" AI fabric in 2024 (UNVERIFIED) | Google reuses OCS for both the general fabric and ML topologies |
+| Public evidence about the fabric | Peer-reviewed papers: SIGCOMM 2015, SIGCOMM 2022, Apollo on arXiv 2022, Orion at NSDI 2021 | Mostly re:Invent talks and Amazon posts plus the SRD transport paper in IEEE Micro 2020, which states the topology in passing but is not a fabric design paper | On AWS you infer fabric behavior from instance-level limits; on GCP you can reason from the published design |
+| Physical topology | Clos (2005-2012 generations) moving to direct-connect aggregation blocks through MEMS OCS | High-radix folded Clos with ECMP on commodity Ethernet switches ([IEEE Micro 2020](https://www.amazon.science/publications/a-cloud-optimized-transport-protocol-for-elastic-and-scalable-hpc)); AWS also says it builds its own network devices at every layer ([Amazon](https://www.aboutamazon.com/news/aws/aws-infrastructure-generative-ai), as of 2026-11) | Google publicly removed the spine; no equivalent public AWS claim was found |
+| Routing control | Centralized link-state distribution (Firepath), then Orion SDN with TE and ToE | Scalable Intent Driven Routing (SIDR) on the 10p10u AI fabric ([AWS blog](https://aws.amazon.com/blogs/machine-learning/powering-innovation-at-scale-how-aws-is-tackling-ai-infrastructure-challenges/), as of 2026-11); general fabric control is not publicly specified in comparable detail | Google's control-plane blast radius is documented; AWS's has to be assumed |
+| Multipath at the host edge | ECMP flow hashing in switches; host-side repathing such as [PLB, SIGCOMM 2022](https://research.google/pubs/plb-congestion-signals-are-simple-and-effective-for-network-load-balancing/) | SRD on the Nitro card sprays packets across many paths for EFA, and ENA Express extends SRD to TCP/UDP, raising the single-flow cap from 5 Gbps to up to 25 Gbps within a Region ([AWS docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ena-express.html), as of 2026-11) | SRD moves multipathing to per-packet in the NIC, while Jupiter's ECMP is per-flow in switches |
+| Congestion control | Shallow buffers plus host-side control: TCP cwnd bounds in 2015, later delay-based [Swift, SIGCOMM 2020](https://research.google/pubs/swift-delay-is-simple-and-effective-for-congestion-control-in-the-datacenter/) | SRD per-connection rate and in-flight limits, somewhat similar to BBR, implemented in the Nitro card ([IEEE Micro 2020](https://www.amazon.science/publications/a-cloud-optimized-transport-protocol-for-elastic-and-scalable-hpc)) | Both clouds push congestion response onto the host or NIC, not switch buffers |
+| Customer placement primitive | Compact placement policy; supported series vary by maximum distance, up to 1,500 instances with no maximum distance set, and the `--max-distance` setting is in Preview for some series ([Google Cloud docs](https://docs.cloud.google.com/compute/docs/instances/placement-policies-overview), as of 2026-11) | Cluster placement groups | Both expose "same low-latency domain" without naming the physical tier |
+| Per-flow and per-VM ceilings | Per-VM egress generally 2 Gbps per vCPU; N2 maximum is 32 Gbps, or 100 Gbps with Tier_1 ([Google Cloud docs](https://docs.cloud.google.com/compute/docs/network-bandwidth), as of 2026-11) | Per-instance bandwidth, with a single-flow cap of 5 Gbps outside a cluster placement group and up to 10 Gbps inside one ([AWS docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-network-bandwidth.html), as of 2026-11) | AWS documents a general single-flow cap; GCP documents 3 Gbps per flow for most series leaving the VPC and 50 Gbps for C4N-to-C4N within it |
+| AI scale-out fabric | TPU ICI with OCS-built slices; GPU VMs on Jupiter plus GPU-specific NICs | EFA on EC2 UltraClusters; Amazon calls UltraCluster 2.0 the "10p10u" network, with tens of petabits per second and under 10 microseconds round trip ([Amazon](https://www.aboutamazon.com/news/aws/aws-infrastructure-generative-ai), as of 2026-11) | Google reuses OCS for both the general fabric and ML topologies |
 | Incremental refresh | OCS lets mixed-speed blocks coexist and lets topology be re-striped live | Not published | This is a structural capex lever unique to the published Jupiter design |
 | Control-plane network | Out-of-band CPN with dual links per chassis | Not published | The CPN is a hidden dependency that should appear in your mental failure model |
 
@@ -475,12 +515,13 @@ The ToR is 3:1 in the 48/16 configuration, so a rack's machines get at most one 
 Step 5: Size for ECMP variance, not the average.
 With 8 synchronized elephants on 8 paths, the hottest path carries 2.6x its fair share.
 If you size links for the mean, you overrun the shallow buffers on that path.
-This is why the paper's congestion knee sits near 25% average utilization rather than near 90%.
+This is one reason the paper's congestion knee sits near 25% average utilization rather than near 90%, alongside bursty incast, limited buffers and ToR oversubscription.
 
 Step 6: Evaluate the direct-connect alternative.
 With no topology engineering, permutation traffic gets 50.8% of the Clos throughput.
 With ToE matched to a gravity-model demand matrix, a pair carrying 25% of demand gets 128 direct links and pays almost no transit tax.
 The ToE cadence must be slower than demand drift but faster than the hardware refresh cycle.
+Google's simulations found limited benefit from reconfiguring more often than every few weeks (SIGCOMM 2022).
 
 Step 7: Price the refresh.
 A 200G block on a 100G spine strands 50% of its optics.
@@ -492,10 +533,10 @@ This lab measures what a tenant actually sees: per-flow throughput and how throu
 Interpret it with care.
 In practice the binding constraint is usually the per-VM egress shaping in the virtual NIC (see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_12_Andromeda_Network_Virtualization|Andromeda]]), not the Jupiter fabric.
 
-Cost estimate (UNVERIFIED prices, check the Compute Engine pricing page, as of 2026-10):
-2 x n2-standard-8 at roughly 0.39 USD/hour each in us-central1, plus two ephemeral external IPv4 addresses and two 10 GB boot disks.
+Cost estimate (the n2-standard-8 rate is UNVERIFIED: the Compute Engine pricing page does not expose it in fetchable text, so check it there before running):
+2 x n2-standard-8 at roughly 0.39 USD/hour each in us-central1, plus two ephemeral external IPv4 addresses at 0.005 USD/hour each ([Google Cloud network pricing](https://cloud.google.com/vpc/network-pricing), as of 2026-11) and two 10 GB boot disks.
 That comes to roughly 1 USD for a one-hour session.
-Intra-zone traffic over internal IPs is expected to be free of egress charges (UNVERIFIED, as of 2026-10).
+Same-zone traffic over internal IPv4 addresses in one VPC has no charge (same source, as of 2026-11).
 
 ```bash
 #!/usr/bin/env bash
@@ -571,7 +612,8 @@ In its first example, a datacenter power event made the entire fabric restart at
 The paper then describes the convergence failure that followed.
 Liveness checks (ND) and route computation competed for limited embedded switch CPU.
 Route churn delayed ND heartbeats, which caused link flaps and more churn, and convergence needed manual intervention.
-The fix was to prioritize liveness over route computation (UNVERIFIED wording; reconstructed from the paper and not re-checked in this pass).
+Google stabilized the network by manually bringing up a few blocks at a time.
+It then added the worst-case fabric reboot to its test plans, stress-tested control software at scale in virtualized environments, tuned liveness timers for the worst case and reduced the priority of non-critical processes sharing the CPU ([SIGCOMM 2015 PDF](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p183.pdf)).
 The general pattern is a metastable failure.
 The system is stable at steady state but has no path back from a cold start in which every node does maximal work at once.
 The defenses are:
@@ -585,7 +627,8 @@ The defenses are:
 
 Over years of deployment, aging hardware wore down the fabric's built-in redundancy.
 Software was vulnerable to internal backplane link failures, which caused rare traffic black-holing.
-Each chassis had dual CPN links in active-standby mode, and the standby link was initially not monitored ([CACM mobile](https://m-cacm.acm.org/magazines/2016/9/206261-jupiter-rising/fulltext)).
+Each chassis had dual CPN links in active-standby mode, and Google initially did not actively monitor the health of both links ([SIGCOMM 2015 PDF](https://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p183.pdf)).
+With age, unidirectional failures of some CPN links exposed unhandled corner cases in the routing protocols (same source).
 Redundancy you do not continuously probe is a coin flip at failover time.
 Monitor the standby path with the same SLI as the active path.
 
@@ -617,8 +660,9 @@ Drain-aware ToE and admission control for large new tenants are the mitigations.
 ### Controller blast radius
 
 As the controller takes on more decisions, a bad push can damage more of the network.
-In the June 2019 Google Cloud incident, a configuration change caused network control-plane jobs in several locations to be descheduled.
-That cut network capacity and caused heavy congestion across multiple regions (UNVERIFIED details; read the official incident report before citing).
+In the June 2, 2019 Google Cloud incident, two normally benign misconfigurations and a software bug let maintenance automation deschedule network control jobs and their supporting infrastructure in multiple physical locations ([Google incident report](https://status.cloud.google.com/incident/cloud-networking/19009)).
+The affected regions stopped using more than half of their available network capacity and became congested ([Google Cloud blog](https://cloud.google.com/blog/topics/inside-google-cloud/an-update-on-sundays-service-disruption)).
+The Orion paper attributes the scale to job-control and network-control failure domains that were not aligned, and it notes a gap in fail-static behavior for BGP ([Ferguson et al., NSDI 2021](https://www.usenix.org/system/files/nsdi21-ferguson.pdf)).
 Defenses:
 
 - fail-static data planes that keep the last good forwarding state;
@@ -630,7 +674,8 @@ See also [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anat
 ### Tenant-side pitfalls on either cloud
 
 - Single-flow assumptions.
-  One TCP stream will not reach the instance's advertised bandwidth on either cloud.
+  Do not assume one TCP stream reaches the instance's advertised bandwidth on either cloud.
+  AWS caps a single flow at 5 Gbps outside a cluster placement group, and GCP documents 3 Gbps per flow for most series when leaving the VPC (AWS and Google Cloud docs, as of 2026-11).
   Use parallel streams, a multi-path transport such as SRD through EFA or ENA Express on AWS, or collective libraries that open many connections.
 - Placement drift.
   Instances outside a cluster placement group (AWS) or compact placement policy (GCP) may land far apart in the fabric hierarchy, raising latency and tail variance.
@@ -645,13 +690,14 @@ See also [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anat
   The CPN keeps routing control off the tenant data path, so a compromised workload cannot inject routing updates through the data plane.
   Model the CPN as a high-value asset with its own access control and monitoring.
 - Topology verification as integrity control.
-  Gating a port on ND (port up only when both PHY and ND are up) means that a miswired or spoofed peer does not come up, because its identity does not match the intended topology.
+  Gating a port on ND (port up only when both PHY and ND are up) means that a miswired peer does not come up, because its identity does not match the intended topology.
+  The paper presents ND as a liveness and peer-correctness check rather than authentication, so do not count on it against a deliberately spoofed peer.
 - Encryption in transit.
-  Google states that traffic between VMs is encrypted when it crosses physical boundaries it does not control, and AWS states that supported Nitro instances automatically encrypt traffic between each other.
-  Exact scope and instance families are UNVERIFIED (as of 2026-10).
+  Google states that VM-to-VM connections within VPC networks and peered VPC networks are encrypted automatically based on internal IP addresses, while connections using external IP addresses are not ([Google Cloud docs](https://docs.cloud.google.com/docs/security/encryption-in-transit), as of 2026-11).
+  AWS states that listed Nitro-based instance types automatically encrypt traffic between instances in the same Region, in the same or peered VPCs, when no virtual network device or service sits in the path ([AWS docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/data-protection.html), as of 2026-11).
   For regulated data, still use TLS or mTLS at the application layer so the guarantee does not hinge on instance-type support (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies]]).
 - IAM scoping for the lab and for production placement.
-  On GCP, separate `roles/compute.networkAdmin` (VPCs, firewall rules) from `roles/compute.instanceAdmin.v1`.
+  On GCP, separate `roles/compute.networkAdmin` (VPCs and subnets, but read-only on firewall rules), `roles/compute.securityAdmin` (firewall rules) and `roles/compute.instanceAdmin.v1` ([Google Cloud IAM docs](https://docs.cloud.google.com/compute/docs/access/iam), as of 2026-11).
   Grant `roles/iap.tunnelResourceAccessor` only to the operators who need SSH through IAP.
   On AWS, restrict `ec2:CreatePlacementGroup` and `ec2:ModifyInstancePlacement` to the platform team, because placement decides which tenants share fabric domains.
 - Private boundaries.
@@ -661,14 +707,15 @@ See also [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anat
 ### Cost and unit economics
 
 - Removing the spine is a structural opex lever.
-  The 30% capex and 41% power reductions in the 2022 paper came largely from eliminating spine blocks and enabling incremental refresh ([SIGCOMM 2022 PDF](https://engineering.purdue.edu/~vshriva/courses/papers/jupiter_2022.pdf)).
+  The 2022 paper's cost model puts its direct-connect design at 70% of baseline capex (62% to 70% once OCS cost is amortized over block generations) and 59% of baseline power ([SIGCOMM 2022 PDF](https://engineering.purdue.edu/~vshriva/courses/papers/jupiter_2022.pdf)).
+  The capex savings from removing the spine and from circulators outweigh the extra cost of OCSes over patch panels, and most of the power reduction comes from removing spine switches and their optics (same source).
   For an operator building its own AI cluster, the equivalent decision is whether a pre-built non-blocking spine is worth paying for when the traffic matrix is known.
 - Oversubscription is a pricing decision.
   A 3:1 ToR trades cross-rack bandwidth for fewer optics and switch ports.
   Rack-local scheduling turns that discount into real savings, and rack-oblivious scheduling turns it into tail latency.
 - Billing mirrors the fabric hierarchy.
   Both clouds charge for traffic between zones but not within a zone over internal addresses.
-  Exact rates are UNVERIFIED (as of 2026-10); see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics]].
+  List rates are 0.01 USD/GiB between zones on GCP ([Google Cloud network pricing](https://cloud.google.com/vpc/network-pricing), as of 2026-11) and 0.01 USD/GB for regional transfer between AZs in us-east-1 ([AWS price list](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSDataTransfer/current/us-east-1/index.json), as of 2026-11); see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics]].
   Keep chatty tiers in the same zone, and pay for cross-zone traffic only where you need zonal redundancy.
 - GPU idle time is the dominant network cost in AI.
   A collective stalled on a hot ECMP path idles every accelerator in the job.
@@ -736,10 +783,11 @@ Defend or refute the design, with its failure modes.
 Firepath centralizes state distribution, not forwarding.
 Every switch starts with the intended topology, checks real links through pairwise neighbor discovery, and reports to an elected master on an out-of-band CPN.
 The master sends a versioned link-state database, in full first and then as deltas, and each switch computes ECMP tables locally.
-When a link fails, the endpoint switches react locally before the master even learns of it, and installed tables keep forwarding if the master dies.
+For most link failures, the adjacent switches converge locally by pruning the failed next hop, and installed tables keep forwarding if the master dies.
 So the master sits on the path for convergence, not for availability.
 The reasons it beats BGP everywhere in this setting are concrete:
 
+- at the time, existing routing protocols lacked good multipath, equal-cost support, which the paper calls its most important reason;
 - the topology is static and known, so discovery by flooding solves a non-problem;
 - churn is about 3 events per hour per cluster, so a central delta stream is cheap;
 - operations do not scale across hundreds of independent BGP configurations.
@@ -748,7 +796,7 @@ BGP stays where it belongs, at the border routers with the external networks.
 The real risks are different, and I would name them:
 
 - The CPN becomes a hidden dependency.
-  Google initially did not monitor the standby CPN links.
+  Google initially did not actively monitor the health of its active and standby CPN links.
 - The master is a convergence bottleneck after correlated events.
   A fabric-wide restart after a power event produced a cold-start storm, and the paper describes manual intervention being needed to converge.
 - A bad intended-topology push spreads to every switch at once.
@@ -859,7 +907,7 @@ I would budget for these risks explicitly:
 - operational maturity, because TE and ToE are software products that need their own SLOs.
 
 The economics come down to accelerator idle time.
-A 1% loss in collective efficiency across 50,000 accelerators is worth more per year than most of the fabric's optics, so I would pay for headroom in the training domain and accept oversubscription in inference.
+A 1% loss in collective efficiency across 50,000 accelerators is equivalent to 500 accelerators idle all year, so I would price that against the optics needed for headroom, and I expect it to justify paying for headroom in the training domain and accepting oversubscription in inference.
 
 #### Follow-up Interviewer Question
 
@@ -886,11 +934,11 @@ I would build five layers of defense.
 3. Fail-static data plane.
    Switches and OCSes keep the last known good state when they lose the controller, so a crashed or descheduled controller freezes the network rather than emptying it.
    Scheduling systems must treat network control jobs as the highest priority and must never be able to deschedule them in bulk.
-   That dependency is exactly what multi-region network incidents have exposed (see the UNVERIFIED note on the 2019 incident).
+   That dependency is exactly what multi-region network incidents have exposed (see the June 2019 incident under Failure Modes).
 4. Cold-start safety.
    Liveness gets CPU priority over route computation, bring-up is rate-limited, and full-domain power-cycle drills are a release gate.
 5. Out-of-band reachability.
-   The CPN has monitored redundant paths, because Google found that the standby CPN links were unmonitored.
+   The CPN has monitored redundant paths, because Google initially did not actively monitor the health of its active and standby CPN links.
 
 I would measure the system by data-plane unavailability.
 Orion's reported 50x reduction in data-plane unavailable time in Jupiter shows that a well-run centralized controller improves availability rather than hurting it, provided the blast radius is engineered.
@@ -906,8 +954,8 @@ Fail-static protects you when the controller disappears, but what about when the
 - [Poutievski et al., "Jupiter Evolving", SIGCOMM 2022](https://research.google/pubs/jupiter-evolving-transforming-googles-datacenter-network-via-optical-circuit-switches-and-software-defined-networking/) - Explains why the spine was removed and how TE plus ToE on OCS matches Clos throughput.
 - [Urata et al., "Mission Apollo: Landing Optical Circuit Switching at Datacenter Scale", arXiv 2022](https://arxiv.org/abs/2208.10041) - The hardware story of Palomar MEMS, circulators and WDM co-design.
 - [Ferguson et al., "Orion: Google's Software-Defined Networking Control Plane", NSDI 2021](https://www.usenix.org/system/files/nsdi21-ferguson.pdf) - The production SDN controller that succeeded Firepath-era control, with availability data.
-- [CAPA: an architecture for operating cluster networks with high availability](https://dl.acm.org/doi/10.5555/3691825.3691934) - Google's follow-on work on operating cluster networks safely.
+- [Liu et al., "CAPA: An Architecture For Operating Cluster Networks With High Availability", NSDI 2024](https://www.usenix.org/conference/nsdi24/presentation/liu-bingzhe) - Google's follow-on work on operating cluster networks safely.
 - [Stanford CS244 copy of Jupiter Evolving](https://web.stanford.edu/class/cs244/papers/poutievski-sigcomm22.pdf) - A teaching-course mirror, useful alongside the course's discussion of direct-connect versus Clos.
-- C. Clos, "A Study of Non-Blocking Switching Networks", Bell System Technical Journal, 1953 (UNVERIFIED citation details) - The mathematical origin of every fabric in this chapter.
-- M. Al-Fares, A. Loukissas, A. Vahdat, "A Scalable, Commodity Data Center Network Architecture", SIGCOMM 2008 (UNVERIFIED citation details) - The academic fat-tree blueprint that paralleled Google's production path.
+- C. Clos, "A Study of Non-Blocking Switching Networks", Bell System Technical Journal 32(2), 1953, pp. 406-424 (as cited in Singh et al., SIGCOMM 2015) - The mathematical origin of every fabric in this chapter.
+- M. Al-Fares, A. Loukissas, A. Vahdat, "A Scalable, Commodity Data Center Network Architecture", SIGCOMM 2008, CCR 38, pp. 63-74 (as cited in Singh et al., SIGCOMM 2015) - The academic fat-tree blueprint that paralleled Google's production path.
 - Related chapters: [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_12_Andromeda_Network_Virtualization|Andromeda (previous chapter)]], [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_14_MillWheel_and_Dataflow_Model|MillWheel and the Dataflow Model (next chapter)]], [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_03_High_Performance_AI_Cluster_Architectures|High-Performance AI Cluster Architectures]], [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_04_Global_VPC_Andromeda_SDN_and_Network_Tiers|Global VPC and Andromeda]], [[15-Technical-Whitepapers/04-Networking-and-Protocols/High-Performance-TCP-and-Networking|High-Performance TCP and Networking]].

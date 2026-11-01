@@ -19,6 +19,22 @@ sources:
   - "https://aws.amazon.com/message/65648/"
   - "https://docs.cloud.google.com/storage/docs/rapid/rapid-bucket"
   - "https://docs.cloud.google.com/storage/docs/request-rate"
+  - "https://developers.googleblog.com/speeding-up-ai-bringing-google-colossus-to-pytorch-via-gcsfs-and-rapid-bucket/"
+  - "https://www.cs.utexas.edu/~witchel/S25-380L/papers/gfs09acm_queue.pdf"
+  - "https://docs.cloud.google.com/storage/quotas"
+  - "https://docs.cloud.google.com/storage/docs/storage-classes"
+  - "https://docs.cloud.google.com/storage/docs/release-notes"
+  - "https://docs.cloud.google.com/storage/docs/rapid/create-zonal-buckets"
+  - "https://docs.cloud.google.com/storage/docs/rapid/use-objects-in-zonal-buckets"
+  - "https://cloud.google.com/storage/pricing"
+  - "https://cloud.google.com/storage/sla"
+  - "https://docs.cloud.google.com/compute/docs/disks/persistent-disks"
+  - "https://status.cloud.google.com/incident/compute/15056"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateSession.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/directory-buckets-objects-append.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/04/amazon-s3-files/"
+  - "https://www.allthingsdistributed.com/2023/07/building-and-operating-a-pretty-big-storage-system.html"
 ---
 
 # Google File System (2003 SOSP) and Colossus
@@ -46,7 +62,7 @@ flowchart LR
     P -- "5 serial order" --> S2
   end
   subgraph COL["Colossus - sharded control plane"]
-    C2["Client library: encoding, RS, placement hints"] -- "open / create / lease" --> CU["Curators (horizontally scaled)"]
+    C2["Client library: encoding, RS, placement hints"] -- "open / create / handle" --> CU["Curators (horizontally scaled)"]
     CU <--> BT[("Bigtable: file metadata")]
     C2 -- "bytes, direct" --> D1["D server"]
     C2 -- "bytes, direct" --> D2["D server"]
@@ -190,8 +206,8 @@ The arithmetic is in the worked example below.
 At 64 bytes per chunk and per file, 100 PB of 1 GB files needs about 106 GB of master RAM, which was feasible.
 100 PB of 1 MB files needs about 12.8 TB, which was not.
 File count, not bytes, became the binding constraint once Bigtable, Gmail and other small-object users arrived.
-Before Colossus, the workarounds were more GFS cells, multiple masters over shared chunkserver pools, and pushing small objects into Bigtable instead of files (UNVERIFIED: exact multi-cell mechanics as described in the 2009 interview).
-Recovery time was the other problem: a failover window of tens of seconds or more is fine for batch MapReduce and unacceptable for user-facing serving.
+Before Colossus, the workarounds were more GFS cells, multiple masters (for example eight) over a shared chunkserver pool with the application partitioning data across them, and pushing small objects into Bigtable instead of files (McKusick and Quinlan, 2009).
+Recovery time was the other problem: manual failover could take a cell down for an hour, the first automated failover took minutes, and by 2009 it took tens of seconds (McKusick and Quinlan, 2009), which is fine for batch MapReduce and unacceptable for user-facing serving.
 
 ### Colossus control plane: curators over Bigtable
 
@@ -211,16 +227,18 @@ D servers stay simple and identical, which lets them run on almost every machine
 Custodians do the work that GFS's master did inline (re-replication, rebalancing) as asynchronous background jobs, a strict control-plane versus data-plane split (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]]).
 
 The obvious circularity is that Bigtable stores its tablets on Colossus while Colossus stores its metadata in Bigtable.
-Public talks describe the recursion ending in progressively smaller Colossus instances, with the smallest metadata held in Chubby (UNVERIFIED: not stated in the official blog posts).
+Google's 2017 keynote describes the recursion ending in progressively smaller Colossus instances: metadata is about 1/10000 of data, so 100 PB needs 10 TB of metadata, then 1 GB, then 100 KB, which fits in Chubby ([PDSW-DISCS 2017 keynote](https://pdsw.org/pdsw-discs17/slides/PDSW-DISCS-Google-Keynote.pdf)).
+The same keynote's diagram of the deployment at the time still shows GFS storing the file system metadata at the bottom, so the slide states the scheme and not necessarily what every cluster runs today.
 Each level of the recursion holds orders of magnitude less metadata than the one above, so the bottom level is small enough for a single Paxos-replicated lock service.
 The operational lesson is about bootstrap ordering.
 A cold start of a cluster has to bring up the lowest level first, and that bootstrap path is exactly the kind of hidden circular dependency covered in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]].
 
 Colossus is zonal.
-Google calls it its "zonal cluster-level file system", and most data centers run one cluster and therefore one Colossus filesystem ([Google Cloud blog, 2025-04](https://cloud.google.com/blog/products/storage-data-transfer/how-the-colossus-stateful-protocol-benefits-rapid-storage); [The Register summary of the 2025-03 post](https://www.theregister.com/2025/03/27/google_l4_storage_performance_improvements/)).
+Google calls it its "zonal cluster-level file system", and most data centers run one cluster and therefore one Colossus filesystem ([Google Cloud blog, 2025-04](https://cloud.google.com/blog/products/storage-data-transfer/how-the-colossus-stateful-protocol-benefits-rapid-storage); [Google Cloud blog, 2025-03](https://cloud.google.com/blog/products/storage-data-transfer/how-colossus-optimizes-data-placement-for-performance)).
 Durability across zones and regions is therefore a property of the service layered on top, not of Colossus itself.
 Cloud Storage regional and multi-region buckets, Spanner's Paxos groups and Hyperdisk replication each implement it (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_09_Cloud_Storage_and_Colossus_Filesystem|Cloud Storage and Colossus Filesystem]]).
-A Rapid zonal bucket exposes the raw zonal Colossus failure domain directly to customers, which is why its SLA differs from regional buckets.
+A Rapid zonal bucket exposes the zonal failure domain directly to customers.
+Its 99.9% availability SLA is numerically the same as regional Standard storage ([Cloud Storage SLA, as of 2026-11](https://cloud.google.com/storage/sla)), so the percentage hides the difference: only the regional bucket is designed to survive the loss of a zone.
 
 ### Reed-Solomon in production
 
@@ -252,8 +270,8 @@ The 2025 posts explain how Colossus serves latency-sensitive workloads on a flee
 The published expected latencies range from hundreds of milliseconds for standard Cloud Storage I/O, to tens of milliseconds for Gmail messages, to under 1 ms for Hyperdisk reads.
 All of them run on the same filesystem abstraction.
 The mechanism is a placement layer that decides per file whether data lives on SSD and for how long.
-Reported policies include "place on SSD for one hour", "place on SSD for two hours" and "don't place on SSD" ([TechSpot summary](https://www.techspot.com/news/107332-google-colossus-internal-storage-system-relies-hdds-storing.html)).
-The policies are chosen by simulating access patterns, so only data predicted to be re-read soon pays for flash.
+Published policies include "place on SSD for one hour", "place on SSD for two hours" and "don't place on SSD" ([Google Cloud blog, 2025-03](https://cloud.google.com/blog/products/storage-data-transfer/how-colossus-optimizes-data-placement-for-performance)).
+The L4 service groups files into categories using application-supplied features and picks the best policy per category through online simulation of observed I/O, so only data predicted to be re-read soon pays for flash.
 The economics come from I/O density.
 HDD capacity grows faster than HDD IOPS, so IOPS per TB falls every drive generation.
 Flash used as a short-lived, predicted cache is a way to buy back IOPS without paying flash prices for every byte.
@@ -263,11 +281,11 @@ When a Colossus client opens a file, it gets a handle: state that includes which
 Later reads and writes go straight to those disks with no metadata lookups.
 Rapid Bucket exposes this over gRPC bidirectional streams (`BidiReadObject`, `BidiWriteObject`).
 Cloud Storage authorization and metadata access happen once, when the stream is created.
-After that, each operation in the stream is a direct Colossus I/O, which gives sub-millisecond appends and ranged reads ([Google Developers blog, 2026](https://developers.googleblog.com/speeding-up-ai-bringing-google-colossus-to-pytorch-via-gcsfs-and-rapid-bucket/)).
+After that, each operation in the stream is a direct Colossus I/O, which gives sub-millisecond appends and ranged reads ([Google Developers blog, 2026-04](https://developers.googleblog.com/speeding-up-ai-bringing-google-colossus-to-pytorch-via-gcsfs-and-rapid-bucket/)).
 This is the same move GFS made with client-side caching of chunk locations: move per-operation control-plane cost to per-session cost.
 The difference is that it now applies to authorization too.
 The risk is the same as in GFS: a cached handle can go stale, so the protocol needs explicit refresh operations.
-The pricing page lists "Refresh Read Access Handle" and "Refresh Write Access Handle" as free operations, which is the visible trace of that mechanism ([Cloud Storage pricing, as of 2026-10](https://cloud.google.com/storage/pricing)).
+The pricing page lists "Refresh Read Access Handle" and "Refresh Write Access Handle" as free operations, which is the visible trace of that mechanism ([Cloud Storage pricing, as of 2026-11](https://cloud.google.com/storage/pricing)).
 
 ## Numbers to Know
 
@@ -287,20 +305,20 @@ The pricing page lists "Refresh Read Access Handle" and "Refresh Write Access Ha
 | RS(6,3) repair read per lost fragment | 6 fragments | computed |
 | Colossus metadata scale vs largest GFS | over 100x | Google Cloud blog, 2021-04 |
 | Largest Colossus filesystems | multiple EB; two exceed 10 EB each | Google Cloud blog, 2025-03 |
-| Largest Colossus throughput | reads over 50 TB/s, writes up to 25 TB/s; busiest cluster over 600M IOPS | Google Cloud blog, 2025-03 |
+| Largest Colossus throughput | regularly over 50 TB/s reads and over 25 TB/s writes; busiest cluster over 600M IOPS | Google Cloud blog, 2025-03 |
 | Hyperdisk ML on Colossus SSD | 2,500 nodes reading at 1.2 TB/s | Google Cloud blog, 2025-03 |
-| Rapid Bucket status | GA since 2026-03-10 | Cloud Storage release notes, as of 2026-10 |
-| Rapid Bucket throughput / QPS / latency | 15+ TB/s aggregate read, up to 20M QPS, sub-ms, per zonal bucket | Google Cloud blog, as of 2026-10 |
-| Rapid storage SLA | 99.9% (zone); typical monthly over 99.95% | Cloud Storage docs, as of 2026-10 |
-| Rapid Bucket prerequisites | hierarchical namespace + uniform bucket-level access | Cloud Storage docs, as of 2026-10 |
-| Zonal bucket storage default quota | 1 TB, may vary by billing history | Cloud Storage quotas, as of 2026-10 |
-| Rapid storage pricing model | per GB-hour, prorated per second, set per zone | Cloud Storage pricing, as of 2026-10 |
-| GCS initial bucket I/O | ~1,000 object writes/s, ~5,000 object reads/s, then autoscale | Cloud Storage docs, as of 2026-10 |
-| GCS ramp-up rule | no faster than doubling every 20 min | Cloud Storage docs, as of 2026-10 |
-| GCS writes to same object name | 1 per second | Cloud Storage quotas, as of 2026-10 |
-| GCS compose fan-in | 32 source objects per request | Cloud Storage quotas, as of 2026-10 |
-| GCS Standard regional storage list price | ~$0.020/GB-month (us-central1) | UNVERIFIED, as of 2026-10 |
-| S3 per-prefix request baseline | 3,500 writes/s, 5,500 reads/s per partitioned prefix | UNVERIFIED, as of 2026-10 |
+| Rapid Bucket status | GA since 2026-03-10 | Cloud Storage release notes, as of 2026-11 |
+| Rapid Bucket throughput / QPS / latency | up to 15 TB/s aggregate, 20M QPS, sub-ms (the 2026-04 Google Developers blog says 15+ TiB/s) | Cloud Storage docs, as of 2026-11 |
+| Rapid storage SLA | 99.9% (zone); typical monthly over 99.95% | Cloud Storage docs, as of 2026-11 |
+| Rapid Bucket prerequisites | hierarchical namespace + uniform bucket-level access | Cloud Storage docs, as of 2026-11 |
+| Zonal bucket default quotas | 1 TB stored and 1 Tbps egress to Google services, per project per zone; may vary by billing history | Cloud Storage quotas, as of 2026-11 |
+| Rapid storage pricing model | per GB-hour, prorated per second, set per zone; $0.000150685/GiB-hour, about $0.11/GiB-month (us-central1 zones); Class A $0.00113 and Class B $0.0002 per 1,000 | Cloud Storage pricing, as of 2026-11 |
+| GCS initial bucket I/O | ~1,000 object writes/s, ~5,000 object reads/s, then autoscale | Cloud Storage docs, as of 2026-11 |
+| GCS ramp-up rule | no faster than doubling every 20 min | Cloud Storage docs, as of 2026-11 |
+| GCS writes to same object name | 1 per second | Cloud Storage quotas, as of 2026-11 |
+| GCS compose fan-in | 32 source objects per request | Cloud Storage quotas, as of 2026-11 |
+| GCS Standard regional storage list price | $0.000027397/GiB-hour, about $0.020/GiB-month (us-central1) | Cloud Storage pricing, as of 2026-11 |
+| S3 per-prefix request baseline | at least 3,500 writes/s, 5,500 reads/s per partitioned prefix | AWS S3 docs, as of 2026-11 |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -309,13 +327,13 @@ The pricing page lists "Refresh Read Access Handle" and "Refresh Write Access Ha
 | Lineage | GFS (2003) then Colossus; public papers on GFS, blog-level detail on Colossus | S3 internals partly public via [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_05_Amazon_S3_ShardStore_Formal_Methods\|ShardStore (SOSP 2021)]]; EBS via [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_03_Physalia_EBS_Control_Plane\|Physalia]] | Google built one filesystem under all products; AWS publicly describes per-service storage stacks |
 | Metadata plane | Curators, horizontally scaled, state in Bigtable | S3 index subsystem and placement subsystem (named in the 2017 PIR) | Both shard metadata; S3's 2017 outage showed a full restart of the index subsystem took hours |
 | Data servers | D servers: thin, disk-attached, checksum-only | ShardStore storage nodes: LSM-based key-value store per node | Colossus keeps servers thin and puts encoding in the client; ShardStore puts significant logic in the node |
-| Redundancy | Client-library software RAID; RS and replication encodings chosen per application | Erasure coding inside S3 (Warfield, FAST 2023 keynote) | GCP exposes no encoding knob to customers; neither does S3 |
-| Mutation ordering | GFS: chunk lease plus version number; Colossus: client obtains lease from curator | Not exposed; S3 objects are immutable with strong read-after-write | GFS leases were customer-visible semantics; in the cloud they are hidden behind immutable-object APIs |
-| Zonal low-latency tier | Rapid Bucket: zonal, stateful gRPC streams, appendable objects (GA 2026-03) | S3 Express One Zone directory buckets with session auth via CreateSession | Both amortize authorization per session; Rapid does it per stream, S3 Express per short-lived session token (UNVERIFIED token lifetime) |
-| Appends | Native appendable objects in zonal buckets; compose (32 sources) elsewhere | Appends supported in S3 Express One Zone (UNVERIFIED API details); S3 general purpose is immutable | Neither offers GFS multi-writer record append; single writer per handle or CAS |
-| Read caching | Colossus SSD placement internally; Rapid Cache (formerly Anywhere Cache) for existing buckets | No managed in-place S3 read cache; FSx for Lustre or client caches | GCP offers a managed zonal cache over regional and multi-region buckets |
-| Request scaling | Per-bucket key-index autoscaling from ~1k/5k ops/s; ramp by doubling per 20 min | Per-prefix partition autoscaling (UNVERIFIED baseline) | GCS hotspots on key ranges; S3 on prefixes; both punish sequential key names |
-| Block storage substrate | Hyperdisk and Persistent Disk built on Colossus | EBS on dedicated storage servers with Physalia configuration consensus | GCP block storage shares the filesystem substrate with object storage; EBS is a separate stack |
+| Redundancy | Client-library software RAID; RS and replication encodings chosen per application | Erasure coding inside S3 ([Warfield, FAST 2023 keynote post](https://www.allthingsdistributed.com/2023/07/building-and-operating-a-pretty-big-storage-system.html)) | GCP exposes no encoding knob to customers; neither does S3 |
+| Mutation ordering | GFS: chunk lease plus version number; Colossus: curator constructs a file handle for the client (Google Cloud blog, 2025-04); lease mechanics (UNVERIFIED: not in the 2021 and 2025 Colossus posts or the 2017 keynote) | Not exposed; S3 objects are immutable with strong read-after-write | GFS leases were customer-visible semantics; in the cloud they are hidden behind immutable-object APIs |
+| Zonal low-latency tier | Rapid Bucket: zonal, stateful gRPC streams, appendable objects (GA 2026-03) | S3 Express One Zone directory buckets with session auth via CreateSession | Both amortize authorization per session; Rapid does it per stream, S3 Express per session token that expires after 5 minutes ([AWS CreateSession docs, as of 2026-11](https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateSession.html)) |
+| Appends | Native appendable objects in zonal buckets; compose (32 sources) elsewhere | Appends supported in S3 Express One Zone through `PutObject` with `x-amz-write-offset-bytes`, up to 5 GB per request and 10,000 parts per object ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/AmazonS3/latest/userguide/directory-buckets-objects-append.html)); S3 general purpose is immutable | Neither offers GFS multi-writer record append; single writer per handle or CAS |
+| Read caching | Colossus SSD placement internally; Rapid Cache (formerly Anywhere Cache) for existing buckets | No cache behind the S3 API itself; [S3 Files](https://aws.amazon.com/about-aws/whats-new/2026/04/amazon-s3-files/) (GA 2026-04) caches active data behind an NFS file system interface; also FSx for Lustre or client caches | GCP offers a managed zonal cache behind the Cloud Storage API over regional and multi-region buckets; the AWS managed cache needs file system access |
+| Request scaling | Per-bucket key-index autoscaling from ~1k/5k ops/s; ramp by doubling per 20 min | Per-prefix partition autoscaling, at least 3,500 writes/s and 5,500 reads/s per prefix (AWS docs, as of 2026-11) | GCS hotspots on key ranges; S3 on prefixes; both punish sequential key names |
+| Block storage substrate | Hyperdisk and Persistent Disk built on Colossus ([Compute Engine docs, as of 2026-11](https://docs.cloud.google.com/compute/docs/disks/persistent-disks)) | EBS on dedicated storage servers with Physalia configuration consensus | GCP block storage shares the filesystem substrate with object storage; EBS is a separate stack |
 | Failure domain | Colossus is zonal; cross-zone durability is implemented by the layered service | S3 Standard stores across multiple AZs; S3 Express One Zone is single-AZ | Zonal tiers on both clouds trade zone-loss survival for latency |
 
 ## Worked Example: Rebuilding Record Append on Cloud Storage, and Sizing the Storage Underneath
@@ -405,7 +423,7 @@ Step-by-step reading of the model:
 ### Part B: multi-writer append log on a real bucket
 
 Cost estimate: one regional Standard bucket holding under 1 MB for under an hour, plus about 400 Class A operations (uploads, composes) and 200 Class B operations (reads).
-At list prices this rounds to under $0.01 (UNVERIFIED per-operation list price, as of 2026-10).
+At list prices of $0.005 per 1,000 Class A and $0.0004 per 1,000 Class B operations, this is about $0.002 and rounds to under $0.01 (Cloud Storage pricing, as of 2026-11).
 Budget alarm first, then resources, then teardown.
 
 ```bash
@@ -560,7 +578,7 @@ What the experiment shows, and why it maps back to GFS:
 2. Commit rate is capped by the documented 1 write per second per object name, no matter how many writers you add. More writers only raise the 412 count. The only way to scale is group commit: stage up to 31 segments and fold them into one compose. This is the reason GFS record append existed, since it let hundreds of producers append to one file without serializing through the client.
 3. The `last_batch` metadata check handles the common lost-response case. A compose that succeeded but whose HTTP response was lost would otherwise be retried and append the batch twice, which is exactly the GFS at-least-once duplicate.
 4. The fence fails if another writer commits between your lost success and your retry, because that writer overwrites `last_batch`. That is why each record still carries a unique ID and a CRC, and why `verify()` deduplicates. End-to-end idempotency at the reader is the GFS lesson, and conditional writes do not remove the need for it.
-5. On a Rapid zonal bucket you would replace this whole construction with an appendable object written through one open `BidiWriteObject` stream. That brings back single-writer append at sub-millisecond latency, at the cost of a zonal failure domain. See the official guide for the current client API ([Cloud Storage docs, as of 2026-10](https://docs.cloud.google.com/storage/docs/rapid/use-objects-in-zonal-buckets)).
+5. On a Rapid zonal bucket you would replace this whole construction with an appendable object written through one open `BidiWriteObject` stream. That brings back single-writer append at sub-millisecond latency, at the cost of a zonal failure domain. See the official guide for the current client API ([Cloud Storage docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/rapid/use-objects-in-zonal-buckets)).
 
 ### Capacity sizing: checkpoint storage for a 4,096-accelerator training job
 
@@ -569,10 +587,10 @@ The assumptions: a 70B-parameter dense model, bf16 weights, Adam with fp32 maste
 1. Checkpoint size: weights take 70e9 x 2 B = 140 GB, and optimizer state takes 70e9 x 12 B = 840 GB, so each checkpoint is about 980 GB.
 2. Write budget: to keep the stall under 30 s with synchronous save, the job needs 980 GB / 30 s = about 33 GB/s aggregate, or about 64 MB/s per host. Per-host NIC bandwidth is not the bottleneck. Object count and request rate are.
 3. Object count: if each of 4,096 ranks writes 8 tensor-shard files, a checkpoint is 32,768 objects under a new prefix.
-4. On a standard regional bucket, a new key range starts at about 1,000 writes/s. 32,768 creates take about 33 s in creates alone, before autoscaling. Reaching 32,000 writes/s by the documented ramp rule needs 5 doublings at 20 minutes each, about 100 minutes ([Cloud Storage docs, as of 2026-10](https://docs.cloud.google.com/storage/docs/request-rate)). Mitigations: shard keys with a random leading component, keep a stable prefix layout so the index range stays warm, write fewer and larger objects, or use a hierarchical-namespace bucket, which Google states has higher initial QPS.
-5. On a Rapid zonal bucket, 20M QPS and 15+ TB/s make both the 33 GB/s and the 32,768 objects trivial. The new constraints are the 1 TB default zonal-bucket quota, since keeping 3 checkpoints needs about 2.9 TB and a quota increase, and the zonal failure domain.
+4. On a standard regional bucket, a new key range starts at about 1,000 writes/s. 32,768 creates take about 33 s in creates alone, before autoscaling. Reaching 32,000 writes/s by the documented ramp rule needs 5 doublings at 20 minutes each, about 100 minutes ([Cloud Storage docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/request-rate)). Mitigations: shard keys with a random leading component, keep a stable prefix layout so the index range stays warm, write fewer and larger objects, or use a hierarchical-namespace bucket, which Google states has up to 8 times higher initial QPS ([Cloud Storage quotas, as of 2026-11](https://docs.cloud.google.com/storage/quotas)).
+5. On a Rapid zonal bucket, 20M QPS and up to 15 TB/s make both the 33 GB/s and the 32,768 objects trivial. The new constraints are the 1 TB default zonal-bucket quota, since keeping 3 checkpoints needs about 2.9 TB and a quota increase, and the zonal failure domain.
 6. Durability plan: write every checkpoint to Rapid for fast restart. Asynchronously copy every Nth checkpoint to a regional or multi-region bucket so that losing a zone costs at most N x 30 minutes of training, not the run.
-7. Cost formula: Rapid storage is billed per GB-hour by zone, so the monthly cost is about `retained_GB x 730 x zonal_hourly_rate`, plus operations, plus the durable-copy bucket. Take the current zonal rate from the pricing page. This chapter does not quote a Rapid rate because it could not be verified (see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_06_High_Throughput_Checkpointing_to_Object_Storage|High-Throughput Checkpointing to Object Storage]]).
+7. Cost formula: Rapid storage is billed per GB-hour by zone, so the monthly cost is about `retained_GB x 730 x zonal_hourly_rate`, plus operations, plus the durable-copy bucket. At the listed $0.000150685/GiB-hour for us-central1 zones ([Cloud Storage pricing, as of 2026-11](https://cloud.google.com/storage/pricing)), 3 checkpoints of 980 GB (about 2,738 GiB) cost about $300 per month before operations (see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_06_High_Throughput_Checkpointing_to_Object_Storage|High-Throughput Checkpointing to Object Storage]]).
 
 ### Teardown
 
@@ -614,7 +632,7 @@ Independent-failure models give durability numbers with a dozen nines.
 Power, rack switch and rolling-upgrade failures arrive in bursts, and they follow topology.
 Placement must constrain fragments per rack, per power domain and per upgrade domain at the same time.
 Upgrades are the most overlooked case: a fleet-wide kernel rollout that restarts one machine per rack at a time is a perfectly rack-correlated failure if it ignores stripe membership.
-Google has publicly reported a 2015 europe-west1-b incident in which repeated lightning strikes on the local power grid caused permanent loss of a very small fraction of Persistent Disk data (UNVERIFIED: exact figures and incident ID not re-checked this session).
+Google has publicly reported a 2015-08-13 europe-west1-b incident in which four successive lightning strikes on the local utility grid caused errors on about 5% of Standard Persistent Disks in the zone and permanent loss of less than 0.000001% of allocated Persistent Disk space ([Google Cloud incident report 15056](https://status.cloud.google.com/incident/compute/15056)).
 
 ### Small-file hot spots
 
@@ -650,13 +668,13 @@ Hedged fragment reads (asking for n+1 fragments and decoding from the first n) t
 
 ### Zonal storage blast radius
 
-A Rapid zonal bucket's SLA is 99.9% against a zone.
+A Rapid zonal bucket's SLA is 99.9% in a zone, with typical monthly availability above 99.95% ([Cloud Storage storage classes, as of 2026-11](https://docs.cloud.google.com/storage/docs/storage-classes)).
 Data in it lives in one zonal Colossus filesystem.
 Teams that move checkpoints or training shards to Rapid for the latency and drop the cross-zone copy have quietly downgraded their failure domain from region to zone.
 
 ### API-level ceilings that look like Colossus limits but are not
 
-The 1 write per second limit per object name, the 1 metadata update per second per object, and the 32-source compose fan-in are Cloud Storage API limits ([Cloud Storage quotas, as of 2026-10](https://docs.cloud.google.com/storage/quotas)).
+The 1 write per second limit per object name, the 1 metadata update per second per object, and the 32-source compose fan-in are Cloud Storage API limits ([Cloud Storage quotas, as of 2026-11](https://docs.cloud.google.com/storage/quotas)).
 Designs that use one object as a counter, lock or manifest hit them immediately.
 Use a database for coordination and object storage for bytes, which is the same split GFS made between master and chunkservers.
 
@@ -671,14 +689,15 @@ Isolate it in a separate service account from the producers.
 Rapid Bucket requires uniform bucket-level access, which removes per-object ACLs and makes IAM the only authorization path.
 That is simpler to audit and impossible to grant per object.
 Because Rapid streams authorize at stream creation, cap how long streams live in your client so that IAM revocations take effect within a bounded time.
-Verify against the current docs how in-flight handles respond to revocation, since Google does not specify this in the material reviewed (UNVERIFIED).
+Verify against the current docs how in-flight handles respond to revocation (UNVERIFIED: not stated in the Rapid Bucket docs or the 2025 Colossus posts).
 See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions|Cloud IAM: Roles, Policies, and Conditions]].
 
 ### Encryption hierarchy
 
 Cloud Storage encrypts data at rest with data encryption keys that are themselves wrapped by key encryption keys.
 CMEK replaces the top of that chain with a Cloud KMS key you control, so disabling the key makes the data unreadable.
-Check whether CMEK and the other bucket features you rely on are supported on Rapid zonal buckets before you migrate (UNVERIFIED: Rapid CMEK support not confirmed this session).
+The zonal bucket creation flow offers a Cloud KMS key as the default encryption key type ([Cloud Storage docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/rapid/create-zonal-buckets)), while customer-supplied keys (CSEK) are listed as incompatible with zonal buckets, along with HMAC keys, Object Versioning and soft delete ([Rapid Bucket docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/rapid/rapid-bucket)).
+Check that the other bucket features you rely on are supported before you migrate.
 See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 
 ### Network perimeter
@@ -814,7 +833,8 @@ The residual risks are a process pause on the primary between checking its lease
 Robust systems close the first by having replicas reject mutations tagged with an older epoch, which is the fencing-token pattern.
 The second is closed by giving secondaries the version too.
 The master itself is a single decision-maker made durable by log replication, so leases plus versions are sufficient there.
-In Colossus the curator issues leases, and the epoch-check discipline matters more because curators are many and sharded.
+In Colossus the curator constructs file handles, and any lease mechanics behind them are not described in the posts reviewed (UNVERIFIED: not in the 2021 and 2025 Colossus posts or the 2017 keynote), but the epoch-check discipline matters more because curators are many and sharded.
+Rapid Bucket shows the visible form: each new write stream transactionally locks out the prior one, and each append carries its offset ([Google Cloud blog, 2025-04](https://cloud.google.com/blog/products/storage-data-transfer/how-the-colossus-stateful-protocol-benefits-rapid-storage)).
 
 #### Follow-up Interviewer Question
 
@@ -834,7 +854,7 @@ It has years of operational tooling.
 Putting curators on top of it makes them nearly stateless, so they scale horizontally and can be restarted or replaced without recovery replay.
 Google reports this gave more than 100x metadata scale over the largest GFS clusters.
 Range partitioning on path keys also keeps directory listings local to a tablet, which a hash-sharded design would scatter.
-The new failure modes start with the circular dependency: Bigtable stores its data on Colossus, so the recursion has to end in progressively smaller instances, reportedly bottoming out in Chubby.
+The new failure modes start with the circular dependency: Bigtable stores its data on Colossus, so the recursion has to end in progressively smaller instances, bottoming out in Chubby according to the 2017 keynote.
 Cold start must go strictly bottom-up and has to be rehearsed.
 Hot directories become hot tablets, so a pathological workload such as millions of creates under one prefix concentrates load until the tablet splits.
 That is a metadata analog of Cloud Storage's ramp-up guidance.
@@ -858,9 +878,9 @@ A full checkpoint with Adam state is about 980 GB: 140 GB of bf16 weights plus 8
 Saving every 30 minutes with under 30 s of stall needs about 33 GB/s aggregate, which is only about 64 MB/s per host across 512 hosts.
 The real pressure is metadata.
 At 8 shards per rank, one checkpoint is about 32,768 objects under a new prefix.
-A standard bucket starts at about 1,000 writes per second per key range and should be ramped by doubling no faster than every 20 minutes.
+A standard bucket starts at about 1,000 writes per second, and a new key range should be ramped by doubling no faster than every 20 minutes.
 Cold, that is tens of seconds of creates, and reaching full rate takes over an hour.
-A Rapid zonal bucket in the accelerators' zone handles this with large margin: 15+ TB/s and about 20M QPS, sub-millisecond appends through stateful streams, and native PyTorch and JAX integrations.
+A Rapid zonal bucket in the accelerators' zone handles this with large margin: up to 15 TB/s and about 20M QPS, sub-millisecond appends through stateful streams, and PyTorch integration through GCSFS plus Cloud Storage FUSE mounts.
 I would write every checkpoint there, asynchronously, from host memory, so the training step only blocks on device-to-host copy.
 Durability is where the VP needs a direct answer.
 Rapid is zonal with a 99.9% SLA, so a zone loss loses recent checkpoints and stops the run anyway, because the accelerators are in the same zone.
@@ -890,7 +910,7 @@ Mix complementary workloads on the same spindles, so cold archival bytes fill ca
 Buy SSD as a predicted, time-bounded cache, not as a tier assigned by file type.
 Lower I/O per logical byte with larger reads and better encodings.
 Charge customers in a way that reflects I/O, not just bytes.
-Colossus's published approach is per-file placement policies, such as SSD for one hour, two hours, or not at all, chosen by simulating access traces.
+Colossus's published approach is placement policies such as SSD for one hour, two hours, or not at all, chosen per file category by online simulation of observed I/O patterns.
 The policy is an optimization problem: minimize total cost of SSD byte-hours plus HDD I/O, subject to latency SLOs per workload class.
 To know it works, I track SSD hit ratio weighted by bytes and by operations, HDD utilization percentiles per disk (not fleet averages, because stragglers set the tail), and SSD byte-hours per served I/O.
 I also track prediction regret: the HDD reads that a perfect-foresight policy would have served from SSD.

@@ -11,6 +11,30 @@ sources:
   - "https://github.com/facebookincubator/katran"
   - "https://github.com/github/glb-director"
   - "https://www.the-paper-trail.org/post/2020-06-23-maglev/"
+  - "https://www.usenix.org/system/files/conference/nsdi16/nsdi16-paper-eisenbud.pdf"
+  - "https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/load_balancing_policies/maglev/v3/maglev.proto"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/edit-target-group-attributes.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/target-group-register-targets.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-listeners.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-security-groups.html"
+  - "https://aws.amazon.com/elasticloadbalancing/pricing/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/11/network-load-balancer-weighted-target-groups/"
+  - "https://aws.amazon.com/blogs/compute/announcing-improved-vpc-networking-for-aws-lambda-functions/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://docs.aws.amazon.com/waf/latest/developerguide/ddos-overview.html"
+  - "https://docs.aws.amazon.com/waf/latest/developerguide/ddos-advanced-summary-protected-resources.html"
+  - "https://docs.cloud.google.com/load-balancing/docs/network/networklb-backend-service"
+  - "https://docs.cloud.google.com/load-balancing/docs/network/ext-netlb-traffic-distribution"
+  - "https://docs.cloud.google.com/load-balancing/docs/network/configure-weighted-netlb"
+  - "https://docs.cloud.google.com/load-balancing/docs/health-check-concepts"
+  - "https://docs.cloud.google.com/load-balancing/pricing"
+  - "https://docs.cloud.google.com/vpc/network-pricing"
+  - "https://docs.cloud.google.com/armor/docs/advanced-network-ddos"
+  - "https://status.cloud.google.com/incident/compute/16007"
+  - "https://blog.cloudflare.com/path-mtu-discovery-in-practice/"
+  - "https://conferences.sigcomm.org/sigcomm/2013/papers/sigcomm/p207.pdf"
 ---
 
 # Maglev: Fast and Reliable Network Load Balancer (2016 NSDI)
@@ -79,14 +103,14 @@ The forwarder holds VIP configuration as backend pools, and a pool can contain e
 Each forwarder health-checks its own backends, so health state is computed independently on every machine rather than agreed on through consensus.
 Configuration arrives from files or over RPC, and a push does not land on every machine at the same instant, so for a short window two Maglevs in one cluster can hold different backend sets.
 That window is the root of the subtle failure mode analyzed below.
-The paper describes clusters split into shards that serve disjoint VIP sets, which isolates tenants and caps per-machine table memory, though the evaluation assumes one shard per cluster (Maglev paper, NSDI 2016).
+The paper describes clusters split into shards that serve different VIP sets, which provides performance isolation and a place to test new features, though the paper assumes one shard per cluster (Maglev paper, NSDI 2016, Sec 2.2).
 The data plane never waits on the control plane: packets are forwarded with whatever table is currently installed, which is the static-stability pattern from [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
 
 ### The kernel-bypass forwarding pipeline
 
 The Linux network stack does per-packet work Maglev does not need: socket lookup, skb allocation, netfilter traversal, and context switches.
 Maglev skips all of it by running the forwarder in userspace against a NIC that DMAs straight into a packet pool shared with the process.
-The pipeline has three stages (Maglev paper, NSDI 2016, Sec 3.2):
+The pipeline has three stages (Maglev paper, NSDI 2016, Sec 3.1 and 3.2):
 - The steering module reads each received packet, computes its 5-tuple hash, and places a pointer to it on the receive ring of one packet thread.
 - Each packet thread is pinned to a dedicated core, matches the packet to a VIP and drops it if none matches, picks a backend, writes the GRE header in place, and places the pointer on its transmit ring.
 - The muxing module polls the transmit rings and hands the pointers back to the NIC for transmission.
@@ -94,14 +118,14 @@ The pipeline has three stages (Maglev paper, NSDI 2016, Sec 3.2):
 Packets are never copied.
 Only pointers move between rings, and the rings track which pool slots are received, processed, or free for reuse.
 Threads share no mutable state, so the hot path takes no locks.
-When a packet thread's receive ring is full, the steering module falls back to round-robin across other threads rather than dropping the packet (Maglev paper, NSDI 2016; UNVERIFIED in this review).
+When a packet thread's receive ring is full, the steering module falls back to round-robin across other threads rather than dropping the packet (Maglev paper, NSDI 2016, Sec 3.1).
 That fallback silently breaks thread affinity for the connection, which matters for connection tracking.
-Packets move through the pipeline in batches to amortize NIC doorbell and cache costs, and a timer flushes partial batches so latency stays bounded at low load (Maglev paper, NSDI 2016; exact timer value UNVERIFIED).
+Packets move through the pipeline in batches to reduce expensive boundary-crossing operations, and a 50 us periodic timer flushes partial batches, so an underloaded Maglev adds at most about 50 us per packet (Maglev paper, NSDI 2016, Sec 3.2).
 
 Here is the line-rate arithmetic that justifies all of this.
 A minimum Ethernet frame is 64 bytes plus 20 bytes of preamble and inter-frame gap, or 84 bytes, which is 672 bits.
 10 Gbps divided by 672 bits is 14.88 Mpps, so one machine has 67.2 ns per packet in total.
-Spread across 8 pinned threads, each thread has about 538 ns per packet, which covers a few cache misses and leaves no room for a syscall.
+Spread across 7 pinned packet threads, the most the paper's 8-core testbed ran because one core handles steering and muxing (Maglev paper, NSDI 2016, Sec 5.2.1), each thread has about 470 ns per packet, which covers a few cache misses and leaves no room for a syscall.
 At 100 Gbps the machine-wide budget falls to 6.72 ns per packet, which is why later systems moved more of this work into NIC offload, per-host software dataplanes, and switch ASICs.
 For background on the kernel-bypass family (DPDK, netmap, RDMA), see [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/03-Kernel-Bypass-and-Sub-Microsecond-IO|Kernel Bypass and Sub-Microsecond IO]].
 
@@ -131,10 +155,11 @@ Each backend has a unique name, hashed with two independent functions:
 Because M is prime, every skip in [1, M-1] is coprime to M, so each backend's sequence visits every slot exactly once.
 Population is a round-robin race.
 Each backend in turn claims the next slot in its permutation that is still empty, and the loop stops when all M slots are filled.
-Lookup is entry[hash(5-tuple) mod M]: one multiply-free index into a flat array, with no binary search and no pointer chasing.
-Average build cost is O(M log M), degrading toward O(M^2) as N approaches M, which is one more reason to keep M >> N (Maglev paper, NSDI 2016).
+Lookup is entry[hash(5-tuple) mod M]: one index into a flat array, with no binary search and no pointer chasing.
+Average build cost is O(M log M), and the O(M^2) worst case needs as many backends as table entries with all of them hashing to the same permutation, which is one more reason to keep M >> N (Maglev paper, NSDI 2016, Sec 3.4).
 Because backends take turns, each gets either floor(M/N) or ceil(M/N) slots, so balance is near-perfect by construction.
-Weights fit in naturally: a backend with weight w takes w turns per round, which is what Envoy does when it places each host "some number of times proportional to its weight" ([Envoy docs](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/load_balancers), as of 2026-10).
+Weights fit in naturally: a backend with weight w takes w turns per round, which is what Envoy does when it places each host "some number of times proportional to its weight" ([Envoy docs](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/load_balancers), as of 2026-11).
+The paper says only that weights alter the relative frequency of a backend's turns and does not describe its implementation (Maglev paper, NSDI 2016, Sec 3.4).
 
 ### The mechanism a getting-started guide omits: Maglev trades disruption for balance
 
@@ -156,10 +181,11 @@ The simulator in the Worked Example measures the cost of that trade:
 | 655373 | 1000 | 0.43% | 0.10% | 0.33% |
 
 Two non-obvious facts follow.
-First, collateral damage does not shrink as N grows at fixed M: at M/N = 65, collateral is 5.6x the ideal movement, so large backend pools on small tables churn more than you would expect.
+First, collateral damage does not shrink in step with the ideal as N grows at fixed M: at M/N = 65, collateral is 5.6x the ideal movement, so large backend pools on small tables churn more than you would expect.
 Second, collateral damage is exactly the population of connections that break when connection tracking misses.
 A flow on a surviving backend never needed to move, and it breaks only because the table moved it.
-The ratio M/N is therefore a reliability parameter as well as a memory parameter, and the paper's 655373 table exists for large pools.
+The ratio M/N is therefore a reliability parameter as well as a memory parameter.
+The paper recommends M > 100 x N, evaluates 655373 only as a larger comparison size, and uses 65537 as its default, because concurrent backend failures are rare, connection tracking is the primary protection, and table generation time grows from 1.8 ms to 22.9 ms at the larger size (Maglev paper, NSDI 2016, Sec 3.4 and 5.3).
 
 ### Fragments and the second hop
 
@@ -167,15 +193,15 @@ Only the first IP fragment carries the L4 header, so a 5-tuple hash cannot place
 Maglev hashes fragments on the 3-tuple of source, destination, and protocol instead.
 That alone is not enough, because the router's ECMP may send different fragments of one datagram to different Maglevs.
 Each Maglev therefore holds a special backend pool containing every Maglev in the cluster, and on receiving a fragment it uses the 3-tuple hash to pick one designated Maglev and forwards the fragment there over GRE.
-The GRE recursion control field limits redirection to one extra hop, so fragments cannot loop between Maglevs (Maglev paper, NSDI 2016; field-level detail UNVERIFIED in this review).
-The designated Maglev reassembles enough state to forward all fragments to the same backend.
+The GRE recursion control field limits redirection to one extra hop, so fragments cannot loop between Maglevs (Maglev paper, NSDI 2016, Sec 4.3).
+The designated Maglev does not reassemble the datagram: a fixed-size fragment table records the forwarding decision for each first fragment and caches non-first fragments until the first one arrives or the entry expires, so all fragments reach the same backend (Maglev paper, NSDI 2016, Sec 4.3).
 
 ### Failure domains
 
 | Failure domain | Blast radius | Recovery mechanism |
 |---|---|---|
 | One packet thread stalls | Its receive ring fills | Steering falls back to other threads, and consistent hashing preserves the mapping |
-| One Maglev machine dies | 1/N of flows move via ECMP | Router removes the next hop when BGP or BFD times out, and consistent hashing keeps backends stable |
+| One Maglev machine dies | At least 1/N of flows move via ECMP, and standard ECMP can shuffle traffic on a large scale (Maglev paper, NSDI 2016, Sec 3.3) | Router removes the next hop when BGP or BFD times out, and consistent hashing keeps backends stable |
 | One backend dies | Its flows reset | Each Maglev's health checker removes it independently, and the table rebuilds locally |
 | Config push skew | Collateral slots on moved flows | Converges when the push completes |
 | Controller announcement bug | Every VIP the controller announces | Only a human or a canary can stop it, since it is a control-plane global action |
@@ -183,11 +209,11 @@ The designated Maglev reassembles enough state to forward all fragments to the s
 
 ### Lineage and descendants
 
-Microsoft's Ananta (SIGCOMM 2013) also splits a software mux from host agents, but it NATs on the host and returns traffic through the host agent rather than using pure DSR.
+Microsoft's Ananta (SIGCOMM 2013) also splits a software mux from host agents, and the host agent does the NAT, reversing it for return traffic that then goes straight to the router, which is also DSR because it bypasses the mux ([Ananta paper](https://conferences.sigcomm.org/sigcomm/2013/papers/sigcomm/p207.pdf)).
 Duet (SIGCOMM 2014) and SilkRoad (SIGCOMM 2017) move the VIP table and connection state into switch ASICs to reach terabit rates per device.
 Beamer (NSDI 2018) removes connection state from the mux entirely by daisy-chaining packets to the previous backend.
 Facebook's [Katran](https://github.com/facebookincubator/katran) runs a Maglev-style hash inside XDP/eBPF, and GitHub's [GLB Director](https://github.com/github/glb-director) uses rendezvous hashing with a "second chance" backend to avoid connection state.
-Envoy ships a Maglev balancer with a 65537-entry default table ([Envoy docs](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/load_balancers), as of 2026-10).
+Envoy ships a Maglev balancer with a 65537-entry default table ([Envoy docs](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/load_balancing_policies/maglev/v3/maglev.proto), as of 2026-11).
 Inside Google, Maglev provides network load balancing for Google Cloud Platform (Maglev paper, NSDI 2016), and the per-host software dataplane is covered in the next chapter, [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_12_Andromeda_Network_Virtualization|Andromeda]].
 For background on ring hashing, see [[08-Distinguished-Engineering/02-Distributed-Systems-Internals/Consistent-Hash-Ring|Consistent Hash Ring]].
 
@@ -199,36 +225,36 @@ For background on ring hashing, see [[08-Distinguished-Engineering/02-Distribute
 | Per-machine throughput | Saturates a 10 Gbps link with small packets | (Maglev paper, NSDI 2016) |
 | 10GbE line rate at 64-byte frames | 14.88 Mpps, 67.2 ns per packet machine-wide | Derived: 10e9 / (84 B x 8) |
 | 100GbE line rate at 64-byte frames | 148.8 Mpps, 6.72 ns per packet | Derived |
-| Average forwarder processing time per packet | About 350 ns | (Maglev paper, NSDI 2016) UNVERIFIED |
+| Average forwarder processing time per packet | About 350 ns | (Maglev paper, NSDI 2016, Sec 3.2) |
 | Lookup table sizes evaluated | 65537 (small), 655373 (large) | (Maglev paper, NSDI 2016, Sec 5.3) |
 | Overprovisioning for Karger / rendezvous, N=1000, M=65537 | 29.7% / 49.5% | (Maglev paper, NSDI 2016, Sec 5.3) |
 | Same at M=655373 | 10.3% / 12.3% | (Maglev paper, NSDI 2016, Sec 5.3) |
 | Table build complexity | O(M log M) average, O(M^2) worst case | (Maglev paper, NSDI 2016, Sec 3.4) |
 | Table memory per VIP at M=65537, 4-byte entries | 256 KiB | Derived |
 | Collateral remap, N=1000, M=65537 | 0.57% of slots (5.6x the ideal) | This chapter's simulator |
-| Envoy Maglev default table size | 65537 | ([Envoy docs](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/load_balancers), as of 2026-10) |
-| AWS NLB TCP idle timeout | 350 s default, configurable | (AWS docs, as of 2026-10) UNVERIFIED |
-| AWS NLB UDP idle timeout | 120 s | (AWS docs, as of 2026-10) UNVERIFIED |
-| ELBv2 target group deregistration delay default | 300 s | (AWS docs, as of 2026-10) UNVERIFIED |
-| AWS NLB list price, us-east-1 | 0.0225 USD per LB-hour + 0.006 USD per NLCU-hour | (AWS pricing, as of 2026-10) UNVERIFIED |
-| AWS NLCU dimensions (TCP) | 800 new flows/s, 100,000 active flows, 1 GB/h processed | (AWS pricing, as of 2026-10) UNVERIFIED |
-| GCP forwarding rule list price | 0.025 USD/h for the first 5 rules per project per region | (Google Cloud pricing, as of 2026-10) UNVERIFIED |
-| GCP health check source ranges for passthrough NLB | 35.191.0.0/16, 209.85.152.0/22, 209.85.204.0/22 | (Google Cloud docs, as of 2026-10) UNVERIFIED |
+| Envoy Maglev default table size | 65537 | ([Envoy docs](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/load_balancing_policies/maglev/v3/maglev.proto), as of 2026-11) |
+| AWS NLB TCP idle timeout | 350 s default, configurable from 60 to 6000 s, fixed at 350 s on TLS listeners | ([AWS docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html), as of 2026-11) |
+| AWS NLB UDP idle timeout | 120 s, not configurable | ([AWS docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html), as of 2026-11) |
+| ELBv2 target group deregistration delay default | 300 s | ([AWS docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/edit-target-group-attributes.html), as of 2026-11) |
+| AWS NLB list price, us-east-1 | 0.0225 USD per LB-hour + 0.006 USD per NLCU-hour | ([AWS pricing](https://aws.amazon.com/elasticloadbalancing/pricing/), as of 2026-11) |
+| AWS NLCU dimensions (TCP) | 800 new flows/s, 100,000 active flows, 1 GB/h processed | ([AWS pricing](https://aws.amazon.com/elasticloadbalancing/pricing/), as of 2026-11) |
+| GCP forwarding rule list price | 0.025 USD/h flat for up to 5 rules, then 0.01 USD/h per additional rule, charged per project with global and regional rules counted separately | ([Google Cloud pricing](https://docs.cloud.google.com/load-balancing/pricing), as of 2026-11) |
+| GCP health check source ranges for regional external passthrough NLB | 35.191.0.0/16 and 209.85.204.0/22 for backend services, plus 209.85.152.0/22 for target pools | ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/health-check-concepts), as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | Google Cloud (Maglev lineage) | AWS (NLB on Hyperplane) |
 |---|---|---|
-| Product | External passthrough Network Load Balancer, documented as Maglev-based (Google Cloud docs, as of 2026-10; UNVERIFIED); see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_05_Cloud_Load_Balancing_GFEs_and_Maglev\|GFEs and Maglev]] | Network Load Balancer, built on the Hyperplane distributed flow-tracking service (AWS re:Invent talks; UNVERIFIED) |
-| Flow placement | Consistent hash on a 5-, 3-, or 2-tuple depending on session affinity, plus local connection tracking | Flow hash on protocol, source and destination IP and port, plus TCP sequence number for TCP (AWS docs, as of 2026-10; UNVERIFIED) |
+| Product | External passthrough Network Load Balancer, documented as built on Maglev and Andromeda ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/network/networklb-backend-service), as of 2026-11); see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_05_Cloud_Load_Balancing_GFEs_and_Maglev\|GFEs and Maglev]] | Network Load Balancer, built on Hyperplane, the AWS network function virtualization platform ([AWS blog, 2019-09](https://aws.amazon.com/blogs/compute/announcing-improved-vpc-networking-for-aws-lambda-functions/)) |
+| Flow placement | Consistent hash on a 5-, 3-, or 2-tuple depending on session affinity, plus local connection tracking ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/network/ext-netlb-traffic-distribution), as of 2026-11) | Flow hash on protocol, source and destination IP and port, plus TCP sequence number for TCP ([AWS docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html), as of 2026-11) |
 | State model | State is a local cache and the hash is the source of truth, so any LB node can forward any packet when configs agree | Flow state is the source of truth, held by a stateful flow-tracking layer (internals not public) |
-| Return path | DSR: the backend replies directly with the VIP as source | Return traffic is handled by the NLB data plane, which lets it do NAT for IP targets (UNVERIFIED) |
-| Client IP | Always preserved, because packets are not NATed | Preserved for instance targets and configurable for IP targets (AWS docs; UNVERIFIED) |
+| Return path | DSR: the backend replies directly with the VIP as source | Responses return through the NLB nodes, since AWS lists load balancer subnet rules for responses from targets and to clients ([AWS docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/target-group-register-targets.html), as of 2026-11), and targets see the NLB private IP as source when client IP preservation is off |
+| Client IP | Always preserved, because packets are not NATed | Default on for instance targets and for IP targets on UDP, TCP_UDP, QUIC, and TCP_QUIC, default off for IP targets on TCP and TLS, and switchable on TCP and TLS target groups through `preserve_client_ip.enabled` ([AWS docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/edit-target-group-attributes.html), as of 2026-11) |
 | Backend view of the packet | Destination is the forwarding-rule IP, and the guest environment installs a local route so the kernel accepts it | Destination is the target's own IP |
-| Health checking | Health checked from Google ranges, with per-backend-service policy on whether existing connections persist on unhealthy backends (UNVERIFIED) | Per-target-group health checks, and failing AZ nodes are pulled from DNS |
-| Weighted balancing | WEIGHTED_MAGLEV locality policy, with weights reported per endpoint in an HTTP health-check response header (Google Cloud docs; UNVERIFIED) | No per-target weights on an NLB target group (UNVERIFIED) |
+| Health checking | Health checked from Google ranges, with per-backend-service policy on whether existing connections persist on unhealthy backends ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/network/ext-netlb-traffic-distribution), as of 2026-11) | Per-target-group health checks, and failing AZ nodes are pulled from DNS |
+| Weighted balancing | WEIGHTED_MAGLEV locality policy, with weights reported per endpoint in the `X-Load-Balancing-Endpoint-Weight` HTTP health-check response header ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/network/configure-weighted-netlb), as of 2026-11) | No per-target weight in the target group attribute or target registration docs, but listeners split traffic across weighted target groups, weights 0 to 999, since 2025-11 ([AWS docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-listeners.html), as of 2026-11) |
 | Draining | Connection draining timeout on the backend service | Deregistration delay on the target group |
-| Zonal failure domain | Regional backend service, and the VIP is not bound to a zone | One NLB node and IP per enabled AZ, with cross-zone balancing off by default (UNVERIFIED) |
+| Zonal failure domain | Regional backend service, and the VIP is not bound to a zone | One NLB node and IP per enabled AZ, with cross-zone balancing off by default ([AWS docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html), as of 2026-11) |
 | TLS | None: TLS terminates on the backend | Optional TLS listener terminating on the NLB with ACM certificates |
 | Private equivalent | Internal passthrough NLB, realized in the Andromeda host dataplane (see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_12_Andromeda_Network_Virtualization\|Andromeda]]) | Internal NLB; PrivateLink endpoint services sit behind an NLB or GWLB |
 | Encapsulation | GRE in the paper; the production overlay is not publicly specified | VPC overlay; GENEVE on UDP 6081 for GWLB appliances |
@@ -378,7 +404,7 @@ How to read the output:
 
 ### Part 2 - Observe Maglev behavior on a Google Cloud external passthrough NLB
 
-Estimated cost: two e2-micro VMs plus one forwarding rule for one hour comes to roughly 0.05 USD at list price (Google Cloud pricing, as of 2026-10; UNVERIFIED), plus negligible egress.
+Estimated cost for one hour is roughly 0.05 USD at list price: one forwarding rule at 0.025 USD/h and two ephemeral external IPs at 0.005 USD/h each ([Google Cloud pricing](https://docs.cloud.google.com/vpc/network-pricing), as of 2026-11), plus two e2-micro VMs at about 0.008 USD/h each (UNVERIFIED: the VM price table is not readable from the static pricing page), plus negligible egress and data processing.
 Set a budget alarm before you create anything.
 
 ```bash
@@ -428,7 +454,7 @@ gcloud compute instance-groups managed create maglev-lab-mig \
 
 gcloud compute firewall-rules create maglev-lab-allow --network=default \
   --direction=INGRESS --action=ALLOW --rules=tcp:80 --target-tags=maglev-lab \
-  --source-ranges="$MYIP,35.191.0.0/16,209.85.152.0/22,209.85.204.0/22"
+  --source-ranges="$MYIP,35.191.0.0/16,209.85.204.0/22"
 
 gcloud compute health-checks create http maglev-lab-hc \
   --region="$REGION" --port=80 --request-path=/healthz
@@ -465,7 +491,7 @@ gcloud compute ssh "$VM" --zone="$ZONE" --command "ip route show table local | g
 gcloud compute backend-services update maglev-lab-bs --region="$REGION" --session-affinity=CLIENT_IP
 for i in $(seq 1 20); do curl -s "http://$VIP/"; done | awk '{print $1}' | sort | uniq -c
 
-# 5. Optional (flag and behavior UNVERIFIED): weighted Maglev driven by the health-check header.
+# 5. Optional: weighted Maglev driven by the health-check header (Google Cloud docs show this flag on backend-services create).
 gcloud compute backend-services update maglev-lab-bs --region="$REGION" \
   --session-affinity=NONE --locality-lb-policy=WEIGHTED_MAGLEV
 ```
@@ -502,10 +528,10 @@ Step 4, headroom: add one node to absorb a failure and one to cover a drain duri
 Step 5, connection tracking: steady state is 2 M / 8 = 250 k flows per node, or 333 k with two nodes out, which at 64 bytes per entry is about 21 MB.
 Step 6, SYN-flood exposure: 5 Mpps of spoofed SYNs is 625 k entries/s per node, so a 4 M-entry table fills in 6.4 s, after which new connections depend only on hash consistency.
 Step 7, table memory: 5000 VIPs x 65537 entries x 4 bytes = 1.3 GB per node, or 13 GB at M=655373, which is why large-M tables are reserved for VIPs with large pools and why VIPs are sharded.
-Step 8, the reliability check: with 200 backends per VIP at M=65537, collateral sits around 0.5% of slots, so roughly 0.5% of the flows ECMP moves during a config-skew window will reset; if that window is 10 s and drains happen hourly, the reset budget is acceptable for HTTP but not for multi-hour training-control or gRPC streams.
+Step 8, the reliability check: with 200 backends per VIP at M=65537, the simulator puts collateral at about 0.7% of slots, so roughly 0.8% of the flows ECMP moves during a config-skew window will reset; if that window is 10 s and drains happen hourly, the reset budget is acceptable for HTTP but not for multi-hour training-control or gRPC streams.
 
-On a managed service you pay the provider for steps 2 to 7 instead: NLB charges NLCU-hours on new flows, active flows, and bytes (UNVERIFIED), while the GCP passthrough NLB charges per forwarding rule plus data processing (UNVERIFIED).
-Cost per million tokens for the LB tier is usually below 1% of accelerator cost; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics|GPU and TPU Unit Economics]].
+On a managed service you pay the provider for steps 2 to 7 instead: NLB charges NLCU-hours on new flows, active flows, and bytes ([AWS pricing](https://aws.amazon.com/elasticloadbalancing/pricing/), as of 2026-11), while the GCP passthrough NLB charges per forwarding rule plus 0.008 USD/GiB of data processing ([Google Cloud pricing](https://docs.cloud.google.com/load-balancing/pricing), as of 2026-11).
+The LB tier is a small share of accelerator cost on these assumptions: 800 Gbps through an NLB is 360,000 GB/h or about 2160 USD/h in NLCUs, while 1e9 tokens/s (assuming 100 wire bytes per token) at an assumed 1000 tokens/s per GPU and 2 USD per GPU-hour is about 2 M USD/h, so about 0.1%; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics|GPU and TPU Unit Economics]].
 
 ## Failure Modes and Pitfalls
 
@@ -523,19 +549,19 @@ Mitigations:
 
 A SYN flood or a sudden flow storm fills the fixed-size tables, so new legitimate flows go untracked.
 This is invisible until a backend health flap remaps slots, and at that point every untracked flow on a remapped slot resets.
-Alert on table occupancy and use SYN cookies or upstream scrubbing; on AWS that means Shield, and on GCP it means Cloud Armor network-edge protections (product scope UNVERIFIED).
+Alert on table occupancy and use SYN cookies or upstream scrubbing; on AWS that means Shield, whose Advanced tier covers an NLB through its Elastic IPs ([AWS docs](https://docs.aws.amazon.com/waf/latest/developerguide/ddos-advanced-summary-protected-resources.html), as of 2026-11), and on GCP it means Cloud Armor network DDoS protection and network edge security policies ([Google Cloud docs](https://docs.cloud.google.com/armor/docs/advanced-network-ddos), as of 2026-11).
 
 ### 3. Health-check flapping turns into table churn
 
 Each Maglev health-checks independently, so a backend that is marginal will flap differently on different Maglevs, which is permanent config skew with real collateral damage.
 Fix it with hysteresis (N consecutive failures before removal) and with a floor on the fraction of capacity that health checks may remove automatically.
-The AWS us-east-1 event of October 2025 showed this class at scale: per AWS's post-event summary, the NLB health-check subsystem marked healthy capacity unhealthy while EC2 network state was delayed, and automated failover removed capacity (AWS PES, 2025-10; UNVERIFIED in this review).
+The AWS us-east-1 event of 2025-10-20 showed this class at scale: per AWS's post-event summary, the NLB health-check subsystem marked healthy capacity unhealthy while EC2 network state was delayed, and automated AZ DNS failover removed capacity until engineers disabled it ([AWS PES](https://aws.amazon.com/message/101925/), 2025-10).
 The generalizable lesson matches [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Static Stability]]: when health signals are correlated with a control-plane impairment, fail static rather than draining.
 
 ### 4. VIP announcement is a global control-plane hazard
 
 The controller's BGP announce or withdraw decision has the largest blast radius in the system.
-In the Google Compute Engine incident of April 2016, a network-configuration change withdrew GCE IP blocks from BGP announcement across regions, and the canary signal that should have stopped the rollout did not (Google Cloud incident report 16007, 2016-04; UNVERIFIED in this review).
+In the Google Compute Engine incident of 2016-04-11, a configuration bug removed all GCE IP blocks from a pushed network configuration, sites stopped announcing them over BGP across all regions, and a second bug failed to pass the canary step's correct "unsafe" verdict back to the push process ([Google Cloud incident report 16007](https://status.cloud.google.com/incident/compute/16007), 2016-04).
 Fixes:
 - Rate-limit withdrawals.
 - Make canary failure block the rollout.
@@ -547,7 +573,7 @@ For more on this pattern, see [[17-Cloud-AI-Engineering/Volume_07_Reliability_an
 
 GRE adds header bytes, so a full-size client packet can exceed the fabric MTU after encapsulation unless the fabric runs jumbo frames or MSS is clamped.
 ICMP "fragmentation needed" messages are sent to the VIP by an intermediate router, so their 5-tuple does not match the flow, and a naive L4 balancer delivers them to the wrong backend, which black-holes Path MTU discovery.
-Production L4 balancers must parse the inner header quoted in the ICMP payload, or broadcast PTB messages to all backends, which is the approach Cloudflare has described (UNVERIFIED).
+Production L4 balancers must parse the inner header quoted in the ICMP payload, or broadcast PTB messages to all backends, which is the approach Cloudflare has described ([Cloudflare blog](https://blog.cloudflare.com/path-mtu-discovery-in-practice/), 2015-02).
 
 ### 6. Connection balance is not load balance
 
@@ -557,7 +583,7 @@ For LLM serving, put an L7 router behind the L4 tier that is aware of KV-cache l
 
 ### 7. Affinity collapse behind NAT
 
-CLIENT_IP affinity hashes only the source address, so a carrier-grade NAT or corporate egress that puts thousands of users behind one IP lands them all on one backend.
+CLIENT_IP affinity is a 2-tuple hash of source and destination address ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/network/ext-netlb-traffic-distribution), as of 2026-11), and the destination is fixed for one VIP, so a carrier-grade NAT or corporate egress that puts thousands of users behind one IP lands them all on one backend.
 Use 5-tuple hashing unless the protocol needs affinity, and push application-level affinity into L7 cookies.
 
 ### 8. DSR breaks stateful middleboxes and custom images
@@ -569,7 +595,7 @@ Test backend images against the VIP itself, not just the health-check path.
 
 IAM scoping:
 - On GCP, grant `roles/compute.loadBalancerAdmin` for LB resources and keep firewall changes under `roles/compute.securityAdmin`, because an L4 passthrough LB's exposure is defined by VPC firewall rules, not by the LB.
-- On AWS, scope `elasticloadbalancing:*` with resource ARNs and tag conditions, and guard `ec2:AuthorizeSecurityGroupIngress` separately, since NLB security groups are now the primary ingress control (UNVERIFIED for feature scope).
+- On AWS, scope `elasticloadbalancing:*` with resource ARNs and tag conditions, and guard `ec2:AuthorizeSecurityGroupIngress` separately, since NLB security groups control ingress and egress when attached, and an NLB created without one cannot gain one later, in which case all client traffic can reach its listeners ([AWS docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-security-groups.html), as of 2026-11).
 - The VIP announcement path is the highest-privilege action in a self-run Maglev, so treat BGP config pushes as change-managed releases with two-person review.
 
 Encryption:
@@ -586,9 +612,10 @@ DDoS:
 - Scrub upstream and alert on connection-table occupancy.
 
 Unit-economics levers:
-- DSR means LB cost scales with request bytes, not response bytes, which makes L4 passthrough the cheapest tier for egress-heavy inference streaming.
-- On AWS, enabling NLB cross-zone balancing adds inter-AZ data charges, so leave it off when per-AZ capacity is balanced (UNVERIFIED for current billing treatment).
-- Collapse VIPs: each GCP forwarding rule is billed hourly (UNVERIFIED), and one forwarding rule can carry a port range.
+- In a self-run tier, DSR means forwarding cost scales with request bytes, not response bytes, which makes L4 passthrough the cheapest tier for egress-heavy inference streaming.
+- Managed pricing does not automatically inherit that benefit: AWS bills NLB processed bytes, and Google lists both inbound and outbound processed data at 0.008 USD/GiB in the table that covers passthrough NLBs ([Google Cloud pricing](https://docs.cloud.google.com/load-balancing/pricing), as of 2026-11), so check your bill before assuming response bytes are free.
+- On AWS, enabling NLB cross-zone balancing adds EC2 data transfer charges ([AWS docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/edit-target-group-attributes.html), as of 2026-11), so leave it off when per-AZ capacity is balanced.
+- Collapse VIPs: GCP forwarding rules cost 0.025 USD/h for up to 5 and 0.01 USD/h for each additional rule ([Google Cloud pricing](https://docs.cloud.google.com/load-balancing/pricing), as of 2026-11), and one forwarding rule can carry a port range.
 - Keep connections long-lived but bounded to amortize AWS per-new-flow NLCU charges without creating connection-imbalance hot spots.
 
 ## Interview Questions and Model Answers
@@ -678,7 +705,7 @@ Design weighted load balancing for a heterogeneous inference fleet (H100 and old
 
 Maglev hashing supports weights by giving a backend w turns per population round, so its table share is proportional to w.
 Static weights from relative throughput are the first step, for example a weight of 3 for a node with 3x tokens per second, which the simulator shows yields exactly a 75% share at 3:1.
-Dynamic weights are better for inference, because effective capacity depends on batch occupancy and KV-cache pressure, and GCP exposes this pattern as WEIGHTED_MAGLEV, with weights reported in a health-check response header (UNVERIFIED).
+Dynamic weights are better for inference, because effective capacity depends on batch occupancy and KV-cache pressure, and GCP exposes this pattern as WEIGHTED_MAGLEV, with weights reported in the `X-Load-Balancing-Endpoint-Weight` health-check response header ([Google Cloud docs](https://docs.cloud.google.com/load-balancing/docs/network/configure-weighted-netlb), as of 2026-11).
 The risks are control-loop risks:
 - Every weight change rebuilds the table and remaps collateral slots, so weights must be quantized and rate-limited.
 - Weights computed from instantaneous load oscillate, because the newest weight sends new connections to the idle node, which then reports itself busy.
@@ -700,7 +727,7 @@ Compare Maglev's deterministic-hash design with AWS Hyperplane's replicated flow
 Maglev treats the hash as truth and state as a cache, so any node can forward any packet when configs agree, scaling is linear, and losing a node costs nothing but a cache.
 That works for a public VIP balancer because the backend can reply directly to the client, and the LB never needs to rewrite the return path.
 A NAT gateway breaks that assumption: translation creates a mapping, the source port allocation, that the return packet must find, and the return packet arrives from the internet on whatever node the routing chooses.
-That mapping is state that cannot be recomputed from the header, so a NAT needs replicated or deterministically partitioned flow state, which is what Hyperplane-style designs provide, using shuffle sharding to bound blast radius per customer (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Shuffle Sharding]]).
+That mapping is state that cannot be recomputed from the header, so a NAT needs replicated or deterministically partitioned flow state, which is what Hyperplane-style designs provide, using shuffle sharding to bound blast radius per customer (shuffle-sharding detail UNVERIFIED: not found in the AWS sources reviewed; see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Shuffle Sharding]]).
 The costs of state are correctness under partitions, state capacity as a hard limit (flow counts become billing dimensions), and failover that needs a replica rather than a hash.
 I would build the Maglev design for public VIPs, PrivateLink-free internal VIPs, and anything with DSR-capable backends, and the replicated-state design for NAT, firewalls, PrivateLink, and anything that rewrites addresses in both directions.
 The principal-level framing is to put state only where the protocol forces it, and to make the stateless tier the default so the stateful tier stays small, cellular, and separately scaled.
