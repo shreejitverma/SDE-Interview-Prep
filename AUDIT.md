@@ -30,7 +30,7 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Folder | Files | Notes | Code | Papers | Other | MB | Last touched |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-10-27 |
+| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-11-01 |
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-10-25 |
 | `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-21 |
 | `00-Start-Here` | 6 | 5 | 0 | 0 | 1 | 0.0 | 2026-10-25 |
