@@ -14,7 +14,7 @@ Python is not a purely functional language, but it provides powerful tools for f
 
 ### 34.1 `itertools`: Infinite and Combinatoric Iterators
 
-The `itertools` module provides functions that create iterators for efficient looping. They are "lazy"they produce values only when requested, consuming minimal memory.
+The `itertools` module provides functions that create iterators for efficient looping. They are "lazy" - they produce values only when requested, consuming minimal memory.
 
 #### 1. Infinite Iterators
 *   `count(start, step)`: An infinite sequence of numbers.

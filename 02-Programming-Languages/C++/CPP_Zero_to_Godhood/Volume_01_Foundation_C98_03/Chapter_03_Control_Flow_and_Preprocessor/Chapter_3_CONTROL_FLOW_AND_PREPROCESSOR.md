@@ -301,7 +301,7 @@ int main(){
 }
 Section 3.2: Unary Operators
 Unary operators act on the object upon which they are called and have high precedence. (See Remarks)
-When used postx, the action occurs only after the entire operation is evaluated, leading to some interesting
+When used postfix, the action occurs only after the entire operation is evaluated, leading to some interesting
 arithmetics:
 int a = 1;
 ++a;            // result: 2
@@ -370,7 +370,7 @@ int a = 0 1 0 1
 int b = 1 1 0 0 |
         ---------
 int c = 1 1 0 1
-The bit wise OR does not change the value of the original values unless specically assigned to using the bit wise
+The bit wise OR does not change the value of the original values unless specifically assigned to using the bit wise
 assignment compound operator |=:
 int a = 5;  // 0101b  (0x05)
 a |= 12;    // a = 0101b | 1101b
@@ -394,7 +394,7 @@ int a = 0 1 0 1
 int b = 1 0 0 1 ^
         ---------
 int c = 1 1 0 0
-The bit wise XOR does not change the value of the original values unless specically assigned to using the bit wise
+The bit wise XOR does not change the value of the original values unless specifically assigned to using the bit wise
 assignment compound operator ^=:
 int a = 5;  // 0101b  (0x05)
 a ^= 9;    // a = 0101b ^ 1001b
@@ -445,7 +445,7 @@ int a = 0 1 1 0
 int b = 1 0 1 0 &
         ---------
 int c = 0 0 1 0
-The bit wise AND does not change the value of the original values unless specically assigned to using the bit wise
+The bit wise AND does not change the value of the original values unless specifically assigned to using the bit wise
 assignment compound operator &=:
 int a = 5;  // 0101b  (0x05)
 a &= 10;    // a = 0101b & 1010b
@@ -456,8 +456,8 @@ std::cout << "a = " << a << ", b = " << b << std::endl;
 Output
 a = 1, b = 2
 Why
-The left bit wise shift will shift the bits of the left hand value (a) the number specied on the right (1), essentially
-padding the least signicant bits with 0's, so shifting the value of 5 (binary 0000 0101) to the left 4 times (e.g. 5 <<
+The left bit wise shift will shift the bits of the left hand value (a) the number specified on the right (1), essentially
+padding the least significant bits with 0's, so shifting the value of 5 (binary 0000 0101) to the left 4 times (e.g. 5 <<
 4) will yield the value of 80 (binary 0101 0000). You might note that shifting a value to the left 1 time is also the same
 as multiplying the value by 2, example:
 int a = 7;
@@ -476,12 +476,12 @@ int b = a << 1;     // 1111 1111 1111 1111 1111 1111 1111 1110
 std::cout << "a = " << a << ", b = " << b << std::endl;
 Possible output: a = 2147483647, b = -2
 While some compilers will yield results that seem expected, it should be noted that if you left shift a signed number
-so that the sign bit is aected, the result is undened. It is also undened if the number of bits you wish to shift by
+so that the sign bit is affected, the result is undefined. It is also undefined if the number of bits you wish to shift by
 is a negative number or is larger than the number of bits the type on the left can hold, example:
 int a = 1;
 int b = a << -1;  // undefined behavior
 char c = a << 20; // undefined behavior
-The bit wise left shift does not change the value of the original values unless specically assigned to using the bit
+The bit wise left shift does not change the value of the original values unless specifically assigned to using the bit
 wise assignment compound operator <<=:
 int a = 5;  // 0101b
 a <<= 1;    // a = a << 1;
@@ -492,15 +492,15 @@ std::cout << "a = " << a << ", b = " << b << std::endl;
 Output
 a = 2, b = 1
 Why
-The right bit wise shift will shift the bits of the left hand value (a) the number specied on the right (1); it should be
+The right bit wise shift will shift the bits of the left hand value (a) the number specified on the right (1); it should be
 noted that while the operation of a right shift is standard, what happens to the bits of a right shift on a signed
-negative number is implementation dened and thus cannot be guaranteed to be portable, example:
+negative number is implementation defined and thus cannot be guaranteed to be portable, example:
 int a = -2;    
 int b = a >> 1; // the value of b will be depend on the compiler
-It is also undened if the number of bits you wish to shift by is a negative number, example:
+It is also undefined if the number of bits you wish to shift by is a negative number, example:
 int a = 1;
 int b = a >> -1;  // undefined behavior
-The bit wise right shift does not change the value of the original values unless specically assigned to using the bit
+The bit wise right shift does not change the value of the original values unless specifically assigned to using the bit
 wise assignment compound operator >>=:
 int a = 2;  // 0010b
 a >>= 1;    // a = a >> 1;
@@ -554,7 +554,7 @@ Note that auto val declares a value type, which will be a copy of a value stored
 it from the iterator as we go). If the values stored in the range are expensive to copy, you may want to use const
 auto &val. You are also not required to use auto; you can use an appropriate typename, so long as it is implicitly
 convertible from the range's value type.
-If you need access to the iterator, range-based for cannot help you (not without some eort, at least).
+If you need access to the iterator, range-based for cannot help you (not without some effort, at least).
 If you wish to reference it, you may do so:
 vector<float> v = {0.4f, 12.5f, 16.234f};
 for(float &val: v)
@@ -588,7 +588,7 @@ for(auto val: arr) //Compile error.
     std::cout << val << " ";
 }
 Any type which has member functions begin() and end(), which return iterators to the elements of the type.
-The standard library containers qualify, but user-dened types can be used as well:
+The standard library containers qualify, but user-defined types can be used as well:
 struct Rng
 {
     float arr[3];
@@ -629,7 +629,7 @@ int main()
 Section 11.2: For loop
 A for loop executes statements in the loop body, while the loop condition is true. Before the loop initialization
 statement is executed exactly once. After each cycle, the iteration execution part is executed.
-A for loop is dened as follows:
+A for loop is defined as follows:
 for (/*initialization statement*/; /*condition*/; /*iteration execution*/)
 {
     // body of the loop
@@ -637,7 +637,7 @@ for (/*initialization statement*/; /*condition*/; /*iteration execution*/)
 Explanation of the placeholder statements:
 initialization statement: This statement gets executed only once, at the beginning of the for loop. You
 can enter a declaration of multiple variables of one type, such as int i = 0, a = 2, b = 3. These variables
-are only valid in the scope of the loop. Variables dened before the loop with the same name are hidden
+are only valid in the scope of the loop. Variables defined before the loop with the same name are hidden
 during execution of the loop.
 condition: This statement gets evaluated ahead of each loop body execution, and aborts the loop if it
 evaluates to false.
@@ -651,7 +651,7 @@ while (/*condition*/)
     // body of the loop; using 'continue' will skip to increment part below
     /*iteration execution*/
 }
-The most common case for using a for loop is to execute statements a specic number of times. For example,
+The most common case for using a for loop is to execute statements a specific number of times. For example,
 consider the following:
 for(int i = 0; i < 10; i++) {
     std::cout << i << std::endl;
@@ -678,7 +678,7 @@ nothing at all - if you wish to do so. But for readability reasons, it is best p
 directly relevant to the loop.
 A variable declared in the initialization statement is visible only inside the scope of the for loop and is
 released upon termination of the loop.
-Don't forget that the variable which was declared in the initialization statement can be modied during
+Don't forget that the variable which was declared in the initialization statement can be modified during
 the loop, as well as the variable checked in the condition.
 Example of a loop which counts from 0 to 10:
 for (int counter = 0; counter <= 10; ++counter)
@@ -692,7 +692,7 @@ counter <= 10 is a Boolean condition that checks whether counter is less than or
 the loop executes. If it is false, the loop ends.
 ++counter is an increment operation that increments the value of counter by 1 ahead of the next condition
 check.
-By leaving all statements empty, you can create an innite loop:
+By leaving all statements empty, you can create an infinite loop:
 // infinite loop
 for (;;)
     std::cout << "Never ending!\n";
@@ -700,7 +700,7 @@ The while loop equivalent of the above is:
 // infinite loop
 while (true)
     std::cout << "Never ending!\n";
-However, an innite loop can still be left by using the statements break, goto, or return or by throwing an
+However, an infinite loop can still be left by using the statements break, goto, or return or by throwing an
 exception.
 The next common example of iterating over all elements from an STL collection (e.g., a vector) without using the
 <algorithm> header is:
@@ -720,10 +720,10 @@ int i = 0;
 }
 std::cout << std::endl; // End of line; "0 1 2 3 4 5 6 7 8 9" is printed to the console
 Version  C++17
-Note that since C++17, the rst 2 statements can be combined
+Note that since C++17, the first 2 statements can be combined
 while (int i = 0; i < 10)
 //... The rest is the same
-To create an innite loop, the following construct can be used:
+To create an infinite loop, the following construct can be used:
 while (true)
 {
     // Do something forever (however, you can exit the loop by calling 'break'
@@ -733,7 +733,7 @@ information.
 Section 11.4: Do-while loop
 A do-while loop is very similar to a while loop, except that the condition is checked at the end of each cycle, not at
 the start. The loop is therefore guaranteed to execute at least once.
-The following code will print 0, as the condition will evaluate to false at the end of the rst iteration:
+The following code will print 0, as the condition will evaluate to false at the end of the first iteration:
 int i =0;
 do
 {
@@ -744,7 +744,7 @@ while (i < 0);
 std::cout << std::endl; // End of line; 0 is printed to the console
 Note: Do not forget the semicolon at the end of while(condition);, which is needed in the do-while construct.
 In contrast to the do-while loop, the following will not print anything, because the condition evaluates to false at
-the beginning of the rst iteration:
+the beginning of the first iteration:
 int i =0;
 while (i < 0)
 {
@@ -766,7 +766,7 @@ do
 while (true);
 std::cout << std::endl; // End of line; 0 1 2 3 4 5 is printed to the console
 A trivial do-while loop is also occasionally used to write macros that require their own scope (in which case the
-trailing semicolon is omitted from the macro denition and required to be provided by the user):
+trailing semicolon is omitted from the macro definition and required to be provided by the user):
 #define BAD_MACRO(x) f1(x); f2(x); f3(x);
 // Only the call to f1 is protected by the condition here
 if (cond) BAD_MACRO(var);
@@ -774,7 +774,7 @@ if (cond) BAD_MACRO(var);
 // All calls are protected here
 if (cond) GOOD_MACRO(var);
 Section 11.5: Loop Control statements : Break and Continue
-Loop control statements are used to change the ow of execution from its normal sequence. When execution
+Loop control statements are used to change the flow of execution from its normal sequence. When execution
 leaves a scope, all automatic objects that were created in that scope are destroyed. The break and continue are
 loop control statements.
 The break statement terminates a loop without any further consideration.
@@ -799,9 +799,9 @@ The above code will print out:
 1 is an odd number
 3 is an odd number
 5 is an odd number
-Because such control ow changes are sometimes dicult for humans to easily understand, break and continue
+Because such control flow changes are sometimes difficult for humans to easily understand, break and continue
 are used sparingly. More straightforward implementation are usually easier to read and understand. For example,
-the rst for loop with the break above might be rewritten as:
+the first for loop with the break above might be rewritten as:
 for (int i = 0; i < 4; i++)
 {
     std::cout << i << '\n';
@@ -841,11 +841,11 @@ do {
     s = do_something();
 } while (s > 0);
 This is because the statement portion of a do...while loop (the loop's body) is evaluated before the expression
-portion (the while) is reached, and thus, any declaration in the expression will not be visible during the rst iteration
+portion (the while) is reached, and thus, any declaration in the expression will not be visible during the first iteration
 of the loop.
 Section 11.7: Range-for over a sub-range
 Using range-base loops, you can loop over a sub-part of a given container or other range by generating a proxy
-object that qualies for range-based for loops.
+object that qualifies for range-based for loops.
 template<class Iterator, class Sentinel=Iterator>
 struct range_t {
   Iterator b;
@@ -951,7 +951,7 @@ try {
 }
 Section 15.4: throw
 1.
-When throw occurs in an expression with an operand, its eect is to throw an exception, which is a copy of
+When throw occurs in an expression with an operand, its effect is to throw an exception, which is a copy of
 the operand.
 void print_asterisks(int count) {
     if (count < 0) {
@@ -960,7 +960,7 @@ void print_asterisks(int count) {
     while (count--) { putchar('*'); }
 }
 2.
-When throw occurs in an expression without an operand, its eect is to rethrow the current exception. If
+When throw occurs in an expression without an operand, its effect is to rethrow the current exception. If
 there is no current exception, std::terminate is called.
 try {
     // something risky
@@ -972,15 +972,15 @@ try {
     throw;
 }
 3.
-When throw occurs in a function declarator, it introduces a dynamic exception specication, which lists the
+When throw occurs in a function declarator, it introduces a dynamic exception specification, which lists the
 types of exceptions that the function is allowed to propagate.
 // this function might propagate a std::runtime_error,
 // but not, say, a std::logic_error
 void risky() throw(std::runtime_error);
 // this function can't propagate any exceptions
 void safe() throw();
-Dynamic exception specications are deprecated as of C++11.
-Note that the rst two uses of throw listed above constitute expressions rather than statements. (The type of a
+Dynamic exception specifications are deprecated as of C++11.
+Note that the first two uses of throw listed above constitute expressions rather than statements. (The type of a
 throw expression is void.) This makes it possible to nest them within expressions, like so:
 unsigned int predecessor(unsigned int x) {
     return (x > 0) ? (x - 1) : (throw std::invalid_argument("0 has no predecessor"));
@@ -1002,7 +1002,7 @@ switch (c) {
     abort();
 }
 Version  C++11
-Denes a default constructor, copy constructor, move constructor, destructor, copy assignment operator, or move
+Defines a default constructor, copy constructor, move constructor, destructor, copy assignment operator, or move
 assignment operator to have its default behaviour.
 class Base {
     // ...
@@ -1034,8 +1034,8 @@ if (x <= 0) {
     abort();
 }
 Section 15.8: else
-The rst substatement of an if statement may be followed by the keyword else. The substatement after the else
-keyword will be executed when the condition is falsey (that is, when the rst substatement is not executed).
+The first substatement of an if statement may be followed by the keyword else. The substatement after the else
+keyword will be executed when the condition is falsey (that is, when the first substatement is not executed).
 int x;
 std::cin >> x;
 if (x%2 == 0) {
@@ -1054,7 +1054,7 @@ if (false) { /* code here */ } // always skip the code since false is always fal
 the condition can be anything, a function, a variable, or a comparison for example
 if(istrue()) { } // evaluate the function, if it returns true, the if will execute the code
 if(isTrue(var)) { } //evaluate the return of the function after passing the argument var
-if(a == b) { } // this will evaluate the return of the experssion (a==b) which will be true if
+if(a == b) { } // this will evaluate the return of the expression (a==b) which will be true if
 equal and false if unequal
 if(a) { } //if a is a boolean type, it will evaluate for its value, if it's an integer, any non
 zero value will be true,
@@ -1098,11 +1098,11 @@ bool f(int arg) {
 }
 Section 15.11: Jump statements : break, continue, goto, exit
 The break instruction:
-Using break we can leave a loop even if the condition for its end is not fullled. It can be used to end an innite
+Using break we can leave a loop even if the condition for its end is not fulfilled. It can be used to end an infinite
 loop, or to force it to end before its natural end
 The syntax is
 break;
-Example: we often use break in switch cases,ie once a case i switch is satised then the code block of that
+Example: we often use break in switch cases,ie once a case i switch is satisfied then the code block of that
 condition is executed .
 switch(conditon){
 case 1: block1;
@@ -1110,9 +1110,9 @@ case 2: block2;
 case 3: block3;
 default: blockdefault;
 }
-in this case if case 1 is satised then block 1 is executed , what we really want is only the block1 to be processed but
+in this case if case 1 is satisfied then block 1 is executed , what we really want is only the block1 to be processed but
 instead once the block1 is processed remaining blocks,block2,block3 and blockdefault are also processed even
-though only case 1 was satied.To avoid this we use break at the end of each block like :
+though only case 1 was satisfied.To avoid this we use break at the end of each block like :
 switch(condition){
 case 1: block1;
         break;
@@ -1148,7 +1148,7 @@ which produces the output:
  @5
  @7
  @9
-i this code whenever the condition i%2==0 is satised continue is processed,this causes the compiler to skip all the
+i this code whenever the condition i%2==0 is satisfied continue is processed,this causes the compiler to skip all the
 remaining code( printing @ and i) and increment/decrement statement of the loop gets executed.
 
 ---
