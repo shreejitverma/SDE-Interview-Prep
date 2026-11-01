@@ -1,6 +1,6 @@
 # Vault Audit
 
-Generated 2026-10-26 by `python3 tools/audit_vault.py` over git-tracked files.
+Generated 2026-11-01 by `python3 tools/audit_vault.py` over git-tracked files.
 Re-run the script after every structural change; this file is its output and should not be hand-edited.
 0 files in private locations (`tools/private_paths.py`) are excluded; `tools/audit_pii.py` inventories them into a private path.
 
@@ -30,7 +30,7 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Folder | Files | Notes | Code | Papers | Other | MB | Last touched |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-10-26 |
+| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-10-27 |
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-10-25 |
 | `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-21 |
 | `00-Start-Here` | 6 | 5 | 0 | 0 | 1 | 0.0 | 2026-10-25 |
@@ -50,9 +50,9 @@ Re-run the script after every structural change; this file is its output and sho
 | `14-Low-Latency-Systems` | 262 | 262 | 0 | 0 | 0 | 1.7 | 2026-10-25 |
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-10-25 |
 | `16-Interview-Command-Center` | 51 | 51 | 0 | 0 | 0 | 0.1 | 2026-10-25 |
-| `17-Cloud-AI-Engineering` | 162 | 162 | 0 | 0 | 0 | 8.9 | 2026-10-25 |
+| `17-Cloud-AI-Engineering` | 162 | 162 | 0 | 0 | 0 | 9.8 | 2026-11-01 |
 | `18-Developer-Toolchain` | 365 | 343 | 12 | 0 | 10 | 0.8 | 2026-10-26 |
-| `19-Shell-and-Unix-Engineering` | 500 | 406 | 55 | 0 | 39 | 2.3 | 2026-10-26 |
+| `19-Shell-and-Unix-Engineering` | 500 | 406 | 55 | 0 | 39 | 2.3 | 2026-10-27 |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
 | `tools` | 26 | 1 | 23 | 0 | 2 | 0.2 | 2026-10-26 |
 
