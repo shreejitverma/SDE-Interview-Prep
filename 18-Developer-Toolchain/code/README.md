@@ -75,6 +75,7 @@ When a lab requires `linux`, the host is not Linux, and `docker info` succeeds, 
   Verified on OrbStack (as of 2026-11, kernel 7.2): this is enough for a kernel core and for GDB to run and dump its own child.
   A lab that needs a capability fails visibly until the harness grants it on purpose.
 - **Expected file:** `expected/linux-<arch>.txt`, using the arch `uname -m` reports inside the container, not the host's.
+  A daemon on another arch reports `MISS` until that file is recorded; `core_dump_triage` has only `linux-aarch64.txt`, so an amd64 daemon misses until `linux-amd64.txt` exists.
 - **Limit:** `core_pattern` belongs to the VM's kernel, and a container cannot change it, so a Docker VM whose pattern pipes to a handler sends `core_dump_triage` down its GDB fallback and the `Core source:` line fails the diff.
   That failure is correct: the run did not exercise what the recording did.
   OrbStack's pattern is `core`.
