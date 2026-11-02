@@ -382,7 +382,7 @@ exec env -i PATH="/usr/bin:/bin" HOME="$HOME" USER="$USER" /usr/bin/service
 ### Identity and argument injection
 
 The `-a name` flag supported in `bash`, `zsh`, `ksh93`, `mksh`, `yash`, and `busybox ash` allows setting `argv[0]` independently of the binary pathname.
-While useful for login shell emulation (`exec -l` or `exec -a -bash /bin/bash`) and mult-call binary routing (e.g. BusyBox applets), setting misleading names obscures process monitoring tools (`ps`, `top`).
+While useful for login shell emulation (`exec -l` or `exec -a -bash /bin/bash`) and multi-call binary routing (e.g. BusyBox applets), setting misleading names obscures process monitoring tools (`ps`, `top`).
 Furthermore, if a script dynamically constructs `exec $cmd "$@"` with `$cmd` unquoted, an empty `$cmd` causes `exec` to interpret subsequent positional arguments as command options (`bash` then accepted `-c` from them), and a quoted `"$cmd"` that begins with `-` is parsed as an option too; a quoted empty `"$cmd"` simply fails with status 127, as measured in the shell matrix (as of 2026-11).
 Always validate variables before execution, and ensure arguments cannot be misinterpreted as flags.
 

@@ -241,13 +241,7 @@ shell_lists_option() {
           [ "$output" = "pipefail: unsupported" ]
           if shell_lists_option pipefail; then false; fi
           ;;
-        *)
-          if shell_lists_option pipefail; then
-            [ "$output" = "pipefail: 42" ]
-          else
-            [ "$output" = "pipefail: unsupported" ]
-          fi
-          ;;
+        *) false ;;
       esac
       ;;
     bash | zsh | zsh-sh | ksh93 | mksh | busybox | yash)
@@ -485,16 +479,22 @@ shell_lists_option() {
       [ "$output" = "sigpipe: 141" ]
       ;;
     yash)
-      # yash reports 256 + the signal number
+      # yash reports 384 + the signal number
       [ "$output" = "sigpipe: 397" ]
       ;;
     ksh93)
-      # ksh93u+m gives the writer a connection-reset error (exit 1); macOS ksh93u+ 2012 reports 13
+      # ksh93u+m socket pipelines race between ECONNRESET in the writer (exit 1) and SIGPIPE
+      # (256 + 13); macOS ksh93u+ 2012 reports 13
       lab_shell_words
       # shellcheck disable=SC2016 # KSH_VERSION belongs to the shell under test
       v=$("${LAB_SHELL_WORDS[@]}" -c 'printf "%s" "$KSH_VERSION"')
       case $v in
-        *93u+m*) [ "$output" = "sigpipe: 1" ] ;;
+        *93u+m*)
+          case $output in
+            "sigpipe: 1" | "sigpipe: 269") true ;;
+            *) false ;;
+          esac
+          ;;
         *) [ "$output" = "sigpipe: 13" ] ;;
       esac
       ;;

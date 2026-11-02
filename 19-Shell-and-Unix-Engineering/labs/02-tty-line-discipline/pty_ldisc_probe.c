@@ -286,7 +286,7 @@ int main(int argc, char **argv) {
       return 4;
     }
     memset(buf, 0, sizeof(buf));
-    int n_out = poll_read(m, buf, sizeof(buf) - 1, 2000);
+    int n_out = poll_read_all(m, buf, 5, 2000);
     printf("onlcr_len=%d ends_crnl=%d\n", n_out, (n_out >= 2 && buf[n_out - 2] == '\r' && buf[n_out - 1] == '\n') ? 1 : 0);
     close(s);
     close(m);
@@ -305,7 +305,7 @@ int main(int argc, char **argv) {
     }
     char buf[64];
     memset(buf, 0, sizeof(buf));
-    int echo_len = poll_read(m, buf, sizeof(buf) - 1, 1000);
+    int echo_len = poll_read_all(m, buf, 6, 1000);
 
     char scratch[64];
     int d1 = poll_read(s, scratch, sizeof(scratch), 1000);

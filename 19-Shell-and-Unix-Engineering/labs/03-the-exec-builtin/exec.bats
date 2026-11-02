@@ -401,7 +401,7 @@ assert_survives() {
           [ "$status" -eq 126 ]
           ;;
         *)
-          # Bash 4.0+ conforms to POSIX and exits with 127 (EX_NOTFOUND).
+          # Bash 4.2+ conforms to POSIX and exits with 127 (EX_NOTFOUND).
           [ "$status" -eq 127 ]
           ;;
       esac

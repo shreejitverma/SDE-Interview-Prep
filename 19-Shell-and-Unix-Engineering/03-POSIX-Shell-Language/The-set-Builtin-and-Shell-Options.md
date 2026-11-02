@@ -142,8 +142,10 @@ Under `pipefail`, the pipeline exit status becomes the exit code of the last (ri
 | `set -f` option meaning | `noglob` | `noglob` | `noglob` | `norcs` | `noglob` | `noglob` | `noglob` | `noglob` | `noglob` | `noglob` | `noglob` |
 | `set +o` reinput format | Executable `set` | Multi-line `set +/-o` | Multi-line `set +/-o` | Multi-line `set +/-o` | Multi-line `set +/-o` | Multi-line `set +/-o` | Single-line `set --...` | Single-line `set -o .reset -o ...` | Multi-line `set +/-o` | Single-line `set [-o name...]` | Multi-line `set +/-o` |
 
-The lab asserts these rows with an exact value per shell rather than either outcome.
-The test `set -o pipefail propagates upstream pipeline failure` pins dash by package (Debian 0.5.12-12 supports `pipefail`; Alpine 0.5.12 and macOS `/bin/dash` do not) and cross-checks the result against what `set -o` lists.
+The lab asserts an exact value per shell, rather than either outcome, for the rows on `set -o pipefail`, prefix assignment, invalid `-o` options, `set --`, the `set +o` round-trip, `set -u` with empty `"$@"`, and `$10`.
+Three rows are asserted only in part: bare `set` for `name=value` versus name only, not the functions Bash appends; obsolescent `set -` for whether `-x` and `-v` stay on, not the value of `$1` in Yash; and `set -f` for whether pathname expansion stops, not the `norcs` meaning in native Zsh.
+The `set +o` reinput format row has no lab assertion.
+The test `set -o pipefail propagates upstream pipeline failure` pins dash by package (Debian 0.5.12-12 supports `pipefail`; Alpine 0.5.12 and macOS `/bin/dash` do not), cross-checks the result against what `set -o` lists, and fails on a dash build outside that table.
 The test `probe.sh assignment: preceding variable assignment persists on special built-in in POSIX mode` splits bash by POSIX mode, and the test `set -u fails on unset variable but permits empty positional parameters in conforming shells` pins the Posh abort.
 
 ## Worked example
@@ -283,8 +285,8 @@ The output above is `/bin/sh` on a conforming shell: native Zsh prints `glob_off
 > [!warning] Broken Pipelines from `SIGPIPE` under `pipefail` (Exit 141)
 > Trigger: Enabling `set -o pipefail` in pipelines where an upstream generator writes to a fast-exiting downstream filter (for example, `yes | head -n 1`).
 > Symptom: When `head` reads its first line and exits, the pipe's read end closes, causing `yes` to receive `SIGPIPE` (signal 13) on its subsequent write and exit with status 141 (`128 + 13`); `pipefail` bubbles this 141 exit code to the caller, causing the entire pipeline to fail.
-> The value is shell-dependent: 141 in Bash, Dash (builds with `pipefail`), mksh, BusyBox ash, and Zsh, 397 in Yash, and 1 in ksh93u+m, whose socket pipelines give the writer a connection-reset error instead, while macOS ksh93u+ 2012 reports 13.
-> The lab test `pipefail status when an upstream writer dies of SIGPIPE (yes | head -n 1)` asserts each value.
+> The value is shell-dependent: 141 in Bash, Dash (builds with `pipefail`), mksh, BusyBox ash, and Zsh, 397 in Yash, and 1 or 269 in ksh93u+m, whose socket pipelines race between a connection-reset error in the writer (1) and `SIGPIPE` (`256 + 13`), while macOS ksh93u+ 2012 reports 13.
+> The lab test `pipefail status when an upstream writer dies of SIGPIPE (yes | head -n 1)` asserts each value and accepts either ksh93u+m outcome.
 > Fix: Avoid `pipefail` for pipelines with early-terminating consumers, or absorb the expected status in the upstream stage with an explicit filter such as `{ yes || [ "$?" -eq 141 ]; } | head -n 1`, adjusting the value for Yash and ksh93.
 
 > [!warning] Privilege Escalation via Inherited `SHELLOPTS` and `PS4` (CVE-2016-7543)
