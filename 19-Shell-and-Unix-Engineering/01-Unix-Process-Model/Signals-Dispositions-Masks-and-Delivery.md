@@ -256,7 +256,7 @@ Only `bash`, `ksh93`, and `mksh` permit `set -m` without a controlling terminal,
 Subshell Trap Resets:
 When entering a subshell `( ... )`, POSIX dictates that "traps that are not being ignored shall be set to the default actions" (`(POSIX.1-2024 XCU 2.15 trap)`).
 Signals that were set to `SIG_IGN` remain ignored, except in native `zsh`, whose subshells reset an ignored `SIGUSR2` to `SIG_DFL` (lab `signal-probe.sh` step 4; `SigIgn` in `/proc/self/status` drops the bit in a native `zsh` subshell but keeps it under `zsh --emulate sh`).
-If a command substitution consists solely of a single `trap` command, such as `$(trap)`, POSIX permits the subshell to retain the parent trap strings to allow inspection.
+If a command substitution consists solely of a single `trap` command, such as `$(trap)`, POSIX permits the subshell to keep the traps but requires the listing to report the parent's commands either way; [Traps and EXIT](../03-POSIX-Shell-Language/Traps-and-EXIT.md) gives the per-shell results.
 In Korn shell implementations (`ksh93`), subshells are optimized as virtual in-process execution environments that avoid calling `fork(2)` unless an operation strictly forces a fork.
 In `ksh93u+m 1.0.10`, spawning a background task inside a subshell (`( : & wait "$!" )`) does not force the subshell to fork, whereas in macOS `ksh93u+ 2012-08-01` it does (lab `signal-probe.sh` step 3).
 Because the virtual subshell shares the OS process of the parent script, an external utility invoked inside it has the main shell as its parent, so the utility's own `$PPID` (`getppid(2)`) is the main shell's PID.

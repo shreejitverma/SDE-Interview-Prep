@@ -407,7 +407,7 @@ Review checklist: every `eval` has a quoted-by-function argument; every `$var` t
 > > `xargs` runs its own quote removal on its input: single quotes, double quotes and backslash, with rules that are not the shell's `(POSIX.1-2024 XCU xargs)`.
 > > POSIX only describes the well-formed quoted forms; an unmatched quote made GNU, macOS and BusyBox `xargs` all exit 1 (lab).
 > > The text format cannot represent every file name safely.
-> > Use `-print0` with `xargs -0`, or `find -exec cmd {} +`, or a `while IFS= read -r -d '' f` loop over `find -print0` where `read` has the `-d` option `(POSIX.1-2024 XCU read)`; without `-d` the loop sees no line at all, and dash 0.5.12 rejects `-d` (hand run in the Debian image).
+> > Use `-print0` with `xargs -0`, or `find -exec cmd {} +`, or a `while IFS= read -r -d '' f` loop over `find -print0` where `read` treats `-d ''` as a NUL delimiter `(POSIX.1-2024 XCU read)`; without `-d` the loop sees no line at all, dash 0.5.12 rejects `-d` (hand run in the Debian image), and yash 2.59 and later accept it but treat the empty string as no delimiter ([The read Builtin](The-read-Builtin.md)).
 > >
 > > Follow-up: GNU, macOS and BusyBox `xargs` disagree about one input; which one, and does it matter for safety?
 
