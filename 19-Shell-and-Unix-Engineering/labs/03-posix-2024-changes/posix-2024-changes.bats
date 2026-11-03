@@ -7,12 +7,15 @@
 # dash_pipefail: print "supported" or "unsupported" for the dash under test, from an oracle that
 # does not ask dash itself. Upstream dash 0.5.12 rejects `set -o pipefail` (Alpine 3.22 0.5.12-r3,
 # macOS /bin/dash); the Debian package carries a patch that adds it, measured on 0.5.12-12.
-# A Debian dash older than the measured one fails the test instead of guessing.
+# Debian added the patch in 0.5.12-7 (its changelog), so Ubuntu 24.04 0.5.12-6ubuntu5 lacks it.
+# Any other older dpkg-packaged dash fails the test instead of guessing.
 dash_pipefail() {
   local version
   if version=$(dpkg-query -W -f='${Version}' dash 2>/dev/null) && [ -n "$version" ]; then
     if dpkg --compare-versions "$version" ge 0.5.12-12; then
       echo supported
+    elif [ "$version" = 0.5.12-6ubuntu5 ]; then
+      echo unsupported
     else
       echo "unmeasured Debian dash $version" >&2
       echo unmeasured

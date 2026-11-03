@@ -36,7 +36,7 @@ Part of [The POSIX Shell Language](README.md) in [Shell and Unix Engineering](..
 - Mechanism: `set` directly mutates internal shell bitmask flags and the positional parameter array without creating a subshell or invoking `execve(2)`.
 - Rule: Always terminate option parsing with `--` when assigning positional parameters (write `set -- "$@"` or `set -- "$var"`, never bare `set "$var"`).
 - Trap: Unquoted empty expansions in `set $var` execute bare `set`, dumping every shell variable to standard output (plus every function definition in native Bash).
-- Portability fact: `set -o pipefail` is standardized in POSIX.1-2024 Issue 8, supported in modern Bash, Zsh, ksh93, mksh, BusyBox ash, Yash, and Dash 0.5.13+ (Debian backports it into its 0.5.12-12 package), but absent in upstream Dash 0.5.12 and earlier (measured on Alpine dash 0.5.12 and macOS `/bin/dash`) and in Posh; special built-in error fatal exits, bare `set` dumps, and `set +o` restoration diverge across BusyBox ash, native Yash, and Posh (as of 2026-11).
+- Portability fact: `set -o pipefail` is standardized in POSIX.1-2024 Issue 8, supported in modern Bash, Zsh, ksh93, mksh, BusyBox ash, Yash, and Dash 0.5.13+ (Debian backports it into its 0.5.12-12 package), but absent in upstream Dash 0.5.12 and earlier (measured on Alpine dash 0.5.12, macOS `/bin/dash`, and Ubuntu 24.04 0.5.12-6ubuntu5) and in Posh; special built-in error fatal exits, bare `set` dumps, and `set +o` restoration diverge across BusyBox ash, native Yash, and Posh (as of 2026-11).
 - When not to use it: Do not rely on `set -e` as a substitute for structured error handling in complex control-flow scripts or functions invoked within conditional contexts.
 
 ## Mental model
@@ -145,7 +145,7 @@ Under `pipefail`, the pipeline exit status becomes the exit code of the last (ri
 The lab asserts an exact value per shell, rather than either outcome, for the rows on `set -o pipefail`, prefix assignment, invalid `-o` options, `set --`, the `set +o` round-trip, `set -u` with empty `"$@"`, and `$10`.
 Three rows are asserted only in part: bare `set` for `name=value` versus name only, not the functions Bash appends; obsolescent `set -` for whether `-x` and `-v` stay on, not the value of `$1` in Yash; and `set -f` for whether pathname expansion stops, not the `norcs` meaning in native Zsh.
 The `set +o` reinput format row has no lab assertion.
-The test `set -o pipefail propagates upstream pipeline failure` pins dash by package (Debian 0.5.12-12 supports `pipefail`; Alpine 0.5.12 and macOS `/bin/dash` do not), cross-checks the result against what `set -o` lists, and fails on a dash build outside that table.
+The test `set -o pipefail propagates upstream pipeline failure` pins dash by package (Debian 0.5.12-12 supports `pipefail`; Alpine 0.5.12, macOS `/bin/dash`, and Ubuntu 24.04 0.5.12-6ubuntu5 do not), cross-checks the result against what `set -o` lists, and fails on a dash build outside that table.
 The test `probe.sh assignment: preceding variable assignment persists on special built-in in POSIX mode` splits bash by POSIX mode, and the test `set -u fails on unset variable but permits empty positional parameters in conforming shells` pins the Posh abort.
 
 ## Worked example

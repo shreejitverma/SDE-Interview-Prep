@@ -125,6 +125,7 @@ if (jobs[job]->flags & J_PIPEFAIL)
 ```
 In the Debian Almquist Shell (`dash`), support was integrated in upstream commit `6347b9fc52d7` (committed 2024-04-05, first released in 0.5.13) inside `getstatus()` in `src/jobs.c`, which scans the job's process statuses from the last stage backward until it finds a non-zero one.
 Debian 13 backports it into its 0.5.12-12 package as `0021-jobs-Implement-pipefail-option.patch`, while Alpine 3.22 `dash` 0.5.12-r3 and the macOS `/bin/dash` reject the option with exit status `2` (measured in the shell matrix, as of 2026-11).
+Ubuntu 24.04 `dash` 0.5.12-6ubuntu5 also rejects it, because Debian added the patch in 0.5.12-7, after the 0.5.12-6 that package is based on.
 `POSIX.1-2024 XCU 2.8.2` requires only that a command terminated by a signal gets a status greater than 128 that identifies the signal, in an implementation-defined manner.
 Most shells use the `128 + N` convention (such as `141` for `SIGPIPE`, which is signal 13).
 In `ksh93`, signal status base is `256` (`256 + N`), while in `yash` it is `384` (`384 + N`).

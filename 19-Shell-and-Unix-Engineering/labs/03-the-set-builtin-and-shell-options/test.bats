@@ -16,13 +16,20 @@ bash_mode() {
 
 # dash_pipefail_expected: print yes, no, or unknown for the dash under test.
 # Upstream dash gained pipefail in 0.5.13; Debian 0.5.12-12 backports it by patch (measured).
-# Alpine dash 0.5.12 and macOS /bin/dash have no pipefail.
+# Alpine dash 0.5.12, macOS /bin/dash, and Ubuntu 24.04 0.5.12-6ubuntu5 have no pipefail: Debian
+# added the patch in 0.5.12-7 (its changelog), after the 0.5.12-6 that Ubuntu 24.04 is based on.
 dash_pipefail_expected() {
   local v os dash_path
   os=$(uname -s) || os=unknown
   dash_path=$(command -v dash) || dash_path=""
   if command -v dpkg-query >/dev/null 2>&1 && v=$(dpkg-query -W -f '${Version}' dash 2>/dev/null) && [ -n "$v" ]; then
-    if dpkg --compare-versions "$v" ge 0.5.12-12; then echo yes; else echo unknown; fi
+    if dpkg --compare-versions "$v" ge 0.5.12-12; then
+      echo yes
+    elif [ "$v" = 0.5.12-6ubuntu5 ]; then
+      echo no
+    else
+      echo unknown
+    fi
   elif command -v apk >/dev/null 2>&1 && v=$(apk list -I dash 2>/dev/null) && [ -n "$v" ]; then
     case $v in
       dash-0.5.12-*) echo no ;;
