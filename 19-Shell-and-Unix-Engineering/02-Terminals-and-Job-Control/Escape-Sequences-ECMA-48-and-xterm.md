@@ -132,7 +132,7 @@ yash goes the other way: its `printf` handles only `\\`, `\a`, `\b`, `\f`, `\n`,
 ## Portability
 
 Cells marked "lab" were produced by running this note's lab with that shell on macOS (aarch64) on 2026-11-02 and 2026-11-03; cells marked "matrix" come from running the same lab under the vault's shell matrix (Alpine 3.22 and Debian 13, as of 2026-11), where all 20 tests pass in every installed shell; cells marked "spec" are what the cited text requires.
-The lab asserts one exact result per cell, including the dash cells: the three dash lineages (upstream up to 0.5.12 and Apple's dash, Debian's 0.5.12-12, upstream 0.5.13 and later) are told apart by the installed package version, or by `LAB_DASH_VERSION` for a hand-built dash, and a dash of unknown version fails the test instead of passing with either outcome.
+The lab asserts one exact result per cell, including the dash cells: the three dash lineages (upstream up to 0.5.12 and Apple's dash, Debian's 0.5.12-12 and Ubuntu's 0.5.12-6ubuntu5, upstream 0.5.13 and later) are told apart by the installed package version, or by `LAB_DASH_VERSION` for a hand-built dash, and a dash of unknown version fails the test instead of passing with either outcome.
 
 | Shell | `printf '\033Z'` | `printf '\e'` | `printf '\x1b'` | `$'\033'` | `echo -e '\033Z'` |
 | --- | --- | --- | --- | --- | --- |
@@ -140,7 +140,7 @@ The lab asserts one exact result per cell, including the dash cells: the three d
 | bash 3.2 to 5.3 (macOS 3.2.57, Alpine 3.2, 4.4, 5.1, 5.2, 5.3) | ESC (lab, matrix) | ESC (lab, matrix) | ESC (lab, matrix) | ESC (lab, matrix) | ESC (lab, matrix); macOS 3.2.57 as `/bin/sh` in POSIX mode behaves like XSI `echo`, so it prints `-e ` first (measured by hand, asserted by the lab through a behavior probe) |
 | zsh 5.9, native and `--emulate sh` | ESC (lab, matrix) | ESC (lab, matrix) | ESC (lab, matrix) | ESC (lab, matrix) | ESC (lab, matrix) |
 | dash 0.5.12 upstream (Alpine 0.5.12-r3) and Apple's dash-16 (macOS `/bin/dash`) | ESC (lab, matrix) | literal `\e` (lab, matrix) | literal `\x1b` (lab, matrix) | literal `$\033Z` (lab, matrix) | prints `-e ` then ESC (lab, matrix) |
-| dash 0.5.12-12 (Debian 13) | ESC (matrix) | ESC (matrix; Debian patch 0008) | literal `\x1b` (matrix) | literal `$\033Z` (matrix) | prints `-e ` then ESC (matrix) |
+| dash 0.5.12-12 (Debian 13) and 0.5.12-6ubuntu5 (Ubuntu 24.04, the CI host) | ESC (matrix, lab) | ESC (matrix, lab; Debian patch 0008) | literal `\x1b` (matrix, lab) | literal `$\033Z` (matrix, lab) | prints `-e ` then ESC (matrix, lab) |
 | dash 0.5.13.5 (built from upstream tag v0.5.13.5, commit 037bbdf, and run through the lab with `LAB_DASH_VERSION=0.5.13.5`) | ESC (lab) | ESC (lab) | ESC (lab) | ESC (lab) | prints `-e ` then ESC (lab) |
 | ksh93u+ 2012 | ESC (lab) | ESC (lab) | ESC (lab; followed by a hex digit it reads three digits as one code point, so `\x1bc` becomes the two bytes `c6 bc`, U+01BC in UTF-8, measured by hand) | ESC (lab) | ESC (lab) |
 | ksh93u+m 1.0.10 | ESC (matrix) | ESC (matrix) | ESC (matrix) | ESC (matrix) | ESC (matrix) |

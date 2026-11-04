@@ -86,7 +86,8 @@ stty_flavor() {
 }
 
 @test "stty on non-terminal descriptor exits 1 with the diagnostic of the installed stty" {
-  run_lab "${BATS_TEST_DIRNAME}/stty_ops.sh" save </dev/null
+  # The expected diagnostics are the C-locale texts: under a UTF-8 locale GNU stty quotes with U+2018 and U+2019.
+  LC_ALL=C run_lab "${BATS_TEST_DIRNAME}/stty_ops.sh" save </dev/null
   [ "$status" -eq 1 ]
   case "$(stty_flavor)" in
     gnu) [ "$output" = "stty: 'standard input': Inappropriate ioctl for device" ] ;;
@@ -160,7 +161,8 @@ stty_flavor() {
 }
 
 @test "stty reports an invalid operand with exit status 1 and the diagnostic of the installed stty" {
-  run "${BATS_TEST_TMPDIR}/pty_test_helper" pty-exec stty invalid_operand_probe_xyz
+  # The expected diagnostics are the C-locale texts: under a UTF-8 locale GNU stty quotes with U+2018 and U+2019.
+  run env LC_ALL=C "${BATS_TEST_TMPDIR}/pty_test_helper" pty-exec stty invalid_operand_probe_xyz
   [ "$status" -eq 1 ]
   first=${lines[0]//$'\r'/}
   case "$(stty_flavor)" in

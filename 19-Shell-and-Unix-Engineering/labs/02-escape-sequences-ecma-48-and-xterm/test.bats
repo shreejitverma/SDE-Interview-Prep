@@ -50,7 +50,7 @@ parse() {
 
 # dash_lineage: print which dash the shell under test is, so each dash test can assert one exact value.
 #   upstream-old   upstream dash up to 0.5.12 (Alpine 0.5.12-r*) and Apple's /bin/dash: no \e, no \x, no $'..'
-#   debian-patch   Debian 0.5.12-12 and its patch 0008: \e only
+#   debian-patch   Debian 0.5.12-12 and Ubuntu 24.04 0.5.12-6ubuntu5, with patch 0008: \e only
 #   upstream-new   dash 0.5.13 and later: \e, \x and $'..'
 # The version comes from LAB_DASH_VERSION when set (a hand-built dash, for example 0.5.13.5, or "apple"),
 # otherwise from the package manager that owns the system dash. An unknown dash fails the test
@@ -78,7 +78,7 @@ dash_lineage() {
   fi
   case $version in
     apple | 0.5.12 | 0.5.12-r*) printf 'upstream-old\n' ;;
-    0.5.12-12*) printf 'debian-patch\n' ;;
+    0.5.12-6ubuntu5 | 0.5.12-12*) printf 'debian-patch\n' ;;
     0.5.13* | 0.5.1[4-9]*) printf 'upstream-new\n' ;;
     *)
       printf 'unknown dash build "%s": set LAB_DASH_VERSION\n' "$version" >&2
