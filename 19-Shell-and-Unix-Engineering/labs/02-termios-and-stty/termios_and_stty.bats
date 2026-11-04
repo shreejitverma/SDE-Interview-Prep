@@ -71,7 +71,7 @@ stty_flavor() {
   [ "$output" = "CAUGHT_SIGTTOU=0 tcsetattr=OK errno=none changed=1" ]
 }
 
-@test "closing the last pty master hangs up the slave on Linux but not on macOS" {
+@test "closing the last pty master makes termios calls on the slave fail on Linux but not on macOS" {
   run "${BATS_TEST_TMPDIR}/pty_test_helper" verify-hangup
   [ "$status" -eq 0 ]
   case "$(uname -s)" in

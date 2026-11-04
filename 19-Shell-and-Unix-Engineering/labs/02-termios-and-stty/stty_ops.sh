@@ -9,6 +9,13 @@ usage() {
   exit 1
 }
 
+# flag_state TEXT NAME: print 1 if NAME is a whole word of the stty -a output TEXT, else 0.
+flag_state() {
+  printf '%s\n' "$1" | awk -v name="$2" '
+    { gsub(/;/, " "); for (i = 1; i <= NF; i++) if ($i == name) found = 1 }
+    END { print found ? 1 : 0 }'
+}
+
 [ "$#" -ge 1 ] || usage
 
 action="$1"
@@ -27,31 +34,11 @@ case "${action}" in
     ;;
   query-flags)
     out=$(stty -a)
-    has_echo=0
-    has_icanon=0
-    has_onlcr=0
-    has_isig=0
-    case "${out}" in
-      *"-echo "* | *"-echo\n"* | *"-echo;"* | *"-echo	"*) has_echo=0 ;;
-      *"echo "* | *"echo\n"* | *"echo;"* | *"echo	"*) has_echo=1 ;;
-      *) has_echo=0 ;;
-    esac
-    case "${out}" in
-      *"-icanon "* | *"-icanon\n"* | *"-icanon;"* | *"-icanon	"*) has_icanon=0 ;;
-      *"icanon "* | *"icanon\n"* | *"icanon;"* | *"icanon	"*) has_icanon=1 ;;
-      *) has_icanon=0 ;;
-    esac
-    case "${out}" in
-      *"-onlcr "* | *"-onlcr\n"* | *"-onlcr;"* | *"-onlcr	"*) has_onlcr=0 ;;
-      *"onlcr "* | *"onlcr\n"* | *"onlcr;"* | *"onlcr	"*) has_onlcr=1 ;;
-      *) has_onlcr=0 ;;
-    esac
-    case "${out}" in
-      *"-isig "* | *"-isig\n"* | *"-isig;"* | *"-isig	"*) has_isig=0 ;;
-      *"isig "* | *"isig\n"* | *"isig;"* | *"isig	"*) has_isig=1 ;;
-      *) has_isig=0 ;;
-    esac
-    printf 'echo=%d icanon=%d onlcr=%d isig=%d\n' "${has_echo}" "${has_icanon}" "${has_onlcr}" "${has_isig}"
+    echo_state=$(flag_state "${out}" echo)
+    icanon_state=$(flag_state "${out}" icanon)
+    onlcr_state=$(flag_state "${out}" onlcr)
+    isig_state=$(flag_state "${out}" isig)
+    printf 'echo=%s icanon=%s onlcr=%s isig=%s\n' "${echo_state}" "${icanon_state}" "${onlcr_state}" "${isig_state}"
     ;;
   with-noecho)
     [ "$#" -ge 1 ] || {
@@ -59,7 +46,10 @@ case "${action}" in
       exit 1
     }
     saved=$(stty -g)
-    trap 'stty "${saved}" 2>/dev/null || true' EXIT INT TERM HUP
+    trap 'stty "${saved}" 2>/dev/null || true' EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    trap 'exit 129' HUP
     stty -echo
     "$@"
     ;;

@@ -51,7 +51,7 @@ Part of [Terminals and Job Control](README.md) in [Shell and Unix Engineering](.
 ## TL;DR
 
 Terminal configuration is device-level kernel state stored in `struct termios` and manipulated via `tcgetattr()`, `tcsetattr()`, and `ioctl(TCGETS)` or `ioctl(TCSETS)`, which `stty` reads and modifies through standard input.
-Always capture original terminal settings with `saved=$(stty -g)` before changing attributes, and enforce restoration via `trap 'stty "${saved}" 2>/dev/null || true' EXIT INT TERM HUP`.
+Always capture original terminal settings with `saved=$(stty -g)` before changing attributes, and enforce restoration with `trap 'stty "${saved}" 2>/dev/null || true' EXIT` plus `trap 'exit 130' INT`, `trap 'exit 143' TERM` and `trap 'exit 129' HUP`, because a signal trap that does not call `exit` lets the script carry on after the signal.
 Terminal attributes adhere to the underlying kernel terminal description rather than the process or file descriptor, meaning changes executed inside a subshell like `(stty -echo)` or in a pipeline stage permanently mutate the terminal for the parent shell and all sibling processes.
 The output of `stty -g` is formatted as colon-separated hexadecimal values on Linux GNU coreutils, formatted as keyword assignment strings on macOS and BSD, and is specified by POSIX only as an unspecified form that another `stty` "on the same system" can apply (POSIX.1-2024 XCU stty, `-g`).
 Never invoke `stty` or `tcsetattr()` in non-interactive batch jobs or background processes without an allocated terminal, where calls fail with `ENOTTY` or cause the kernel to deliver `SIGTTOU`, suspending the process group.
@@ -250,10 +250,10 @@ The lab confirms all three non-orphaned outcomes on macOS 27, Alpine 3.22 and De
 
 ### A Pseudo-Terminal Slave After Its Master Closes
 
-The kernel terminal state of a pseudo-terminal lives only as long as its master side is open, and Linux and macOS part ways when the last master descriptor closes.
+The kernel terminal state of a pseudo-terminal lives only as long as its master side is open: when the last master descriptor closes, both Linux and macOS hang up the slave, but they part ways on the termios calls.
 On Linux `pty_close()` ends with `tty_vhangup()` on the slave, whose open files are then served by `hung_up_tty_ioctl()`, which returns `ENOTTY` for `TIOCSPGRP` and `EIO` for every other request (Linux `drivers/tty/pty.c` and `drivers/tty/tty_io.c`).
 Consequently `tcgetattr()`, `tcsetattr()` and `TIOCSCTTY` on the slave all fail with `EIO` and `tcsetpgrp()` fails with `ENOTTY` (measured on Alpine 3.22 and Debian 13); the session never acquires a controlling terminal, so no `SIGTTOU` can be generated.
-On macOS 27 the slave stays fully usable after the master closes: `tcgetattr()` and `tcsetattr()` both succeed (measured in the shell matrix, as of 2026-11).
+On macOS 27 the slave is hung up too (the session leader gets `SIGHUP`, reads return end-of-file and writes fail with `EIO`, as the [[Pseudo-Terminals]] lab measures), yet `tcgetattr()` and `tcsetattr()` on it both still succeed (measured in the shell matrix, as of 2026-11).
 POSIX.1-2024 XBD 11.1.10 specifies only that after a hang-up a read returns end-of-file and a write fails with `EIO`; it says nothing about the termios calls, so both behaviors conform.
 A test harness that closes its master descriptor right after `fork()` therefore passes on macOS and fails on Linux, because the child's `tcsetattr()` runs against a hung-up terminal; keep the master open until the child has been reaped.
 
@@ -355,6 +355,13 @@ usage() {
   exit 1
 }
 
+# flag_state TEXT NAME: print 1 if NAME is a whole word of the stty -a output TEXT, else 0.
+flag_state() {
+  printf '%s\n' "$1" | awk -v name="$2" '
+    { gsub(/;/, " "); for (i = 1; i <= NF; i++) if ($i == name) found = 1 }
+    END { print found ? 1 : 0 }'
+}
+
 [ "$#" -ge 1 ] || usage
 
 action="$1"
@@ -373,31 +380,11 @@ case "${action}" in
     ;;
   query-flags)
     out=$(stty -a)
-    has_echo=0
-    has_icanon=0
-    has_onlcr=0
-    has_isig=0
-    case "${out}" in
-      *"-echo "* | *"-echo\n"* | *"-echo;"* | *"-echo	"*) has_echo=0 ;;
-      *"echo "* | *"echo\n"* | *"echo;"* | *"echo	"*) has_echo=1 ;;
-      *) has_echo=0 ;;
-    esac
-    case "${out}" in
-      *"-icanon "* | *"-icanon\n"* | *"-icanon;"* | *"-icanon	"*) has_icanon=0 ;;
-      *"icanon "* | *"icanon\n"* | *"icanon;"* | *"icanon	"*) has_icanon=1 ;;
-      *) has_icanon=0 ;;
-    esac
-    case "${out}" in
-      *"-onlcr "* | *"-onlcr\n"* | *"-onlcr;"* | *"-onlcr	"*) has_onlcr=0 ;;
-      *"onlcr "* | *"onlcr\n"* | *"onlcr;"* | *"onlcr	"*) has_onlcr=1 ;;
-      *) has_onlcr=0 ;;
-    esac
-    case "${out}" in
-      *"-isig "* | *"-isig\n"* | *"-isig;"* | *"-isig	"*) has_isig=0 ;;
-      *"isig "* | *"isig\n"* | *"isig;"* | *"isig	"*) has_isig=1 ;;
-      *) has_isig=0 ;;
-    esac
-    printf 'echo=%d icanon=%d onlcr=%d isig=%d\n' "${has_echo}" "${has_icanon}" "${has_onlcr}" "${has_isig}"
+    echo_state=$(flag_state "${out}" echo)
+    icanon_state=$(flag_state "${out}" icanon)
+    onlcr_state=$(flag_state "${out}" onlcr)
+    isig_state=$(flag_state "${out}" isig)
+    printf 'echo=%s icanon=%s onlcr=%s isig=%s\n' "${echo_state}" "${icanon_state}" "${onlcr_state}" "${isig_state}"
     ;;
   with-noecho)
     [ "$#" -ge 1 ] || {
@@ -405,7 +392,10 @@ case "${action}" in
       exit 1
     }
     saved=$(stty -g)
-    trap 'stty "${saved}" 2>/dev/null || true' EXIT INT TERM HUP
+    trap 'stty "${saved}" 2>/dev/null || true' EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    trap 'exit 129' HUP
     stty -echo
     "$@"
     ;;
@@ -454,7 +444,7 @@ ok 2 TCSAFLUSH flushes pending unread input before applying termios changes
 ok 3 background process group attempting tcsetattr receives SIGTTOU and the call fails with EINTR
 ok 4 background process group ignoring SIGTTOU changes the terminal without any signal
 ok 5 background process group blocking SIGTTOU changes the terminal without any signal
-ok 6 closing the last pty master hangs up the slave on Linux but not on macOS
+ok 6 closing the last pty master makes termios calls on the slave fail on Linux but not on macOS
 ok 7 stty on non-terminal descriptor exits 1 with the diagnostic of the installed stty
 ok 8 stty -g saves and restores attributes idempotently on a PTY
 ok 9 stty sane restores canonical mode echo and onlcr
@@ -474,7 +464,10 @@ ok 14 stty -g string layout and stty size on a 24x80 pty match the installed stt
 > **Fix:** Save terminal attributes prior to execution, and install an explicit exit trap to restore them:
 > ```sh
 > saved=$(stty -g)
-> trap 'stty "${saved}" 2>/dev/null || true' EXIT INT TERM HUP
+> trap 'stty "${saved}" 2>/dev/null || true' EXIT
+> trap 'exit 130' INT
+> trap 'exit 143' TERM
+> trap 'exit 129' HUP
 > (stty -echo; ./prompt_secret)
 > ```
 
@@ -493,7 +486,7 @@ ok 14 stty -g string layout and stty size on a 24x80 pty match the installed stt
 > [!warning] Pseudo-terminal test harness that closes the master too early
 > **Trigger:** A test or tool opens a pty pair, forks a child that becomes a session leader on the slave, and the parent closes the master (and slave) descriptors immediately instead of after the child has exited.
 > **Symptom:** On Linux the last master close hangs up the slave: the child's `TIOCSCTTY` and `tcsetattr()` fail with `EIO`, `tcsetpgrp()` fails with `ENOTTY`, and no `SIGTTOU` is ever delivered, so a `SIGTTOU` assertion reports `CAUGHT_SIGTTOU=0`.
-> macOS keeps the slave usable after the master closes, so the same harness passes there; the lab showed exactly this split (macOS passed, Alpine and Debian failed) before the master was kept open.
+> macOS also hangs up the slave but still serves termios calls on it, so the same harness passes there; the lab showed exactly this split (macOS passed, Alpine and Debian failed) before the master was kept open.
 > **Fix:** Keep the master open until `waitpid()` has reaped the child, and close it last.
 > The hang-up is Linux `pty_close()` calling `tty_vhangup()` on the slave; POSIX leaves termios calls on a hung-up pty unspecified, so portable code cannot rely on either behavior.
 
@@ -508,10 +501,13 @@ ok 14 stty -g string layout and stty size on a 24x80 pty match the installed stt
 > [!warning] Corrupted terminal state after interrupted password input
 > **Trigger:** An interactive shell script disables echo with `stty -echo` for password collection, and the user presses `Ctrl+C` before sequential restoration code runs.
 > **Symptom:** The script terminates immediately due to `SIGINT`, leaving the terminal in non-echoing mode; subsequent keystrokes typed by the user into their outer shell are invisible.
-> **Fix:** Bind terminal state restoration to all terminating signal traps before disabling echo:
+> **Fix:** Before disabling echo, restore the terminal from an `EXIT` trap and make every terminating signal call `exit`, so the restore runs and the script does not resume after `Ctrl+C`:
 > ```sh
 > saved=$(stty -g)
-> trap 'stty "${saved}" 2>/dev/null || true' EXIT INT TERM HUP
+> trap 'stty "${saved}" 2>/dev/null || true' EXIT
+> trap 'exit 130' INT
+> trap 'exit 143' TERM
+> trap 'exit 129' HUP
 > stty -echo
 > read -r password
 > ```
@@ -550,12 +546,12 @@ Staff and principal engineers apply four core rules when architecting terminal-f
    Passing automated data streams through a terminal risks accidental character translation (`\n` converted to `\r\n` by `ONLCR`), unexpected truncation, signal aborts on byte 0x03 (`Ctrl+C`), and throughput penalties from kernel line discipline spinlocks.
 2. **Defensive terminal state lifecycle.**
    Any application or script that enters raw or non-canonical mode must treat terminal restoration as a mission-critical invariant.
-   Attributes must be queried once with `tcgetattr()` or `stty -g`, guarded by robust signal traps (`EXIT`, `INT`, `TERM`, `HUP`), and cleanly restored under every error path.
+   Attributes must be queried once with `tcgetattr()` or `stty -g`, restored from an `EXIT` trap, with `INT`, `TERM` and `HUP` traps that call `exit` so the restore runs and the script stops, and cleanly restored under every error path.
 3. **Container and sandbox isolation.**
    Never allow an untrusted process or container to share a controlling terminal with the host.
    Use dedicated pseudo-terminal pairs (`posix_openpt()`) and allocate new sessions (`setsid()`) to prevent `TIOCSTI` keystroke injection and process signaling escapes.
 4. **Test terminal code on real ptys, on more than one kernel.**
-   Terminal behavior that looks universal is often an artifact of one kernel's lifetime rules: a pty slave is fully usable after its master closes on macOS and hung up (`EIO`) on Linux, and a fresh pty has a 0 by 0 window that BusyBox `stty` reports as an error.
+   Terminal behavior that looks universal is often an artifact of one kernel's lifetime rules: a pty slave hung up by its master's close still answers `tcgetattr()` and `tcsetattr()` on macOS but fails them with `EIO` on Linux, and a fresh pty has a 0 by 0 window that BusyBox `stty` reports as an error.
    Keep the master open for the life of the test, size the window, bound every wait with `poll()` and a timeout, and run the suite on Linux and macOS before trusting a `SIGTTOU` or `tcsetattr()` assertion.
 
 ## Interview questions
@@ -617,7 +613,10 @@ Staff and principal engineers apply four core rules when architecting terminal-f
 > > ```sh
 > > #!/bin/sh
 > > saved=$(stty -g)
-> > trap 'stty "${saved}" 2>/dev/null || true' EXIT INT TERM HUP
+> > trap 'stty "${saved}" 2>/dev/null || true' EXIT
+> > trap 'exit 130' INT
+> > trap 'exit 143' TERM
+> > trap 'exit 129' HUP
 > > printf 'Enter passphrase: '
 > > stty -echo
 > > read -r passphrase
@@ -645,7 +644,7 @@ Staff and principal engineers apply four core rules when architecting terminal-f
 > > The signal is bypassed if the calling process explicitly ignores or blocks `SIGTTOU`, in which case the attribute change succeeds and no signal is sent (POSIX.1-2024 XSH tcsetattr; the lab measured both cases on Linux and macOS).
 > > If the process catches `SIGTTOU` without `SA_RESTART`, the handler runs and `tcsetattr()` fails with `errno = EINTR`, leaving the terminal unchanged; with the default disposition the group stops and the call restarts after `SIGCONT`.
 > > If the background process group is orphaned, `SIGTTOU` cannot be delivered, and `tcsetattr()` fails immediately with `errno = EIO`.
-> > None of this applies to a terminal that has been hung up: on Linux, once the last pty master closes, every termios call on the slave fails with `EIO`, while macOS keeps the slave usable.
+> > None of this applies to a terminal that has been hung up: on Linux, once the last pty master closes, every termios call on the slave fails with `EIO`, while macOS hangs the slave up but still serves its termios calls.
 > >
 > > Follow-up: Does setting `stty -tostop` prevent `SIGTTOU` from being sent when a background process calls `tcsetattr()`?
 

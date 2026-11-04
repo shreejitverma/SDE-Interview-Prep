@@ -287,7 +287,7 @@ esc_hex() {
         [ "$output" = "$(printf '100\n1b5b31313b323148')" ]
         fam=$(lab_shell_family)
         if [ "$fam" = zsh-sh ]; then
-          # In sh emulation the unbraced subscript is not an array reference: $terminfo is empty.
+          # In sh emulation (KSH_ARRAYS) the unbraced $terminfo expands to one element's value, "no", and [cols] stays literal text.
           run_lab_c 'zmodload zsh/terminfo && echo $terminfo[cols]'
           [ "$output" = "no[cols]" ]
         fi

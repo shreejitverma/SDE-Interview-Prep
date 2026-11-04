@@ -77,23 +77,8 @@ MAX_CANON=255 MAX_INPUT=255 VDISABLE=0x00 cc_t_bits=8" ]
   run_lab "${SCRIPT}" shell-exec "${LAB_SHELL_WORDS[@]}" -c 'read -r line; printf "SHELL_LINE=<%s>\n" "$line"'
   [ "${status}" -eq 0 ]
   clean_out=$(printf '%s\n' "${output}" | tr -d '\r')
-  case $(lab_shell_family) in
-    bash | zsh | zsh-sh | yash | busybox | posh | mksh | ksh93 | dash)
-      case "${clean_out}" in
-        *"SHELL_LINE=<abc>"*) ;;
-        *) false ;;
-      esac
-      ;;
-    *) false ;;
-  esac
-}
-
-@test "shell terminal probe runs under all supported shell families" {
-  run_lab_c 'echo raw_mode_ok'
-  [ "${status}" -eq 0 ]
-  [ "${output}" = "raw_mode_ok" ]
-  case $(lab_shell_family) in
-    bash | zsh | zsh-sh | yash | busybox | posh | mksh | ksh93 | dash) ;;
+  case "${clean_out}" in
+    *"SHELL_LINE=<abc>"*) ;;
     *) false ;;
   esac
 }

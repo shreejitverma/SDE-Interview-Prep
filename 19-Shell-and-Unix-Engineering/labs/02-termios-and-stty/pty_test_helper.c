@@ -231,26 +231,12 @@ static int do_verify_tcsaflush(void) {
  * disposition SIGTTOU_HANDLED: SIGTTOU has a handler; the call must fail with EINTR and change nothing.
  * disposition SIGTTOU_IGNORED: SIGTTOU is ignored; the call must succeed and change the terminal.
  * disposition SIGTTOU_BLOCKED: SIGTTOU is blocked; the call must succeed and the signal stays unhandled.
- * The master descriptor stays open until the whole tree has exited: closing the last master
- * hangs up the slave, the session loses its controlling terminal, and no SIGTTOU is generated.
+ * The master descriptor stays open until the whole tree has exited: on Linux closing the last
+ * master hangs up the slave, the session loses its controlling terminal, and no SIGTTOU is generated.
  */
 static int do_verify_sigttou(int disposition) {
   int m, s;
   if (open_pty_pair(&m, &s, 1) < 0) {
-    return 1;
-  }
-
-  /* Set TOSTOP so background output/changes generate SIGTTOU */
-  struct termios tio;
-  if (tcgetattr(s, &tio) != 0) {
-    close(s);
-    close(m);
-    return 1;
-  }
-  tio.c_lflag |= (tcflag_t)TOSTOP;
-  if (tcsetattr(s, TCSANOW, &tio) != 0) {
-    close(s);
-    close(m);
     return 1;
   }
 
@@ -335,9 +321,9 @@ static int do_verify_sigttou(int disposition) {
 }
 
 /*
- * Close the last master descriptor and probe the slave.
- * Linux hangs the slave up: its descriptors then fail with EIO.
- * macOS keeps the slave usable.
+ * Close the last master descriptor and probe the termios calls on the slave.
+ * Both kernels hang the slave up (reads give end of file, writes fail with EIO).
+ * Linux then fails tcgetattr and tcsetattr with EIO; macOS still serves them.
  */
 static int do_verify_hangup(void) {
   int m, s;

@@ -353,7 +353,8 @@ The output proves that:
 > Trigger: An interactive application puts the terminal into raw or non-canonical mode via `stty raw` or `cfmakeraw()` and terminates unexpectedly due to an unhandled signal (`SIGINT`, `SIGTERM`, `SIGSEGV`) or an unhandled exception before restoring the original `termios`.
 > Symptom: The calling shell is left in raw mode; typed keystrokes do not visually echo, pressing Enter emits `^M` or moves down without returning to the left margin (the newline staircase defect), and pressing `Ctrl+C` prints `^C` without interrupting foreground commands.
 > Fix: Always capture the original terminal configuration using `tcgetattr()` or `saved_stty=$(stty -g)` before making any modifications.
-> Register cleanup handlers across `atexit()` and all catchable signals (`SIGINT`, `SIGTERM`, `SIGHUP`, `SIGQUIT`, `SIGTSTP`) in C, or configure a shell trap: `trap 'stty "$saved_stty"' EXIT INT TERM HUP`.
+> Register cleanup handlers across `atexit()` and all catchable signals (`SIGINT`, `SIGTERM`, `SIGHUP`, `SIGQUIT`, `SIGTSTP`) in C, or configure shell traps that restore on exit and make each signal exit: `trap 'stty "$saved_stty"' EXIT; trap 'exit 130' INT; trap 'exit 143' TERM; trap 'exit 129' HUP`.
+> A signal trap that only restores the terminal, such as `trap 'stty "$saved_stty"' INT`, lets the script resume after `Ctrl+C`.
 > If caught in an uncooked terminal interactively, type `Ctrl+J stty sane Ctrl+J` blindly (using `Ctrl+J` / Line Feed because Carriage Return may be unmapped).
 
 > [!warning] The VMIN/VEOF and VTIME/VEOL array collision trap
@@ -460,7 +461,7 @@ Staff-plus engineers evaluate this trade-off using the following criteria:
 > > [!success]- Answer
 > > The script toggles the terminal into raw mode without establishing signal traps or saving the original terminal state.
 > > If the user presses `Ctrl+C` while `dd` is waiting for input, the shell terminates immediately without executing `stty sane`, leaving the parent terminal with echo disabled, line editing broken, and output newline translation disabled.
-> > The robust fix saves the original state via `old_stty=$(stty -g)` and registers an exit trap via `trap 'stty "$old_stty"' EXIT INT TERM HUP`.
+> > The robust fix saves the original state via `old_stty=$(stty -g)` and registers an exit trap via `trap 'stty "$old_stty"' EXIT`, plus `trap 'exit 130' INT`, `trap 'exit 143' TERM` and `trap 'exit 129' HUP` so an interrupted script still stops and runs the exit trap.
 > >
 > > Follow-up: Why is `stty "$old_stty"` superior to `stty sane` for restoring the terminal configuration?
 
