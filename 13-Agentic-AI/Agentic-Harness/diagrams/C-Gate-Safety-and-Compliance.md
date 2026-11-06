@@ -535,4 +535,4 @@ The pipeline itself is defined in CDK and self-mutating, so a change to the pipe
 CodeBuild runs the same lint and test commands the gate's repo config declares, plus report groups for coverage and a security scan.
 The `cdk diff` output and the CloudFormation change set play the attestation's role as evidence, and a manual approval before production, in a separate account, is the four-eyes control.
 
-**Evidence:** [JD mapping](../interview/JD-Mapping.md) section 4 (bridge plan and the `git grep` showing no AWS code today), [Cheat sheet](../interview/Cheat-Sheet.md) (CDK Pipelines bridge line), [08 Design principles](../08-Design-Principles-and-Tradeoffs.md) section 4 (stated gap), `SDE-Interview-Prep/.no-mistakes.yaml:4-6` (commands a buildspec would mirror).
+**Evidence:** [JD mapping](../interview/JD-Mapping.md) section 4 (bridge plan and the `git grep` showing no AWS code today), [Cheat sheet](../interview/Cheat-Sheet.md) (CDK Pipelines bridge line), [08 Design principles](../08-Design-Principles-and-Tradeoffs.md) section 4 (stated gap), `The-Distinguished-Engineer/.no-mistakes.yaml:4-6` (commands a buildspec would mirror).

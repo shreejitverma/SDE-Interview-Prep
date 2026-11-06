@@ -5,7 +5,7 @@ level:
 status: draft
 last_reviewed:
 sources:
-  - "SDE-Interview-Prep contributors, Developer Toolchain Curriculum Specification, SDE Interview Prep, 2026, https://github.com/shreejitverma/SDE-Interview-Prep"
+  - "The-Distinguished-Engineer contributors, Developer Toolchain Curriculum Specification, The Distinguished Engineer, 2026, https://github.com/shreejitverma/The-Distinguished-Engineer"
 ---
 
 # Developer Toolchain Style Guide and Authoring Contract

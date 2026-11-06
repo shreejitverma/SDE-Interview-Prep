@@ -1,4 +1,5 @@
 {
+  "name": "the-distinguished-engineer",
   "dependencies": {
     "jshint": "^2.13.6"
   },

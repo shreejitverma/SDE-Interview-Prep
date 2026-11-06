@@ -5,7 +5,7 @@ level:
 status: draft
 last_reviewed:
 sources:
-  - "SDE-Interview-Prep contributors, Developer Toolchain Verification Harness, SDE Interview Prep, 2026, https://github.com/shreejitverma/SDE-Interview-Prep"
+  - "The-Distinguished-Engineer contributors, Developer Toolchain Verification Harness, The Distinguished Engineer, 2026, https://github.com/shreejitverma/The-Distinguished-Engineer"
 ---
 
 # Developer Toolchain Code Labs and Verification Harness

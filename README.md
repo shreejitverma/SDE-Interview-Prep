@@ -1,4 +1,4 @@
-# SDE Interview Prep
+# The Distinguished Engineer
 
 A single, opinionated knowledge base for going from junior engineer to distinguished engineer, with dedicated tracks for quantitative development, ultra-low-latency trading systems, and agentic AI.
 It is part curriculum, part reference vault, part runnable code.

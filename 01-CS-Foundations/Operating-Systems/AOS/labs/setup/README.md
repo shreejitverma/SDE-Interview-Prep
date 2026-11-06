@@ -29,6 +29,8 @@ make shell       # a shell in the VM at the labs folder
 ```
 
 The VM mounts the vault checkout and the treehouse worktree pool writable, so you edit on macOS and build in the VM.
+The vault mount in `aos-lab.yaml` assumes the checkout lives at `~/github/The-Distinguished-Engineer`; move or clone it there first, or edit that mount before `make vm`.
+A VM created before the vault was renamed still mounts the old path; recreate it with `limactl delete aos && make vm`.
 Every lab folder has `make`, `make run`, and `make test`; run them inside the VM.
 From any checkout path (mounted or not), `run-in-vm.sh` copies a lab into the VM and runs a target there:
 
