@@ -34,7 +34,7 @@ Re-run the script after every structural change; this file is its output and sho
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-11-05 |
 | `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-21 |
 | `00-Start-Here` | 6 | 5 | 0 | 0 | 1 | 0.0 | 2026-10-25 |
-| `01-CS-Foundations` | 507 | 262 | 141 | 0 | 104 | 4.7 | 2026-10-25 |
+| `01-CS-Foundations` | 507 | 262 | 141 | 0 | 104 | 4.7 | 2026-11-05 |
 | `02-Programming-Languages` | 5828 | 818 | 2860 | 466 | 1684 | 112.2 | 2026-11-01 |
 | `03-Data-Structures-Algorithms` | 8293 | 185 | 7988 | 0 | 120 | 17.3 | 2026-10-25 |
 | `04-System-Design` | 991 | 177 | 657 | 0 | 157 | 9.8 | 2026-10-25 |
@@ -46,12 +46,12 @@ Re-run the script after every structural change; this file is its output and sho
 | `10-Development-Practices` | 4 | 2 | 0 | 0 | 2 | 0.0 | 2026-10-25 |
 | `11-Security-And-Cryptography` | 3 | 2 | 1 | 0 | 0 | 0.0 | 2026-10-25 |
 | `12-Performance-Engineering` | 4 | 2 | 2 | 0 | 0 | 0.0 | 2026-10-25 |
-| `13-Agentic-AI` | 185 | 185 | 0 | 0 | 0 | 3.4 | 2026-10-25 |
+| `13-Agentic-AI` | 185 | 185 | 0 | 0 | 0 | 3.4 | 2026-11-05 |
 | `14-Low-Latency-Systems` | 262 | 262 | 0 | 0 | 0 | 1.7 | 2026-10-25 |
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-10-25 |
 | `16-Interview-Command-Center` | 51 | 51 | 0 | 0 | 0 | 0.1 | 2026-10-25 |
 | `17-Cloud-AI-Engineering` | 162 | 162 | 0 | 0 | 0 | 9.8 | 2026-11-01 |
-| `18-Developer-Toolchain` | 366 | 343 | 12 | 0 | 11 | 0.8 | 2026-11-01 |
+| `18-Developer-Toolchain` | 366 | 343 | 12 | 0 | 11 | 0.8 | 2026-11-05 |
 | `19-Shell-and-Unix-Engineering` | 583 | 406 | 107 | 0 | 70 | 4.3 | 2026-11-05 |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
 | `tools` | 26 | 1 | 23 | 0 | 2 | 0.2 | 2026-11-01 |
