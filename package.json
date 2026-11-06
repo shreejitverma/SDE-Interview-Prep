@@ -3,6 +3,9 @@
     "jshint": "^2.13.6"
   },
   "overrides": {
+    "jshint": {
+      "minimatch": "^3.1.5"
+    },
     "lodash": "^4.18.1",
     "minimatch": "^11.0.4",
     "shelljs": "^0.10.0"
