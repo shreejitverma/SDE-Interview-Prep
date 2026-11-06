@@ -181,7 +181,7 @@ firstmate supports `auto` (Claude Code's classifier-reviewed permission mode) in
 - The `stow` skill "never files credentials, secrets, or other sensitive material" (`~/.agents/skills/stow/SKILL.md:150`).
 - quota-axi reads local auth sources but "never routes, recommends, ranks, or mints credentials" (`~/.agents/skills/quota-axi/SKILL.md:37`).
 - The server-side fleet sync uses a fine-grained PAT stored as the Actions secret `FLEET_SYNC_TOKEN` (`.fleet/.github/workflows/fleet-sync.yml:7-9`, `:22`).
-- This vault's gate runs a PII audit on every change (`SDE-Interview-Prep/.no-mistakes.yaml:5`).
+- This vault's gate runs a PII audit on every change (`The-Distinguished-Engineer/.no-mistakes.yaml:5`).
 
 ## 8. Audit trail
 

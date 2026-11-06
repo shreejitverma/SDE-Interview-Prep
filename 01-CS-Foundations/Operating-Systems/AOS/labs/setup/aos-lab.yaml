@@ -13,7 +13,7 @@ memory: 12GiB
 disk: 60GiB
 mounts:
 # The vault checkout and the treehouse worktree pool, writable, so labs build in place.
-- location: "~/github/SDE-Interview-Prep"
+- location: "~/github/The-Distinguished-Engineer"
   writable: true
 - location: "~/.treehouse"
   writable: true
