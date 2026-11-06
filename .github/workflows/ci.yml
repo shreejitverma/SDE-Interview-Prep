@@ -16,7 +16,9 @@ concurrency:
 
 jobs:
   build-test:
-    runs-on: ubuntu-latest
+    # Pinned: the host labs assert the GNU coreutils of Ubuntu 24.04 (stty, ls, /bin/echo, printf).
+    # ubuntu-latest moved to 26.04, whose coreutils print different diagnostics and layouts.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
